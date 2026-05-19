@@ -1,0 +1,148 @@
+"use client"
+
+import { type CSSProperties, useSyncExternalStore } from "react"
+
+import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
+import { ForcedPasswordChangeDialog } from "@/components/auth/forced-password-change-dialog"
+import {
+    SidebarInset,
+    SidebarProvider,
+    SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { Badge } from "@/components/ui/badge"
+
+const SERVER_DATE_TIME_LABEL = "Loading..."
+
+function formatDateTime(date: Date) {
+    return new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+    }).format(date)
+}
+
+function subscribeToDateTime(callback: () => void) {
+    const intervalId = window.setInterval(callback, 1000)
+
+    return () => window.clearInterval(intervalId)
+}
+
+function getDateTimeSnapshot() {
+    return formatDateTime(new Date())
+}
+
+function getServerDateTimeSnapshot() {
+    return SERVER_DATE_TIME_LABEL
+}
+
+type DashboardUser = {
+    name: string
+    email: string
+    accountType: string
+    roleSlugs?: string[]
+    mustChangePassword?: boolean
+}
+
+type DashboardShellProps = {
+    role: "admin" | "employee"
+    title: string
+    user: DashboardUser
+    children: React.ReactNode
+}
+
+export function DashboardShell({
+    role,
+    title,
+    user,
+    children,
+}: DashboardShellProps) {
+    const dateTimeLabel = useSyncExternalStore(
+        subscribeToDateTime,
+        getDateTimeSnapshot,
+        getServerDateTimeSnapshot
+    )
+
+    return (
+        <TooltipProvider delayDuration={0}>
+            <SidebarProvider
+                defaultOpen={true}
+                className="min-w-0 overflow-hidden"
+                style={
+                    {
+                        "--sidebar-width": "17rem",
+                        "--sidebar-width-icon": "4.5rem",
+                    } as CSSProperties
+                }
+            >
+                <DashboardSidebar
+                    mode={role}
+                    user={{
+                        name: user.name,
+                        email: user.email,
+                        accountType: user.accountType,
+                        roleSlugs: user.roleSlugs,
+                    }}
+                />
+
+                <SidebarInset>
+                    <header className="sticky top-0 z-20 flex h-14 min-w-0 items-center justify-between gap-2 border-b bg-background px-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <SidebarTrigger />
+
+                            <div className="hidden lg:block">
+                                <p className="text-sm font-medium">{title}</p>
+                            </div>
+                        </div>
+
+                        <div className="flex min-w-0 items-center gap-2">
+                            <Badge className="h-9 bg-input/30 text-sm border border-border px-4 text-foreground">
+                                {dateTimeLabel}
+                            </Badge>
+
+                            {/*
+                                   <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleExport}
+                                className="h-9 gap-2"
+                            >
+                                <FilePenLine className="h-4 w-4" />
+                                Export
+                            </Button>
+
+                            <Button
+                                size="sm"
+                                onClick={handlePrimaryAction}
+                                className="h-9 gap-1 font-semibold border-gray-700"
+                            >
+                                {role === "admin" ? (
+                                    <>
+                                        <Plus className="h-4 w-4" />
+                                        Report
+                                    </>
+                                ) : (
+                                    "Submit Daily Report"
+                                )}
+                            </Button>
+                            
+                            */}
+
+                        </div>
+                    </header>
+
+                    <main className="min-h-[calc(100vh-3.5rem)] min-w-0 overflow-hidden p-4 md:p-6">
+                        {children}
+                    </main>
+                </SidebarInset>
+
+                <ForcedPasswordChangeDialog
+                    mustChangePassword={user.mustChangePassword === true}
+                />
+            </SidebarProvider>
+        </TooltipProvider>
+    )
+}
