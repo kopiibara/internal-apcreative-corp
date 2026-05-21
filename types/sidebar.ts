@@ -67,7 +67,7 @@ export const adminGroups: SidebarGroupItem[] = [
     label: "Analytics",
     items: [
       {
-        title: "Platform Analytics",
+        title: "Facebook Monitoring",
         href: "/admin/platform-analytics",
         icon: BarChart3,
       },
