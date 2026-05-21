@@ -6,6 +6,8 @@ import type { BrandWithAnalytics } from "@/components/admin/brands/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
+import { neoFilterTriggerClass, neoInputClass } from "@/lib/neo-ui"
 import { useBrandStore } from "@/stores/use-brand-store"
 
 type BrandFiltersProps = {
@@ -39,7 +41,7 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search brands"
-            className="h-9 pl-9"
+            className={cn("h-9 pl-9", neoInputClass)}
           />
         </div>
 
@@ -57,6 +59,7 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
                   : "outline"
               }
               size="sm"
+              className={neoFilterTriggerClass}
               onClick={() => setSelectedBrandFilter(String(brand.id))}
             >
               {brand.name}
@@ -73,6 +76,7 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
               type="button"
               variant={selectedStatusFilter === status ? "default" : "outline"}
               size="sm"
+              className={neoFilterTriggerClass}
               onClick={() =>
                 setSelectedStatusFilter(
                   selectedStatusFilter === status ? "all" : status
@@ -90,7 +94,7 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
           type="button"
           variant="outline"
           size="sm"
-          className="h-9 whitespace-nowrap"
+          className={cn("h-9 whitespace-nowrap", neoFilterTriggerClass)}
           onClick={resetBrandFilters}
         >
           Reset Filters

@@ -81,7 +81,10 @@ type ApprovalStore = {
   closeDirectorReviewDialog: () => void
   openPublishingDialog: (approval: ContentReport) => void
   closePublishingDialog: () => void
+  approvalPatches: Record<number, ContentReport>
   setSelectedApproval: (approval: ContentReport | null) => void
+  updateApprovalInStore: (approval: ContentReport) => void
+  clearApprovalPatch: (approvalId: number) => void
   setSearchQuery: (query: string) => void
   setSelectedBrandFilter: (brand: string) => void
   setSelectedContentTypeFilter: (contentType: string) => void
@@ -102,6 +105,7 @@ const clearSelection = {
 export const useApprovalStore = create<ApprovalStore>((set) => ({
   selectedApprovalId: null,
   selectedApproval: null,
+  approvalPatches: {},
   verificationPayload: null,
   pendingKanbanMove: null,
   selectedFromColumn: null,
@@ -205,6 +209,27 @@ export const useApprovalStore = create<ApprovalStore>((set) => ({
     set({
       selectedApprovalId: approval?.id ?? null,
       selectedApproval: approval,
+    }),
+  updateApprovalInStore: (approval) =>
+    set((state) => ({
+      approvalPatches: {
+        ...state.approvalPatches,
+        [approval.id]: approval,
+      },
+      selectedApprovalId:
+        state.selectedApprovalId === approval.id
+          ? approval.id
+          : state.selectedApprovalId,
+      selectedApproval:
+        state.selectedApprovalId === approval.id
+          ? approval
+          : state.selectedApproval,
+    })),
+  clearApprovalPatch: (approvalId) =>
+    set((state) => {
+      const approvalPatches = { ...state.approvalPatches }
+      delete approvalPatches[approvalId]
+      return { approvalPatches }
     }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
   setSelectedBrandFilter: (selectedBrandFilter) =>

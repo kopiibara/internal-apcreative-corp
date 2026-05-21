@@ -21,7 +21,7 @@ export function BrandProfileCard({ brand, permissions }: BrandProfileCardProps) 
   const { openEditDialog, openDeactivateDialog } = useBrandStore()
 
   return (
-    <Card className="h-full gap-2">
+    <Card className="h-full gap-2 shadow-none">
       <CardHeader className="gap-3 pb-3">
         <div className="flex min-w-0 gap-3">
           <BrandLogo
@@ -32,7 +32,10 @@ export function BrandProfileCard({ brand, permissions }: BrandProfileCardProps) 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-base sm:text-lg">{brand.name}</CardTitle>
-              <Badge variant={brand.isActive ? "default" : "outline"}>
+              <Badge
+                variant={brand.isActive ? "default" : "outline"}
+                className="border-2 font-semibold"
+              >
                 {brand.isActive ? "Active" : "Inactive"}
               </Badge>
             </div>
@@ -47,7 +50,7 @@ export function BrandProfileCard({ brand, permissions }: BrandProfileCardProps) 
         {permissions.canViewAnalytics ? (
           <BrandTotalRequestsStat
             value={brand.metrics.totalRequests}
-            className="mt-1 shadow-sm"
+            className="mt-1"
           />
         ) : null}
       </CardHeader>

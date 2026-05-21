@@ -17,6 +17,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { TaskAssignmentRecord } from "@/lib/tasks"
+import { useTaskStore } from "@/stores/use-task-store"
 
 type ReportBlockerDialogProps = {
   assignment: TaskAssignmentRecord | null
@@ -30,6 +31,9 @@ export function ReportBlockerDialog({
   onOpenChange,
 }: ReportBlockerDialogProps) {
   const router = useRouter()
+  const updateTaskAssignmentInStore = useTaskStore(
+    (state) => state.updateTaskAssignmentInStore
+  )
   const [note, setNote] = useState("")
   const [isPending, startTransition] = useTransition()
 
@@ -53,6 +57,9 @@ export function ReportBlockerDialog({
 
       if (result.success) {
         toast.success(result.message)
+        if (result.data?.updatedAssignment) {
+          updateTaskAssignmentInStore(result.data.updatedAssignment)
+        }
         setNote("")
         onOpenChange(false)
         router.refresh()

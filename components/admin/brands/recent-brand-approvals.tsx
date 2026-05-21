@@ -30,7 +30,7 @@ function getBrandApprovalStage(approval: RecentBrandApproval) {
 export function RecentBrandApprovals({ approvals }: RecentBrandApprovalsProps) {
   if (approvals.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+      <div className="rounded-xl border-2 border-dashed border-border p-6 text-center text-sm text-muted-foreground">
         No recent approval requests for this brand.
       </div>
     )
@@ -72,11 +72,11 @@ export function RecentBrandApprovals({ approvals }: RecentBrandApprovalsProps) {
           return (
             <section
               key={stage.id}
-              className="flex h-[360px] w-70 flex-col rounded-xl  border bg-card"
+              className="flex h-[360px] w-70 flex-col rounded-xl border-2 border-border bg-card"
             >
-              <div className="shrink-0 border-b p-3">
+              <div className="shrink-0 border-b-2 border-border p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium">{stage.title}</p>
+                  <p className="text-sm font-semibold">{stage.title}</p>
                   <span
                     className={cn(
                       "rounded-full border px-2 py-0.5 text-xs",
@@ -90,7 +90,7 @@ export function RecentBrandApprovals({ approvals }: RecentBrandApprovalsProps) {
               <ScrollArea className="min-h-0 flex-1 p-1" scrollbars="vertical">
                 <div className="space-y-3 pr-3 p-2">
                   {stageApprovals.length === 0 ? (
-                    <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                    <p className="rounded-lg border-2 border-dashed border-border p-4 text-center text-xs text-muted-foreground">
                       No requests.
                     </p>
                   ) : (

@@ -25,10 +25,13 @@ import {
   determineTaskType,
 } from "@/lib/task-type"
 import type { TaskAssignmentStatus } from "@/lib/task-statuses"
-import { getTaskAssignmentById } from "@/lib/tasks"
-
-const TASK_ROUTES = ["/admin/to-do/tasks", "/employee/to-do/tasks"]
-const STAFF_ACCOUNTABILITY_PATH = "/admin/staff-accountability"
+import {
+  TASK_REVALIDATE_PATHS,
+} from "@/lib/dashboard-revalidate-paths"
+import {
+  getTaskAssignmentById,
+  type TaskAssignmentRecord,
+} from "@/lib/tasks"
 const ADMIN_TRANSITIONS: Record<TaskAssignmentStatus, TaskAssignmentStatus[]> = {
   ASSIGNED: ["BLOCKER", "PENDING"],
   BLOCKER: ["ASSIGNED", "PENDING"],
@@ -41,6 +44,10 @@ export type ActionResult<T = unknown> = {
   success: boolean
   message: string
   data?: T
+}
+
+type TaskAssignmentUpdateData = {
+  updatedAssignment: TaskAssignmentRecord
 }
 
 async function authorizeTaskAction(permissionKeys: string[]) {
@@ -83,10 +90,30 @@ async function authorizeTaskAction(permissionKeys: string[]) {
 }
 
 function revalidateTaskRoutes() {
-  for (const route of TASK_ROUTES) {
+  for (const route of TASK_REVALIDATE_PATHS) {
     revalidatePath(route)
   }
-  revalidatePath(STAFF_ACCOUNTABILITY_PATH)
+}
+
+async function buildTaskAssignmentUpdateResult(
+  assignmentId: number,
+  message: string
+): Promise<ActionResult<TaskAssignmentUpdateData>> {
+  revalidateTaskRoutes()
+  const updatedAssignment = await getTaskAssignmentById(assignmentId)
+
+  if (!updatedAssignment) {
+    return {
+      success: false,
+      message: "Task assignment was not found after update.",
+    }
+  }
+
+  return {
+    success: true,
+    message,
+    data: { updatedAssignment },
+  }
 }
 
 function parseDueDate(value: string | null | undefined) {
@@ -539,7 +566,9 @@ export async function deleteTask(input: unknown): Promise<ActionResult> {
   }
 }
 
-export async function submitTaskProof(input: unknown): Promise<ActionResult> {
+export async function submitTaskProof(
+  input: unknown
+): Promise<ActionResult<TaskAssignmentUpdateData>> {
   const authorization = await authorizeTaskAction(["tasks.submit_proof"])
 
   if (authorization.error) {
@@ -625,9 +654,10 @@ export async function submitTaskProof(input: unknown): Promise<ActionResult> {
       })
     })
 
-    revalidateTaskRoutes()
-
-    return { success: true, message: "Proof submitted for review." }
+    return buildTaskAssignmentUpdateResult(
+      parsed.data.assignmentId,
+      "Proof submitted for review."
+    )
   } catch (error) {
     console.error("submitTaskProof failed:", error)
 
@@ -641,7 +671,9 @@ export async function submitTaskProof(input: unknown): Promise<ActionResult> {
   }
 }
 
-export async function reportTaskBlocker(input: unknown): Promise<ActionResult> {
+export async function reportTaskBlocker(
+  input: unknown
+): Promise<ActionResult<TaskAssignmentUpdateData>> {
   const authorization = await authorizeTaskAction(["tasks.submit_proof"])
 
   if (authorization.error) {
@@ -709,9 +741,10 @@ export async function reportTaskBlocker(input: unknown): Promise<ActionResult> {
       })
     })
 
-    revalidateTaskRoutes()
-
-    return { success: true, message: "Blocker reported for review." }
+    return buildTaskAssignmentUpdateResult(
+      parsed.data.assignmentId,
+      "Blocker reported for review."
+    )
   } catch (error) {
     console.error("reportTaskBlocker failed:", error)
 
@@ -725,7 +758,9 @@ export async function reportTaskBlocker(input: unknown): Promise<ActionResult> {
   }
 }
 
-export async function confirmTaskBlocker(input: unknown): Promise<ActionResult> {
+export async function confirmTaskBlocker(
+  input: unknown
+): Promise<ActionResult<TaskAssignmentUpdateData>> {
   const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
 
   if (authorization.error) {
@@ -857,9 +892,10 @@ export async function confirmTaskBlocker(input: unknown): Promise<ActionResult> 
       }
     })
 
-    revalidateTaskRoutes()
-
-    return { success: true, message: "Blocker updated successfully." }
+    return buildTaskAssignmentUpdateResult(
+      parsed.data.assignmentId,
+      "Blocker updated successfully."
+    )
   } catch (error) {
     console.error("confirmTaskBlocker failed:", error)
 
@@ -875,7 +911,7 @@ export async function confirmTaskBlocker(input: unknown): Promise<ActionResult> 
 
 export async function changeTaskAssignmentStatus(
   input: unknown
-): Promise<ActionResult> {
+): Promise<ActionResult<TaskAssignmentUpdateData>> {
   const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
 
   if (authorization.error) {
@@ -928,7 +964,11 @@ export async function changeTaskAssignmentStatus(
   }
 
   if (parsed.data.toStatus === assignment.status) {
-    return { success: true, message: "No status change was needed." }
+    return {
+      success: true,
+      message: "No status change was needed.",
+      data: { updatedAssignment: assignment },
+    }
   }
 
   if (!assertAdminTransitionAllowed(assignment.status, parsed.data.toStatus)) {
@@ -982,9 +1022,10 @@ export async function changeTaskAssignmentStatus(
       })
     })
 
-    revalidateTaskRoutes()
-
-    return { success: true, message: "Task status updated successfully." }
+    return buildTaskAssignmentUpdateResult(
+      parsed.data.assignmentId,
+      "Task status updated successfully."
+    )
   } catch (error) {
     console.error("changeTaskAssignmentStatus failed:", error)
 
@@ -998,7 +1039,9 @@ export async function changeTaskAssignmentStatus(
   }
 }
 
-export async function confirmTaskDone(input: unknown): Promise<ActionResult> {
+export async function confirmTaskDone(
+  input: unknown
+): Promise<ActionResult<TaskAssignmentUpdateData>> {
   const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
 
   if (authorization.error) {
@@ -1073,9 +1116,10 @@ export async function confirmTaskDone(input: unknown): Promise<ActionResult> {
       })
     })
 
-    revalidateTaskRoutes()
-
-    return { success: true, message: "Task confirmed as done." }
+    return buildTaskAssignmentUpdateResult(
+      parsed.data.assignmentId,
+      "Task confirmed as done."
+    )
   } catch (error) {
     console.error("confirmTaskDone failed:", error)
 
@@ -1091,7 +1135,7 @@ export async function confirmTaskDone(input: unknown): Promise<ActionResult> {
 
 export async function requestTaskRevision(
   input: unknown
-): Promise<ActionResult> {
+): Promise<ActionResult<TaskAssignmentUpdateData>> {
   const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
 
   if (authorization.error) {
@@ -1166,9 +1210,10 @@ export async function requestTaskRevision(
       })
     })
 
-    revalidateTaskRoutes()
-
-    return { success: true, message: "Revision requested." }
+    return buildTaskAssignmentUpdateResult(
+      parsed.data.assignmentId,
+      "Revision requested."
+    )
   } catch (error) {
     console.error("requestTaskRevision failed:", error)
 

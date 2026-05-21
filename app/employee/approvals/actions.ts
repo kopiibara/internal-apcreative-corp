@@ -17,8 +17,7 @@ import { query, transaction } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
-const EMPLOYEE_CONTENT_REPORT_PATH = "/employee/content-report";
-const ADMIN_APPROVALS_PATH = "/admin/approvals";
+import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard-revalidate-paths";
 
 export type ActionResult<T = unknown> = {
   success: boolean;
@@ -155,8 +154,9 @@ export async function createContentReport(
       ],
     );
 
-    revalidatePath(EMPLOYEE_CONTENT_REPORT_PATH);
-    revalidatePath(ADMIN_APPROVALS_PATH);
+    for (const route of APPROVAL_REVALIDATE_PATHS) {
+      revalidatePath(route);
+    }
 
     return {
       success: true,
@@ -253,8 +253,9 @@ export async function updateContentReport(
       ],
     );
 
-    revalidatePath(EMPLOYEE_CONTENT_REPORT_PATH);
-    revalidatePath(ADMIN_APPROVALS_PATH);
+    for (const route of APPROVAL_REVALIDATE_PATHS) {
+      revalidatePath(route);
+    }
 
     return {
       success: true,
@@ -351,8 +352,9 @@ export async function cancelContentReport(
       );
     });
 
-    revalidatePath(EMPLOYEE_CONTENT_REPORT_PATH);
-    revalidatePath(ADMIN_APPROVALS_PATH);
+    for (const route of APPROVAL_REVALIDATE_PATHS) {
+      revalidatePath(route);
+    }
 
     return {
       success: true,

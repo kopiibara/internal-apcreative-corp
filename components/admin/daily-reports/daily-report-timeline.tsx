@@ -30,12 +30,12 @@ type DailyReportTimelineProps = {
 
 export function DailyReportTimeline({ entries }: DailyReportTimelineProps) {
   return (
-    <Card>
+    <Card className="flex h-full min-h-0 flex-col">
       <CardHeader>
         <CardTitle>Activity Timeline</CardTitle>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="max-h-[480px] pr-3" scrollbars="vertical">
+      <CardContent className="min-h-0 flex-1 pt-0">
+        <ScrollArea className="h-[420px] max-h-[420px] pr-3" scrollbars="vertical">
           {entries.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No activity found for this date.

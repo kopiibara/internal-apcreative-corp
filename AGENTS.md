@@ -20,6 +20,7 @@ Before changing code, read:
 - `docs/date-picker-standards.md`
 - `docs/scroll-area-layout.md`
 - `docs/neo-brutal.md`
+- `docs/neo-brutal-rollout.md`
 - `docs/dry-principle.md`
 - `docs/reui-timeline-standards.md`
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Plus } from "lucide-react"
 
 import { TaskCreateDialog } from "@/components/to-do/task-create-dialog"
@@ -57,13 +57,28 @@ export function TaskBoard({
     isCreateDialogOpen,
     isEditDialogOpen,
     selectedAssignment,
+    assignmentPatches,
     openCreateDialog,
     closeCreateDialog,
     closeEditDialog,
     openEditDialog,
+    updateTaskAssignmentInStore,
   } = useTaskStore()
 
-  const hasNoTasks = assignments.length === 0
+  const currentAssignments = useMemo(
+    () =>
+      assignments.map(
+        (assignment) =>
+          assignmentPatches[assignment.assignmentId] ?? assignment
+      ),
+    [assignments, assignmentPatches]
+  )
+
+  const hasNoTasks = currentAssignments.length === 0
+
+  const resolvedDetailsAssignment = detailsAssignment
+    ? assignmentPatches[detailsAssignment.assignmentId] ?? detailsAssignment
+    : null
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
@@ -86,7 +101,7 @@ export function TaskBoard({
         </p>
       ) : null}
 
-      <Card className="flex min-h-0 min-w-0 flex-1 flex-col border bg-card shadow-sm">
+      <Card className="flex min-h-0 min-w-0 flex-1 flex-col border bg-card shadow-none">
         <CardHeader className="shrink-0 gap-3">
           <CardTitle>{copy.cardTitle}</CardTitle>
           <TaskFilters
@@ -96,12 +111,13 @@ export function TaskBoard({
         </CardHeader>
         <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <TaskKanbanBoard
-            assignments={assignments}
+            assignments={currentAssignments}
             currentProfileId={currentProfileId}
             permissions={permissions}
             showAssigneeOnCards={!isEmployeeView}
             enableDrag={!isEmployeeView}
             onOpenDetails={setDetailsAssignment}
+            onAssignmentUpdated={updateTaskAssignmentInStore}
           />
         </CardContent>
       </Card>
@@ -131,8 +147,8 @@ export function TaskBoard({
       />
 
       <TaskDetailsSheet
-        assignment={detailsAssignment}
-        open={detailsAssignment !== null}
+        assignment={resolvedDetailsAssignment}
+        open={resolvedDetailsAssignment !== null}
         onOpenChange={(open) => {
           if (!open) {
             setDetailsAssignment(null)

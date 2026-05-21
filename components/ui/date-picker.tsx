@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { CalendarIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -9,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { neoFilterTriggerClass } from "@/lib/neo-ui"
 import { cn } from "@/lib/utils"
 import {
   formatDateKeyInPhilippines,
@@ -42,17 +44,19 @@ export function DatePicker({
   placeholder = "Pick a date",
   className,
 }: DatePickerProps) {
+  const [open, setOpen] = useState(false)
   const selectedDate = parseDateKey(value)
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           type="button"
           variant="outline"
           disabled={disabled}
           className={cn(
-            "h-9 min-w-[180px] justify-start gap-2 font-normal",
+            neoFilterTriggerClass,
+            "min-w-[180px] justify-start gap-2 font-normal",
             !value && "text-muted-foreground",
             className
           )}
@@ -63,7 +67,7 @@ export function DatePicker({
             : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-2" align="start" sideOffset={8}>
         <Calendar
           mode="single"
           selected={selectedDate ?? undefined}
@@ -73,6 +77,7 @@ export function DatePicker({
             }
 
             onChange(formatDateKeyInPhilippines(date))
+            setOpen(false)
           }}
         />
       </PopoverContent>

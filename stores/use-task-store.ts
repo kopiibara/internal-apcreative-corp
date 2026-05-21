@@ -14,7 +14,10 @@ type TaskStore = {
   isCreateDialogOpen: boolean
   isEditDialogOpen: boolean
   selectedAssignment: TaskAssignmentRecord | null
+  assignmentPatches: Record<number, TaskAssignmentRecord>
   setSearchQuery: (query: string) => void
+  updateTaskAssignmentInStore: (assignment: TaskAssignmentRecord) => void
+  clearAssignmentPatch: (assignmentId: number) => void
   setSelectedStatusFilter: (status: TaskAssignmentStatus | "all") => void
   setSelectedTypeFilter: (type: TaskType | "all") => void
   setSelectedAssigneeFilter: (assigneeId: string) => void
@@ -35,7 +38,25 @@ export const useTaskStore = create<TaskStore>((set) => ({
   isCreateDialogOpen: false,
   isEditDialogOpen: false,
   selectedAssignment: null,
+  assignmentPatches: {},
   setSearchQuery: (searchQuery) => set({ searchQuery }),
+  updateTaskAssignmentInStore: (assignment) =>
+    set((state) => ({
+      assignmentPatches: {
+        ...state.assignmentPatches,
+        [assignment.assignmentId]: assignment,
+      },
+      selectedAssignment:
+        state.selectedAssignment?.assignmentId === assignment.assignmentId
+          ? assignment
+          : state.selectedAssignment,
+    })),
+  clearAssignmentPatch: (assignmentId) =>
+    set((state) => {
+      const assignmentPatches = { ...state.assignmentPatches }
+      delete assignmentPatches[assignmentId]
+      return { assignmentPatches }
+    }),
   setSelectedStatusFilter: (selectedStatusFilter) =>
     set({ selectedStatusFilter }),
   setSelectedTypeFilter: (selectedTypeFilter) => set({ selectedTypeFilter }),
