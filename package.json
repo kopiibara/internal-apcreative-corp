@@ -9,6 +9,8 @@
     "lint": "eslint",
     "db:create-executive": "tsx scripts/create-initial-executive.ts",
     "db:migrate": "tsx scripts/migrate.ts",
+    "meta:register-page": "tsx scripts/meta-register-page.ts",
+    "meta:verify-schema": "tsx scripts/verify-meta-schema.ts",
     "db:seed-approval-kanban": "tsx scripts/seed-approval-kanban-demo.ts",
     "db:clear-approval-kanban": "tsx scripts/clear-approval-kanban-demo.ts"
   },
