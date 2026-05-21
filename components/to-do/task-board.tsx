@@ -1,0 +1,147 @@
+"use client"
+
+import { useState } from "react"
+import { Plus } from "lucide-react"
+
+import { TaskCreateDialog } from "@/components/to-do/task-create-dialog"
+import { TaskDetailsSheet } from "@/components/to-do/task-details-sheet"
+import { TaskEditDialog } from "@/components/to-do/task-edit-dialog"
+import { TaskFilters } from "@/components/to-do/task-filters"
+import { TaskKanbanBoard } from "@/components/to-do/task-kanban-board"
+import type { TaskPermissionFlags } from "@/components/to-do/types"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import type { AccountType } from "@/lib/account-type"
+import type { AssignableProfile, TaskAssignmentRecord } from "@/lib/tasks"
+import { useTaskStore } from "@/stores/use-task-store"
+
+type TaskBoardProps = {
+  variant: "admin" | "employee"
+  assignments: TaskAssignmentRecord[]
+  assignees: AssignableProfile[]
+  currentProfileId: number
+  currentAccountType: AccountType
+  permissions: TaskPermissionFlags
+}
+
+const COPY = {
+  admin: {
+    title: "To-Do Task",
+    description:
+      "Assign work, collect proof, and review completion in a Kanban workflow.",
+    cardTitle: "Task board",
+    createLabel: "Add Task",
+  },
+  employee: {
+    title: "To-Do Task",
+    description:
+      "Track assigned tasks, submit proof, and monitor review status.",
+    cardTitle: "My tasks",
+    createLabel: "Add Personal Task",
+  },
+} as const
+
+export function TaskBoard({
+  variant,
+  assignments,
+  assignees,
+  currentProfileId,
+  currentAccountType,
+  permissions,
+}: TaskBoardProps) {
+  const [detailsAssignment, setDetailsAssignment] =
+    useState<TaskAssignmentRecord | null>(null)
+  const copy = COPY[variant]
+  const isEmployeeView = variant === "employee"
+  const {
+    isCreateDialogOpen,
+    isEditDialogOpen,
+    selectedAssignment,
+    openCreateDialog,
+    closeCreateDialog,
+    closeEditDialog,
+    openEditDialog,
+  } = useTaskStore()
+
+  const hasNoTasks = assignments.length === 0
+
+  return (
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
+      <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-normal">{copy.title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
+        </div>
+        {permissions.canCreate ? (
+          <Button onClick={openCreateDialog}>
+            <Plus className="size-4" />
+            {copy.createLabel}
+          </Button>
+        ) : null}
+      </div>
+
+      {hasNoTasks ? (
+        <p className="shrink-0 rounded-md border border-dashed bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+          No tasks assigned yet. Create a personal task to get started.
+        </p>
+      ) : null}
+
+      <Card className="flex min-h-0 min-w-0 flex-1 flex-col border bg-card shadow-sm">
+        <CardHeader className="shrink-0 gap-3">
+          <CardTitle>{copy.cardTitle}</CardTitle>
+          <TaskFilters
+            assignees={assignees}
+            showAssigneeFilter={!isEmployeeView}
+          />
+        </CardHeader>
+        <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <TaskKanbanBoard
+            assignments={assignments}
+            currentProfileId={currentProfileId}
+            permissions={permissions}
+            showAssigneeOnCards={!isEmployeeView}
+            enableDrag={!isEmployeeView}
+            onOpenDetails={setDetailsAssignment}
+          />
+        </CardContent>
+      </Card>
+
+      <TaskCreateDialog
+        open={isCreateDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeCreateDialog()
+          }
+        }}
+        assignees={assignees}
+        currentProfileId={currentProfileId}
+        currentAccountType={currentAccountType}
+        permissions={permissions}
+        personalOnly={isEmployeeView}
+      />
+
+      <TaskEditDialog
+        assignment={selectedAssignment}
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeEditDialog()
+          }
+        }}
+      />
+
+      <TaskDetailsSheet
+        assignment={detailsAssignment}
+        open={detailsAssignment !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDetailsAssignment(null)
+          }
+        }}
+        permissions={permissions}
+        currentProfileId={currentProfileId}
+        onEditTask={openEditDialog}
+      />
+    </div>
+  )
+}

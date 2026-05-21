@@ -45,6 +45,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
   SelectContent,
@@ -322,7 +323,8 @@ export function AccountDataTable({
             ) : null}
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+          <ScrollArea className="w-full pb-2" scrollbars="horizontal">
+            <div className="flex w-max min-w-full items-center gap-2 pr-3">
             <div className="relative min-w-[260px] md:min-w-[320px]">
               <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -409,11 +411,12 @@ export function AccountDataTable({
             >
               Reset Filters
             </Button>
-          </div>
+            </div>
+          </ScrollArea>
         </CardHeader>
 
         <CardContent className="min-w-0 space-y-4">
-          <div className="w-full min-w-0 overflow-x-auto rounded-md border">
+          <div className="w-full min-w-0 rounded-md border">
             <Table>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (

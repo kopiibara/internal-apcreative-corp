@@ -7,7 +7,6 @@ import {
   Eye,
   FilePenLine,
   MoreHorizontal,
-  Search,
   ShieldCheck,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -21,12 +20,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 
-import {
-  contentTypes,
-  publishStatuses,
-  reviewStatuses,
-} from "@/app/employee/approvals/schema"
-import { ApprovalDetailsSheet } from "@/components/admin/approvals/approval-details-sheet"
+import { ApprovalFilters } from "@/components/admin/approvals/approval-filters"
 import { DirectorReviewForm } from "@/components/admin/approvals/director-review-form"
 import { PublishingReviewForm } from "@/components/admin/approvals/publishing-review-form"
 import { SupervisorReviewForm } from "@/components/admin/approvals/supervisor-review-form"
@@ -52,14 +46,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -72,6 +58,8 @@ import {
   canEditPublishingFields,
   type ContentReport,
 } from "@/types/content-report"
+import { filterApprovalReports } from "@/lib/approval-filters"
+import { getStatusBadgeVariant } from "@/lib/approval-statuses"
 import { useApprovalStore } from "@/stores/use-approval-store"
 
 type ApprovalDataTableProps = {
@@ -79,6 +67,7 @@ type ApprovalDataTableProps = {
   canSupervisorReview: boolean
   canDirectorReview: boolean
   canPublishUpdate: boolean
+  showHeader?: boolean
 }
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -89,7 +78,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <Badge variant={status === "Approved" ? "default" : "outline"}>
+    <Badge variant={getStatusBadgeVariant(status)}>
       {status}
     </Badge>
   )
@@ -401,12 +390,15 @@ export function ApprovalDataTable({
   canSupervisorReview,
   canDirectorReview,
   canPublishUpdate,
+  showHeader = true,
 }: ApprovalDataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const {
     selectedApproval,
     searchQuery,
+    selectedBrandFilter,
     selectedContentTypeFilter,
+    selectedPlatformFilter,
     selectedSupervisorStatusFilter,
     selectedDirectorStatusFilter,
     selectedPublishStatusFilter,
@@ -420,44 +412,25 @@ export function ApprovalDataTable({
     closeDirectorReviewDialog,
     openPublishingDialog,
     closePublishingDialog,
-    setSearchQuery,
-    setSelectedContentTypeFilter,
-    setSelectedSupervisorStatusFilter,
-    setSelectedDirectorStatusFilter,
-    setSelectedPublishStatusFilter,
-    resetApprovalFilters,
   } = useApprovalStore()
 
   const filteredReports = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase()
-
-    return reports.filter((report) => {
-      const matchesSearch =
-        normalizedQuery.length === 0 ||
-        report.submittedByName.toLowerCase().includes(normalizedQuery) ||
-        report.caption.toLowerCase().includes(normalizedQuery) ||
-        report.contentType.toLowerCase().includes(normalizedQuery) ||
-        report.platform.toLowerCase().includes(normalizedQuery) ||
-        (report.contentInspo ?? "").toLowerCase().includes(normalizedQuery) ||
-        (report.employeeComments ?? "").toLowerCase().includes(normalizedQuery)
-
-      return (
-        matchesSearch &&
-        (selectedContentTypeFilter === "all" ||
-          report.contentType === selectedContentTypeFilter) &&
-        (selectedSupervisorStatusFilter === "all" ||
-          report.supervisorStatus === selectedSupervisorStatusFilter) &&
-        (selectedDirectorStatusFilter === "all" ||
-          report.directorStatus === selectedDirectorStatusFilter) &&
-        (selectedPublishStatusFilter === "all" ||
-          report.publishStatus === selectedPublishStatusFilter)
-      )
+    return filterApprovalReports(reports, {
+      searchQuery,
+      selectedBrandFilter,
+      selectedContentTypeFilter,
+      selectedPlatformFilter,
+      selectedSupervisorStatusFilter,
+      selectedDirectorStatusFilter,
+      selectedPublishStatusFilter,
     })
   }, [
     reports,
     searchQuery,
+    selectedBrandFilter,
     selectedContentTypeFilter,
     selectedDirectorStatusFilter,
+    selectedPlatformFilter,
     selectedPublishStatusFilter,
     selectedSupervisorStatusFilter,
   ])
@@ -496,110 +469,24 @@ export function ApprovalDataTable({
 
   return (
     <div className="min-w-0 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-normal">Approvals</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Review content submissions and update publishing once both approvals
-          are complete.
-        </p>
-      </div>
+      {showHeader ? (
+        <div>
+          <h1 className="text-2xl font-semibold tracking-normal">Approvals</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review content submissions and update publishing once both approvals
+            are complete.
+          </p>
+        </div>
+      ) : null}
 
       <Card className="w-full min-w-0 overflow-hidden">
         <CardHeader className="gap-3">
           <CardTitle>Content approval </CardTitle>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            <div className="relative min-w-[260px] md:min-w-[320px]">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search approvals"
-                className="h-9 pl-9"
-              />
-            </div>
-
-            <Select
-              value={selectedContentTypeFilter}
-              onValueChange={setSelectedContentTypeFilter}
-            >
-              <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                <SelectValue placeholder="Content type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All content types</SelectItem>
-                {contentTypes.map((contentType) => (
-                  <SelectItem key={contentType} value={contentType}>
-                    {contentType}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={selectedSupervisorStatusFilter}
-              onValueChange={setSelectedSupervisorStatusFilter}
-            >
-              <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                <SelectValue placeholder="Supervisor status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All supervisor statuses</SelectItem>
-                {reviewStatuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={selectedDirectorStatusFilter}
-              onValueChange={setSelectedDirectorStatusFilter}
-            >
-              <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                <SelectValue placeholder="Director status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All director statuses</SelectItem>
-                {reviewStatuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={selectedPublishStatusFilter}
-              onValueChange={setSelectedPublishStatusFilter}
-            >
-              <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                <SelectValue placeholder="Publish status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All publish statuses</SelectItem>
-                {publishStatuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 whitespace-nowrap"
-              onClick={resetApprovalFilters}
-            >
-              Reset Filters
-            </Button>
-          </div>
+          <ApprovalFilters reports={reports} />
         </CardHeader>
 
         <CardContent className="min-w-0 space-y-4">
-          <div className="w-full min-w-0 overflow-x-auto rounded-md border">
+          <div className="w-full min-w-0 rounded-md border">
             <Table>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -671,12 +558,6 @@ export function ApprovalDataTable({
           </div>
         </CardContent>
       </Card>
-
-      <ApprovalDetailsSheet
-        canSupervisorReview={canSupervisorReview}
-        canDirectorReview={canDirectorReview}
-        canPublishUpdate={canPublishUpdate}
-      />
 
       {isSupervisorReviewDialogOpen && selectedApproval ? (
         <SupervisorReviewDialog

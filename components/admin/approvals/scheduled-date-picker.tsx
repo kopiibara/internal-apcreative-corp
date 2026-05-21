@@ -1,10 +1,10 @@
 "use client"
 
-import { Input } from "@/components/ui/input"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
 
 type ScheduledDatePickerProps = {
-  value: string
-  onChange: (value: string) => void
+  value: string | null
+  onChange: (value: string | null) => void
   disabled?: boolean
 }
 
@@ -14,11 +14,11 @@ export function ScheduledDatePicker({
   disabled,
 }: ScheduledDatePickerProps) {
   return (
-    <Input
-      type="datetime-local"
+    <DateTimePicker
       value={value}
-      onChange={(event) => onChange(event.target.value)}
+      onChange={onChange}
       disabled={disabled}
+      placeholder="Select scheduled date"
     />
   )
 }

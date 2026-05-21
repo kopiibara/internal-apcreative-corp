@@ -6,17 +6,25 @@ import {
   Home,
   Megaphone,
   UsersRound,
+  ListTodo,
   UserRoundCog,
   type LucideIcon,
 } from "lucide-react";
 
 export type SidebarMode = "admin" | "employee";
 
-export type SidebarItem = {
+export type SidebarSubItem = {
   title: string;
   href: string;
+  badge?: string;
+};
+
+export type SidebarItem = {
+  title: string;
+  href?: string;
   icon: LucideIcon;
   badge?: string;
+  subItems?: SidebarSubItem[];
 };
 
 export type SidebarGroupItem = {
@@ -80,8 +88,17 @@ export const adminGroups: SidebarGroupItem[] = [
       },
       {
         title: "To-Do",
-        href: "/admin/to-do",
-        icon: UserRoundCog,
+        icon: ListTodo,
+        subItems: [
+          {
+            title: "To-Do Task",
+            href: "/admin/to-do/tasks",
+          },
+          {
+            title: "Reminder",
+            href: "/admin/to-do/reminders",
+          },
+        ],
       },
     ],
   },
@@ -111,6 +128,20 @@ export const employeeGroups: SidebarGroupItem[] = [
         title: "Approvals",
         href: "/employee/approvals",
         icon: CheckCircle2,
+      },
+      {
+        title: "To-Do",
+        icon: ListTodo,
+        subItems: [
+          {
+            title: "To-Do Task",
+            href: "/employee/to-do/tasks",
+          },
+          {
+            title: "Reminder",
+            href: "/employee/to-do/reminders",
+          },
+        ],
       },
       {
         title: "Platform Analytics",

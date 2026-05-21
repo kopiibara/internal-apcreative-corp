@@ -1,5 +1,12 @@
 import { z } from "zod"
 
+import {
+  APPROVAL_STATUSES,
+  PUBLISH_STATUSES,
+  type ApprovalStatus,
+  type PublishStatus as ApprovalPublishStatus,
+} from "@/lib/approval-statuses"
+
 export const contentTypes = [
   "Graphic",
   "Photo",
@@ -15,19 +22,8 @@ export const contentTypes = [
   "Menu/Product Feature",
 ] as const
 
-export const reviewStatuses = [
-  "Pending",
-  "Approved",
-  "Rejected",
-  "Revision",
-] as const
-
-export const publishStatuses = [
-  "Pending",
-  "Scheduled",
-  "Published",
-  "Cancelled",
-] as const
+export const reviewStatuses = APPROVAL_STATUSES
+export const publishStatuses = PUBLISH_STATUSES
 
 export const platformOptions = [
   "Meta (Instagram and Facebook)",
@@ -37,8 +33,8 @@ export const platformOptions = [
 ] as const
 
 export type ContentType = (typeof contentTypes)[number]
-export type ReviewStatus = (typeof reviewStatuses)[number]
-export type PublishStatus = (typeof publishStatuses)[number]
+export type ReviewStatus = ApprovalStatus
+export type PublishStatus = ApprovalPublishStatus
 export type Platform = (typeof platformOptions)[number]
 
 const optionalTextSchema = z.preprocess((value) => {

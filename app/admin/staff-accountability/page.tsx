@@ -1,9 +1,10 @@
-import React from 'react'
+import { StaffAccountabilityDashboard } from "@/components/admin/staff-accountability/staff-accountability-dashboard"
+import { requirePermission } from "@/lib/permissions"
+import { getStaffAccountabilitySummaries } from "@/lib/tasks"
 
-const page = () => {
-    return (
-        <div>page</div>
-    )
+export default async function StaffAccountabilityPage() {
+  await requirePermission("tasks.view_all")
+  const summaries = await getStaffAccountabilitySummaries()
+
+  return <StaffAccountabilityDashboard summaries={summaries} />
 }
-
-export default page

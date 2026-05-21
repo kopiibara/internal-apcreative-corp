@@ -1,0 +1,1203 @@
+"use server"
+
+import { revalidatePath } from "next/cache"
+import type { PoolClient } from "pg"
+
+import {
+  changeTaskAssignmentStatusSchema,
+  confirmTaskBlockerSchema,
+  confirmTaskDoneSchema,
+  createTaskSchema,
+  deleteTaskSchema,
+  reportTaskBlockerSchema,
+  requestTaskRevisionSchema,
+  submitTaskProofSchema,
+  updateTaskSchema,
+} from "@/app/admin/to-do/schema"
+import { getCurrentProfileContext } from "@/lib/auth-session"
+import { isAdminAccountType, isEmployeeAccountType } from "@/lib/account-type"
+import { can } from "@/lib/permissions"
+import { query, transaction } from "@/lib/db"
+import { enforceRateLimit } from "@/lib/rate-limit"
+import {
+  canAssignGradedTasks,
+  canReviewTaskAssignments,
+  determineTaskType,
+} from "@/lib/task-type"
+import type { TaskAssignmentStatus } from "@/lib/task-statuses"
+import { getTaskAssignmentById } from "@/lib/tasks"
+
+const TASK_ROUTES = ["/admin/to-do/tasks", "/employee/to-do/tasks"]
+const STAFF_ACCOUNTABILITY_PATH = "/admin/staff-accountability"
+const ADMIN_TRANSITIONS: Record<TaskAssignmentStatus, TaskAssignmentStatus[]> = {
+  ASSIGNED: ["BLOCKER", "PENDING"],
+  BLOCKER: ["ASSIGNED", "PENDING"],
+  PENDING: ["DONE", "REVISION"],
+  REVISION: ["ASSIGNED", "BLOCKER"],
+  DONE: ["ASSIGNED", "BLOCKER", "PENDING", "REVISION"],
+}
+
+export type ActionResult<T = unknown> = {
+  success: boolean
+  message: string
+  data?: T
+}
+
+async function authorizeTaskAction(permissionKeys: string[]) {
+  const context = await getCurrentProfileContext()
+
+  if (!context) {
+    return {
+      error: {
+        success: false,
+        message: "You must be signed in to perform this action.",
+      } satisfies ActionResult,
+    }
+  }
+
+  if (context.profile.status !== "ACTIVE") {
+    return {
+      error: {
+        success: false,
+        message: "Your account is not active.",
+      } satisfies ActionResult,
+    }
+  }
+
+  const allowedChecks = await Promise.all(
+    permissionKeys.map((permissionKey) =>
+      can(context.profile.auth_user_id, permissionKey)
+    )
+  )
+
+  if (!allowedChecks.some(Boolean)) {
+    return {
+      error: {
+        success: false,
+        message: "You do not have permission to perform this action.",
+      } satisfies ActionResult,
+    }
+  }
+
+  return { context }
+}
+
+function revalidateTaskRoutes() {
+  for (const route of TASK_ROUTES) {
+    revalidatePath(route)
+  }
+  revalidatePath(STAFF_ACCOUNTABILITY_PATH)
+}
+
+function parseDueDate(value: string | null | undefined) {
+  if (!value) {
+    return null
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Due date is invalid.")
+  }
+
+  return date.toISOString()
+}
+
+function normalizeSubmitTaskProofInput(input: unknown) {
+  if (!input || typeof input !== "object") {
+    return input
+  }
+
+  const record = input as Record<string, unknown>
+  const normalizeText = (value: unknown) =>
+    typeof value === "string" ? value.trim() : ""
+
+  return {
+    ...record,
+    proofUrl: normalizeText(record.proofUrl),
+    proofNote: normalizeText(record.proofNote),
+  }
+}
+
+async function insertTaskActivityLog(
+  client: PoolClient,
+  input: {
+    taskId: number
+    assignmentId?: number | null
+    actorProfileId: number
+    action: string
+    fromStatus?: TaskAssignmentStatus | null
+    toStatus?: TaskAssignmentStatus | null
+    notes?: string | null
+    metadata?: Record<string, unknown> | null
+  }
+) {
+  await client.query(
+    `
+    INSERT INTO task_activity_log (
+      task_id,
+      task_assignment_id,
+      actor_profile_id,
+      action,
+      from_status,
+      to_status,
+      notes,
+      metadata
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+    `,
+    [
+      input.taskId,
+      input.assignmentId ?? null,
+      input.actorProfileId,
+      input.action,
+      input.fromStatus ?? null,
+      input.toStatus ?? null,
+      input.notes ?? null,
+      input.metadata ? JSON.stringify(input.metadata) : null,
+    ]
+  )
+}
+
+function canAdminManageAssignment({
+  canManageAll,
+  creatorProfileId,
+  actorProfileId,
+}: {
+  canManageAll: boolean
+  creatorProfileId: number
+  actorProfileId: number
+}) {
+  return canManageAll || creatorProfileId === actorProfileId
+}
+
+function assertAdminTransitionAllowed(
+  fromStatus: TaskAssignmentStatus,
+  toStatus: TaskAssignmentStatus
+) {
+  return ADMIN_TRANSITIONS[fromStatus]?.includes(toStatus) === true
+}
+
+export async function createTask(input: unknown): Promise<ActionResult> {
+  const authorization = await authorizeTaskAction(["tasks.create", "tasks.assign"])
+
+  if (authorization.error) {
+    return authorization.error
+  }
+
+  const parsed = createTaskSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid task details.",
+    }
+  }
+
+  const { context } = authorization
+  const uniqueAssignees = [...new Set(parsed.data.assignedToProfileIds)]
+
+  if (isEmployeeAccountType(context.profile.account_type)) {
+    const isPersonalSelfTask =
+      uniqueAssignees.length === 1 &&
+      uniqueAssignees[0] === context.profile.id
+
+    if (!isPersonalSelfTask) {
+      return {
+        success: false,
+        message: "You can only create personal tasks assigned to yourself.",
+      }
+    }
+  }
+
+  const taskType = determineTaskType({
+    creatorAccountType: context.profile.account_type,
+    creatorProfileId: context.profile.id,
+    assignedToProfileIds: uniqueAssignees,
+  })
+
+  if (taskType === "GRADED") {
+    const canAssign = await can(context.profile.auth_user_id, "tasks.assign")
+
+    if (!canAssign || !canAssignGradedTasks(context.profile.account_type)) {
+      return {
+        success: false,
+        message: "You do not have permission to assign graded tasks.",
+      }
+    }
+
+    if (!parsed.data.dueDate) {
+      return {
+        success: false,
+        message: "Due date is required for graded tasks.",
+      }
+    }
+  }
+
+  const rateLimit = await enforceRateLimit({
+    bucket: "task:create",
+    limit: 40,
+    windowMs: 60_000,
+  })
+
+  if (!rateLimit.success) {
+    return { success: false, message: rateLimit.message }
+  }
+
+  try {
+    const dueDate = parseDueDate(parsed.data.dueDate)
+
+    await transaction(async (client) => {
+      const taskResult = await client.query<{ id: number }>(
+        `
+        INSERT INTO task (
+          title,
+          description,
+          task_type,
+          priority,
+          created_by_profile_id,
+          due_date
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+        `,
+        [
+          parsed.data.title,
+          parsed.data.description ?? null,
+          taskType,
+          parsed.data.priority ?? null,
+          context.profile.id,
+          dueDate,
+        ]
+      )
+
+      const taskId = taskResult.rows[0]?.id
+
+      if (!taskId) {
+        throw new Error("Task could not be created.")
+      }
+
+      for (const assigneeId of uniqueAssignees) {
+        const assignmentResult = await client.query<{ id: number }>(
+          `
+          INSERT INTO task_assignment (
+            task_id,
+            assigned_to_profile_id,
+            status
+          )
+          VALUES ($1, $2, 'ASSIGNED')
+          RETURNING id
+          `,
+          [taskId, assigneeId]
+        )
+
+        const assignmentId = assignmentResult.rows[0]?.id
+
+        if (assignmentId) {
+          await insertTaskActivityLog(client, {
+            taskId,
+            assignmentId,
+            actorProfileId: context.profile.id,
+            action: "ASSIGNMENT_CREATED",
+            toStatus: "ASSIGNED",
+            notes: "Task assignment created.",
+          })
+        }
+      }
+
+      await insertTaskActivityLog(client, {
+        taskId,
+        actorProfileId: context.profile.id,
+        action: "TASK_CREATED",
+        notes: parsed.data.title,
+      })
+    })
+
+    revalidateTaskRoutes()
+
+    return {
+      success: true,
+      message:
+        taskType === "GRADED"
+          ? "Graded task assigned successfully."
+          : "Personal task created successfully.",
+    }
+  } catch (error) {
+    console.error("createTask failed:", error)
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    }
+  }
+}
+
+export async function updateTask(input: unknown): Promise<ActionResult> {
+  const authorization = await authorizeTaskAction(["tasks.update", "tasks.manage_all"])
+
+  if (authorization.error) {
+    return authorization.error
+  }
+
+  const parsed = updateTaskSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid task update.",
+    }
+  }
+
+  const existingAssignments = await query<{ created_by_profile_id: number }>(
+    `
+    SELECT created_by_profile_id
+    FROM task
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [parsed.data.taskId]
+  )
+
+  const parentTask = existingAssignments.rows[0]
+
+  if (!parentTask) {
+    return { success: false, message: "Task was not found." }
+  }
+
+  const { context } = authorization
+  const canManageAll = await can(context.profile.auth_user_id, "tasks.manage_all")
+
+  if (!canManageAll && parentTask.created_by_profile_id !== context.profile.id) {
+    return {
+      success: false,
+      message: "You do not have permission to update this task.",
+    }
+  }
+
+  const taskRow = await query<{
+    task_type: string
+    title: string
+    description: string | null
+    due_date: Date | null
+    priority: string | null
+  }>(
+    `SELECT task_type, title, description, due_date, priority FROM task WHERE id = $1`,
+    [parsed.data.taskId]
+  )
+  const current = taskRow.rows[0]
+
+  const doneAssignment = await query<{ id: number }>(
+    `
+    SELECT id
+    FROM task_assignment
+    WHERE task_id = $1
+      AND status = 'DONE'
+    LIMIT 1
+    `,
+    [parsed.data.taskId]
+  )
+
+  if (doneAssignment.rows[0]) {
+    return {
+      success: false,
+      message:
+        "This task is already done. Only the status can be changed with confirmation.",
+    }
+  }
+
+  const nextDueDate =
+    parsed.data.dueDate !== undefined
+      ? parseDueDate(parsed.data.dueDate)
+      : current?.due_date?.toISOString() ?? null
+
+  if (current?.task_type === "GRADED" && !nextDueDate) {
+    return {
+      success: false,
+      message: "Due date is required for graded tasks.",
+    }
+  }
+
+  try {
+    await transaction(async (client) => {
+      await client.query(
+        `
+        UPDATE task
+        SET
+          title = COALESCE($2, title),
+          description = COALESCE($3, description),
+          due_date = COALESCE($4, due_date),
+          priority = COALESCE($5, priority),
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [
+          parsed.data.taskId,
+          parsed.data.title ?? null,
+          parsed.data.description ?? null,
+          nextDueDate,
+          parsed.data.priority ?? null,
+        ]
+      )
+
+      await insertTaskActivityLog(client, {
+        taskId: parsed.data.taskId,
+        actorProfileId: context.profile.id,
+        action: "TASK_UPDATED",
+        notes: "Task details updated.",
+        metadata: {
+          previous: {
+            title: current?.title,
+            description: current?.description,
+            dueDate: current?.due_date?.toISOString() ?? null,
+            priority: current?.priority,
+          },
+          next: {
+            title: parsed.data.title ?? current?.title,
+            description:
+              parsed.data.description === undefined
+                ? current?.description
+                : parsed.data.description,
+            dueDate: nextDueDate,
+            priority: parsed.data.priority ?? current?.priority,
+          },
+        },
+      })
+    })
+
+    revalidateTaskRoutes()
+
+    return { success: true, message: "Task updated successfully." }
+  } catch (error) {
+    console.error("updateTask failed:", error)
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    }
+  }
+}
+
+export async function deleteTask(input: unknown): Promise<ActionResult> {
+  const authorization = await authorizeTaskAction(["tasks.delete", "tasks.manage_all"])
+
+  if (authorization.error) {
+    return authorization.error
+  }
+
+  const parsed = deleteTaskSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid task delete request.",
+    }
+  }
+
+  const parentTask = await query<{ created_by_profile_id: number }>(
+    `SELECT created_by_profile_id FROM task WHERE id = $1`,
+    [parsed.data.taskId]
+  )
+
+  if (!parentTask.rows[0]) {
+    return { success: false, message: "Task was not found." }
+  }
+
+  const { context } = authorization
+  const canManageAll = await can(context.profile.auth_user_id, "tasks.manage_all")
+
+  if (
+    !canManageAll &&
+    parentTask.rows[0].created_by_profile_id !== context.profile.id
+  ) {
+    return {
+      success: false,
+      message: "You do not have permission to delete this task.",
+    }
+  }
+
+  try {
+    await query(`DELETE FROM task WHERE id = $1`, [parsed.data.taskId])
+    revalidateTaskRoutes()
+
+    return { success: true, message: "Task deleted successfully." }
+  } catch (error) {
+    console.error("deleteTask failed:", error)
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    }
+  }
+}
+
+export async function submitTaskProof(input: unknown): Promise<ActionResult> {
+  const authorization = await authorizeTaskAction(["tasks.submit_proof"])
+
+  if (authorization.error) {
+    return authorization.error
+  }
+
+  const parsed = submitTaskProofSchema.safeParse(
+    normalizeSubmitTaskProofInput(input)
+  )
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid proof submission.",
+    }
+  }
+
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+
+  if (!assignment) {
+    return { success: false, message: "Task assignment was not found." }
+  }
+
+  const { context } = authorization
+
+  if (assignment.assignedToProfileId !== context.profile.id) {
+    return {
+      success: false,
+      message: "You can only submit proof for your own assigned tasks.",
+    }
+  }
+
+  if (!["ASSIGNED", "REVISION"].includes(assignment.status)) {
+    return {
+      success: false,
+      message: "Proof can only be submitted from Assigned or Revision.",
+    }
+  }
+
+  try {
+    const proofUrl =
+      parsed.data.proofType === "LINK" ? parsed.data.proofUrl : null
+    const proofNote =
+      parsed.data.proofType === "NOTE" ? parsed.data.proofNote : null
+
+    await transaction(async (client) => {
+      await client.query(
+        `
+        UPDATE task_assignment
+        SET
+          status = 'PENDING',
+          proof_type = $2,
+          proof_url = $3,
+          proof_note = $4,
+          submitted_at = now(),
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [
+          parsed.data.assignmentId,
+          parsed.data.proofType,
+          proofUrl,
+          proofNote,
+        ]
+      )
+
+      await insertTaskActivityLog(client, {
+        taskId: assignment.taskId,
+        assignmentId: assignment.assignmentId,
+        actorProfileId: context.profile.id,
+        action:
+          assignment.status === "REVISION"
+            ? "PROOF_RESUBMITTED"
+            : "PROOF_SUBMITTED",
+        fromStatus: assignment.status,
+        toStatus: "PENDING",
+        notes: proofNote ?? proofUrl,
+        metadata: {
+          proofType: parsed.data.proofType,
+          proofUrl,
+          hasProofNote: Boolean(proofNote),
+        },
+      })
+    })
+
+    revalidateTaskRoutes()
+
+    return { success: true, message: "Proof submitted for review." }
+  } catch (error) {
+    console.error("submitTaskProof failed:", error)
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    }
+  }
+}
+
+export async function reportTaskBlocker(input: unknown): Promise<ActionResult> {
+  const authorization = await authorizeTaskAction(["tasks.submit_proof"])
+
+  if (authorization.error) {
+    return authorization.error
+  }
+
+  const parsed = reportTaskBlockerSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid blocker report.",
+    }
+  }
+
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+
+  if (!assignment) {
+    return { success: false, message: "Task assignment was not found." }
+  }
+
+  const { context } = authorization
+
+  if (assignment.assignedToProfileId !== context.profile.id) {
+    return {
+      success: false,
+      message: "You can only report blockers for your own assigned tasks.",
+    }
+  }
+
+  if (!["ASSIGNED", "REVISION"].includes(assignment.status)) {
+    return {
+      success: false,
+      message: "Blockers can only be reported from Assigned or Revision.",
+    }
+  }
+
+  try {
+    await transaction(async (client) => {
+      await client.query(
+        `
+        UPDATE task_assignment
+        SET
+          status = 'BLOCKER',
+          blocker_note = $2,
+          blocker_reported_at = now(),
+          blocker_reported_by_profile_id = $3,
+          blocker_confirmed_at = NULL,
+          blocker_confirmed_by_profile_id = NULL,
+          blocker_resolution_note = NULL,
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [parsed.data.assignmentId, parsed.data.blockerNote, context.profile.id]
+      )
+
+      await insertTaskActivityLog(client, {
+        taskId: assignment.taskId,
+        assignmentId: assignment.assignmentId,
+        actorProfileId: context.profile.id,
+        action: "BLOCKER_REPORTED",
+        fromStatus: assignment.status,
+        toStatus: "BLOCKER",
+        notes: parsed.data.blockerNote,
+      })
+    })
+
+    revalidateTaskRoutes()
+
+    return { success: true, message: "Blocker reported for review." }
+  } catch (error) {
+    console.error("reportTaskBlocker failed:", error)
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    }
+  }
+}
+
+export async function confirmTaskBlocker(input: unknown): Promise<ActionResult> {
+  const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
+
+  if (authorization.error) {
+    return authorization.error
+  }
+
+  const parsed = confirmTaskBlockerSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid blocker update.",
+    }
+  }
+
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+
+  if (!assignment) {
+    return { success: false, message: "Task assignment was not found." }
+  }
+
+  const { context } = authorization
+  const canManageAll = await can(context.profile.auth_user_id, "tasks.manage_all")
+
+  if (
+    !canAdminManageAssignment({
+      canManageAll,
+      creatorProfileId: assignment.createdByProfileId,
+      actorProfileId: context.profile.id,
+    })
+  ) {
+    return {
+      success: false,
+      message: "You do not have permission to resolve this blocker.",
+    }
+  }
+
+  if (assignment.assignedToProfileId === context.profile.id) {
+    return {
+      success: false,
+      message: "You cannot review your own task.",
+    }
+  }
+
+  if (assignment.status !== "BLOCKER") {
+    return {
+      success: false,
+      message: "Only blocker tasks can be confirmed or resolved.",
+    }
+  }
+
+  if (parsed.data.nextStatus === "PENDING" && !assignment.proofUrl && !assignment.proofNote) {
+    return {
+      success: false,
+      message: "Blocker can only move to Pending when proof already exists.",
+    }
+  }
+
+  try {
+    const nextDueDate =
+      parsed.data.dueDate !== undefined
+        ? parseDueDate(parsed.data.dueDate)
+        : assignment.dueDate
+    const deadlineChanged = nextDueDate !== assignment.dueDate
+
+    await transaction(async (client) => {
+      if (deadlineChanged) {
+        await client.query(
+          `
+          UPDATE task
+          SET due_date = $2,
+              updated_at = now()
+          WHERE id = $1
+          `,
+          [assignment.taskId, nextDueDate]
+        )
+      }
+
+      await client.query(
+        `
+        UPDATE task_assignment
+        SET
+          status = $2,
+          blocker_confirmed_at = now(),
+          blocker_confirmed_by_profile_id = $3,
+          blocker_resolution_note = $4,
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [
+          parsed.data.assignmentId,
+          parsed.data.nextStatus,
+          context.profile.id,
+          parsed.data.resolutionNote,
+        ]
+      )
+
+      await insertTaskActivityLog(client, {
+        taskId: assignment.taskId,
+        assignmentId: assignment.assignmentId,
+        actorProfileId: context.profile.id,
+        action:
+          parsed.data.nextStatus === "BLOCKER"
+            ? "BLOCKER_CONFIRMED"
+            : "BLOCKER_RESOLVED",
+        fromStatus: assignment.status,
+        toStatus: parsed.data.nextStatus,
+        notes: parsed.data.resolutionNote,
+        metadata: deadlineChanged
+          ? {
+              deadline_changed_from: assignment.dueDate,
+              deadline_changed_to: nextDueDate,
+            }
+          : null,
+      })
+
+      if (deadlineChanged) {
+        await insertTaskActivityLog(client, {
+          taskId: assignment.taskId,
+          assignmentId: assignment.assignmentId,
+          actorProfileId: context.profile.id,
+          action: "DEADLINE_CHANGED",
+          notes: parsed.data.resolutionNote,
+          metadata: {
+            deadline_changed_from: assignment.dueDate,
+            deadline_changed_to: nextDueDate,
+          },
+        })
+      }
+    })
+
+    revalidateTaskRoutes()
+
+    return { success: true, message: "Blocker updated successfully." }
+  } catch (error) {
+    console.error("confirmTaskBlocker failed:", error)
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    }
+  }
+}
+
+export async function changeTaskAssignmentStatus(
+  input: unknown
+): Promise<ActionResult> {
+  const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
+
+  if (authorization.error) {
+    return authorization.error
+  }
+
+  const parsed = changeTaskAssignmentStatusSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid status change.",
+    }
+  }
+
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+
+  if (!assignment) {
+    return { success: false, message: "Task assignment was not found." }
+  }
+
+  const { context } = authorization
+  const canManageAll = await can(context.profile.auth_user_id, "tasks.manage_all")
+
+  if (
+    !canAdminManageAssignment({
+      canManageAll,
+      creatorProfileId: assignment.createdByProfileId,
+      actorProfileId: context.profile.id,
+    })
+  ) {
+    return {
+      success: false,
+      message: "You do not have permission to change this task status.",
+    }
+  }
+
+  if (assignment.assignedToProfileId === context.profile.id) {
+    return {
+      success: false,
+      message: "You cannot approve or review your own task.",
+    }
+  }
+
+  if (parsed.data.fromStatus !== assignment.status) {
+    return {
+      success: false,
+      message: "This task status changed. Please refresh and try again.",
+    }
+  }
+
+  if (parsed.data.toStatus === assignment.status) {
+    return { success: true, message: "No status change was needed." }
+  }
+
+  if (!assertAdminTransitionAllowed(assignment.status, parsed.data.toStatus)) {
+    return {
+      success: false,
+      message: "This status change is not allowed.",
+    }
+  }
+
+  if (
+    assignment.status === "BLOCKER" &&
+    parsed.data.toStatus === "PENDING" &&
+    !assignment.proofUrl &&
+    !assignment.proofNote
+  ) {
+    return {
+      success: false,
+      message: "Blocker can only move to Pending when proof already exists.",
+    }
+  }
+
+  try {
+    await transaction(async (client) => {
+      await client.query(
+        `
+        UPDATE task_assignment
+        SET
+          status = $2,
+          completed_at = CASE WHEN $2 = 'DONE' THEN COALESCE(completed_at, now()) ELSE NULL END,
+          reviewed_by_profile_id = CASE WHEN $2 IN ('DONE', 'REVISION') THEN $3 ELSE reviewed_by_profile_id END,
+          reviewed_at = CASE WHEN $2 IN ('DONE', 'REVISION') THEN now() ELSE reviewed_at END,
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [parsed.data.assignmentId, parsed.data.toStatus, context.profile.id]
+      )
+
+      await insertTaskActivityLog(client, {
+        taskId: assignment.taskId,
+        assignmentId: assignment.assignmentId,
+        actorProfileId: context.profile.id,
+        action:
+          assignment.status === "DONE"
+            ? "TASK_REOPENED"
+            : parsed.data.toStatus === "DONE"
+              ? "TASK_MARKED_DONE"
+              : "STATUS_CHANGED",
+        fromStatus: assignment.status,
+        toStatus: parsed.data.toStatus,
+        notes: parsed.data.notes,
+      })
+    })
+
+    revalidateTaskRoutes()
+
+    return { success: true, message: "Task status updated successfully." }
+  } catch (error) {
+    console.error("changeTaskAssignmentStatus failed:", error)
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    }
+  }
+}
+
+export async function confirmTaskDone(input: unknown): Promise<ActionResult> {
+  const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
+
+  if (authorization.error) {
+    return authorization.error
+  }
+
+  const parsed = confirmTaskDoneSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid confirmation request.",
+    }
+  }
+
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+
+  if (!assignment) {
+    return { success: false, message: "Task assignment was not found." }
+  }
+
+  const { context } = authorization
+
+  if (assignment.assignedToProfileId === context.profile.id) {
+    return {
+      success: false,
+      message: "You cannot approve or review your own task.",
+    }
+  }
+
+  if (
+    !canReviewTaskAssignments(context.profile.account_type) &&
+    !(await can(context.profile.auth_user_id, "tasks.review"))
+  ) {
+    return {
+      success: false,
+      message: "You do not have permission to review tasks.",
+    }
+  }
+
+  if (assignment.status !== "PENDING") {
+    return {
+      success: false,
+      message: "Only pending tasks can be confirmed as done.",
+    }
+  }
+
+  try {
+    await transaction(async (client) => {
+      await client.query(
+        `
+        UPDATE task_assignment
+        SET
+          status = 'DONE',
+          completed_at = now(),
+          reviewed_by_profile_id = $2,
+          reviewed_at = now(),
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [parsed.data.assignmentId, context.profile.id]
+      )
+
+      await insertTaskActivityLog(client, {
+        taskId: assignment.taskId,
+        assignmentId: assignment.assignmentId,
+        actorProfileId: context.profile.id,
+        action: "TASK_MARKED_DONE",
+        fromStatus: assignment.status,
+        toStatus: "DONE",
+        notes: "Task confirmed as done.",
+      })
+    })
+
+    revalidateTaskRoutes()
+
+    return { success: true, message: "Task confirmed as done." }
+  } catch (error) {
+    console.error("confirmTaskDone failed:", error)
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    }
+  }
+}
+
+export async function requestTaskRevision(
+  input: unknown
+): Promise<ActionResult> {
+  const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
+
+  if (authorization.error) {
+    return authorization.error
+  }
+
+  const parsed = requestTaskRevisionSchema.safeParse(input)
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid revision request.",
+    }
+  }
+
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+
+  if (!assignment) {
+    return { success: false, message: "Task assignment was not found." }
+  }
+
+  const { context } = authorization
+
+  if (assignment.assignedToProfileId === context.profile.id) {
+    return {
+      success: false,
+      message: "You cannot approve or review your own task.",
+    }
+  }
+
+  if (
+    !canReviewTaskAssignments(context.profile.account_type) &&
+    !(await can(context.profile.auth_user_id, "tasks.review"))
+  ) {
+    return {
+      success: false,
+      message: "You do not have permission to request revisions.",
+    }
+  }
+
+  if (assignment.status !== "PENDING") {
+    return {
+      success: false,
+      message: "Only pending tasks can be sent back for revision.",
+    }
+  }
+
+  try {
+    await transaction(async (client) => {
+      await client.query(
+        `
+        UPDATE task_assignment
+        SET
+          status = 'REVISION',
+          revision_note = $2,
+          reviewed_by_profile_id = $3,
+          reviewed_at = now(),
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [parsed.data.assignmentId, parsed.data.revisionNote, context.profile.id]
+      )
+
+      await insertTaskActivityLog(client, {
+        taskId: assignment.taskId,
+        assignmentId: assignment.assignmentId,
+        actorProfileId: context.profile.id,
+        action: "REVISION_REQUESTED",
+        fromStatus: assignment.status,
+        toStatus: "REVISION",
+        notes: parsed.data.revisionNote,
+      })
+    })
+
+    revalidateTaskRoutes()
+
+    return { success: true, message: "Revision requested." }
+  } catch (error) {
+    console.error("requestTaskRevision failed:", error)
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    }
+  }
+}
+
+export async function getCanReviewTasks(): Promise<boolean> {
+  const context = await getCurrentProfileContext()
+
+  if (!context || context.profile.status !== "ACTIVE") {
+    return false
+  }
+
+  return (
+    canReviewTaskAssignments(context.profile.account_type) ||
+    (await can(context.profile.auth_user_id, "tasks.review"))
+  )
+}
+
+export async function getIsEmployeeAccount(): Promise<boolean> {
+  const context = await getCurrentProfileContext()
+  return context
+    ? !isAdminAccountType(context.profile.account_type)
+    : false
+}

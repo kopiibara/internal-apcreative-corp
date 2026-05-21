@@ -1,6 +1,6 @@
 "use client"
 
-import { publishStatuses } from "@/app/employee/approvals/schema"
+import { PUBLISH_STATUSES } from "@/lib/approval-statuses"
 import {
   Select,
   SelectContent,
@@ -26,7 +26,7 @@ export function PublishStatusSelect({
         <SelectValue placeholder="Select publish status" />
       </SelectTrigger>
       <SelectContent>
-        {publishStatuses.map((status) => (
+        {PUBLISH_STATUSES.map((status) => (
           <SelectItem key={status} value={status}>
             {status}
           </SelectItem>

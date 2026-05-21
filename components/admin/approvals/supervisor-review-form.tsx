@@ -1,10 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { useState } from "react"
 
-import { updateSupervisorReview } from "@/app/admin/approvals/actions"
 import { ApprovalStatusSelect } from "@/components/admin/approvals/approval-status-select"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,6 +13,7 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useApprovalStore } from "@/stores/use-approval-store"
 import type { ContentReport } from "@/types/content-report"
 
 type SupervisorReviewFormProps = {
@@ -29,36 +27,28 @@ export function SupervisorReviewForm({
   canEdit,
   onSaved,
 }: SupervisorReviewFormProps) {
-  const router = useRouter()
+  const openVerificationDialog = useApprovalStore(
+    (state) => state.openVerificationDialog
+  )
   const [status, setStatus] = useState(report.supervisorStatus)
   const [notes, setNotes] = useState(report.supervisorNotes ?? "")
-  const [isPending, startTransition] = useTransition()
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    startTransition(async () => {
-      const result = await updateSupervisorReview({
-        reportId: report.id,
-        supervisorStatus: status,
-        supervisorNotes: notes,
-      })
-
-      if (result.success) {
-        toast.success(result.message)
-        router.refresh()
-        onSaved?.()
-        return
-      }
-
-      toast.error(result.message)
+    openVerificationDialog({
+      type: "supervisor",
+      report,
+      supervisorStatus: status,
+      notes,
+      onSaved,
     })
   }
 
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>Supervisor Review</CardTitle>
+        <CardTitle>Supervisor Approval</CardTitle>
         <CardDescription>
           Edit marketing supervisor status and notes.
         </CardDescription>
@@ -70,7 +60,7 @@ export function SupervisorReviewForm({
             <ApprovalStatusSelect
               value={status}
               onValueChange={(value) => setStatus(value as typeof status)}
-              disabled={isPending || !canEdit}
+              disabled={!canEdit}
             />
           </div>
 
@@ -82,7 +72,7 @@ export function SupervisorReviewForm({
               id="details-supervisor-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              disabled={isPending || !canEdit}
+              disabled={!canEdit}
               className="min-h-28"
             />
           </div>
@@ -90,9 +80,9 @@ export function SupervisorReviewForm({
           <Button
             type="submit"
             size="sm"
-            disabled={isPending || !canEdit}
+            disabled={!canEdit}
           >
-            {isPending ? "Saving..." : "Save Supervisor Review"}
+            Save Supervisor Review
           </Button>
         </form>
       </CardContent>

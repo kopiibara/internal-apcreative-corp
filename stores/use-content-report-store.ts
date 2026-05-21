@@ -4,6 +4,8 @@ import { create } from "zustand"
 
 import type { ContentReport } from "@/types/content-report"
 
+export type EmployeeApprovalView = "kanban" | "table"
+
 type ContentReportStore = {
   selectedContentReportId: number | null
   selectedContentReport: ContentReport | null
@@ -11,8 +13,11 @@ type ContentReportStore = {
   isEditDialogOpen: boolean
   isDeleteDialogOpen: boolean
   isDetailsSheetOpen: boolean
+  activeView: EmployeeApprovalView
   searchQuery: string
+  selectedBrandFilter: string
   selectedContentTypeFilter: string
+  selectedPlatformFilter: string
   selectedSupervisorStatusFilter: string
   selectedDirectorStatusFilter: string
   selectedPublishStatusFilter: string
@@ -25,8 +30,11 @@ type ContentReportStore = {
   openDetailsSheet: (report: ContentReport) => void
   closeDetailsSheet: () => void
   setSelectedContentReport: (report: ContentReport | null) => void
+  setActiveView: (view: EmployeeApprovalView) => void
   setSearchQuery: (query: string) => void
+  setSelectedBrandFilter: (brand: string) => void
   setSelectedContentTypeFilter: (contentType: string) => void
+  setSelectedPlatformFilter: (platform: string) => void
   setSelectedSupervisorStatusFilter: (status: string) => void
   setSelectedDirectorStatusFilter: (status: string) => void
   setSelectedPublishStatusFilter: (status: string) => void
@@ -40,8 +48,11 @@ export const useContentReportStore = create<ContentReportStore>((set) => ({
   isEditDialogOpen: false,
   isDeleteDialogOpen: false,
   isDetailsSheetOpen: false,
+  activeView: "kanban",
   searchQuery: "",
+  selectedBrandFilter: "all",
   selectedContentTypeFilter: "all",
+  selectedPlatformFilter: "all",
   selectedSupervisorStatusFilter: "all",
   selectedDirectorStatusFilter: "all",
   selectedPublishStatusFilter: "all",
@@ -88,9 +99,13 @@ export const useContentReportStore = create<ContentReportStore>((set) => ({
       selectedContentReportId: report?.id ?? null,
       selectedContentReport: report,
     }),
+  setActiveView: (activeView) => set({ activeView }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
+  setSelectedBrandFilter: (selectedBrandFilter) => set({ selectedBrandFilter }),
   setSelectedContentTypeFilter: (selectedContentTypeFilter) =>
     set({ selectedContentTypeFilter }),
+  setSelectedPlatformFilter: (selectedPlatformFilter) =>
+    set({ selectedPlatformFilter }),
   setSelectedSupervisorStatusFilter: (selectedSupervisorStatusFilter) =>
     set({ selectedSupervisorStatusFilter }),
   setSelectedDirectorStatusFilter: (selectedDirectorStatusFilter) =>
@@ -100,7 +115,9 @@ export const useContentReportStore = create<ContentReportStore>((set) => ({
   resetContentReportFilters: () =>
     set({
       searchQuery: "",
+      selectedBrandFilter: "all",
       selectedContentTypeFilter: "all",
+      selectedPlatformFilter: "all",
       selectedSupervisorStatusFilter: "all",
       selectedDirectorStatusFilter: "all",
       selectedPublishStatusFilter: "all",

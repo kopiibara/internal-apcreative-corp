@@ -5,7 +5,7 @@ import type {
   PublishStatus,
   ReviewStatus,
 } from "@/app/employee/approvals/schema";
-import type { ContentReport } from "@/types/content-report";
+import type { ApprovalActivityLog, ContentReport } from "@/types/content-report";
 
 type ContentReportRow = {
   id: number;
@@ -38,6 +38,21 @@ type ContentReportRow = {
 
 type BrandAssignmentRow = {
   brand_id: number;
+};
+
+type ApprovalActivityLogRow = {
+  id: number;
+  content_report_id: number;
+  actor_profile_id: number;
+  actor_name: string;
+  actor_account_type: string;
+  actor_position: string | null;
+  action: string;
+  from_status: string | null;
+  to_status: string | null;
+  notes: string;
+  metadata: Record<string, unknown> | null;
+  created_at: Date;
 };
 
 const contentReportSelect = `
@@ -77,7 +92,10 @@ const contentReportSelect = `
     ON director.id = cr.director_reviewed_by_profile_id
 `;
 
-function mapContentReport(row: ContentReportRow): ContentReport {
+function mapContentReport(
+  row: ContentReportRow,
+  activityLogs: ApprovalActivityLog[] = [],
+): ContentReport {
   return {
     id: row.id,
     submittedByProfileId: row.submitted_by_profile_id,
@@ -103,9 +121,67 @@ function mapContentReport(row: ContentReportRow): ContentReport {
     publishStatus: row.publish_status,
     scheduledPublishedDate: row.scheduled_published_date?.toISOString() ?? null,
     remarksRevisionSummary: row.remarks_revision_summary,
+    activityLogs,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
+}
+
+function mapApprovalActivityLog(
+  row: ApprovalActivityLogRow,
+): ApprovalActivityLog {
+  return {
+    id: row.id,
+    contentReportId: row.content_report_id,
+    actorProfileId: row.actor_profile_id,
+    actorName: row.actor_name,
+    actorAccountType: row.actor_account_type,
+    actorPosition: row.actor_position,
+    action: row.action,
+    fromStatus: row.from_status,
+    toStatus: row.to_status,
+    notes: row.notes,
+    metadata: row.metadata,
+    createdAt: row.created_at.toISOString(),
+  };
+}
+
+async function getApprovalActivityLogsByReportIds(reportIds: number[]) {
+  if (reportIds.length === 0) {
+    return new Map<number, ApprovalActivityLog[]>();
+  }
+
+  const result = await query<ApprovalActivityLogRow>(
+    `
+    SELECT
+      aal.id,
+      aal.content_report_id,
+      aal.actor_profile_id,
+      actor.full_name AS actor_name,
+      actor.account_type AS actor_account_type,
+      actor.position AS actor_position,
+      aal.action,
+      aal.from_status,
+      aal.to_status,
+      aal.notes,
+      aal.metadata,
+      aal.created_at
+    FROM approval_activity_log aal
+    JOIN profile actor ON actor.id = aal.actor_profile_id
+    WHERE aal.content_report_id = ANY($1::integer[])
+    ORDER BY aal.created_at DESC, aal.id DESC
+    `,
+    [reportIds],
+  );
+  const logsByReportId = new Map<number, ApprovalActivityLog[]>();
+
+  for (const row of result.rows) {
+    const logs = logsByReportId.get(row.content_report_id) ?? [];
+    logs.push(mapApprovalActivityLog(row));
+    logsByReportId.set(row.content_report_id, logs);
+  }
+
+  return logsByReportId;
 }
 
 export async function getMyContentReports(profileId: number) {
@@ -118,7 +194,7 @@ export async function getMyContentReports(profileId: number) {
     [profileId],
   );
 
-  return result.rows.map(mapContentReport);
+  return result.rows.map((row) => mapContentReport(row));
 }
 
 export async function getApprovalContentReports() {
@@ -129,7 +205,35 @@ export async function getApprovalContentReports() {
     `,
   );
 
-  return result.rows.map(mapContentReport);
+  const activityLogsByReportId = await getApprovalActivityLogsByReportIds(
+    result.rows.map((row) => row.id),
+  );
+
+  return result.rows.map((row) =>
+    mapContentReport(row, activityLogsByReportId.get(row.id) ?? []),
+  );
+}
+
+export async function getApprovalContentReportById(reportId: number) {
+  const result = await query<ContentReportRow>(
+    `
+    ${contentReportSelect}
+    WHERE cr.id = $1
+    LIMIT 1
+    `,
+    [reportId],
+  );
+  const row = result.rows[0];
+
+  if (!row) {
+    return null;
+  }
+
+  const activityLogsByReportId = await getApprovalActivityLogsByReportIds([
+    reportId,
+  ]);
+
+  return mapContentReport(row, activityLogsByReportId.get(reportId) ?? []);
 }
 
 export async function getPrimaryActiveBrandId(profileId: number) {

@@ -5,9 +5,11 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { authClient } from "@/lib/auth-client"
+import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { useTheme } from "@/components/ui/theme-provider"
 
 import {
+    ChevronDown,
     ChevronsUpDown,
     LogOut,
     Moon,
@@ -26,6 +28,9 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
     SidebarRail,
     useSidebar,
 } from "@/components/ui/sidebar"
@@ -62,6 +67,15 @@ type SidebarUser = {
 type DashboardSidebarProps = {
     mode: SidebarMode
     user?: SidebarUser | null
+    employeeActionableTaskCount?: number
+}
+
+function formatSidebarBadge(count: number) {
+    if (count <= 0) {
+        return undefined
+    }
+
+    return count > 99 ? "99+" : String(count)
 }
 
 function getInitials(name?: string) {
@@ -78,13 +92,15 @@ function getInitials(name?: string) {
 export function DashboardSidebar({
     mode,
     user,
+    employeeActionableTaskCount = 0,
 }: DashboardSidebarProps) {
     const router = useRouter()
     const pathname = usePathname()
-    const { state, isMobile } = useSidebar()
+    const { state, isMobile, setOpen } = useSidebar()
     const { resolvedTheme, setTheme } = useTheme()
 
     const [mounted, setMounted] = useState(false)
+    const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({})
 
     const isCollapsed = state === "collapsed"
     const canSeeAccountControl =
@@ -93,6 +109,7 @@ export function DashboardSidebar({
             user?.accountType === "SUPERVISOR" ||
             user?.roleSlugs?.includes("supervisor") ||
             user?.roleSlugs?.includes("full-stack-developer"))
+    const taskBadge = formatSidebarBadge(employeeActionableTaskCount)
     const groups =
         mode === "admin"
             ? adminGroups
@@ -105,7 +122,22 @@ export function DashboardSidebar({
                     ),
                 }))
                 .filter((group) => group.items.length > 0)
-            : employeeGroups
+            : employeeGroups.map((group) => ({
+                ...group,
+                items: group.items.map((item) =>
+                    item.title === "To-Do"
+                        ? {
+                            ...item,
+                            badge: taskBadge,
+                            subItems: item.subItems?.map((subItem) =>
+                                subItem.href === "/employee/to-do/tasks"
+                                    ? { ...subItem, badge: taskBadge }
+                                    : subItem
+                            ),
+                        }
+                        : item
+                ),
+            }))
 
     const displayUser = user ?? {
         name: mode === "admin" ? "Executive Manager" : "Brand Officer",
@@ -120,6 +152,12 @@ export function DashboardSidebar({
 
         return () => cancelAnimationFrame(frame)
     }, [])
+
+    useEffect(() => {
+        if (!isMobile && isWideLayoutRoute(pathname)) {
+            setOpen(false)
+        }
+    }, [isMobile, pathname, setOpen])
 
     function isRouteActive(href: string) {
         const cleanPathname = pathname.replace(/\/$/, "")
@@ -185,6 +223,195 @@ export function DashboardSidebar({
                         <SidebarGroupContent>
                             <SidebarMenu>
                                 {group.items.map((item) => {
+                                    if (item.subItems?.length) {
+                                        const isSubmenuOpen =
+                                            openSubmenus[item.title] ??
+                                            item.subItems.some((subItem) =>
+                                                isRouteActive(subItem.href)
+                                            )
+                                        const isActive = item.subItems.some(
+                                            (subItem) =>
+                                                isRouteActive(subItem.href)
+                                        )
+                                        const hasSubItemBadge = item.subItems.some(
+                                            (subItem) => Boolean(subItem.badge)
+                                        )
+
+                                        if (isCollapsed) {
+                                            return (
+                                                <SidebarMenuItem key={item.title}>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <SidebarMenuButton
+                                                                type="button"
+                                                                tooltip={item.title}
+                                                                isActive={isActive}
+                                                                className={cn(
+                                                                    "relative mx-auto h-8 w-8 justify-center rounded-xl px-0",
+                                                                    isActive &&
+                                                                        "bg-accent-foreground text-sidebar-primary-foreground font-medium rounded-md hover:bg-sidebar-primary hover:text-sidebar-primary-foreground border border-border transition-all duration-150"
+                                                                )}
+                                                            >
+                                                                <item.icon className="h-3 w-3 shrink-0" />
+                                                                {hasSubItemBadge ? (
+                                                                    <span className="absolute -top-1 -right-1 size-2 rounded-full bg-destructive" />
+                                                                ) : null}
+                                                            </SidebarMenuButton>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent
+                                                            side="right"
+                                                            align="start"
+                                                            sideOffset={8}
+                                                        >
+                                                            <DropdownMenuLabel>
+                                                                {item.title}
+                                                            </DropdownMenuLabel>
+                                                            <DropdownMenuSeparator />
+                                                            {item.subItems.map((subItem) => {
+                                                                const isSubActive =
+                                                                    isRouteActive(subItem.href)
+
+                                                                return (
+                                                                    <DropdownMenuItem
+                                                                        key={subItem.href}
+                                                                        asChild
+                                                                    >
+                                                                        <Link
+                                                                            href={subItem.href}
+                                                                            aria-current={
+                                                                                isSubActive
+                                                                                    ? "page"
+                                                                                    : undefined
+                                                                            }
+                                                                            className="flex w-full items-center gap-2"
+                                                                        >
+                                                                            <span>{subItem.title}</span>
+                                                                            {subItem.badge ? (
+                                                                                <Badge
+                                                                                    variant="secondary"
+                                                                                    className="ml-auto rounded-full"
+                                                                                >
+                                                                                    {subItem.badge}
+                                                                                </Badge>
+                                                                            ) : null}
+                                                                        </Link>
+                                                                    </DropdownMenuItem>
+                                                                )
+                                                            })}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </SidebarMenuItem>
+                                            )
+                                        }
+
+                                        return (
+                                            <SidebarMenuItem key={item.title}>
+                                                <SidebarMenuButton
+                                                    type="button"
+                                                    tooltip={item.title}
+                                                    isActive={isActive}
+                                                    onClick={() =>
+                                                        setOpenSubmenus(
+                                                            (current) => ({
+                                                                ...current,
+                                                                [item.title]:
+                                                                    !isSubmenuOpen,
+                                                            })
+                                                        )
+                                                    }
+                                                    className={cn(
+                                                        isCollapsed
+                                                            ? "mx-auto h-8 w-8 justify-center rounded-xl px-0"
+                                                            : "h-10 rounded-xl px-3",
+                                                        isActive &&
+                                                            "bg-accent-foreground text-sidebar-primary-foreground font-medium rounded-md hover:bg-sidebar-primary hover:text-sidebar-primary-foreground border border-border transition-all duration-150"
+                                                    )}
+                                                >
+                                                    <item.icon className="h-3 w-3 shrink-0" />
+
+                                                    {!isCollapsed ? (
+                                                        <>
+                                                            <span>{item.title}</span>
+                                                            {item.badge ? (
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="ml-auto rounded-full"
+                                                                >
+                                                                    {item.badge}
+                                                                </Badge>
+                                                            ) : null}
+                                                            <ChevronDown
+                                                                className={cn(
+                                                                    "h-4 w-4 shrink-0 transition-transform",
+                                                                    !item.badge && "ml-auto",
+                                                                    isSubmenuOpen &&
+                                                                        "rotate-180"
+                                                                )}
+                                                            />
+                                                        </>
+                                                    ) : null}
+                                                </SidebarMenuButton>
+
+                                                {!isCollapsed && isSubmenuOpen ? (
+                                                    <SidebarMenuSub>
+                                                        {item.subItems.map(
+                                                            (subItem) => {
+                                                                const isSubActive =
+                                                                    isRouteActive(
+                                                                        subItem.href
+                                                                    )
+
+                                                                return (
+                                                                    <SidebarMenuSubItem
+                                                                        key={
+                                                                            subItem.href
+                                                                        }
+                                                                    >
+                                                                        <SidebarMenuSubButton
+                                                                            asChild
+                                                                            isActive={
+                                                                                isSubActive
+                                                                            }
+                                                                        >
+                                                                            <Link
+                                                                                href={
+                                                                                    subItem.href
+                                                                                }
+                                                                                aria-current={
+                                                                                    isSubActive
+                                                                                        ? "page"
+                                                                                        : undefined
+                                                                                }
+                                                                            >
+                                                                                <span>
+                                                                                    {
+                                                                                        subItem.title
+                                                                                    }
+                                                                                </span>
+                                                                                {subItem.badge ? (
+                                                                                    <Badge
+                                                                                        variant="secondary"
+                                                                                        className="ml-auto rounded-full"
+                                                                                    >
+                                                                                        {subItem.badge}
+                                                                                    </Badge>
+                                                                                ) : null}
+                                                                            </Link>
+                                                                        </SidebarMenuSubButton>
+                                                                    </SidebarMenuSubItem>
+                                                                )
+                                                            }
+                                                        )}
+                                                    </SidebarMenuSub>
+                                                ) : null}
+                                            </SidebarMenuItem>
+                                        )
+                                    }
+
+                                    if (!item.href) {
+                                        return null
+                                    }
+
                                     const isActive = isRouteActive(item.href)
 
                                     return (
@@ -198,12 +425,16 @@ export function DashboardSidebar({
                                                         ? "mx-auto h-8 w-8 justify-center rounded-xl px-0"
                                                         : "h-10 rounded-xl px-3",
                                                     isActive &&
-                                                    "bg-accent-foreground text-sidebar-primary-foreground font-medium rounded-md hover:bg-sidebar-primary hover:text-sidebar-primary-foreground border border-border transition-all duration-150"
+                                                        "bg-accent-foreground text-sidebar-primary-foreground font-medium rounded-md hover:bg-sidebar-primary hover:text-sidebar-primary-foreground border border-border transition-all duration-150"
                                                 )}
                                             >
                                                 <Link
                                                     href={item.href}
-                                                    aria-current={isActive ? "page" : undefined}
+                                                    aria-current={
+                                                        isActive
+                                                            ? "page"
+                                                            : undefined
+                                                    }
                                                 >
                                                     <item.icon className="h-3 w-3 shrink-0" />
 

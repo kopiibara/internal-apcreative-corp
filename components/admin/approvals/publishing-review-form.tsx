@@ -1,10 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { useState } from "react"
 
-import { updatePublishingInfo } from "@/app/admin/approvals/actions"
 import { PublishStatusSelect } from "@/components/admin/approvals/publish-status-select"
 import { ScheduledDatePicker } from "@/components/admin/approvals/scheduled-date-picker"
 import { Button } from "@/components/ui/button"
@@ -17,6 +14,7 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useApprovalStore } from "@/stores/use-approval-store"
 import {
   canEditPublishingFields,
   type ContentReport,
@@ -28,43 +26,31 @@ type PublishingReviewFormProps = {
   onSaved?: () => void
 }
 
-function toDateTimeLocal(value: string | null) {
-  return value ? value.slice(0, 16) : ""
-}
-
 export function PublishingReviewForm({
   report,
   canPublishUpdate,
   onSaved,
 }: PublishingReviewFormProps) {
-  const router = useRouter()
+  const openVerificationDialog = useApprovalStore(
+    (state) => state.openVerificationDialog
+  )
   const canEdit = canPublishUpdate && canEditPublishingFields(report)
   const [publishStatus, setPublishStatus] = useState(report.publishStatus)
-  const [scheduledDate, setScheduledDate] = useState(
-    toDateTimeLocal(report.scheduledPublishedDate)
+  const [scheduledDate, setScheduledDate] = useState<string | null>(
+    report.scheduledPublishedDate
   )
   const [remarks, setRemarks] = useState(report.remarksRevisionSummary ?? "")
-  const [isPending, startTransition] = useTransition()
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    startTransition(async () => {
-      const result = await updatePublishingInfo({
-        reportId: report.id,
-        publishStatus,
-        scheduledPublishedDate: scheduledDate,
-        remarksRevisionSummary: remarks,
-      })
-
-      if (result.success) {
-        toast.success(result.message)
-        router.refresh()
-        onSaved?.()
-        return
-      }
-
-      toast.error(result.message)
+    openVerificationDialog({
+      type: "publishing",
+      report,
+      publishStatus,
+      scheduledPublishedDate: scheduledDate,
+      notes: remarks,
+      onSaved,
     })
   }
 
@@ -85,7 +71,7 @@ export function PublishingReviewForm({
               onValueChange={(value) =>
                 setPublishStatus(value as typeof publishStatus)
               }
-              disabled={isPending || !canEdit}
+              disabled={!canEdit}
             />
           </div>
 
@@ -94,7 +80,7 @@ export function PublishingReviewForm({
             <ScheduledDatePicker
               value={scheduledDate}
               onChange={setScheduledDate}
-              disabled={isPending || !canEdit}
+              disabled={!canEdit}
             />
           </div>
 
@@ -106,7 +92,7 @@ export function PublishingReviewForm({
               id="details-publishing-remarks"
               value={remarks}
               onChange={(event) => setRemarks(event.target.value)}
-              disabled={isPending || !canEdit}
+              disabled={!canEdit}
               className="min-h-28"
             />
           </div>
@@ -114,9 +100,9 @@ export function PublishingReviewForm({
           <Button
             type="submit"
             size="sm"
-            disabled={isPending || !canEdit}
+            disabled={!canEdit}
           >
-            {isPending ? "Saving..." : "Save Publishing Update"}
+            Save Publishing Update
           </Button>
         </form>
       </CardContent>

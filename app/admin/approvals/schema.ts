@@ -1,19 +1,10 @@
 import { z } from "zod";
 
 import {
-  publishStatuses,
-  reviewStatuses,
-} from "@/app/employee/approvals/schema";
-
-const optionalTextSchema = z.preprocess((value) => {
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-
-    return trimmed.length > 0 ? trimmed : null;
-  }
-
-  return value ?? null;
-}, z.string().nullable());
+  APPROVAL_KANBAN_COLUMN_IDS,
+  APPROVAL_STATUSES,
+  PUBLISH_STATUSES,
+} from "@/lib/approval-statuses";
 
 const optionalDateSchema = z.preprocess((value) => {
   if (typeof value === "string") {
@@ -25,21 +16,45 @@ const optionalDateSchema = z.preprocess((value) => {
   return value ?? null;
 }, z.date().nullable());
 
+const requiredNotesSchema = z
+  .string()
+  .trim()
+  .min(1, "Please add a note before updating this approval.");
+
+const confirmationAcceptedSchema = z.literal(true, {
+  error: "Please confirm this approval update before continuing.",
+});
+
 export const updateSupervisorReviewSchema = z.object({
   reportId: z.coerce.number().int().positive(),
-  supervisorStatus: z.enum(reviewStatuses),
-  supervisorNotes: optionalTextSchema,
+  supervisorStatus: z.enum(APPROVAL_STATUSES),
+  supervisorNotes: requiredNotesSchema,
+  confirmationAccepted: confirmationAcceptedSchema,
 });
 
 export const updateDirectorReviewSchema = z.object({
   reportId: z.coerce.number().int().positive(),
-  directorStatus: z.enum(reviewStatuses),
-  directorNotes: optionalTextSchema,
+  directorStatus: z.enum(APPROVAL_STATUSES),
+  directorNotes: requiredNotesSchema,
+  confirmationAccepted: confirmationAcceptedSchema,
 });
 
 export const updatePublishingInfoSchema = z.object({
   reportId: z.coerce.number().int().positive(),
-  publishStatus: z.enum(publishStatuses),
+  publishStatus: z.enum(PUBLISH_STATUSES),
   scheduledPublishedDate: optionalDateSchema,
-  remarksRevisionSummary: optionalTextSchema,
+  remarksRevisionSummary: requiredNotesSchema,
+  confirmationAccepted: confirmationAcceptedSchema,
 });
+
+export const approvalKanbanColumnSchema = z.object({
+  reportId: z.coerce.number().int().positive(),
+  fromColumn: z.string().min(1),
+  toColumn: z.enum(APPROVAL_KANBAN_COLUMN_IDS),
+  notes: requiredNotesSchema,
+  confirmationAccepted: confirmationAcceptedSchema,
+});
+
+export type ApprovalKanbanColumnInput = z.infer<
+  typeof approvalKanbanColumnSchema
+>;
