@@ -19,8 +19,7 @@ import { can, canDirectorReview } from "@/lib/permissions"
 import { query, transaction } from "@/lib/db"
 import { enforceRateLimit } from "@/lib/rate-limit"
 
-const ADMIN_APPROVALS_PATH = "/admin/approvals"
-const EMPLOYEE_CONTENT_REPORT_PATH = "/employee/content-report"
+import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard-revalidate-paths"
 
 export type ActionResult<T = unknown> = {
   success: boolean
@@ -111,8 +110,9 @@ async function getReviewGate(reportId: number) {
 }
 
 function revalidateApprovalRoutes() {
-  revalidatePath(ADMIN_APPROVALS_PATH)
-  revalidatePath(EMPLOYEE_CONTENT_REPORT_PATH)
+  for (const route of APPROVAL_REVALIDATE_PATHS) {
+    revalidatePath(route)
+  }
 }
 
 function serializeStatus(value: unknown) {

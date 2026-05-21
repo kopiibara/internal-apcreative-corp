@@ -39,8 +39,8 @@ export function BrandApprovalCard({ approval }: BrandApprovalCardProps) {
         }
       }}
       className={cn(
-        "cursor-pointer rounded-md bg-card/50 py-2 transition-colors",
-        "hover:border-primary/40 hover:bg-card/80"
+        "cursor-pointer rounded-md border-2 border-border bg-card py-2 shadow-none transition-colors",
+        "hover:bg-muted/40"
       )}
     >
       <CardContent className="space-y-3 p-0">

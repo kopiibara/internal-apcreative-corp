@@ -89,6 +89,9 @@ function getInitials(name?: string) {
         .toUpperCase()
 }
 
+const sidebarNavActiveClass =
+    "border-2 border-border bg-sidebar-primary font-medium text-sidebar-primary-foreground shadow-[var(--shadow-hard-sm)] hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+
 export function DashboardSidebar({
     mode,
     user,
@@ -189,7 +192,11 @@ export function DashboardSidebar({
     }
 
     return (
-        <Sidebar variant="sidebar" collapsible="icon" className="border-r">
+        <Sidebar
+            variant="sidebar"
+            collapsible="icon"
+            className="border-r-2 border-sidebar-border shadow-[var(--shadow-hard-sm)]"
+        >
             <SidebarHeader
                 className={
                     isCollapsed
@@ -198,12 +205,14 @@ export function DashboardSidebar({
                 }
             >
                 {isCollapsed ? (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-semibold">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-border bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground shadow-[var(--shadow-hard-sm)]">
                         AP
                     </div>
                 ) : (
                     <div>
-                        <h1 className="text-xl font-bold">AP Creative</h1>
+                        <h1 className="text-xl font-bold tracking-tight text-sidebar-foreground">
+                            AP Creative
+                        </h1>
                         <p className="mt-1 text-sm text-muted-foreground">
                             Marketing Operations Command Center
                         </p>
@@ -249,7 +258,7 @@ export function DashboardSidebar({
                                                                 className={cn(
                                                                     "relative mx-auto h-8 w-8 justify-center rounded-xl px-0",
                                                                     isActive &&
-                                                                        "bg-accent-foreground text-sidebar-primary-foreground font-medium rounded-md hover:bg-sidebar-primary hover:text-sidebar-primary-foreground border border-border transition-all duration-150"
+                                                                        sidebarNavActiveClass
                                                                 )}
                                                             >
                                                                 <item.icon className="h-3 w-3 shrink-0" />
@@ -324,7 +333,7 @@ export function DashboardSidebar({
                                                             ? "mx-auto h-8 w-8 justify-center rounded-xl px-0"
                                                             : "h-10 rounded-xl px-3",
                                                         isActive &&
-                                                            "bg-accent-foreground text-sidebar-primary-foreground font-medium rounded-md hover:bg-sidebar-primary hover:text-sidebar-primary-foreground border border-border transition-all duration-150"
+                                                            sidebarNavActiveClass
                                                     )}
                                                 >
                                                     <item.icon className="h-3 w-3 shrink-0" />
@@ -425,7 +434,7 @@ export function DashboardSidebar({
                                                         ? "mx-auto h-8 w-8 justify-center rounded-xl px-0"
                                                         : "h-10 rounded-xl px-3",
                                                     isActive &&
-                                                        "bg-accent-foreground text-sidebar-primary-foreground font-medium rounded-md hover:bg-sidebar-primary hover:text-sidebar-primary-foreground border border-border transition-all duration-150"
+                                                        sidebarNavActiveClass
                                                 )}
                                             >
                                                 <Link

@@ -67,7 +67,7 @@ function Calendar({
   return (
     <div
       data-slot="calendar"
-      className={cn("w-[280px] rounded-2xl bg-background p-3", className)}
+      className={cn("w-[280px] bg-transparent p-1", className)}
       {...props}
     >
       <div className="mb-3 flex items-center justify-between">
@@ -114,9 +114,10 @@ function Calendar({
               size="icon-sm"
               disabled={isDisabled}
               className={cn(
-                "size-9 rounded-lg text-sm font-normal",
+                "size-9 rounded-md border border-transparent text-sm font-normal shadow-none hover:translate-none",
                 isOutsideMonth && "text-muted-foreground opacity-50",
-                isToday && !isSelected && "bg-muted text-foreground"
+                isToday && !isSelected && "border-border bg-muted text-foreground",
+                isSelected && "border-foreground"
               )}
               onClick={() => onSelect?.(date)}
             >

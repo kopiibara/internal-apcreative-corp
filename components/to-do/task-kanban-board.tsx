@@ -28,6 +28,7 @@ type TaskKanbanBoardProps = {
   showAssigneeOnCards?: boolean
   enableDrag?: boolean
   onOpenDetails?: (assignment: TaskAssignmentRecord) => void
+  onAssignmentUpdated?: (assignment: TaskAssignmentRecord) => void
 }
 
 export function TaskKanbanBoard({
@@ -37,6 +38,7 @@ export function TaskKanbanBoard({
   showAssigneeOnCards = true,
   enableDrag = false,
   onOpenDetails,
+  onAssignmentUpdated,
 }: TaskKanbanBoardProps) {
   const [pendingMove, setPendingMove] = useState<{
     assignment: TaskAssignmentRecord
@@ -198,6 +200,10 @@ export function TaskKanbanBoard({
           if (!open) {
             setPendingMove(null)
           }
+        }}
+        onAssignmentUpdated={(updatedAssignment) => {
+          onAssignmentUpdated?.(updatedAssignment)
+          setPendingMove(null)
         }}
       />
     </>

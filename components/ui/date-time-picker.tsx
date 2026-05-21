@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { neoFilterTriggerClass } from "@/lib/neo-ui"
 import { cn } from "@/lib/utils"
 
 type DateTimePickerProps = {
@@ -135,7 +136,8 @@ export function DateTimePicker({
             type="button"
             variant="outline"
             className={cn(
-              "h-9 min-w-0 flex-1 justify-start text-left font-normal",
+              neoFilterTriggerClass,
+              "min-w-0 flex-1 justify-start text-left font-normal",
               !selectedDate && "text-muted-foreground"
             )}
             disabled={disabled}
@@ -157,7 +159,7 @@ export function DateTimePicker({
           </Button>
         ) : null}
       </div>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-2" align="start" sideOffset={8}>
         <Calendar
           mode="single"
           selected={selectedDate ?? undefined}

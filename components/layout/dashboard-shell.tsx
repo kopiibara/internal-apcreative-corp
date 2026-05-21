@@ -3,6 +3,7 @@
 import { type CSSProperties, useSyncExternalStore } from "react"
 
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
+import { PageTransition } from "@/components/layout/page-transition"
 import { ForcedPasswordChangeDialog } from "@/components/auth/forced-password-change-dialog"
 import {
     SidebarInset,
@@ -112,7 +113,7 @@ export function DashboardShell({
                 />
 
                 <SidebarInset>
-                    <header className="sticky top-0 z-20 flex h-14 min-w-0 items-center justify-between gap-2 border-b bg-background px-4">
+                    <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center justify-between gap-2 border-b-2 border-border bg-background/95 px-4 backdrop-blur-sm">
                         <div className="flex min-w-0 items-center gap-3">
                             <SidebarTrigger />
 
@@ -122,7 +123,10 @@ export function DashboardShell({
                         </div>
 
                         <div className="flex min-w-0 items-center gap-2">
-                            <Badge className="h-9 bg-input/30 text-sm border border-border px-4 text-foreground">
+                            <Badge
+                                variant="outline"
+                                className="h-9 border-2 px-4 text-sm font-medium tabular-nums"
+                            >
                                 {dateTimeLabel}
                             </Badge>
 
@@ -157,8 +161,8 @@ export function DashboardShell({
                         </div>
                     </header>
 
-                    <main className="min-h-[calc(100vh-3.5rem)] min-w-0 overflow-hidden p-4 md:p-6">
-                        {children}
+                    <main className="relative z-0 min-h-[calc(100vh-3.5rem)] min-w-0 overflow-x-hidden overflow-y-auto p-4 md:p-6">
+                        <PageTransition>{children}</PageTransition>
                     </main>
                 </SidebarInset>
 

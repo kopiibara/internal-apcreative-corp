@@ -44,7 +44,10 @@ export function DailyReportFilters({
   } = useDailyReportStore()
 
   return (
-    <ScrollArea className="w-full pb-2" scrollbars="horizontal">
+    <ScrollArea
+      className="relative z-20 w-full pb-2"
+      scrollbars="horizontal"
+    >
       <div className="flex w-max min-w-full items-center gap-2 pr-3">
         <DatePicker
           value={selectedDate}
@@ -57,7 +60,7 @@ export function DailyReportFilters({
           onValueChange={setSelectedBrandId}
           disabled={disabled}
         >
-          <SelectTrigger className="h-9 min-w-[160px]">
+          <SelectTrigger className="min-w-[160px]">
             <SelectValue placeholder="Brand" />
           </SelectTrigger>
           <SelectContent>
@@ -75,7 +78,7 @@ export function DailyReportFilters({
           onValueChange={setSelectedEmployeeId}
           disabled={disabled}
         >
-          <SelectTrigger className="h-9 min-w-[180px]">
+          <SelectTrigger className="min-w-[180px]">
             <SelectValue placeholder="Employee" />
           </SelectTrigger>
           <SelectContent>

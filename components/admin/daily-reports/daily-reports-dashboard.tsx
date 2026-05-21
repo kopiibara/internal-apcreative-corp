@@ -6,13 +6,13 @@ import { toast } from "sonner"
 import { fetchDailyReportAction } from "@/app/admin/daily-reports/actions"
 import { DailyReportExportActions } from "@/components/admin/daily-reports/daily-report-export-actions"
 import { DailyReportFilters } from "@/components/admin/daily-reports/daily-report-filters"
-import { DailyReportSummaryCards } from "@/components/admin/daily-reports/daily-report-summary-cards"
+import { BrandSummaryChart } from "@/components/admin/daily-reports/brand-summary-chart"
+import { DailySummaryCards } from "@/components/admin/daily-reports/daily-summary-cards"
+import { EmployeeSummaryChart } from "@/components/admin/daily-reports/employee-summary-chart"
 import { DailyReportTimeline } from "@/components/admin/daily-reports/daily-report-timeline"
 import {
   DailyReportApprovalLogTable,
   DailyReportBlockersSection,
-  DailyReportBrandSummaryTable,
-  DailyReportEmployeeSummaryTable,
   DailyReportTaskLogTable,
 } from "@/components/admin/daily-reports/daily-report-tables"
 import { toDailyReportFilterInput } from "@/lib/daily-report-filters"
@@ -89,25 +89,24 @@ export function DailyReportsDashboard({
         disabled={isPending}
       />
 
-      <DailyReportSummaryCards summary={reportData.summary} />
+      <DailySummaryCards summary={reportData.summary} />
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <DailyReportBrandSummaryTable summaries={reportData.brandSummaries} />
-        <DailyReportEmployeeSummaryTable
-          summaries={reportData.employeeSummaries}
-        />
+      <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+        <BrandSummaryChart summaries={reportData.brandSummaries} />
+        <EmployeeSummaryChart summaries={reportData.employeeSummaries} />
       </div>
 
       <DailyReportTaskLogTable entries={reportData.taskLog} />
       <DailyReportApprovalLogTable entries={reportData.approvalLog} />
 
-      <DailyReportBlockersSection
-        blockers={reportData.blockers}
-        missingItems={reportData.missingItems}
-        alertSummary={reportData.alertSummary}
-      />
-
-      <DailyReportTimeline entries={reportData.timeline} />
+      <div className="grid min-w-0 grid-cols-1 items-stretch gap-4 xl:grid-cols-2">
+        <DailyReportBlockersSection
+          blockers={reportData.blockers}
+          missingItems={reportData.missingItems}
+          alertSummary={reportData.alertSummary}
+        />
+        <DailyReportTimeline entries={reportData.timeline} />
+      </div>
     </div>
   )
 }

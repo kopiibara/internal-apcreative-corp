@@ -24,37 +24,44 @@ export const BRAND_ANALYTICS_CARD_CONFIG = {
   totalRequests: {
     label: "Total Content Requests",
     icon: FileText,
-    className: "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300",
+    className:
+      "border-border border-t-slate-600 bg-card text-foreground [&_p:last-child]:text-slate-700",
   },
   pending: {
     label: "Pending",
     icon: Clock,
-    className: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    className:
+      "border-border border-t-amber-500 bg-card text-foreground [&_p:last-child]:text-amber-700",
   },
   approved: {
     label: "Approved",
     icon: CheckCheck,
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    className:
+      "border-border border-t-emerald-600 bg-card text-foreground [&_p:last-child]:text-emerald-700",
   },
   revisions: {
     label: "Revisions",
     icon: RotateCcw,
-    className: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300",
+    className:
+      "border-border border-t-orange-500 bg-card text-foreground [&_p:last-child]:text-orange-700",
   },
   rejected: {
     label: "Rejected",
     icon: XCircle,
-    className: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
+    className:
+      "border-border border-t-red-600 bg-card text-foreground [&_p:last-child]:text-red-700",
   },
   scheduled: {
     label: "Scheduled",
     icon: CalendarClock,
-    className: "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    className:
+      "border-border border-t-violet-600 bg-card text-foreground [&_p:last-child]:text-violet-700",
   },
   published: {
     label: "Published",
     icon: Send,
-    className: "border-lime-500/30 bg-lime-500/10 text-lime-700 dark:text-lime-300",
+    className:
+      "border-border border-t-lime-600 bg-card text-foreground [&_p:last-child]:text-lime-700",
   },
 } satisfies Record<
   BrandAnalyticsMetricKey,

@@ -15,15 +15,15 @@ export function BrandAnalyticsBentoCard({ item }: BrandAnalyticsBentoCardProps) 
   return (
     <div
       className={cn(
-        "group/bento flex h-full min-h-[120px] flex-col justify-between rounded-xl border p-3 transition duration-200 hover:shadow-md sm:p-4",
+        "group/bento flex h-full min-h-[120px] flex-col justify-between rounded-xl border-2 p-3 sm:p-4",
         config.className,
         item.spanClassName,
-        item.isHighlighted && "shadow-sm"
+        item.isHighlighted && "ring-2 ring-foreground/15"
       )}
     >
       <span
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-lg border border-current/30 bg-background/40",
+          "flex shrink-0 items-center justify-center rounded-lg border-2 border-border bg-muted/30",
           item.sizeTier === "primary" && "size-8 sm:size-9",
           item.sizeTier === "secondary" && "size-7 sm:size-8",
           item.sizeTier === "compact" && "size-7 sm:size-8"

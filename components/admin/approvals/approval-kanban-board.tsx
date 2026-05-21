@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 
 import { ApprovalDataTable } from "@/components/admin/approvals/approval-data-table"
 import { ApprovalDeepLinkOpener } from "@/components/admin/approvals/approval-deep-link-opener"
@@ -64,9 +64,6 @@ export function ApprovalKanbanBoard({
   canPublishUpdate,
   approvalId,
 }: ApprovalKanbanBoardProps) {
-  const [updatedApprovals, setUpdatedApprovals] = useState<
-    Record<number, ContentReport>
-  >({})
   const {
     activeView,
     searchQuery,
@@ -76,16 +73,16 @@ export function ApprovalKanbanBoard({
     selectedSupervisorStatusFilter,
     selectedDirectorStatusFilter,
     selectedPublishStatusFilter,
-    selectedApprovalId,
+    approvalPatches,
     openDetailsSheet,
     openVerificationDialog,
     setActiveView,
-    setSelectedApproval,
+    updateApprovalInStore,
   } = useApprovalStore()
 
   const currentReports = useMemo(
-    () => reports.map((report) => updatedApprovals[report.id] ?? report),
-    [reports, updatedApprovals]
+    () => reports.map((report) => approvalPatches[report.id] ?? report),
+    [reports, approvalPatches]
   )
 
   const filteredReports = useMemo(() => {
@@ -125,17 +122,6 @@ export function ApprovalKanbanBoard({
     [filteredReports, visibleColumns]
   )
 
-  function upsertApproval(updatedApproval: ContentReport) {
-    setUpdatedApprovals((current) => ({
-      ...current,
-      [updatedApproval.id]: updatedApproval,
-    }))
-
-    if (selectedApprovalId === updatedApproval.id) {
-      setSelectedApproval(updatedApproval)
-    }
-  }
-
   function handleMove({
     activeContainer,
     overContainer,
@@ -158,11 +144,9 @@ export function ApprovalKanbanBoard({
       toColumn: overContainer,
       notes: "",
       onSaved: (updatedApproval) => {
-        if (!updatedApproval) {
-          return
+        if (updatedApproval) {
+          updateApprovalInStore(updatedApproval)
         }
-
-        upsertApproval(updatedApproval)
       },
     })
   }
@@ -254,7 +238,7 @@ export function ApprovalKanbanBoard({
         canDirectorReview={canDirectorReview}
         canPublishUpdate={canPublishUpdate}
       />
-      <ApprovalVerificationDialog onApprovalUpdated={upsertApproval} />
+      <ApprovalVerificationDialog onApprovalUpdated={updateApprovalInStore} />
     </div>
   )
 }

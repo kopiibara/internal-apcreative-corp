@@ -18,8 +18,6 @@ import {
 import type {
   DailyApprovalLogEntry,
   DailyBlockerEntry,
-  DailyBrandSummary,
-  DailyEmployeeSummary,
   DailyMissingEntry,
   DailyTaskLogEntry,
 } from "@/lib/daily-report-types"
@@ -92,83 +90,6 @@ function SummaryTable({
         </ScrollArea>
       </CardContent>
     </Card>
-  )
-}
-
-export function DailyReportBrandSummaryTable({
-  summaries,
-}: {
-  summaries: DailyBrandSummary[]
-}) {
-  return (
-    <SummaryTable
-      title="Brand Summary"
-      description="Graded task and approval metrics by brand."
-      emptyMessage="No brand activity for the selected filters."
-      headers={[
-        "Brand",
-        "Graded",
-        "Done",
-        "Pending",
-        "Blockers",
-        "Approvals",
-        "Approved",
-        "Approval %",
-        "Completion %",
-      ]}
-      rows={summaries.map((summary) => [
-        summary.brandName,
-        summary.gradedTotal,
-        summary.gradedDone,
-        summary.pendingTasks,
-        summary.blockerTasks,
-        summary.approvalsSubmitted,
-        summary.fullyApproved,
-        `${summary.approvalRate}%`,
-        `${summary.completionRate}%`,
-      ])}
-    />
-  )
-}
-
-export function DailyReportEmployeeSummaryTable({
-  summaries,
-}: {
-  summaries: DailyEmployeeSummary[]
-}) {
-  return (
-    <SummaryTable
-      title="Employee Summary"
-      description="Graded accountability and approval activity by employee."
-      emptyMessage="No employee activity for the selected filters."
-      headers={[
-        "Employee",
-        "Graded",
-        "Done",
-        "Pending",
-        "Blockers",
-        "Revisions",
-        "Approvals",
-        "Approved",
-        "Completion %",
-        "Points",
-      ]}
-      rows={summaries.map((summary) => [
-        <div key={summary.profileId}>
-          <div className="font-medium">{summary.fullName}</div>
-          <div className="text-xs text-muted-foreground">{summary.email}</div>
-        </div>,
-        summary.assignedGradedTasks,
-        summary.doneGradedTasks,
-        summary.pendingTasks,
-        summary.blockerTasks,
-        summary.revisionTasks,
-        summary.approvalsSubmitted,
-        summary.approvalsApproved,
-        `${summary.gradedCompletionRate}%`,
-        `${summary.taskPoints} pts`,
-      ])}
-    />
   )
 }
 
@@ -300,77 +221,85 @@ export function DailyReportBlockersSection({
   alertSummary: string
 }) {
   return (
-    <Card>
+    <Card className="flex h-full min-h-0 flex-col">
       <CardHeader>
         <CardTitle>Blockers / Missing</CardTitle>
         <CardDescription>{alertSummary}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <h3 className="mb-2 text-sm font-medium">Blockers</h3>
-          {blockers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No blockers reported.</p>
-          ) : (
-            <div className="space-y-3">
-              {blockers.map((blocker) => (
-                <div
-                  key={blocker.assignmentId}
-                  className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm"
-                >
-                  <div className="font-medium">{blocker.taskTitle}</div>
-                  <p className="mt-1 text-muted-foreground">
-                    {blocker.employeeName}
-                    {blocker.brandName ? ` · ${blocker.brandName}` : ""}
-                  </p>
-                  {blocker.blockerNote ? (
-                    <p className="mt-2 whitespace-pre-wrap">{blocker.blockerNote}</p>
-                  ) : null}
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Reported{" "}
-                    {blocker.reportedAt
-                      ? dateFormatter.format(new Date(blocker.reportedAt))
-                      : "—"}{" "}
-                    · Assigned by {blocker.createdByName}
-                    {blocker.dueDate
-                      ? ` · Due ${dateFormatter.format(new Date(blocker.dueDate))}`
-                      : ""}
-                  </p>
+      <CardContent className="min-h-0 flex-1 pt-0">
+        <ScrollArea className="h-[420px] max-h-[420px] pr-3" scrollbars="vertical">
+          <div className="space-y-6 pb-1">
+            <div>
+              <h3 className="mb-2 text-sm font-medium">Blockers</h3>
+              {blockers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No blockers reported.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {blockers.map((blocker) => (
+                    <div
+                      key={blocker.assignmentId}
+                      className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm"
+                    >
+                      <div className="font-medium">{blocker.taskTitle}</div>
+                      <p className="mt-1 text-muted-foreground">
+                        {blocker.employeeName}
+                        {blocker.brandName ? ` · ${blocker.brandName}` : ""}
+                      </p>
+                      {blocker.blockerNote ? (
+                        <p className="mt-2 whitespace-pre-wrap">
+                          {blocker.blockerNote}
+                        </p>
+                      ) : null}
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Reported{" "}
+                        {blocker.reportedAt
+                          ? dateFormatter.format(new Date(blocker.reportedAt))
+                          : "—"}{" "}
+                        · Assigned by {blocker.createdByName}
+                        {blocker.dueDate
+                          ? ` · Due ${dateFormatter.format(new Date(blocker.dueDate))}`
+                          : ""}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
 
-        <div>
-          <h3 className="mb-2 text-sm font-medium">Needs Attention</h3>
-          {missingItems.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No missing items for the selected filters.
-            </p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {missingItems.map((item, index) => (
-                <li
-                  key={`${item.kind}-${index}`}
-                  className="rounded-md border bg-muted/20 px-3 py-2"
-                >
-                  <span className="font-medium">{item.label}</span>
-                  <span className="text-muted-foreground">
-                    {" "}
-                    — {item.reference}
-                  </span>
-                  {item.employeeName || item.brandName ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {[item.employeeName, item.brandName]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+            <div>
+              <h3 className="mb-2 text-sm font-medium">Needs Attention</h3>
+              {missingItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No missing items for the selected filters.
+                </p>
+              ) : (
+                <ul className="space-y-2 text-sm">
+                  {missingItems.map((item, index) => (
+                    <li
+                      key={`${item.kind}-${index}`}
+                      className="rounded-md border bg-muted/20 px-3 py-2"
+                    >
+                      <span className="font-medium">{item.label}</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        — {item.reference}
+                      </span>
+                      {item.employeeName || item.brandName ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {[item.employeeName, item.brandName]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </ScrollArea>
       </CardContent>
     </Card>
   )
