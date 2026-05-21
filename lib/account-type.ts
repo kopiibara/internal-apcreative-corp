@@ -14,12 +14,18 @@ export type AccountType = (typeof accountTypes)[number]
 
 const employeeAccountTypes: AccountType[] = ["CLIENT", "EMPLOYEE"]
 
+export const ADMIN_ACCOUNT_TYPES = [
+  "SUPERVISOR",
+  "MANAGER",
+  "EXECUTIVE",
+] as const satisfies readonly AccountType[]
+
+export type AdminAccountType = (typeof ADMIN_ACCOUNT_TYPES)[number]
+
 const adminAccountTypes: AccountType[] = [
   "FULL_STACK_DEVELOPER",
   "DIRECTOR",
-  "EXECUTIVE",
-  "MANAGER",
-  "SUPERVISOR",
+  ...ADMIN_ACCOUNT_TYPES,
 ]
 
 type RoleRecord = {
@@ -96,6 +102,10 @@ export function derivePositionFromRoles(roles: RoleRecord[]): string | null {
   }
 
   return roles[0]?.name ?? null
+}
+
+export function hasAdminPermissionBypass(accountType: AccountType) {
+  return (ADMIN_ACCOUNT_TYPES as readonly AccountType[]).includes(accountType)
 }
 
 export function isAdminAccountType(accountType: AccountType) {

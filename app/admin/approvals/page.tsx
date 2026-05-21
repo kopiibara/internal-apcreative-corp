@@ -1,51 +1,39 @@
-import { ApprovalDataTable } from "@/components/admin/approvals/approval-data-table"
+import { ApprovalKanbanBoard } from "@/components/admin/approvals/approval-kanban-board"
 import { getApprovalContentReports } from "@/lib/content-reports"
-import { can, requirePermission } from "@/lib/permissions"
-import { query } from "@/lib/db"
+import {
+  can,
+  canDirectorReview as checkDirectorReviewAccess,
+  requirePermission,
+} from "@/lib/permissions"
 
-type RolePermissionRow = {
-  has_permission: boolean
+type ApprovalsPageProps = {
+  searchParams: Promise<{
+    approvalId?: string
+  }>
 }
 
-async function hasRolePermission(profileId: number, permissionKey: string) {
-  const result = await query<RolePermissionRow>(
-    `
-    SELECT EXISTS (
-      SELECT 1
-      FROM user_brand_access uba
-      JOIN role_permission rp ON rp.role_id = uba.role_id
-      JOIN permission p ON p.id = rp.permission_id
-      WHERE uba.profile_id = $1
-        AND uba.is_active = true
-        AND p.key = $2
-    ) AS has_permission
-    `,
-    [profileId, permissionKey]
-  )
-
-  return Boolean(result.rows[0]?.has_permission)
-}
-
-export default async function ApprovalsPage() {
+export default async function ApprovalsPage({ searchParams }: ApprovalsPageProps) {
+  const { approvalId } = await searchParams
   const context = await requirePermission("approvals.view")
-  const [reports, canSupervisorReview, canPublishUpdate, hasDirectorRole] =
+  const [reports, canSupervisorReview, canPublishUpdate, canDirectorReview] =
     await Promise.all([
       getApprovalContentReports(),
       can(context.profile.auth_user_id, "approvals.supervisor_review"),
       can(context.profile.auth_user_id, "approvals.publish_update"),
-      hasRolePermission(context.profile.id, "approvals.director_review"),
+      checkDirectorReviewAccess(
+        context.profile.auth_user_id,
+        context.profile.id
+      ),
     ])
-  const canDirectorReview =
-    context.profile.account_type === "EXECUTIVE" ||
-    context.profile.account_type === "MANAGER" ||
-    hasDirectorRole
 
   return (
-    <ApprovalDataTable
+    <ApprovalKanbanBoard
       reports={reports}
+      accountType={context.profile.account_type}
       canSupervisorReview={canSupervisorReview}
       canDirectorReview={canDirectorReview}
       canPublishUpdate={canPublishUpdate}
+      approvalId={approvalId}
     />
   )
 }

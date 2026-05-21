@@ -1,6 +1,6 @@
 "use client"
 
-import { reviewStatuses } from "@/app/employee/approvals/schema"
+import { APPROVAL_STATUSES } from "@/lib/approval-statuses"
 import {
   Select,
   SelectContent,
@@ -26,7 +26,7 @@ export function ApprovalStatusSelect({
         <SelectValue placeholder="Select status" />
       </SelectTrigger>
       <SelectContent>
-        {reviewStatuses.map((status) => (
+        {APPROVAL_STATUSES.map((status) => (
           <SelectItem key={status} value={status}>
             {status}
           </SelectItem>

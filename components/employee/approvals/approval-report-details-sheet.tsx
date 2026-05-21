@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 
 export function ContentReportDetailsSheet() {
@@ -27,7 +28,7 @@ export function ContentReportDetailsSheet() {
         }
       }}
     >
-      <SheetContent className="h-svh w-[95vw] overflow-y-auto sm:w-[50vw]! sm:max-w-[50vw]!">
+      <SheetContent className="h-svh w-[95vw] sm:w-[50vw]! sm:max-w-[50vw]!">
         <SheetHeader>
           <SheetTitle>Content Report Details</SheetTitle>
           <SheetDescription>
@@ -36,10 +37,12 @@ export function ContentReportDetailsSheet() {
         </SheetHeader>
 
         {selectedContentReport ? (
-          <div className="space-y-6 px-6 pb-6">
-            <ContentReportDetailsSummary report={selectedContentReport} />
-            <ReviewNotesSummary report={selectedContentReport} />
-          </div>
+          <ScrollArea className="min-h-0 flex-1" scrollbars="vertical">
+            <div className="space-y-6 px-6 pb-6">
+              <ContentReportDetailsSummary report={selectedContentReport} />
+              <ReviewNotesSummary report={selectedContentReport} />
+            </div>
+          </ScrollArea>
         ) : null}
       </SheetContent>
     </Sheet>

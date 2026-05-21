@@ -4,10 +4,13 @@ import { redirect } from "next/navigation"
 
 import {
   getCurrentProfileContext,
-  isAdminAccountType,
   type AccountType,
   type ProfileStatus,
 } from "@/lib/auth-session"
+import {
+  hasAdminPermissionBypass,
+  isAdminAccountType,
+} from "@/lib/account-type"
 import { query } from "@/lib/db"
 
 type PermissionProfileRow = {
@@ -27,11 +30,7 @@ type PermissionCheckRow = {
   has_role_permission: boolean
 }
 
-export async function can(
-  authUserId: string,
-  permissionKey: string,
-  brandId?: number
-) {
+async function getPermissionProfile(authUserId: string) {
   const profileResult = await query<PermissionProfileRow>(
     `
     SELECT id, auth_user_id, account_type, status
@@ -41,13 +40,44 @@ export async function can(
     `,
     [authUserId]
   )
-  const profile = profileResult.rows[0]
+
+  return profileResult.rows[0] ?? null
+}
+
+export async function hasRolePermission(
+  profileId: number,
+  permissionKey: string
+) {
+  const result = await query<{ has_permission: boolean }>(
+    `
+    SELECT EXISTS (
+      SELECT 1
+      FROM user_brand_access uba
+      JOIN role_permission rp ON rp.role_id = uba.role_id
+      JOIN permission p ON p.id = rp.permission_id
+      WHERE uba.profile_id = $1
+        AND uba.is_active = true
+        AND p.key = $2
+    ) AS has_permission
+    `,
+    [profileId, permissionKey]
+  )
+
+  return Boolean(result.rows[0]?.has_permission)
+}
+
+export async function can(
+  authUserId: string,
+  permissionKey: string,
+  brandId?: number
+) {
+  const profile = await getPermissionProfile(authUserId)
 
   if (!profile || profile.status !== "ACTIVE") {
     return false
   }
 
-  if (isAdminAccountType(profile.account_type)) {
+  if (hasAdminPermissionBypass(profile.account_type)) {
     return true
   }
 
@@ -108,6 +138,26 @@ export async function can(
   return Boolean(check?.has_allow || check?.has_role_permission)
 }
 
+export async function canDirectorReview(
+  authUserId: string,
+  profileId: number
+) {
+  const profile = await getPermissionProfile(authUserId)
+
+  if (!profile || profile.status !== "ACTIVE") {
+    return false
+  }
+
+  if (
+    hasAdminPermissionBypass(profile.account_type) ||
+    profile.account_type === "DIRECTOR"
+  ) {
+    return true
+  }
+
+  return hasRolePermission(profileId, "approvals.director_review")
+}
+
 export async function requirePermission(permissionKey: string) {
   const context = await getCurrentProfileContext()
 
@@ -122,7 +172,9 @@ export async function requirePermission(permissionKey: string) {
   const allowed = await can(context.profile.auth_user_id, permissionKey)
 
   if (!allowed) {
-    redirect("/admin/dashboard")
+    redirect(isAdminAccountType(context.profile.account_type)
+      ? "/admin/dashboard"
+      : "/employee/dashboard")
   }
 
   return context

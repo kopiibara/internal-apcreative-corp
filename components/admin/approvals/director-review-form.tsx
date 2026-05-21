@@ -1,10 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { useState } from "react"
 
-import { updateDirectorReview } from "@/app/admin/approvals/actions"
 import { ApprovalStatusSelect } from "@/components/admin/approvals/approval-status-select"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,6 +13,7 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useApprovalStore } from "@/stores/use-approval-store"
 import type { ContentReport } from "@/types/content-report"
 
 type DirectorReviewFormProps = {
@@ -29,29 +27,21 @@ export function DirectorReviewForm({
   canEdit,
   onSaved,
 }: DirectorReviewFormProps) {
-  const router = useRouter()
+  const openVerificationDialog = useApprovalStore(
+    (state) => state.openVerificationDialog
+  )
   const [status, setStatus] = useState(report.directorStatus)
   const [notes, setNotes] = useState(report.directorNotes ?? "")
-  const [isPending, startTransition] = useTransition()
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    startTransition(async () => {
-      const result = await updateDirectorReview({
-        reportId: report.id,
-        directorStatus: status,
-        directorNotes: notes,
-      })
-
-      if (result.success) {
-        toast.success(result.message)
-        router.refresh()
-        onSaved?.()
-        return
-      }
-
-      toast.error(result.message)
+    openVerificationDialog({
+      type: "director",
+      report,
+      directorStatus: status,
+      notes,
+      onSaved,
     })
   }
 
@@ -70,7 +60,7 @@ export function DirectorReviewForm({
             <ApprovalStatusSelect
               value={status}
               onValueChange={(value) => setStatus(value as typeof status)}
-              disabled={isPending || !canEdit}
+              disabled={!canEdit}
             />
           </div>
 
@@ -80,7 +70,7 @@ export function DirectorReviewForm({
               id="details-director-notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              disabled={isPending || !canEdit}
+              disabled={!canEdit}
               className="min-h-28"
             />
           </div>
@@ -88,9 +78,9 @@ export function DirectorReviewForm({
           <Button
             type="submit"
             size="sm"
-            disabled={isPending || !canEdit}
+            disabled={!canEdit}
           >
-            {isPending ? "Saving..." : "Save Director Review"}
+            Save Director Review
           </Button>
         </form>
       </CardContent>

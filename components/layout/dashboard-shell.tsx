@@ -12,8 +12,6 @@ import {
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
 
-const SERVER_DATE_TIME_LABEL = "Loading..."
-
 function formatDateTime(date: Date) {
     return new Intl.DateTimeFormat("en-US", {
         weekday: "short",
@@ -25,14 +23,36 @@ function formatDateTime(date: Date) {
     }).format(date)
 }
 
-function subscribeToDateTime(callback: () => void) {
-    const intervalId = window.setInterval(callback, 1000)
+const SERVER_DATE_TIME_LABEL = "Loading..."
+const dateTimeSubscribers = new Set<() => void>()
+let currentDateTimeLabel = SERVER_DATE_TIME_LABEL
+let dateTimeIntervalId: number | null = null
 
-    return () => window.clearInterval(intervalId)
+function updateDateTimeSnapshot() {
+    currentDateTimeLabel = formatDateTime(new Date())
+    dateTimeSubscribers.forEach((callback) => callback())
+}
+
+function subscribeToDateTime(callback: () => void) {
+    dateTimeSubscribers.add(callback)
+    updateDateTimeSnapshot()
+
+    if (dateTimeIntervalId === null) {
+        dateTimeIntervalId = window.setInterval(updateDateTimeSnapshot, 1000)
+    }
+
+    return () => {
+        dateTimeSubscribers.delete(callback)
+
+        if (dateTimeSubscribers.size === 0 && dateTimeIntervalId !== null) {
+            window.clearInterval(dateTimeIntervalId)
+            dateTimeIntervalId = null
+        }
+    }
 }
 
 function getDateTimeSnapshot() {
-    return formatDateTime(new Date())
+    return currentDateTimeLabel
 }
 
 function getServerDateTimeSnapshot() {
@@ -51,6 +71,7 @@ type DashboardShellProps = {
     role: "admin" | "employee"
     title: string
     user: DashboardUser
+    employeeActionableTaskCount?: number
     children: React.ReactNode
 }
 
@@ -58,6 +79,7 @@ export function DashboardShell({
     role,
     title,
     user,
+    employeeActionableTaskCount = 0,
     children,
 }: DashboardShellProps) {
     const dateTimeLabel = useSyncExternalStore(
@@ -80,6 +102,7 @@ export function DashboardShell({
             >
                 <DashboardSidebar
                     mode={role}
+                    employeeActionableTaskCount={employeeActionableTaskCount}
                     user={{
                         name: user.name,
                         email: user.email,

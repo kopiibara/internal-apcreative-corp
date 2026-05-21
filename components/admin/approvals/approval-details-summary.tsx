@@ -6,6 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { getStatusBadgeVariant } from "@/lib/approval-statuses"
 import type { ContentReport } from "@/types/content-report"
 
 type ApprovalDetailsSummaryProps = {
@@ -20,7 +21,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <Badge variant={status === "Approved" ? "default" : "outline"}>
+    <Badge variant={getStatusBadgeVariant(status)}>
       {status}
     </Badge>
   )

@@ -5,6 +5,21 @@ import type {
   ReviewStatus,
 } from "@/app/employee/approvals/schema";
 
+export type ApprovalActivityLog = {
+  id: number;
+  contentReportId: number;
+  actorProfileId: number;
+  actorName: string;
+  actorAccountType: string;
+  actorPosition: string | null;
+  action: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  notes: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
 export type ContentReport = {
   id: number;
   submittedByProfileId: number;
@@ -30,6 +45,7 @@ export type ContentReport = {
   publishStatus: PublishStatus;
   scheduledPublishedDate: string | null;
   remarksRevisionSummary: string | null;
+  activityLogs: ApprovalActivityLog[];
   createdAt: string;
   updatedAt: string;
 };

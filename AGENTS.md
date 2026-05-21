@@ -17,7 +17,11 @@ Before changing code, read:
 - `docs/security-standards.md`
 - `docs/dos-and-donts.md`
 - `docs/migration-guide.md`
-- `prompts/codex-split-prompts.md`
+- `docs/date-picker-standards.md`
+- `docs/scroll-area-layout.md`
+- `docs/neo-brutal.md`
+- `docs/dry-principle.md`
+- `docs/reui-timeline-standards.md`
 
 ## Core Rules
 
@@ -138,6 +142,10 @@ Every server action must:
 ### UI
 
 Use shadcn/ui components when available. Do not add unnecessary custom colors.
+
+Use shadcn `ScrollArea` for major scrollable UI sections instead of plain overflow scrolling. Avoid duplicate scrollbars and keep scroll behavior component-based. See `docs/scroll-area-layout.md`.
+
+Use shadcn `Calendar` for date picker UI across the project. Do not use native browser date picker UI for major dashboard forms. Use reusable date/date-time picker components and validate all date values server-side.
 
 ### SQL Security
 
