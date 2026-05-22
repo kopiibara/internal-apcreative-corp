@@ -1,5 +1,6 @@
 import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"
+import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
@@ -10,6 +11,7 @@ const badgeVariants = cva(
       variant: {
         default: "bg-primary text-primary-foreground",
         outline: "border-border bg-transparent dark:bg-input/32",
+        neutral: "bg-secondary text-secondary-foreground",
         secondary: "bg-secondary text-secondary-foreground",
         info: "bg-info text-white",
         success: "bg-success text-white",
@@ -17,34 +19,20 @@ const badgeVariants = cva(
         destructive: "bg-destructive text-white",
         focus: "bg-focus text-focus-foreground",
         invert: "bg-invert text-invert-foreground",
-        "primary-light":
-          "bg-primary/10 border-none text-primary dark:bg-primary/20",
-        "warning-light":
-          "bg-warning/10 border-none text-warning-foreground dark:bg-warning/20",
-        "success-light":
-          "bg-success/10 border-none text-success-foreground dark:bg-success/20",
-        "info-light":
-          "bg-info/10 border-none text-info-foreground dark:bg-info/20",
-        "destructive-light":
-          "bg-destructive/10 border-none text-destructive-foreground dark:bg-destructive/20",
-        "invert-light":
-          "bg-invert/10 border-none text-foreground dark:bg-invert/20",
-        "focus-light":
-          "bg-focus/10 border-none text-focus-foreground dark:bg-focus/20",
-        "primary-outline":
-          "bg-background border-border text-primary dark:bg-input/30",
-        "warning-outline":
-          "bg-background border-border text-warning-foreground dark:bg-input/30",
-        "success-outline":
-          "bg-background border-border text-success-foreground dark:bg-input/30",
-        "info-outline":
-          "bg-background border-border text-info-foreground dark:bg-input/30",
-        "destructive-outline":
-          "bg-background border-border text-destructive-foreground dark:bg-input/30",
-        "invert-outline":
-          "bg-background border-border text-invert-foreground dark:bg-input/30",
-        "focus-outline":
-          "bg-background border-border text-focus-foreground dark:bg-input/30",
+        "primary-light": "bg-primary/10 border-none text-primary dark:bg-primary/20",
+        "warning-light": "bg-warning/10 border-none text-warning-foreground dark:bg-warning/20",
+        "success-light": "bg-success/10 border-none text-success-foreground dark:bg-success/20",
+        "info-light": "bg-info/10 border-none text-info-foreground dark:bg-info/20",
+        "destructive-light": "bg-destructive/10 border-none text-destructive-foreground dark:bg-destructive/20",
+        "invert-light": "bg-invert/10 border-none text-foreground dark:bg-invert/20",
+        "focus-light": "bg-focus/10 border-none text-focus-foreground dark:bg-focus/20",
+        "primary-": "bg-background border-border text-primary dark:bg-input/30",
+        "warning-": "bg-background border-border text-warning-foreground dark:bg-input/30",
+        "success-": "bg-background border-border text-success-foreground dark:bg-input/30",
+        "info-": "bg-background border-border text-info-foreground dark:bg-input/30",
+        "destructive-": "bg-background border-border text-destructive-foreground dark:bg-input/30",
+        "invert-": "bg-background border-border text-invert-foreground dark:bg-input/30",
+        "focus-": "bg-background border-border text-focus-foreground dark:bg-input/30",
       },
       size: {
         xs: "px-1 py-0.25 text-[0.6rem] leading-none h-4 min-w-4 gap-1",
@@ -53,7 +41,6 @@ const badgeVariants = cva(
         lg: "px-1.5 py-0.5 text-xs h-5.5 min-w-5.5 gap-1",
         xl: "px-2 py-0.75 text-sm h-6 min-w-6 gap-1.5",
       },
-      /** `default`: per-theme radius. `full`: max radius per theme (Lyra stays `rounded-none`). */
       radius: {
         default:
           "rounded-4xl",

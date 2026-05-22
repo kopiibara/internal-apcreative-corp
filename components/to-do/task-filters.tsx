@@ -135,7 +135,7 @@ export function TaskFilters({
 
         <Button
           type="button"
-          variant="outline"
+          variant="neutral"
           size="sm"
           className="h-9 whitespace-nowrap"
           onClick={resetTaskFilters}

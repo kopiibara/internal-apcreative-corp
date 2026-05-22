@@ -6,8 +6,9 @@ import { Plus } from "lucide-react"
 import { ReminderFilters } from "@/components/to-do/reminder-filters"
 import { ReminderFormDialog } from "@/components/to-do/reminder-form-dialog"
 import { ReminderKanbanBoard } from "@/components/to-do/reminder-kanban-board"
+import { BoardSection } from "@/components/shared/board-section"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { ReminderRecord } from "@/lib/reminders"
 import { useReminderStore } from "@/stores/use-reminder-store"
 
@@ -105,15 +106,15 @@ export function ReminderBoard({ reminders }: ReminderBoardProps) {
         </Button>
       </div>
 
-      <Card className="flex min-h-0 min-w-0 flex-1 flex-col border bg-card shadow-sm">
-        <CardHeader className="shrink-0 gap-3">
-          <CardTitle>Reminder board</CardTitle>
+      <BoardSection className="w-full min-w-0 overflow-hidden pb-1 gap-2">
+        <CardHeader className="min-w-0 shrink-0 gap-3">
+          <CardTitle className="text-card-foreground">Reminder board</CardTitle>
           <ReminderFilters />
         </CardHeader>
-        <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
           <ReminderKanbanBoard reminders={filteredReminders} />
         </CardContent>
-      </Card>
+      </BoardSection>
 
       <ReminderFormDialog
         open={isCreateDialogOpen}

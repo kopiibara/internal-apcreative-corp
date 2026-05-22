@@ -203,7 +203,7 @@ export function TaskCreateDialog({
                 <PopoverTrigger asChild>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="neutral"
                     className="w-full justify-between"
                     disabled={isPending}
                   >
@@ -217,11 +217,12 @@ export function TaskCreateDialog({
                       const isSelected = selectedAssigneeIds.includes(assignee.id)
 
                       return (
-                        <button
+                        <Button
                           key={assignee.id}
                           type="button"
+                          variant="ghost"
                           className={cn(
-                            "flex w-full items-start gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-accent",
+                            "h-auto w-full items-start justify-start gap-2 rounded-md px-2 py-2 text-left text-sm font-normal",
                             isSelected && "bg-accent"
                           )}
                           onClick={() => toggleAssignee(assignee.id)}
@@ -246,7 +247,7 @@ export function TaskCreateDialog({
                               className="mt-1"
                             />
                           </span>
-                        </button>
+                        </Button>
                       )
                     })}
                   </div>
@@ -319,7 +320,7 @@ export function TaskCreateDialog({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >

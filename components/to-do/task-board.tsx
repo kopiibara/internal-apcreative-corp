@@ -8,9 +8,10 @@ import { TaskDetailsSheet } from "@/components/to-do/task-details-sheet"
 import { TaskEditDialog } from "@/components/to-do/task-edit-dialog"
 import { TaskFilters } from "@/components/to-do/task-filters"
 import { TaskKanbanBoard } from "@/components/to-do/task-kanban-board"
+import { BoardSection } from "@/components/shared/board-section"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { AccountType } from "@/lib/account-type"
 import type { AssignableProfile, TaskAssignmentRecord } from "@/lib/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
@@ -101,15 +102,15 @@ export function TaskBoard({
         </p>
       ) : null}
 
-      <Card className="flex min-h-0 min-w-0 flex-1 flex-col border bg-card shadow-none">
-        <CardHeader className="shrink-0 gap-3">
-          <CardTitle>{copy.cardTitle}</CardTitle>
+      <BoardSection className="w-full min-w-0 overflow-hidden pb-1 gap-2">
+        <CardHeader className="min-w-0 shrink-0 gap-3">
+          <CardTitle className="text-card-foreground">{copy.cardTitle}</CardTitle>
           <TaskFilters
             assignees={assignees}
             showAssigneeFilter={!isEmployeeView}
           />
         </CardHeader>
-        <CardContent className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
           <TaskKanbanBoard
             assignments={currentAssignments}
             currentProfileId={currentProfileId}
@@ -120,7 +121,7 @@ export function TaskBoard({
             onAssignmentUpdated={updateTaskAssignmentInStore}
           />
         </CardContent>
-      </Card>
+      </BoardSection>
 
       <TaskCreateDialog
         open={isCreateDialogOpen}

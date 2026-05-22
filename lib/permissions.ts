@@ -142,20 +142,68 @@ export async function canDirectorReview(
   authUserId: string,
   profileId: number
 ) {
+  return canApprovalAction(authUserId, profileId, "approvals.director_review")
+}
+
+export async function canApprovalAction(
+  authUserId: string,
+  profileId: number,
+  permissionKey: string
+) {
   const profile = await getPermissionProfile(authUserId)
 
   if (!profile || profile.status !== "ACTIVE") {
     return false
   }
 
-  if (
-    hasAdminPermissionBypass(profile.account_type) ||
-    profile.account_type === "DIRECTOR"
-  ) {
-    return true
+  if (permissionKey === "approvals.director_review") {
+    if (
+      profile.account_type === "DIRECTOR" ||
+      profile.account_type === "MANAGER" ||
+      profile.account_type === "EXECUTIVE" ||
+      profile.account_type === "FULL_STACK_DEVELOPER"
+    ) {
+      return true
+    }
+
+    return profile.account_type !== "SUPERVISOR"
+      ? hasRolePermission(profileId, permissionKey)
+      : false
   }
 
-  return hasRolePermission(profileId, "approvals.director_review")
+  if (permissionKey === "approvals.publish_update") {
+    if (
+      profile.account_type === "DIRECTOR" ||
+      profile.account_type === "MANAGER" ||
+      profile.account_type === "EXECUTIVE" ||
+      profile.account_type === "FULL_STACK_DEVELOPER"
+    ) {
+      return true
+    }
+
+    return profile.account_type !== "SUPERVISOR"
+      ? hasRolePermission(profileId, permissionKey)
+      : false
+  }
+
+  if (
+    permissionKey === "approvals.supervisor_review" ||
+    permissionKey === "approvals.request_revision"
+  ) {
+    if (
+      profile.account_type === "SUPERVISOR" ||
+      profile.account_type === "MANAGER" ||
+      profile.account_type === "EXECUTIVE" ||
+      profile.account_type === "DIRECTOR" ||
+      profile.account_type === "FULL_STACK_DEVELOPER"
+    ) {
+      return true
+    }
+
+    return hasRolePermission(profileId, permissionKey)
+  }
+
+  return can(authUserId, permissionKey)
 }
 
 export async function requirePermission(permissionKey: string) {

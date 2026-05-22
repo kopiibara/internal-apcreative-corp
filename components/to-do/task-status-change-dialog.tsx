@@ -94,19 +94,19 @@ export function TaskStatusChangeDialog({
     startTransition(async () => {
       const result = isBlockerReview
         ? await confirmTaskBlocker({
-            assignmentId: assignment.assignmentId,
-            resolutionNote: notes.trim(),
-            dueDate: dueDate ?? assignment.dueDate,
-            nextStatus: effectiveToStatus,
-            confirmationAccepted,
-          })
+          assignmentId: assignment.assignmentId,
+          resolutionNote: notes.trim(),
+          dueDate: dueDate ?? assignment.dueDate,
+          nextStatus: effectiveToStatus,
+          confirmationAccepted,
+        })
         : await changeTaskAssignmentStatus({
-            assignmentId: assignment.assignmentId,
-            fromStatus: assignment.status,
-            toStatus: effectiveToStatus,
-            notes: notes.trim(),
-            confirmationAccepted,
-          })
+          assignmentId: assignment.assignmentId,
+          fromStatus: assignment.status,
+          toStatus: effectiveToStatus,
+          notes: notes.trim(),
+          confirmationAccepted,
+        })
 
       if (result.success) {
         toast.success(result.message)
@@ -220,7 +220,7 @@ export function TaskStatusChangeDialog({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >

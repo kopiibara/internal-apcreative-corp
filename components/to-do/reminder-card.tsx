@@ -10,8 +10,8 @@ import {
   markReminderDone,
   updateReminderStatus,
 } from "@/app/admin/to-do/reminders/actions"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { ReminderStatusBadge } from "@/components/to-do/reminder-status-badge"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -57,7 +57,7 @@ export function ReminderCard({ reminder }: { reminder: ReminderRecord }) {
       onClick={() => openEditDialog(reminder)}
     >
       <CardContent className="space-y-3 p-3">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between ">
           <p className="line-clamp-2 text-sm font-medium leading-snug">
             {reminder.title}
           </p>
@@ -103,6 +103,7 @@ export function ReminderCard({ reminder }: { reminder: ReminderRecord }) {
                 ) : null}
                 {reminder.status !== "ARCHIVED" ? (
                   <DropdownMenuItem
+                    variant="destructive"
                     onClick={() =>
                       runAction(() => archiveReminder({ reminderId: reminder.id }))
                     }
@@ -123,7 +124,7 @@ export function ReminderCard({ reminder }: { reminder: ReminderRecord }) {
 
         <div className="flex flex-wrap gap-1.5">
           <ReminderStatusBadge status={reminder.status} />
-          <Badge variant="outline">Priority: {reminder.priority}</Badge>
+          <StatusBadge status={reminder.priority} type="priority" prefix="Priority" />
         </div>
 
         <p className="text-xs">

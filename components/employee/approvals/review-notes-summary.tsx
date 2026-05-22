@@ -30,7 +30,7 @@ function NoteBlock({
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <div className="rounded-lg border bg-muted/20 p-3 text-sm leading-relaxed">
+      <div className="rounded-lg border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
         <p className="whitespace-pre-wrap break-words">{value}</p>
       </div>
     </div>
@@ -44,7 +44,7 @@ export function ReviewNotesSummary({ report }: ReviewNotesSummaryProps) {
     hasText(report.remarksRevisionSummary)
 
   return (
-    <Card size="sm">
+    <Card size="sm" className="shadow-none">
       <CardHeader>
         <CardTitle>Review Notes</CardTitle>
       </CardHeader>

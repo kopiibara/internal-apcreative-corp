@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -68,10 +68,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   year: "numeric",
 })
-
-function StatusBadge({ status }: { status: string }) {
-  return <Badge variant={status === "Approved" ? "default" : "outline"}>{status}</Badge>
-}
 
 function getDateLabel(value: string | null) {
   return value ? dateFormatter.format(new Date(value)) : "Not scheduled"
@@ -178,7 +174,7 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
         <CardHeader className="gap-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle>My submissions</CardTitle>
-            <Button variant="outline" size="sm" onClick={resetContentReportFilters}>
+            <Button variant="neutral" size="sm" onClick={resetContentReportFilters}>
               Reset Filters
             </Button>
           </div>
@@ -310,7 +306,7 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <StatusBadge status={report.supervisorStatus} />
+                          <StatusBadge status={report.supervisorStatus} type="approval" />
                           {report.supervisorNotes ? (
                             <p className="max-w-xs text-xs text-muted-foreground">
                               {report.supervisorNotes}
@@ -320,7 +316,7 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <StatusBadge status={report.directorStatus} />
+                          <StatusBadge status={report.directorStatus} type="approval" />
                           {report.directorNotes ? (
                             <p className="max-w-xs text-xs text-muted-foreground">
                               {report.directorNotes}
@@ -329,7 +325,7 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={report.publishStatus} />
+                        <StatusBadge status={report.publishStatus} type="publish" />
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
                         {getDateLabel(report.scheduledPublishedDate)}
@@ -419,9 +415,9 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Keep Report</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               disabled={isPending}
               onClick={handleCancelReport}
-              className="bg-destructive/10 text-destructive hover:bg-destructive/20"
             >
               {isPending ? "Cancelling..." : "Cancel Report"}
             </AlertDialogAction>

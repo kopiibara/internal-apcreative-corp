@@ -4,6 +4,8 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/ui/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
+import ClickSpark from '@/components/ClickSpark';
+
 
 const figtree = Figtree({ subsets: ['latin'], variable: '--font-sans' });
 

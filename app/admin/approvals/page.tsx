@@ -1,7 +1,7 @@
 import { ApprovalKanbanBoard } from "@/components/admin/approvals/approval-kanban-board"
 import { getApprovalContentReports } from "@/lib/content-reports"
 import {
-  can,
+  canApprovalAction,
   canDirectorReview as checkDirectorReviewAccess,
   requirePermission,
 } from "@/lib/permissions"
@@ -18,8 +18,16 @@ export default async function ApprovalsPage({ searchParams }: ApprovalsPageProps
   const [reports, canSupervisorReview, canPublishUpdate, canDirectorReview] =
     await Promise.all([
       getApprovalContentReports(),
-      can(context.profile.auth_user_id, "approvals.supervisor_review"),
-      can(context.profile.auth_user_id, "approvals.publish_update"),
+      canApprovalAction(
+        context.profile.auth_user_id,
+        context.profile.id,
+        "approvals.supervisor_review"
+      ),
+      canApprovalAction(
+        context.profile.auth_user_id,
+        context.profile.id,
+        "approvals.publish_update"
+      ),
       checkDirectorReviewAccess(
         context.profile.auth_user_id,
         context.profile.id

@@ -231,7 +231,11 @@ export function BrandManagement({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <Button onClick={handleDeactivateToggle} disabled={isPending}>
+            <Button
+              variant={selectedBrand?.isActive ? "destructive" : "default"}
+              onClick={handleDeactivateToggle}
+              disabled={isPending}
+            >
               {isPending ? "Saving..." : "Confirm"}
             </Button>
           </AlertDialogFooter>

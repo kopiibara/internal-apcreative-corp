@@ -280,11 +280,12 @@ export async function getDailyReportData(
   ] = await Promise.all([
     query<{
       status: TaskAssignmentStatus
+      priority: TaskPriority | null
       due_date: Date | null
       completed_at: Date | null
     }>(
       `
-      SELECT ta.status, t.due_date, ta.completed_at
+      SELECT ta.status, t.priority, t.due_date, ta.completed_at
       FROM task_assignment ta
       JOIN task t ON t.id = ta.task_id
       WHERE t.task_type = 'GRADED'
@@ -446,6 +447,7 @@ export async function getDailyReportData(
       full_name: string
       email: string
       status: TaskAssignmentStatus
+      priority: TaskPriority | null
       due_date: Date | null
       completed_at: Date | null
     }>(
@@ -455,6 +457,7 @@ export async function getDailyReportData(
         assignee.full_name,
         assignee.email,
         ta.status,
+        t.priority,
         t.due_date,
         ta.completed_at
       FROM task_assignment ta
@@ -601,6 +604,7 @@ export async function getDailyReportData(
   const gradedMetrics = countGradedAssignmentMetrics(
     gradedAssignments.rows.map((row) => ({
       status: row.status,
+      priority: row.priority,
       dueDate: row.due_date?.toISOString() ?? null,
       completedAt: row.completed_at?.toISOString() ?? null,
     }))
@@ -765,6 +769,7 @@ export async function getDailyReportData(
       const performance = countGradedAssignmentMetrics(
         employeeGraded.map((row) => ({
           status: row.status,
+          priority: row.priority,
           dueDate: row.due_date?.toISOString() ?? null,
           completedAt: row.completed_at?.toISOString() ?? null,
         }))

@@ -16,12 +16,14 @@ export const TASK_STATUS_LABELS: Record<TaskAssignmentStatus, string> = {
   DONE: "Done",
 }
 
+import { getStatusBadgeClassName } from "@/lib/status-badge"
+
 export const TASK_STATUS_BADGE_CLASS_NAMES: Record<TaskAssignmentStatus, string> = {
-  ASSIGNED: "border-border bg-muted/30 text-muted-foreground",
-  BLOCKER: "border-destructive/40 bg-destructive/10 text-destructive",
-  PENDING: "border-blue-500/40 bg-blue-500/10 text-blue-300",
-  REVISION: "border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
-  DONE: "border-green-500/40 bg-green-500/10 text-green-300",
+  ASSIGNED: getStatusBadgeClassName("ASSIGNED", "task"),
+  BLOCKER: getStatusBadgeClassName("BLOCKER", "task"),
+  PENDING: getStatusBadgeClassName("PENDING", "task"),
+  REVISION: getStatusBadgeClassName("REVISION", "task"),
+  DONE: getStatusBadgeClassName("DONE", "task"),
 }
 
 export const TASK_KANBAN_COLUMNS: {

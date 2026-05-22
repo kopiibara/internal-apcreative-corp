@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { neoFilterTriggerClass } from "@/lib/neo-ui"
 import { cn } from "@/lib/utils"
 
 type DateTimePickerProps = {
@@ -134,9 +133,8 @@ export function DateTimePicker({
         <PopoverTrigger asChild>
           <Button
             type="button"
-            variant="outline"
+            variant="neutral"
             className={cn(
-              neoFilterTriggerClass,
               "min-w-0 flex-1 justify-start text-left font-normal",
               !selectedDate && "text-muted-foreground"
             )}
@@ -149,7 +147,7 @@ export function DateTimePicker({
         {selectedDate ? (
           <Button
             type="button"
-            variant="outline"
+            variant="neutral"
             size="icon"
             aria-label="Clear scheduled date"
             disabled={disabled}

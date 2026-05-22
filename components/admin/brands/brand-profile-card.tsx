@@ -1,5 +1,6 @@
 "use client"
 
+import { StatusBadge } from "@/components/shared/status-badge"
 import { BrandActionsMenu } from "@/components/admin/brands/brand-actions-menu"
 import { BrandLogo } from "@/components/admin/brands/brand-logo"
 import { BrandTotalRequestsStat } from "@/components/admin/brands/brand-total-requests-stat"
@@ -7,7 +8,6 @@ import type {
   BrandPermissionFlags,
   BrandWithAnalytics,
 } from "@/components/admin/brands/types"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useBrandStore } from "@/stores/use-brand-store"
@@ -32,12 +32,10 @@ export function BrandProfileCard({ brand, permissions }: BrandProfileCardProps) 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-base sm:text-lg">{brand.name}</CardTitle>
-              <Badge
-                variant={brand.isActive ? "default" : "outline"}
-                className="border-2 font-semibold"
-              >
-                {brand.isActive ? "Active" : "Inactive"}
-              </Badge>
+              <StatusBadge
+                status={brand.isActive ? "ACTIVE" : "INACTIVE"}
+                type="brand"
+              />
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
               /{brand.slug}
@@ -67,7 +65,7 @@ export function BrandProfileCard({ brand, permissions }: BrandProfileCardProps) 
         {permissions.canDeactivate ? (
           <Button
             type="button"
-            variant="outline"
+            variant={brand.isActive ? "destructive" : "neutral"}
             size="sm"
             onClick={() => openDeactivateDialog(brand)}
           >

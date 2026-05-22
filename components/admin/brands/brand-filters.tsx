@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import { neoFilterTriggerClass, neoInputClass } from "@/lib/neo-ui"
+import { neoInputClass } from "@/lib/neo-ui"
 import { useBrandStore } from "@/stores/use-brand-store"
 
 type BrandFiltersProps = {
@@ -59,7 +59,6 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
                   : "outline"
               }
               size="sm"
-              className={neoFilterTriggerClass}
               onClick={() => setSelectedBrandFilter(String(brand.id))}
             >
               {brand.name}
@@ -76,7 +75,6 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
               type="button"
               variant={selectedStatusFilter === status ? "default" : "outline"}
               size="sm"
-              className={neoFilterTriggerClass}
               onClick={() =>
                 setSelectedStatusFilter(
                   selectedStatusFilter === status ? "all" : status
@@ -92,9 +90,9 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
 
         <Button
           type="button"
-          variant="outline"
+          variant="neutral"
           size="sm"
-          className={cn("h-9 whitespace-nowrap", neoFilterTriggerClass)}
+          className="whitespace-nowrap"
           onClick={resetBrandFilters}
         >
           Reset Filters

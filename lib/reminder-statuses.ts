@@ -17,11 +17,13 @@ export const REMINDER_STATUS_LABELS: Record<ReminderStatus, string> = {
   ARCHIVED: "Archived",
 }
 
+import { getStatusBadgeClassName } from "@/lib/status-badge"
+
 export const REMINDER_STATUS_BADGE_CLASS_NAMES: Record<ReminderStatus, string> = {
-  PENDING: "border-blue-500/40 bg-blue-500/10 text-blue-300",
-  DUE: "border-yellow-500/40 bg-yellow-500/10 text-yellow-300",
-  DONE: "border-green-500/40 bg-green-500/10 text-green-300",
-  ARCHIVED: "border-muted-foreground/30 bg-muted/30 text-muted-foreground",
+  PENDING: getStatusBadgeClassName("PENDING", "reminder"),
+  DUE: getStatusBadgeClassName("DUE", "reminder"),
+  DONE: getStatusBadgeClassName("DONE", "reminder"),
+  ARCHIVED: getStatusBadgeClassName("ARCHIVED", "reminder"),
 }
 
 export const REMINDER_KANBAN_COLUMNS: {

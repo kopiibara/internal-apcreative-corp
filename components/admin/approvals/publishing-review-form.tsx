@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 
 import { PublishStatusSelect } from "@/components/admin/approvals/publish-status-select"
 import { ScheduledDatePicker } from "@/components/admin/approvals/scheduled-date-picker"
@@ -8,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -44,6 +44,11 @@ export function PublishingReviewForm({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    if (!canEdit) {
+      toast.error("You do not have permission to update Publishing.")
+      return
+    }
+
     openVerificationDialog({
       type: "publishing",
       report,
@@ -55,12 +60,9 @@ export function PublishingReviewForm({
   }
 
   return (
-    <Card size="sm">
+    <Card size="default" className="w-full">
       <CardHeader>
         <CardTitle>Publishing</CardTitle>
-        <CardDescription>
-          Publish status and date unlock after both approvals are approved.
-        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">

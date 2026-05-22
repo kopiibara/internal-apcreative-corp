@@ -10,7 +10,7 @@ import {
   TimelineSeparator,
   TimelineTitle,
 } from "@/components/reui/timeline"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import type { DailyTimelineEntry } from "@/lib/daily-report-types"
@@ -57,12 +57,16 @@ export function DailyReportTimeline({ entries }: DailyReportTimelineProps) {
                       <span className="font-medium text-foreground">
                         {entry.actorName}
                       </span>
-                      <Badge variant="outline">{entry.module}</Badge>
+                      <StatusBadge status={entry.module} size="sm" />
                       {entry.brandName ? (
-                        <Badge variant="secondary">{entry.brandName}</Badge>
+                        <StatusBadge status="BRAND" size="sm">
+                          {entry.brandName}
+                        </StatusBadge>
                       ) : null}
                       {entry.employeeName ? (
-                        <Badge variant="secondary">{entry.employeeName}</Badge>
+                        <StatusBadge status="EMPLOYEE" size="sm">
+                          {entry.employeeName}
+                        </StatusBadge>
                       ) : null}
                     </div>
                     {entry.detail ? (

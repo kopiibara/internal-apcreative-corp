@@ -53,7 +53,10 @@ export function BrandActionsMenu({
           </DropdownMenuItem>
         ) : null}
         {permissions.canDeactivate ? (
-          <DropdownMenuItem onSelect={() => openDeactivateDialog(brand)}>
+          <DropdownMenuItem
+            variant={brand.isActive ? "destructive" : "default"}
+            onSelect={() => openDeactivateDialog(brand)}
+          >
             <Power className="size-4" />
             {brand.isActive ? "Deactivate" : "Reactivate"}
           </DropdownMenuItem>
@@ -62,7 +65,7 @@ export function BrandActionsMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
+              variant="destructive"
               onSelect={() => openDeleteDialog(brand)}
             >
               <Trash2 className="size-4" />

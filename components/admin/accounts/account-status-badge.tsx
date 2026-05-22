@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import type { ProfileStatus } from "@/app/admin/account-control/schema"
 import type { AccountType } from "@/lib/account-type"
 
@@ -11,11 +11,9 @@ type AccountTypeBadgeProps = {
 }
 
 export function AccountStatusBadge({ status }: AccountStatusBadgeProps) {
-  const variant = status === "ACTIVE" ? "default" : "outline"
-
-  return <Badge variant={variant}>{status}</Badge>
+  return <StatusBadge status={status} type="account" />
 }
 
 export function AccountTypeBadge({ accountType }: AccountTypeBadgeProps) {
-  return <Badge variant="outline">{accountType}</Badge>
+  return <StatusBadge status={accountType} type="account" />
 }

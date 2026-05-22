@@ -1,12 +1,15 @@
 import {
   buildTaskPerformanceCounts,
+  calculateTaskPriorityPoints,
   calculateTaskPerformancePoints,
   getTaskPointsFromCompletionRate,
 } from "@/lib/performance-scoring"
 import { isAssignmentCompletedOnTime } from "@/lib/task-type"
+import type { TaskPriority } from "@/lib/task-type"
 
 export type GradedAssignmentMetricInput = {
   status: string
+  priority: TaskPriority | null
   dueDate: string | null
   completedAt: string | null
 }
@@ -32,10 +35,12 @@ export function countGradedAssignmentMetrics(
   let revisions = 0
   let completedOnTime = 0
   let completedLate = 0
+  let completedTaskPriorityPoints = 0
 
   for (const assignment of assignments) {
     if (assignment.status === "DONE") {
       done += 1
+      completedTaskPriorityPoints += calculateTaskPriorityPoints(assignment)
       const onTime = isAssignmentCompletedOnTime(
         assignment.completedAt,
         assignment.dueDate
@@ -63,6 +68,7 @@ export function countGradedAssignmentMetrics(
       totalAssignedTasks: total,
       completedOnTimeTasks: completedOnTime,
       completedLateTasks: completedLate,
+      completedTaskPriorityPoints,
     })
   )
 
@@ -75,6 +81,7 @@ export function countGradedAssignmentMetrics(
     completionRate: computeSimpleCompletionRate(done, total),
     adjustedCompletionRate: performance.adjustedCompletionRate,
     taskPoints: performance.taskPoints,
+    completedTaskPriorityPoints,
     completedOnTime,
     completedLate,
   }

@@ -152,7 +152,7 @@ export function getApprovalKanbanStage(report: {
     report.supervisorStatus === "Approved" &&
     report.directorStatus === "Approved"
   ) {
-    return "approved"
+    return "ready-to-publish"
   }
 
   if (

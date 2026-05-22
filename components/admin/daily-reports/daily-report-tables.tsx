@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react"
 
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import {
   Card,
   CardContent,
@@ -11,17 +11,12 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  getStatusBadgeClassName,
-  getStatusBadgeVariant,
-} from "@/lib/approval-statuses"
 import type {
   DailyApprovalLogEntry,
   DailyBlockerEntry,
   DailyMissingEntry,
   DailyTaskLogEntry,
 } from "@/lib/daily-report-types"
-import { getTaskStatusColorClass, getTaskStatusLabel } from "@/lib/task-statuses"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -122,10 +117,10 @@ export function DailyReportTaskLogTable({
           {entry.isOverdue || entry.isMissingProof ? (
             <div className="mt-1 flex flex-wrap gap-1">
               {entry.isOverdue ? (
-                <Badge variant="destructive">Overdue</Badge>
+                <StatusBadge status="OVERDUE" />
               ) : null}
               {entry.isMissingProof ? (
-                <Badge variant="outline">Missing proof</Badge>
+                <StatusBadge status="MISSING" type="proof" />
               ) : null}
             </div>
           ) : null}
@@ -133,20 +128,30 @@ export function DailyReportTaskLogTable({
         entry.assigneeName,
         entry.createdByName,
         entry.brandName ?? "—",
-        entry.taskType === "GRADED" ? "Graded" : "Personal",
-        entry.priority ?? "—",
-        <Badge
+        entry.taskType === "GRADED" ? (
+          <StatusBadge status="GRADED" />
+        ) : (
+          <StatusBadge status="NON_GRADED" />
+        ),
+        entry.priority ? (
+          <StatusBadge status={entry.priority} type="priority" />
+        ) : (
+          "—"
+        ),
+        <StatusBadge
           key={`${entry.assignmentId}-status`}
-          variant="outline"
-          className={getTaskStatusColorClass(entry.status)}
-        >
-          {getTaskStatusLabel(entry.status)}
-        </Badge>,
+          status={entry.status}
+          type="task"
+        />,
         entry.dueDate ? dateFormatter.format(new Date(entry.dueDate)) : "—",
         entry.completedAt
           ? dateFormatter.format(new Date(entry.completedAt))
           : "—",
-        entry.proofStatus,
+        <StatusBadge
+          key={`${entry.assignmentId}-proof`}
+          status={entry.proofStatus}
+          type="proof"
+        />,
         dateFormatter.format(new Date(entry.updatedAt)),
       ])}
     />
@@ -182,27 +187,21 @@ export function DailyReportApprovalLogTable({
         entry.contentType,
         entry.platform,
         entry.captionPreview,
-        <Badge
+        <StatusBadge
           key={`${entry.id}-supervisor`}
-          variant={getStatusBadgeVariant(entry.supervisorStatus)}
-          className={getStatusBadgeClassName(entry.supervisorStatus)}
-        >
-          {entry.supervisorStatus}
-        </Badge>,
-        <Badge
+          status={entry.supervisorStatus}
+          type="approval"
+        />,
+        <StatusBadge
           key={`${entry.id}-director`}
-          variant={getStatusBadgeVariant(entry.directorStatus)}
-          className={getStatusBadgeClassName(entry.directorStatus)}
-        >
-          {entry.directorStatus}
-        </Badge>,
-        <Badge
+          status={entry.directorStatus}
+          type="approval"
+        />,
+        <StatusBadge
           key={`${entry.id}-publish`}
-          variant={getStatusBadgeVariant(entry.publishStatus)}
-          className={getStatusBadgeClassName(entry.publishStatus)}
-        >
-          {entry.publishStatus}
-        </Badge>,
+          status={entry.publishStatus}
+          type="publish"
+        />,
         entry.scheduledPublishedDate
           ? dateFormatter.format(new Date(entry.scheduledPublishedDate))
           : "—",

@@ -145,7 +145,7 @@ function getAccountColumns(): ColumnDef<AccountListItem>[] {
             row.original.brandAccess.map((access) => (
               <Badge
                 key={access.id}
-                variant={access.isActive ? "secondary" : "outline"}
+                variant={access.isActive ? "secondary" : "neutral"}
               >
                 {access.brandName}
                 {access.isPrimary ? " / Primary" : ""}
@@ -164,7 +164,7 @@ function getAccountColumns(): ColumnDef<AccountListItem>[] {
             <span className="text-xs text-muted-foreground">No roles</span>
           ) : (
             row.original.brandAccess.map((access) => (
-              <Badge key={access.id} variant="outline">
+              <Badge key={access.id} variant="neutral">
                 {access.brandName}: {access.roleName}
               </Badge>
             ))
@@ -325,92 +325,92 @@ export function AccountDataTable({
 
           <ScrollArea className="w-full pb-2" scrollbars="horizontal">
             <div className="flex w-max min-w-full items-center gap-2 pr-3">
-            <div className="relative min-w-[260px] md:min-w-[320px]">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search accounts"
-                className="h-9 pl-9"
-              />
-            </div>
+              <div className="relative min-w-[260px] md:min-w-[320px]">
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search accounts"
+                  className="h-9 pl-9"
+                />
+              </div>
 
-            <Select
-              value={selectedAccountTypeFilter}
-              onValueChange={setSelectedAccountTypeFilter}
-            >
-              <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                <SelectValue placeholder="Account type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All account types</SelectItem>
-                {accountTypes.map((accountType) => (
-                  <SelectItem key={accountType} value={accountType}>
-                    {accountType}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Select
+                value={selectedAccountTypeFilter}
+                onValueChange={setSelectedAccountTypeFilter}
+              >
+                <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+                  <SelectValue placeholder="Account type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All account types</SelectItem>
+                  {accountTypes.map((accountType) => (
+                    <SelectItem key={accountType} value={accountType}>
+                      {accountType}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select
-              value={selectedStatusFilter}
-              onValueChange={setSelectedStatusFilter}
-            >
-              <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                {profileStatuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Select
+                value={selectedStatusFilter}
+                onValueChange={setSelectedStatusFilter}
+              >
+                <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  {profileStatuses.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select
-              value={selectedBrandFilter}
-              onValueChange={setSelectedBrandFilter}
-            >
-              <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                <SelectValue placeholder="Brand" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All brands</SelectItem>
-                {brands.map((brand) => (
-                  <SelectItem key={brand.id} value={String(brand.id)}>
-                    {brand.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Select
+                value={selectedBrandFilter}
+                onValueChange={setSelectedBrandFilter}
+              >
+                <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+                  <SelectValue placeholder="Brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All brands</SelectItem>
+                  {brands.map((brand) => (
+                    <SelectItem key={brand.id} value={String(brand.id)}>
+                      {brand.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Select
-              value={selectedRoleFilter}
-              onValueChange={setSelectedRoleFilter}
-            >
-              <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                <SelectValue placeholder="Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All roles</SelectItem>
-                {roles.map((role) => (
-                  <SelectItem key={role.id} value={String(role.id)}>
-                    {role.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <Select
+                value={selectedRoleFilter}
+                onValueChange={setSelectedRoleFilter}
+              >
+                <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All roles</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={String(role.id)}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 whitespace-nowrap"
-              onClick={resetAccountFilters}
-            >
-              Reset Filters
-            </Button>
+              <Button
+                variant="neutral"
+                size="sm"
+                className="h-9 whitespace-nowrap"
+                onClick={resetAccountFilters}
+              >
+                Reset Filters
+              </Button>
             </div>
           </ScrollArea>
         </CardHeader>
@@ -426,9 +426,9 @@ export function AccountDataTable({
                         {header.isPlaceholder
                           ? null
                           : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -469,7 +469,7 @@ export function AccountDataTable({
             </p>
             <div className="flex items-center gap-2">
               <Button
-                variant="outline"
+                variant="neutral"
                 size="sm"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
@@ -477,7 +477,7 @@ export function AccountDataTable({
                 Previous
               </Button>
               <Button
-                variant="outline"
+                variant="neutral"
                 size="sm"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
@@ -538,9 +538,9 @@ export function AccountDataTable({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               onClick={handleDisableAccount}
               disabled={isPending}
-              className="bg-destructive/10 text-destructive hover:bg-destructive/20"
             >
               {isPending ? "Disabling..." : "Disable Account"}
             </AlertDialogAction>

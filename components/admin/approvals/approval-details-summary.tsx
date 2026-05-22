@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import {
   Card,
   CardContent,
@@ -6,7 +6,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { getStatusBadgeVariant } from "@/lib/approval-statuses"
 import type { ContentReport } from "@/types/content-report"
 
 type ApprovalDetailsSummaryProps = {
@@ -18,14 +17,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   year: "numeric",
 })
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <Badge variant={getStatusBadgeVariant(status)}>
-      {status}
-    </Badge>
-  )
-}
 
 function getDateLabel(value: string | null) {
   return value ? dateFormatter.format(new Date(value)) : "Not scheduled"
@@ -117,13 +108,13 @@ export function ApprovalDetailsSummary({ report }: ApprovalDetailsSummaryProps) 
 
         <div className="grid gap-4 sm:grid-cols-2">
           <DetailField label="Marketing Supervisor Status">
-            <StatusBadge status={report.supervisorStatus} />
+            <StatusBadge status={report.supervisorStatus} type="approval" />
           </DetailField>
           <DetailField label="Director of Marketing Status">
-            <StatusBadge status={report.directorStatus} />
+            <StatusBadge status={report.directorStatus} type="approval" />
           </DetailField>
           <DetailField label="Publish Status">
-            <StatusBadge status={report.publishStatus} />
+            <StatusBadge status={report.publishStatus} type="publish" />
           </DetailField>
         </div>
 
