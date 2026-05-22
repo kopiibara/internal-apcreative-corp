@@ -2,6 +2,7 @@
 
 import { create } from "zustand"
 
+import { pruneSyncedApprovalPatches } from "@/lib/approval-filters"
 import type { PublishStatus, ReviewStatus } from "@/app/employee/approvals/schema"
 import type { ContentReport } from "@/types/content-report"
 
@@ -84,6 +85,7 @@ type ApprovalStore = {
   approvalPatches: Record<number, ContentReport>
   setSelectedApproval: (approval: ContentReport | null) => void
   updateApprovalInStore: (approval: ContentReport) => void
+  reconcileApprovalPatches: (reports: ContentReport[]) => void
   clearApprovalPatch: (approvalId: number) => void
   setSearchQuery: (query: string) => void
   setSelectedBrandFilter: (brand: string) => void
@@ -224,6 +226,13 @@ export const useApprovalStore = create<ApprovalStore>((set) => ({
         state.selectedApprovalId === approval.id
           ? approval
           : state.selectedApproval,
+    })),
+  reconcileApprovalPatches: (reports) =>
+    set((state) => ({
+      approvalPatches: pruneSyncedApprovalPatches(
+        reports,
+        state.approvalPatches
+      ),
     })),
   clearApprovalPatch: (approvalId) =>
     set((state) => {

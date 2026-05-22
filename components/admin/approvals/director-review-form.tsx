@@ -19,10 +19,28 @@ import type { ContentReport } from "@/types/content-report"
 type DirectorReviewFormProps = {
   report: ContentReport
   canEdit: boolean
-  onSaved?: () => void
+  onSaved?: (updatedApproval?: ContentReport) => void
 }
 
 export function DirectorReviewForm({
+  report,
+  canEdit,
+  onSaved,
+}: DirectorReviewFormProps) {
+  const approvalPatches = useApprovalStore((state) => state.approvalPatches)
+  const latestReport = approvalPatches[report.id] ?? report
+
+  return (
+    <DirectorReviewFormFields
+      key={`${latestReport.id}-${latestReport.directorStatus}`}
+      report={latestReport}
+      canEdit={canEdit}
+      onSaved={onSaved}
+    />
+  )
+}
+
+function DirectorReviewFormFields({
   report,
   canEdit,
   onSaved,
@@ -41,12 +59,35 @@ export function DirectorReviewForm({
       return
     }
 
+    const notesChanged =
+      notes.trim() !== (report.directorNotes ?? "").trim()
+    const statusChanged = status !== report.directorStatus
+
+    if (!statusChanged && !notesChanged) {
+      toast.error("Change the director status or notes before saving.")
+      return
+    }
+
+    if (
+      status === "Approved" &&
+      report.supervisorStatus !== "Approved"
+    ) {
+      toast.error("Supervisor approval is required before Director approval.")
+      return
+    }
+
     openVerificationDialog({
       type: "director",
-      report,
+      report: {
+        ...report,
+        directorStatus: status,
+        directorNotes: notes,
+      },
       directorStatus: status,
       notes,
-      onSaved,
+      onSaved: (updatedApproval) => {
+        onSaved?.(updatedApproval)
+      },
     })
   }
 
@@ -57,13 +98,32 @@ export function DirectorReviewForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {status === "Approved" &&
+          report.supervisorStatus === "Approved" ? (
+            <p className="text-xs text-muted-foreground">
+              Approved submissions move to the Ready to Publish column on the
+              board.
+            </p>
+          ) : null}
+
           <div className="space-y-2">
-            <Label>Status</Label>
+            <Label>Director of Marketing Status</Label>
             <ApprovalStatusSelect
               value={status}
               onValueChange={(value) => setStatus(value as typeof status)}
               disabled={!canEdit}
             />
+            {report.directorStatus === "Revision" ? (
+              <p className="text-xs text-muted-foreground">
+                This item is in revision. Choose Approved when it is ready to
+                move to Ready to Publish.
+              </p>
+            ) : report.directorStatus === "Pending" ? (
+              <p className="text-xs text-muted-foreground">
+                Choose Approved, Revision, or Rejected. Saving notes alone does
+                not approve the submission.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">

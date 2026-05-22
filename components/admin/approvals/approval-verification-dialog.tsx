@@ -47,7 +47,13 @@ export function ApprovalVerificationDialog({
   }
 
   const dialogKey = verificationPayload
-    ? `${verificationPayload.type}-${verificationPayload.report.id}`
+    ? verificationPayload.type === "director"
+      ? `director-${verificationPayload.report.id}-${verificationPayload.directorStatus}`
+      : verificationPayload.type === "supervisor"
+        ? `supervisor-${verificationPayload.report.id}-${verificationPayload.supervisorStatus}`
+        : verificationPayload.type === "kanban"
+          ? `kanban-${verificationPayload.report.id}-${verificationPayload.toColumn}`
+          : `${verificationPayload.type}-${verificationPayload.report.id}`
     : "approval-verification"
 
   return (
@@ -91,6 +97,18 @@ function ApprovalVerificationDialogContent({
   const [confirmationAccepted, setConfirmationAccepted] = useState(false)
   const [isPending, startTransition] = useTransition()
   const canConfirm = notes.trim().length > 0 && confirmationAccepted
+
+  const actionSummary =
+    payload.type === "kanban"
+      ? payload.toColumn === "ready-to-publish"
+        ? "This will mark Director review as Approved and move the submission to Ready to Publish."
+        : payload.toColumn === "supervisor-approved" &&
+            payload.report.directorStatus === "Revision"
+          ? "This will mark Director review as Approved and move the submission to Ready to Publish."
+          : "This will update the approval workflow for the selected column."
+      : payload.type === "director" && payload.directorStatus === "Approved"
+        ? "This will mark Director review as Approved and move the submission to Ready to Publish."
+        : null
 
   function handleCancel() {
     payload.onCancelled?.()
@@ -171,6 +189,7 @@ function ApprovalVerificationDialogContent({
           <DialogDescription>
             Please add a note and confirm this approval update. The action will
             be recorded under your authenticated account.
+            {actionSummary ? ` ${actionSummary}` : ""}
           </DialogDescription>
         </DialogHeader>
 

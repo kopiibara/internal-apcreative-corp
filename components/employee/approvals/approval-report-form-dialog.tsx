@@ -71,6 +71,13 @@ export function ContentReportFormDialog({
   const [isPending, startTransition] = useTransition()
   const isCreateMode = mode === "create"
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      setFormState(getInitialFormState(report))
+    }
+    onOpenChange(nextOpen)
+  }
+
   function updateField<Key extends keyof FormState>(
     key: Key,
     value: FormState[Key]
@@ -112,7 +119,7 @@ export function ContentReportFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
@@ -137,7 +144,7 @@ export function ContentReportFormDialog({
           <div className="space-y-2">
             <Label>Platform</Label>
             <Select
-              value={formState.platform}
+              value={formState.platform || undefined}
               onValueChange={(value) => updateField("platform", value)}
               disabled={isPending}
             >

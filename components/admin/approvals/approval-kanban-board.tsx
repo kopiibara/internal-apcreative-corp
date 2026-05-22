@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { toast } from "sonner"
 
 import { ApprovalDataTable } from "@/components/admin/approvals/approval-data-table"
@@ -32,7 +32,10 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs"
 import { getApprovalKanbanStage } from "@/lib/approval-kanban"
-import { filterApprovalReports } from "@/lib/approval-filters"
+import {
+  filterApprovalReports,
+  mergeApprovalReports,
+} from "@/lib/approval-filters"
 import { getVisibleApprovalKanbanColumns } from "@/lib/approval-statuses"
 import type { AccountType } from "@/lib/auth-session"
 import { cn } from "@/lib/utils"
@@ -88,10 +91,15 @@ export function ApprovalKanbanBoard({
     openVerificationDialog,
     setActiveView,
     updateApprovalInStore,
+    reconcileApprovalPatches,
   } = useApprovalStore()
 
+  useEffect(() => {
+    reconcileApprovalPatches(reports)
+  }, [reports, reconcileApprovalPatches])
+
   const currentReports = useMemo(
-    () => reports.map((report) => approvalPatches[report.id] ?? report),
+    () => mergeApprovalReports(reports, approvalPatches),
     [reports, approvalPatches]
   )
 
@@ -132,6 +140,17 @@ export function ApprovalKanbanBoard({
     [filteredReports, visibleColumns]
   )
 
+  const boardSyncKey = useMemo(
+    () =>
+      filteredReports
+        .map(
+          (report) =>
+            `${report.id}:${report.supervisorStatus}:${report.directorStatus}:${report.publishStatus}`
+        )
+        .join("|"),
+    [filteredReports]
+  )
+
   function handleMove({
     activeContainer,
     overContainer,
@@ -147,8 +166,14 @@ export function ApprovalKanbanBoard({
       return
     }
 
+    const isDirectorCompletingRevision =
+      report.supervisorStatus === "Approved" &&
+      report.directorStatus === "Revision" &&
+      (overContainer === "supervisor-approved" || overContainer === "ready-to-publish")
+
     if (
-      (overContainer === "pending" || overContainer === "supervisor-approved") &&
+      (overContainer === "pending" ||
+        (overContainer === "supervisor-approved" && !isDirectorCompletingRevision)) &&
       !canSupervisorReview
     ) {
       toast.error("You do not have permission to update Supervisor Review.")
@@ -240,6 +265,7 @@ export function ApprovalKanbanBoard({
             <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
               <KanbanBoardScroll>
                 <Kanban
+                  key={boardSyncKey}
                   value={columns}
                   onValueChange={() => undefined}
                   getItemValue={(report) => String(report.id)}
@@ -256,15 +282,23 @@ export function ApprovalKanbanBoard({
                         key={column.id}
                         id={column.id}
                         title={column.title}
-                        description={column.description}
                         reports={columns[column.id] ?? []}
                       >
                         {(columns[column.id] ?? []).map((report) => (
-                          <KanbanItem key={report.id} value={String(report.id)}>
+                          <KanbanItem
+                            key={`${report.id}-${report.supervisorStatus}-${report.directorStatus}-${report.publishStatus}`}
+                            value={String(report.id)}
+                          >
                             <KanbanItemHandle>
                               <ApprovalKanbanCard
                                 report={report}
-                                onClick={() => openDetailsSheet(report)}
+                                onClick={() => {
+                                  const merged =
+                                    currentReports.find(
+                                      (entry) => entry.id === report.id
+                                    ) ?? report
+                                  openDetailsSheet(merged)
+                                }}
                               />
                             </KanbanItemHandle>
                           </KanbanItem>
@@ -302,6 +336,8 @@ export function ApprovalKanbanBoard({
       </Tabs>
 
       <ApprovalDetailsSheet
+        reports={reports}
+        accountType={accountType}
         canSupervisorReview={canSupervisorReview}
         canDirectorReview={canDirectorReview}
         canPublishUpdate={canPublishUpdate}

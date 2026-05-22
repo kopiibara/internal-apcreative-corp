@@ -18,7 +18,7 @@ export default async function HomePage() {
   }
 
   if (isAdminAccountType(context.profile.account_type)) {
-    redirect("/admin/dashboard")
+    redirect("/admin")
   }
 
   if (isEmployeeAccountType(context.profile.account_type)) {

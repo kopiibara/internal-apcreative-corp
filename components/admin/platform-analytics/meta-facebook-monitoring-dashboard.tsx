@@ -103,10 +103,10 @@ export function MetaFacebookMonitoringDashboard({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">
-            Facebook Page Monitoring
+            Platform Analytics
           </h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Real-time Meta webhooks combined with scheduled Graph API sync for
+            Real-time Platform Analytics combined with scheduled Graph API sync for
             engagement, analytics, and activity logs.
           </p>
         </div>

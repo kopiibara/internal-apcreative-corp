@@ -107,14 +107,33 @@ export function getApprovalKanbanColumn(columnId: ApprovalKanbanColumnId) {
   return columnById.get(columnId)!
 }
 
-export function getApprovalKanbanColumnTitle(columnId: string) {
+export function getApprovalKanbanColumnTitle(
+  columnId: string,
+  accountType?: AccountType
+) {
   const column = columnById.get(columnId as ApprovalKanbanColumnId)
-  return column?.title ?? columnId
+
+  if (!column) {
+    return columnId
+  }
+
+  return getApprovalKanbanColumnDisplayTitle(column, accountType)
+}
+
+function getApprovalKanbanColumnDisplayTitle(
+  column: ApprovalKanbanColumn,
+  accountType?: AccountType
+) {
+  if (column.id === "supervisor-approved" && accountType === "DIRECTOR") {
+    return "Director Review"
+  }
+
+  return column.title
 }
 
 /**
  * All workflow columns for admin Kanban (same stages as employee publish pipeline).
- * Role-based visibility is not applied here; drag permissions remain in server actions.
+ * Column titles adapt to account type; descriptions are omitted for compact headers.
  */
 export function getVisibleApprovalKanbanColumns(options?: {
   accountType?: AccountType
@@ -122,8 +141,19 @@ export function getVisibleApprovalKanbanColumns(options?: {
   canDirectorReview?: boolean
   canPublishUpdate?: boolean
 }) {
-  void options
-  return APPROVAL_KANBAN_COLUMN_ORDER.map((id) => getApprovalKanbanColumn(id))
+  void options?.canSupervisorReview
+  void options?.canDirectorReview
+  void options?.canPublishUpdate
+
+  return APPROVAL_KANBAN_COLUMN_ORDER.map((id) => {
+    const column = getApprovalKanbanColumn(id)
+
+    return {
+      ...column,
+      title: getApprovalKanbanColumnDisplayTitle(column, options?.accountType),
+      description: "",
+    }
+  })
 }
 
 export function getStatusBadgeVariant(status: string) {

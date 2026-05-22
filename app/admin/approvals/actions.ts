@@ -220,6 +220,13 @@ export async function updateSupervisorReview(
     return authorization.error
   }
 
+  if (authorization.context.profile.account_type === "DIRECTOR") {
+    return {
+      success: false,
+      message: "You do not have permission to update Supervisor Review.",
+    }
+  }
+
   const rateLimit = await enforceRateLimit({
     bucket: "approval:update",
     limit: 60,
@@ -394,6 +401,13 @@ export async function updateDirectorReview(
 
       if (!current) {
         throw new Error("Content report was not found.")
+      }
+
+      if (
+        parsed.data.directorStatus === "Approved" &&
+        current.supervisor_status !== "Approved"
+      ) {
+        throw new Error("Supervisor approval is required before Director approval.")
       }
 
       await client.query(
@@ -737,6 +751,39 @@ export async function updateApprovalKanbanColumn(
       }
 
       if (parsed.data.toColumn === "supervisor-approved") {
+        if (
+          current.supervisor_status === "Approved" &&
+          current.director_status === "Revision" &&
+          hasDirectorAccess
+        ) {
+          await client.query(
+            `
+            UPDATE content_report
+            SET
+              director_status = 'Approved',
+              director_notes = $2,
+              director_reviewed_by_profile_id = $3,
+              director_reviewed_at = now(),
+              publish_status = 'Pending',
+              scheduled_published_date = NULL,
+              updated_at = now()
+            WHERE id = $1
+            `,
+            [parsed.data.reportId, notes, context.profile.id]
+          )
+          await insertApprovalActivityLog({
+            ...baseLog,
+            action: "kanban_director_status_update",
+            fromStatus: current.director_status,
+            toStatus: "Approved",
+            metadata: {
+              ...baseLog.metadata,
+              resolvedFromRevision: true,
+            },
+          })
+          return
+        }
+
         if (!canSupervisorReview) {
           throw new Error("You do not have permission to update Supervisor Review.")
         }
@@ -750,8 +797,8 @@ export async function updateApprovalKanbanColumn(
             supervisor_reviewed_by_profile_id = $3,
             supervisor_reviewed_at = now(),
             director_status = CASE
-              WHEN director_status IN ('Rejected', 'Revision') THEN director_status
-              ELSE 'Pending'
+              WHEN director_status IN ('Rejected', 'Revision') THEN 'Pending'
+              ELSE director_status
             END,
             publish_status = 'Pending',
             scheduled_published_date = NULL,

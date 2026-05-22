@@ -25,35 +25,43 @@ const confirmationAcceptedSchema = z.literal(true, {
   error: "Please confirm this approval update before continuing.",
 });
 
-export const updateSupervisorReviewSchema = z.object({
-  reportId: z.coerce.number().int().positive(),
-  supervisorStatus: z.enum(APPROVAL_STATUSES),
-  supervisorNotes: requiredNotesSchema,
-  confirmationAccepted: confirmationAcceptedSchema,
-});
+export const updateSupervisorReviewSchema = z
+  .object({
+    reportId: z.coerce.number().int().positive(),
+    supervisorStatus: z.enum(APPROVAL_STATUSES),
+    supervisorNotes: requiredNotesSchema,
+    confirmationAccepted: confirmationAcceptedSchema,
+  })
+  .strict();
 
-export const updateDirectorReviewSchema = z.object({
-  reportId: z.coerce.number().int().positive(),
-  directorStatus: z.enum(APPROVAL_STATUSES),
-  directorNotes: requiredNotesSchema,
-  confirmationAccepted: confirmationAcceptedSchema,
-});
+export const updateDirectorReviewSchema = z
+  .object({
+    reportId: z.coerce.number().int().positive(),
+    directorStatus: z.enum(APPROVAL_STATUSES),
+    directorNotes: requiredNotesSchema,
+    confirmationAccepted: confirmationAcceptedSchema,
+  })
+  .strict();
 
-export const updatePublishingInfoSchema = z.object({
-  reportId: z.coerce.number().int().positive(),
-  publishStatus: z.enum(PUBLISH_STATUSES),
-  scheduledPublishedDate: optionalDateSchema,
-  remarksRevisionSummary: requiredNotesSchema,
-  confirmationAccepted: confirmationAcceptedSchema,
-});
+export const updatePublishingInfoSchema = z
+  .object({
+    reportId: z.coerce.number().int().positive(),
+    publishStatus: z.enum(PUBLISH_STATUSES),
+    scheduledPublishedDate: optionalDateSchema,
+    remarksRevisionSummary: requiredNotesSchema,
+    confirmationAccepted: confirmationAcceptedSchema,
+  })
+  .strict();
 
-export const approvalKanbanColumnSchema = z.object({
-  reportId: z.coerce.number().int().positive(),
-  fromColumn: z.string().min(1),
-  toColumn: z.enum(APPROVAL_KANBAN_COLUMN_IDS),
-  notes: requiredNotesSchema,
-  confirmationAccepted: confirmationAcceptedSchema,
-});
+export const approvalKanbanColumnSchema = z
+  .object({
+    reportId: z.coerce.number().int().positive(),
+    fromColumn: z.string().min(1),
+    toColumn: z.enum(APPROVAL_KANBAN_COLUMN_IDS),
+    notes: requiredNotesSchema,
+    confirmationAccepted: confirmationAcceptedSchema,
+  })
+  .strict();
 
 export type ApprovalKanbanColumnInput = z.infer<
   typeof approvalKanbanColumnSchema

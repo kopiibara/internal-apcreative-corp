@@ -16,15 +16,16 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import {
-  EMPLOYEE_APPROVAL_KANBAN_COLUMNS,
   getApprovalKanbanStage,
+  getApprovalWorkflowStageLabel,
   getEmployeeApprovalKanbanStage,
+  getEmployeeApprovalWorkflowStageLabel,
 } from "@/lib/approval-kanban"
 import {
   getEmployeeKanbanStageConfig,
   getKanbanStageConfig,
 } from "@/lib/approval-kanban-status"
-import { getApprovalKanbanColumnTitle } from "@/lib/approval-statuses"
+import type { AccountType } from "@/lib/account-type"
 import { cn, getInitialsFromName } from "@/lib/utils"
 import type { ApprovalActivityLog, ContentReport } from "@/types/content-report"
 
@@ -99,37 +100,45 @@ function LongText({ children }: { children: React.ReactNode }) {
 type ApprovalSheetHeaderProps = {
   report: ContentReport
   variant?: "admin" | "employee"
+  accountType?: AccountType
 }
 
 function getKanbanStageLabel(
   report: ContentReport,
-  variant: "admin" | "employee"
+  variant: "admin" | "employee",
+  accountType?: AccountType
 ) {
   if (variant === "employee") {
     const stageId = getEmployeeApprovalKanbanStage(report)
-    const column = EMPLOYEE_APPROVAL_KANBAN_COLUMNS.find(
-      (column) => column.id === stageId
-    )
     const config = getEmployeeKanbanStageConfig(stageId)
     return {
-      label: column?.title ?? stageId,
-      badgeClassName: cn("border-2 shadow-none", config.badgeClassName, config.toneClassName),
+      label: getEmployeeApprovalWorkflowStageLabel(report),
+      badgeClassName: cn(
+        "border-2 shadow-none",
+        config.badgeClassName,
+        config.toneClassName
+      ),
     }
   }
 
   const stageId = getApprovalKanbanStage(report)
   const config = getKanbanStageConfig(stageId)
   return {
-    label: getApprovalKanbanColumnTitle(stageId),
-    badgeClassName: cn("border-2 shadow-none", config.badgeClassName, config.toneClassName),
+    label: getApprovalWorkflowStageLabel(report, { accountType }),
+    badgeClassName: cn(
+      "border-2 shadow-none",
+      config.badgeClassName,
+      config.toneClassName
+    ),
   }
 }
 
 export function ApprovalSheetHeader({
   report,
   variant = "admin",
+  accountType,
 }: ApprovalSheetHeaderProps) {
-  const kanbanStage = getKanbanStageLabel(report, variant)
+  const kanbanStage = getKanbanStageLabel(report, variant, accountType)
 
   return (
     <>

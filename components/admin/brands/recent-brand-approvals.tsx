@@ -17,7 +17,7 @@ const brandApprovalStages: {
     { id: "pending", title: "Pending" },
     { id: "revision", title: "Revision" },
     { id: "rejected", title: "Rejected" },
-    { id: "supervisor-approved", title: "Supervisor Approved" },
+    { id: "supervisor-approved", title: "Director Review" },
     { id: "ready-to-publish", title: "Ready to Publish" },
     { id: "scheduled", title: "Scheduled" },
     { id: "published", title: "Published" },

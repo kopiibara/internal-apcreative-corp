@@ -21,7 +21,11 @@ export function ContentTypeSelect({
   disabled,
 }: ContentTypeSelectProps) {
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+    <Select
+      value={value || undefined}
+      onValueChange={onValueChange}
+      disabled={disabled}
+    >
       <SelectTrigger>
         <SelectValue placeholder="Select content type" />
       </SelectTrigger>

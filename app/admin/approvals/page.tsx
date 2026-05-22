@@ -6,6 +6,8 @@ import {
   requirePermission,
 } from "@/lib/permissions"
 
+export const dynamic = "force-dynamic"
+
 type ApprovalsPageProps = {
   searchParams: Promise<{
     approvalId?: string
