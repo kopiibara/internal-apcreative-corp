@@ -12,6 +12,11 @@ import { EmployeeApprovalFilters } from "@/components/employee/approvals/approva
 import { EmployeeApprovalKanbanCard } from "@/components/employee/approvals/approval-kanban-card"
 import { EmployeeApprovalKanbanColumn } from "@/components/employee/approvals/approval-kanban-column"
 import { EmployeeApprovalTableView } from "@/components/employee/approvals/approval-table-view"
+import { BoardSection } from "@/components/shared/board-section"
+import {
+  KanbanBoardScroll,
+  KanbanColumnsRow,
+} from "@/components/shared/kanban-board-scroll"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +29,6 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Tabs,
   TabsContent,
@@ -132,8 +136,8 @@ export function EmployeeApprovalKanbanBoard({
 
   return (
     <div className="min-h-0 min-w-0 space-y-4 overflow-hidden">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-normal">
             Approval Page
           </h1>
@@ -143,19 +147,20 @@ export function EmployeeApprovalKanbanBoard({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center justify-start gap-3 lg:shrink-0 lg:justify-end">
           <Tabs
             value={activeView}
             onValueChange={(value) =>
               setActiveView(value as "kanban" | "table")
             }
+            className="w-auto shrink-0"
           >
             <TabsList>
-              <TabsTrigger value="kanban">Kanban View</TabsTrigger>
+              <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
               <TabsTrigger value="table">Table View</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button onClick={openCreateDialog}>
+          <Button className="shrink-0" onClick={openCreateDialog}>
             <Plus className="size-4" />
             Create Approval Report
           </Button>
@@ -167,8 +172,8 @@ export function EmployeeApprovalKanbanBoard({
         onValueChange={(value) => setActiveView(value as "kanban" | "table")}
       >
         <TabsContent value="kanban" className="mt-0 min-w-0 overflow-hidden">
-          <Card className="w-full min-w-0 overflow-hidden border-0 bg-card shadow-none">
-            <CardHeader className="gap-3">
+          <BoardSection className="w-full min-w-0 overflow-hidden  pb-1 gap-2">
+            <CardHeader className="min-w-0 shrink-0 gap-3">
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="text-card-foreground">My submissions</CardTitle>
                 {isPending ? (
@@ -177,15 +182,14 @@ export function EmployeeApprovalKanbanBoard({
               </div>
               <EmployeeApprovalFilters reports={reports} />
             </CardHeader>
-            <CardContent className="min-h-0 min-w-0 overflow-hidden">
-              <ScrollArea className="w-full min-w-0 pb-3" scrollbars="horizontal">
-                <div className="flex h-[calc(100vh-260px)] min-h-[420px] min-w-max gap-4 p-1">
+            <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
+              <KanbanBoardScroll>
+                <KanbanColumnsRow className="px-6 pb-1">
                   {EMPLOYEE_APPROVAL_KANBAN_COLUMNS.map((column) => (
                     <EmployeeApprovalKanbanColumn
                       key={column.id}
                       id={column.id}
                       title={column.title}
-                      description={column.description}
                       count={columns[column.id]?.length ?? 0}
                     >
                       {(columns[column.id] ?? []).map((report) => (
@@ -197,10 +201,10 @@ export function EmployeeApprovalKanbanBoard({
                       ))}
                     </EmployeeApprovalKanbanColumn>
                   ))}
-                </div>
-              </ScrollArea>
+                </KanbanColumnsRow>
+              </KanbanBoardScroll>
             </CardContent>
-          </Card>
+          </BoardSection>
         </TabsContent>
 
         <TabsContent value="table" className="mt-0 min-w-0 overflow-hidden">
@@ -263,9 +267,9 @@ export function EmployeeApprovalKanbanBoard({
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Keep Report</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               disabled={isPending}
               onClick={handleCancelReport}
-              className="bg-destructive/10 text-destructive hover:bg-destructive/20"
             >
               {isPending ? "Cancelling..." : "Cancel Report"}
             </AlertDialogAction>

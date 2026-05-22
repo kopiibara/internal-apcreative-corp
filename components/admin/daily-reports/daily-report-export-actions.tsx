@@ -10,7 +10,7 @@ export function DailyReportExportActions() {
     <div className="flex flex-wrap gap-2">
       <Button
         type="button"
-        variant="outline"
+        variant="neutral"
         size="sm"
         onClick={() => toast.message("Export will be available soon.")}
       >
@@ -19,7 +19,7 @@ export function DailyReportExportActions() {
       </Button>
       <Button
         type="button"
-        variant="outline"
+        variant="neutral"
         size="sm"
         onClick={() => toast.message("Export will be available soon.")}
       >
@@ -28,7 +28,7 @@ export function DailyReportExportActions() {
       </Button>
       <Button
         type="button"
-        variant="outline"
+        variant="neutral"
         size="sm"
         onClick={() =>
           toast.message("Summary generation will be available soon.")

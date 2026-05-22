@@ -1,0 +1,107 @@
+import {
+  Timeline,
+  TimelineContent,
+  TimelineDate,
+  TimelineHeader,
+  TimelineIndicator,
+  TimelineItem,
+  TimelineSeparator,
+  TimelineTitle,
+} from "@/components/reui/timeline"
+import { StatusBadge } from "@/components/shared/status-badge"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
+import type { ApprovalActivityLog } from "@/types/content-report"
+
+type ApprovalActivityTimelineProps = {
+  logs: ApprovalActivityLog[]
+  className?: string
+  maxHeightClassName?: string
+}
+
+const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+})
+
+function getActionLabel(action: string) {
+  const labels: Record<string, string> = {
+    supervisor_review_update: "Marketing Supervisor updated review",
+    director_review_update: "Director updated review",
+    publishing_update: "Publishing details updated",
+    kanban_supervisor_status_update: "Supervisor status changed",
+    kanban_director_status_update: "Director status changed",
+    kanban_publishing_update: "Publishing status changed",
+  }
+
+  return labels[action] ?? action.replaceAll("_", " ")
+}
+
+function getActorRole(log: ApprovalActivityLog) {
+  return log.actorPosition || log.actorAccountType
+}
+
+export function ApprovalActivityTimeline({
+  logs,
+  className,
+  maxHeightClassName = "h-[min(320px,45vh)] max-h-[min(320px,45vh)] min-h-0",
+}: ApprovalActivityTimelineProps) {
+  if (logs.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">No activity logged yet.</p>
+    )
+  }
+
+  return (
+    <ScrollArea
+      className={cn("w-full min-h-0", maxHeightClassName)}
+      viewportClassName="min-h-0"
+      scrollbars="vertical"
+    >
+      <Timeline defaultValue={logs.length} className={className ?? "w-full min-w-0 pr-3"}>
+        {logs.map((log, index) => (
+          <TimelineItem key={log.id} step={index + 1}>
+            <TimelineHeader>
+              <TimelineDate>
+                {dateTimeFormatter.format(new Date(log.createdAt))}
+              </TimelineDate>
+              <TimelineTitle>{getActionLabel(log.action)}</TimelineTitle>
+            </TimelineHeader>
+            <TimelineIndicator />
+            <TimelineSeparator />
+            <TimelineContent className="min-w-0 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs">
+                {log.fromStatus ? (
+                  <StatusBadge
+                    status={log.fromStatus}
+                    type="approval"
+                    prefix="From"
+                  />
+                ) : null}
+                {log.toStatus ? (
+                  <StatusBadge
+                    status={log.toStatus}
+                    type="approval"
+                    prefix="To"
+                  />
+                ) : null}
+              </div>
+              {log.notes ? (
+                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                  {log.notes}
+                </p>
+              ) : null}
+            </TimelineContent>
+          </TimelineItem>
+        ))}
+      </Timeline>
+    </ScrollArea>
+  )
+}

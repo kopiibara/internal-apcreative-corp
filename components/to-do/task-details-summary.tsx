@@ -1,5 +1,6 @@
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
 import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
@@ -17,64 +18,84 @@ function formatDate(value: string | null) {
   return value ? dateFormatter.format(new Date(value)) : "Not set"
 }
 
+function DetailField({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <div className="text-sm text-foreground">{children}</div>
+    </div>
+  )
+}
+
 export function TaskDetailsSummary({
   assignment,
 }: {
   assignment: TaskAssignmentRecord
 }) {
   return (
-    <Card className="rounded-md px-2 py-1">
-      <CardHeader className="p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <CardTitle className="mr-auto text-base">{assignment.title}</CardTitle>
-          <TaskTypeBadge taskType={assignment.taskType} />
-          <TaskStatusBadge status={assignment.status} />
-        </div>
+    <Card className="gap-0 py-0 shadow-none">
+      <CardHeader className="items-center border-b-2 border-border px-4 py-3">
+        <CardTitle className="text-sm font-semibold">Task Details</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4 p-4 pt-0 text-sm">
-        {assignment.description ? (
-          <p className="leading-relaxed text-muted-foreground">
-            {assignment.description}
-          </p>
-        ) : null}
+      <CardContent className="space-y-4 p-4">
+        <div className="space-y-2">
+          <div>
+            <p className="text-lg font-bold leading-snug">{assignment.title}</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              {assignment.description || "No task description provided."}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <TaskTypeBadge taskType={assignment.taskType} />
+            <TaskStatusBadge status={assignment.status} />
+            {assignment.priority ? (
+              <StatusBadge
+                status={assignment.priority}
+                type="priority"
+                prefix="Priority"
+              />
+            ) : null}
+            <StatusBadge
+              status={assignment.proofUrl || assignment.proofNote ? "SUBMITTED" : "MISSING"}
+              type="proof"
+              prefix="Proof"
+            />
+          </div>
+        </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <p>
-            <span className="text-muted-foreground">Assignee:</span>{" "}
-            {assignment.assignedToName}
-          </p>
-          <p>
-            <span className="text-muted-foreground">Created by:</span>{" "}
-            {assignment.createdByName}
-          </p>
-          <p>
-            <span className="text-muted-foreground">Due:</span>{" "}
-            {formatDate(assignment.dueDate)}
-          </p>
-          <p>
-            <span className="text-muted-foreground">Created:</span>{" "}
-            {formatDate(assignment.createdAt)}
-          </p>
-          <p>
-            <span className="text-muted-foreground">Reviewed by:</span>{" "}
-            {assignment.reviewedByName ?? "Not reviewed"}
-          </p>
-          <p>
-            <span className="text-muted-foreground">Reviewed at:</span>{" "}
-            {formatDate(assignment.reviewedAt)}
-          </p>
+          <DetailField label="Assignee">{assignment.assignedToName}</DetailField>
+          <DetailField label="Created by">{assignment.createdByName}</DetailField>
+          <DetailField label="Due date">{formatDate(assignment.dueDate)}</DetailField>
+          <DetailField label="Proof status">
+            {assignment.proofUrl || assignment.proofNote ? "Submitted" : "Not submitted"}
+          </DetailField>
+
         </div>
 
-        {assignment.priority ? (
-          <Badge variant="outline">Priority: {assignment.priority}</Badge>
-        ) : null}
+        <Separator />
 
-        <TaskAssigneeBrands brands={assignment.assigneeBrands} />
+        <DetailField label="Brand access">
+          <TaskAssigneeBrands brands={assignment.assigneeBrands} />
+        </DetailField>
 
         {assignment.revisionNote ? (
-          <p className="rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3 text-yellow-300">
-            {assignment.revisionNote}
-          </p>
+          <div className="rounded-lg border-2 border-orange-500 bg-orange-100 p-3 text-sm leading-relaxed text-orange-950 dark:bg-orange-950/40 dark:text-orange-200">
+            <p className="text-xs font-medium uppercase tracking-wide">
+              Revision note
+            </p>
+            <p className="mt-1 whitespace-pre-wrap break-words">
+              {assignment.revisionNote}
+            </p>
+          </div>
         ) : null}
       </CardContent>
     </Card>

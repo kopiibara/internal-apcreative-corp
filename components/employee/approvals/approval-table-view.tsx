@@ -12,6 +12,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -44,14 +45,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   year: "numeric",
 })
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <Badge variant={status === "Approved" ? "default" : "outline"}>
-      {status}
-    </Badge>
-  )
-}
 
 function getDateLabel(value: string | null) {
   return value ? dateFormatter.format(new Date(value)) : "Not scheduled"
@@ -154,14 +147,18 @@ function getContentReportColumns({
       header: ({ column }) => (
         <SortButton label="Marketing Supervisor Status" column={column} />
       ),
-      cell: ({ row }) => <StatusBadge status={row.original.supervisorStatus} />,
+      cell: ({ row }) => (
+        <StatusBadge status={row.original.supervisorStatus} type="approval" />
+      ),
     },
     {
       accessorKey: "directorStatus",
       header: ({ column }) => (
         <SortButton label="Director of Marketing Status" column={column} />
       ),
-      cell: ({ row }) => <StatusBadge status={row.original.directorStatus} />,
+      cell: ({ row }) => (
+        <StatusBadge status={row.original.directorStatus} type="approval" />
+      ),
     },
     {
       id: "reviewNotes",
@@ -209,7 +206,9 @@ function getContentReportColumns({
       header: ({ column }) => (
         <SortButton label="Publish Status" column={column} />
       ),
-      cell: ({ row }) => <StatusBadge status={row.original.publishStatus} />,
+      cell: ({ row }) => (
+        <StatusBadge status={row.original.publishStatus} type="publish" />
+      ),
     },
     {
       accessorKey: "scheduledPublishedDate",
@@ -311,9 +310,9 @@ export function EmployeeApprovalTableView({
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -354,7 +353,7 @@ export function EmployeeApprovalTableView({
         </p>
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="neutral"
             size="sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
@@ -362,7 +361,7 @@ export function EmployeeApprovalTableView({
             Previous
           </Button>
           <Button
-            variant="outline"
+            variant="neutral"
             size="sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}

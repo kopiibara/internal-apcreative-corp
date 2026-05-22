@@ -1,10 +1,10 @@
 "use client"
 
+import { StatusBadge } from "@/components/shared/status-badge"
 import { BrandApprovalSummary } from "@/components/admin/brands/brand-approval-summary"
 import { BrandLogo } from "@/components/admin/brands/brand-logo"
 import { RecentBrandApprovals } from "@/components/admin/brands/recent-brand-approvals"
 import type { BrandWithAnalytics } from "@/components/admin/brands/types"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Sheet,
@@ -47,9 +47,10 @@ export function BrandAnalyticsSheet({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-lg font-semibold">{brand.name}</h2>
-                    <Badge variant={brand.isActive ? "default" : "outline"}>
-                      {brand.isActive ? "Active" : "Inactive"}
-                    </Badge>
+                    <StatusBadge
+                      status={brand.isActive ? "ACTIVE" : "INACTIVE"}
+                      type="brand"
+                    />
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     /{brand.slug}

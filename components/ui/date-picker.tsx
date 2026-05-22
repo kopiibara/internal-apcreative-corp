@@ -10,7 +10,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { neoFilterTriggerClass } from "@/lib/neo-ui"
 import { cn } from "@/lib/utils"
 import {
   formatDateKeyInPhilippines,
@@ -52,10 +51,9 @@ export function DatePicker({
       <PopoverTrigger asChild>
         <Button
           type="button"
-          variant="outline"
+          variant="neutral"
           disabled={disabled}
           className={cn(
-            neoFilterTriggerClass,
             "min-w-[180px] justify-start gap-2 font-normal",
             !value && "text-muted-foreground",
             className
@@ -70,6 +68,7 @@ export function DatePicker({
       <PopoverContent className="w-auto p-2" align="start" sideOffset={8}>
         <Calendar
           mode="single"
+          className="border-0 shadow-none"
           selected={selectedDate ?? undefined}
           onSelect={(date) => {
             if (!date) {

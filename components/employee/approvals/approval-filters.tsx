@@ -160,7 +160,7 @@ export function EmployeeApprovalFilters({ reports }: EmployeeApprovalFiltersProp
 
         <Button
           type="button"
-          variant="outline"
+          variant="neutral"
           size="sm"
           className="h-9 whitespace-nowrap"
           onClick={resetContentReportFilters}

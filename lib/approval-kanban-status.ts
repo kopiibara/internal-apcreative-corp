@@ -14,7 +14,7 @@ export const KANBAN_STAGE_CONFIG = {
       "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     badgeClassName: "border-emerald-500/30 bg-emerald-500/10",
   },
-  approved: {
+  "ready-to-publish": {
     icon: "BadgeCheck",
     toneClassName:
       "border-lime-500/30 bg-lime-500/10 text-lime-700 dark:text-lime-300",
@@ -64,7 +64,7 @@ const EMPLOYEE_KANBAN_STAGE_CONFIG = {
   "director-review": KANBAN_STAGE_CONFIG["supervisor-approved"],
   revision: KANBAN_STAGE_CONFIG.revision,
   rejected: KANBAN_STAGE_CONFIG.rejected,
-  "ready-to-publish": KANBAN_STAGE_CONFIG.approved,
+  "ready-to-publish": KANBAN_STAGE_CONFIG["ready-to-publish"],
   scheduled: KANBAN_STAGE_CONFIG.scheduled,
   published: KANBAN_STAGE_CONFIG.published,
 } satisfies Record<

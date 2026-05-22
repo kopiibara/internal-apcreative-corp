@@ -29,3 +29,61 @@ Bad:
 ```ts
 const statuses = ["Pending", "Approved", "Rejected", "Revision"];
 ```
+
+---
+
+## Staff Accountability Scoring Rules
+
+Staff Accountability must keep completion rate and points separate.
+
+Completion rate answers: how many assigned graded tasks did the employee
+complete?
+
+```txt
+Completed graded tasks / total assigned graded tasks * 100
+```
+
+Points answer: how valuable were the completed graded tasks based on priority?
+
+```txt
+Sum of priority points from completed graded tasks only
+```
+
+Use the shared scoring helpers in `lib/performance-scoring.ts` and
+`lib/daily-report-metrics.ts` for dashboards, charts, leaderboards, summary
+cards, and reports. Do not calculate Staff Accountability scoring inside React
+components.
+
+Priority point mapping:
+
+```txt
+LOW = 2 pts
+MEDIUM = 5 pts
+HIGH = 10 pts
+URGENT = 15 pts
+```
+
+Included tasks:
+
+- `GRADED` task assignments only.
+
+Excluded tasks:
+
+- `NON_GRADED` personal tasks.
+- Reminders.
+- Approval requests, except for separate approval-count summaries.
+
+Completed status:
+
+- `DONE` counts as completed and earns priority points.
+
+Incomplete statuses:
+
+- `ASSIGNED`, `PENDING`, `REVISION`, and `BLOCKER` do not count as completed and
+  earn `0` points.
+
+Example:
+
+```txt
+8/10 completed low-priority graded tasks = 80% completion and 16 pts, not 80 pts.
+```

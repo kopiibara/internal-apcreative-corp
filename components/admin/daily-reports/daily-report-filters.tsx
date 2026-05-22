@@ -2,16 +2,10 @@
 
 import { RotateCcw } from "lucide-react"
 
+import { FilterBadge } from "@/components/shared/filter-badge"
+import { FilterBadgeGroup } from "@/components/shared/filter-badge-group"
 import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   ALL_BRANDS_FILTER,
   ALL_EMPLOYEES_FILTER,
@@ -44,56 +38,56 @@ export function DailyReportFilters({
   } = useDailyReportStore()
 
   return (
-    <ScrollArea
-      className="relative z-20 w-full pb-2"
-      scrollbars="horizontal"
-    >
-      <div className="flex w-max min-w-full items-center gap-2 pr-3">
+    <div className="relative z-20 min-w-0 space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <DatePicker
           value={selectedDate}
           onChange={setSelectedDate}
           disabled={disabled}
         />
-
-        <Select
-          value={selectedBrandId}
-          onValueChange={setSelectedBrandId}
-          disabled={disabled}
-        >
-          <SelectTrigger className="min-w-[160px]">
-            <SelectValue placeholder="Brand" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_BRANDS_FILTER}>All Brands</SelectItem>
+        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
+          <FilterBadgeGroup label="Brands" className="min-w-0">
+            <FilterBadge
+              active={selectedBrandId === ALL_BRANDS_FILTER}
+              disabled={disabled}
+              onClick={() => setSelectedBrandId(ALL_BRANDS_FILTER)}
+            >
+              All Brands
+            </FilterBadge>
             {brands.map((brand) => (
-              <SelectItem key={brand.id} value={String(brand.id)}>
+              <FilterBadge
+                key={brand.id}
+                active={selectedBrandId === String(brand.id)}
+                disabled={disabled}
+                onClick={() => setSelectedBrandId(String(brand.id))}
+              >
                 {brand.name}
-              </SelectItem>
+              </FilterBadge>
             ))}
-          </SelectContent>
-        </Select>
+          </FilterBadgeGroup>
 
-        <Select
-          value={selectedEmployeeId}
-          onValueChange={setSelectedEmployeeId}
-          disabled={disabled}
-        >
-          <SelectTrigger className="min-w-[180px]">
-            <SelectValue placeholder="Employee" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_EMPLOYEES_FILTER}>All Employees</SelectItem>
+          <FilterBadgeGroup label="Employees" className="min-w-0">
+            <FilterBadge
+              active={selectedEmployeeId === ALL_EMPLOYEES_FILTER}
+              disabled={disabled}
+              onClick={() => setSelectedEmployeeId(ALL_EMPLOYEES_FILTER)}
+            >
+              All Employees
+            </FilterBadge>
             {employees.map((employee) => (
-              <SelectItem key={employee.id} value={String(employee.id)}>
+              <FilterBadge
+                key={employee.id}
+                active={selectedEmployeeId === String(employee.id)}
+                disabled={disabled}
+                onClick={() => setSelectedEmployeeId(String(employee.id))}
+              >
                 {employee.fullName}
-              </SelectItem>
+              </FilterBadge>
             ))}
-          </SelectContent>
-        </Select>
-
+          </FilterBadgeGroup>
+        </div>
         <Button
           type="button"
-          variant="outline"
           size="sm"
           className="h-9"
           onClick={resetDailyReportFilters}
@@ -103,6 +97,8 @@ export function DailyReportFilters({
           Reset
         </Button>
       </div>
-    </ScrollArea>
+
+
+    </div>
   )
 }

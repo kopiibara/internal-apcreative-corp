@@ -1,3 +1,4 @@
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { TaskAssignmentRecord } from "@/lib/tasks"
 
@@ -18,41 +19,66 @@ export function TaskBlockerSummary({
 }: {
   assignment: TaskAssignmentRecord
 }) {
+  const hasBlocker = Boolean(assignment.blockerNote)
+
   return (
-    <Card className="rounded-md px-2 py-1">
-      <CardHeader className="p-4">
-        <CardTitle className="text-sm">Blocker</CardTitle>
+    <Card className="flex min-h-0 flex-col gap-0 py-0 shadow-none">
+      <CardHeader className="shrink-0 items-center border-b-2 border-border px-4 py-3">
+        <CardTitle className="text-sm font-semibold">Blocker / Issue Details</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 p-4 pt-0 text-sm">
-        {assignment.blockerNote ? (
-          <>
-            <p className="rounded-md border border-destructive/30 bg-destructive/5 p-3 leading-relaxed text-destructive">
+      <CardContent className="flex min-h-0 flex-1 flex-col p-4 text-sm">
+        {hasBlocker ? (
+          <div className="space-y-3">
+            <p className="whitespace-pre-wrap break-words rounded-lg border-2 border-red-600 bg-red-100 p-3 leading-relaxed text-red-900 dark:bg-red-950/40 dark:text-red-200">
               {assignment.blockerNote}
             </p>
-            <p>
-              <span className="text-muted-foreground">Reported by:</span>{" "}
-              {assignment.blockerReportedByName ?? "Not recorded"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Reported at:</span>{" "}
-              {formatDate(assignment.blockerReportedAt)}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Confirmed by:</span>{" "}
-              {assignment.blockerConfirmedByName ?? "Not confirmed"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Confirmed at:</span>{" "}
-              {formatDate(assignment.blockerConfirmedAt)}
-            </p>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Reported by
+                </p>
+                <p>{assignment.blockerReportedByName ?? "Not recorded"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Reported at
+                </p>
+                <p>{formatDate(assignment.blockerReportedAt)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Confirmed by
+                </p>
+                <p>{assignment.blockerConfirmedByName ?? "Not confirmed"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Confirmed at
+                </p>
+                <p>{formatDate(assignment.blockerConfirmedAt)}</p>
+              </div>
+            </div>
             {assignment.blockerResolutionNote ? (
-              <p className="rounded-md border bg-muted/20 p-3 leading-relaxed">
-                {assignment.blockerResolutionNote}
+              <div className="space-y-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Resolution
+                </p>
+                <p className="whitespace-pre-wrap break-words rounded-lg border-2 border-border bg-muted/20 p-3 leading-relaxed">
+                  {assignment.blockerResolutionNote}
+                </p>
+              </div>
+            ) : null}
+            {assignment.dueDate ? (
+              <p>
+                <span className="text-muted-foreground">Current due date:</span>{" "}
+                {formatDate(assignment.dueDate)}
               </p>
             ) : null}
-          </>
+          </div>
         ) : (
-          <p className="text-muted-foreground">No blocker has been reported.</p>
+          <div className="flex min-h-[160px] flex-1 items-center justify-center rounded-lg border-2 border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            No blocker reported.
+          </div>
         )}
       </CardContent>
     </Card>

@@ -112,7 +112,7 @@ export function DashboardShell({
                     }}
                 />
 
-                <SidebarInset>
+                <SidebarInset className="min-w-0">
                     <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center justify-between gap-2 border-b-2 border-border bg-background/95 px-4 backdrop-blur-sm">
                         <div className="flex min-w-0 items-center gap-3">
                             <SidebarTrigger />
@@ -124,7 +124,7 @@ export function DashboardShell({
 
                         <div className="flex min-w-0 items-center gap-2">
                             <Badge
-                                variant="outline"
+                                variant="neutral"
                                 className="h-9 border-2 px-4 text-sm font-medium tabular-nums"
                             >
                                 {dateTimeLabel}
@@ -132,7 +132,7 @@ export function DashboardShell({
 
                             {/*
                                    <Button
-                                variant="outline"
+                                variant="neutral"
                                 size="sm"
                                 onClick={handleExport}
                                 className="h-9 gap-2"

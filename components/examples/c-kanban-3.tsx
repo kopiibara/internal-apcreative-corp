@@ -25,11 +25,11 @@ interface Task {
   title: string
   label: string
   labelVariant:
-    | "primary-light"
-    | "success-light"
-    | "warning-light"
-    | "destructive-light"
-    | "info-light"
+  | "primary-light"
+  | "success-light"
+  | "warning-light"
+  | "destructive-light"
+  | "info-light"
 }
 
 const COLUMNS: Record<string, { title: string; icon: React.ReactNode }> = {
@@ -142,7 +142,7 @@ export function Pattern() {
                 <FrameHeader className="flex flex-row items-center gap-2">
                   {col.icon}
                   <FrameTitle>{col.title}</FrameTitle>
-                  <Badge variant="outline" size="sm" className="ml-auto">
+                  <Badge variant="neutral" size="sm" className="ml-auto">
                     {tasks.length}
                   </Badge>
                 </FrameHeader>

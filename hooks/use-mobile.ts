@@ -1,16 +1,12 @@
-"use client"
-
 import * as React from "react"
 
 const MOBILE_BREAKPOINT = 768
-const MOBILE_MEDIA_QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
 
 function subscribe(callback: () => void) {
-  const mediaQueryList = window.matchMedia(MOBILE_MEDIA_QUERY)
+  const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
 
-  mediaQueryList.addEventListener("change", callback)
-
-  return () => mediaQueryList.removeEventListener("change", callback)
+  mediaQuery.addEventListener("change", callback)
+  return () => mediaQuery.removeEventListener("change", callback)
 }
 
 function getSnapshot() {

@@ -148,7 +148,7 @@ function AssignmentRow({
         Active
       </label>
 
-      <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
+      <Button type="button" variant="destructive" size="sm" onClick={onRemove}>
         <Trash2 className="size-4" />
         {removeLabel}
       </Button>
@@ -313,7 +313,7 @@ function EditAccessRow({
 
       <Button
         type="button"
-        variant="ghost"
+        variant="destructive"
         size="sm"
         disabled={isPending || !access.isActive}
         onClick={handleRemove}

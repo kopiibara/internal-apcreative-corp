@@ -18,7 +18,7 @@ export function TaskAssigneeBrands({ brands, className }: TaskAssigneeBrandsProp
       {brands.map((brand) => (
         <Badge
           key={brand.brandId}
-          variant={brand.isPrimary ? "default" : "outline"}
+          variant={brand.isPrimary ? "default" : "neutral"}
           className="text-[10px]"
         >
           {brand.brandName}
