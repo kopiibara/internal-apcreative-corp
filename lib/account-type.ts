@@ -14,7 +14,10 @@ export type AccountType = (typeof accountTypes)[number]
 
 const employeeAccountTypes: AccountType[] = ["CLIENT", "EMPLOYEE"]
 
+/** Admin-side account types that use the admin dashboard and permission bypass. */
 export const ADMIN_ACCOUNT_TYPES = [
+  "FULL_STACK_DEVELOPER",
+  "DIRECTOR",
   "SUPERVISOR",
   "MANAGER",
   "EXECUTIVE",
@@ -22,11 +25,7 @@ export const ADMIN_ACCOUNT_TYPES = [
 
 export type AdminAccountType = (typeof ADMIN_ACCOUNT_TYPES)[number]
 
-const adminAccountTypes: AccountType[] = [
-  "FULL_STACK_DEVELOPER",
-  "DIRECTOR",
-  ...ADMIN_ACCOUNT_TYPES,
-]
+const adminAccountTypes: AccountType[] = [...ADMIN_ACCOUNT_TYPES]
 
 type RoleRecord = {
   slug: string
@@ -104,8 +103,9 @@ export function derivePositionFromRoles(roles: RoleRecord[]): string | null {
   return roles[0]?.name ?? null
 }
 
+/** Active admin-side profiles bypass role-based permission SQL checks. */
 export function hasAdminPermissionBypass(accountType: AccountType) {
-  return (ADMIN_ACCOUNT_TYPES as readonly AccountType[]).includes(accountType)
+  return isAdminAccountType(accountType)
 }
 
 export function isAdminAccountType(accountType: AccountType) {

@@ -9,10 +9,10 @@ export const KANBAN_STAGE_CONFIG = {
     badgeClassName: "border-muted-foreground/30 bg-muted/40",
   },
   "supervisor-approved": {
-    icon: "CheckCircle",
+    icon: "Clock",
     toneClassName:
-      "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    badgeClassName: "border-emerald-500/30 bg-emerald-500/10",
+      "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200",
+    badgeClassName: "border-amber-500/30 bg-amber-500/10",
   },
   "ready-to-publish": {
     icon: "BadgeCheck",
@@ -61,7 +61,12 @@ const EMPLOYEE_KANBAN_STAGE_CONFIG = {
       "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
     badgeClassName: "border-sky-500/30 bg-sky-500/10",
   },
-  "director-review": KANBAN_STAGE_CONFIG["supervisor-approved"],
+  "director-review": {
+    icon: "Clock",
+    toneClassName:
+      "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200",
+    badgeClassName: "border-amber-500/30 bg-amber-500/10",
+  },
   revision: KANBAN_STAGE_CONFIG.revision,
   rejected: KANBAN_STAGE_CONFIG.rejected,
   "ready-to-publish": KANBAN_STAGE_CONFIG["ready-to-publish"],

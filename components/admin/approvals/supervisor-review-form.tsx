@@ -19,10 +19,28 @@ import type { ContentReport } from "@/types/content-report"
 type SupervisorReviewFormProps = {
   report: ContentReport
   canEdit: boolean
-  onSaved?: () => void
+  onSaved?: (updatedApproval?: ContentReport) => void
 }
 
 export function SupervisorReviewForm({
+  report,
+  canEdit,
+  onSaved,
+}: SupervisorReviewFormProps) {
+  const approvalPatches = useApprovalStore((state) => state.approvalPatches)
+  const latestReport = approvalPatches[report.id] ?? report
+
+  return (
+    <SupervisorReviewFormFields
+      key={`${latestReport.id}-${latestReport.supervisorStatus}-${latestReport.supervisorNotes ?? ""}`}
+      report={latestReport}
+      canEdit={canEdit}
+      onSaved={onSaved}
+    />
+  )
+}
+
+function SupervisorReviewFormFields({
   report,
   canEdit,
   onSaved,

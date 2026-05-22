@@ -58,7 +58,10 @@ import {
   canEditPublishingFields,
   type ContentReport,
 } from "@/types/content-report"
-import { filterApprovalReports } from "@/lib/approval-filters"
+import {
+  filterApprovalReports,
+  mergeApprovalReports,
+} from "@/lib/approval-filters"
 import { useApprovalStore } from "@/stores/use-approval-store"
 
 type ApprovalDataTableProps = {
@@ -112,12 +115,17 @@ function SupervisorReviewDialog({
   open,
   onOpenChange,
   canEdit,
+  onApprovalUpdated,
 }: {
   report: ContentReport
   open: boolean
   onOpenChange: (open: boolean) => void
   canEdit: boolean
+  onApprovalUpdated?: (approval: ContentReport) => void
 }) {
+  const approvalPatches = useApprovalStore((state) => state.approvalPatches)
+  const resolvedReport = approvalPatches[report.id] ?? report
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
@@ -128,9 +136,14 @@ function SupervisorReviewDialog({
           </DialogDescription>
         </DialogHeader>
         <SupervisorReviewForm
-          report={report}
+          report={resolvedReport}
           canEdit={canEdit}
-          onSaved={() => onOpenChange(false)}
+          onSaved={(updatedApproval) => {
+            if (updatedApproval) {
+              onApprovalUpdated?.(updatedApproval)
+            }
+            onOpenChange(false)
+          }}
         />
       </DialogContent>
     </Dialog>
@@ -142,12 +155,17 @@ function DirectorReviewDialog({
   open,
   onOpenChange,
   canEdit,
+  onApprovalUpdated,
 }: {
   report: ContentReport
   open: boolean
   onOpenChange: (open: boolean) => void
   canEdit: boolean
+  onApprovalUpdated?: (approval: ContentReport) => void
 }) {
+  const approvalPatches = useApprovalStore((state) => state.approvalPatches)
+  const resolvedReport = approvalPatches[report.id] ?? report
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
@@ -158,9 +176,14 @@ function DirectorReviewDialog({
           </DialogDescription>
         </DialogHeader>
         <DirectorReviewForm
-          report={report}
+          report={resolvedReport}
           canEdit={canEdit}
-          onSaved={() => onOpenChange(false)}
+          onSaved={(updatedApproval) => {
+            if (updatedApproval) {
+              onApprovalUpdated?.(updatedApproval)
+            }
+            onOpenChange(false)
+          }}
         />
       </DialogContent>
     </Dialog>
@@ -403,6 +426,8 @@ export function ApprovalDataTable({
   const [sorting, setSorting] = useState<SortingState>([])
   const {
     selectedApproval,
+    approvalPatches,
+    updateApprovalInStore,
     searchQuery,
     selectedBrandFilter,
     selectedContentTypeFilter,
@@ -422,8 +447,13 @@ export function ApprovalDataTable({
     closePublishingDialog,
   } = useApprovalStore()
 
+  const currentReports = useMemo(
+    () => mergeApprovalReports(reports, approvalPatches),
+    [reports, approvalPatches]
+  )
+
   const filteredReports = useMemo(() => {
-    return filterApprovalReports(reports, {
+    return filterApprovalReports(currentReports, {
       searchQuery,
       selectedBrandFilter,
       selectedContentTypeFilter,
@@ -433,7 +463,7 @@ export function ApprovalDataTable({
       selectedPublishStatusFilter,
     })
   }, [
-    reports,
+    currentReports,
     searchQuery,
     selectedBrandFilter,
     selectedContentTypeFilter,
@@ -554,10 +584,13 @@ export function ApprovalDataTable({
     <>
       {isSupervisorReviewDialogOpen && selectedApproval ? (
         <SupervisorReviewDialog
-          key={`supervisor-${selectedApproval.id}`}
-          report={selectedApproval}
+          key={`supervisor-${(approvalPatches[selectedApproval.id] ?? selectedApproval).id}-${(approvalPatches[selectedApproval.id] ?? selectedApproval).supervisorStatus}`}
+          report={
+            approvalPatches[selectedApproval.id] ?? selectedApproval
+          }
           open={isSupervisorReviewDialogOpen}
           canEdit={canSupervisorReview}
+          onApprovalUpdated={updateApprovalInStore}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               closeSupervisorReviewDialog()
@@ -568,10 +601,13 @@ export function ApprovalDataTable({
 
       {isDirectorReviewDialogOpen && selectedApproval && canDirectorReview ? (
         <DirectorReviewDialog
-          key={`director-${selectedApproval.id}`}
-          report={selectedApproval}
+          key={`director-${(approvalPatches[selectedApproval.id] ?? selectedApproval).id}-${(approvalPatches[selectedApproval.id] ?? selectedApproval).directorStatus}`}
+          report={
+            approvalPatches[selectedApproval.id] ?? selectedApproval
+          }
           open={isDirectorReviewDialogOpen}
           canEdit={canDirectorReview}
+          onApprovalUpdated={updateApprovalInStore}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               closeDirectorReviewDialog()

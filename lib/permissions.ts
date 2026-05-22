@@ -190,11 +190,14 @@ export async function canApprovalAction(
     permissionKey === "approvals.supervisor_review" ||
     permissionKey === "approvals.request_revision"
   ) {
+    if (profile.account_type === "DIRECTOR") {
+      return false
+    }
+
     if (
       profile.account_type === "SUPERVISOR" ||
       profile.account_type === "MANAGER" ||
       profile.account_type === "EXECUTIVE" ||
-      profile.account_type === "DIRECTOR" ||
       profile.account_type === "FULL_STACK_DEVELOPER"
     ) {
       return true
@@ -204,6 +207,24 @@ export async function canApprovalAction(
   }
 
   return can(authUserId, permissionKey)
+}
+
+export async function checkPermission(permissionKey: string) {
+  const context = await getCurrentProfileContext()
+
+  if (!context || context.profile.status !== "ACTIVE") {
+    return { context: null, allowed: false as const, permissionKey }
+  }
+
+  const allowed = await can(context.profile.auth_user_id, permissionKey)
+
+  return { context, allowed, permissionKey }
+}
+
+export function getUnauthorizedRedirectPath(accountType: AccountType) {
+  return isAdminAccountType(accountType)
+    ? "/admin/unauthorized"
+    : "/employee/unauthorized"
 }
 
 export async function requirePermission(permissionKey: string) {
@@ -220,9 +241,8 @@ export async function requirePermission(permissionKey: string) {
   const allowed = await can(context.profile.auth_user_id, permissionKey)
 
   if (!allowed) {
-    redirect(isAdminAccountType(context.profile.account_type)
-      ? "/admin/dashboard"
-      : "/employee/dashboard")
+    const basePath = getUnauthorizedRedirectPath(context.profile.account_type)
+    redirect(`${basePath}?permission=${encodeURIComponent(permissionKey)}`)
   }
 
   return context

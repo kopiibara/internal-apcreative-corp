@@ -20,7 +20,6 @@ const KANBAN_COLUMN_CARD_CLASS =
 export type ApprovalKanbanColumnProps = {
   id: ApprovalKanbanColumnId
   title: string
-  description: string
   reports: ContentReport[]
   children: ReactNode
 }
@@ -28,7 +27,6 @@ export type ApprovalKanbanColumnProps = {
 export function ApprovalKanbanColumn({
   id,
   title,
-  description,
   reports,
   children,
 }: ApprovalKanbanColumnProps) {
@@ -43,7 +41,6 @@ export function ApprovalKanbanColumn({
       <Card className={KANBAN_COLUMN_CARD_CLASS}>
         <KanbanColumnHeader
           title={title}
-          description={description}
           count={count}
           countClassName={config.badgeClassName}
         />
