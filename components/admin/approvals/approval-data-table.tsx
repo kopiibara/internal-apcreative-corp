@@ -24,7 +24,7 @@ import { ApprovalFilters } from "@/components/admin/approvals/approval-filters"
 import { DirectorReviewForm } from "@/components/admin/approvals/director-review-form"
 import { PublishingReviewForm } from "@/components/admin/approvals/publishing-review-form"
 import { SupervisorReviewForm } from "@/components/admin/approvals/supervisor-review-form"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -59,7 +59,6 @@ import {
   type ContentReport,
 } from "@/types/content-report"
 import { filterApprovalReports } from "@/lib/approval-filters"
-import { getStatusBadgeVariant } from "@/lib/approval-statuses"
 import { useApprovalStore } from "@/stores/use-approval-store"
 
 type ApprovalDataTableProps = {
@@ -68,6 +67,8 @@ type ApprovalDataTableProps = {
   canDirectorReview: boolean
   canPublishUpdate: boolean
   showHeader?: boolean
+  /** Renders only the table and dialogs; parent supplies page shell and filters. */
+  embedded?: boolean
 }
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -75,14 +76,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   year: "numeric",
 })
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <Badge variant={getStatusBadgeVariant(status)}>
-      {status}
-    </Badge>
-  )
-}
 
 function getDateLabel(value: string | null) {
   return value ? dateFormatter.format(new Date(value)) : "Not scheduled"
@@ -118,10 +111,12 @@ function SupervisorReviewDialog({
   report,
   open,
   onOpenChange,
+  canEdit,
 }: {
   report: ContentReport
   open: boolean
   onOpenChange: (open: boolean) => void
+  canEdit: boolean
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -134,7 +129,7 @@ function SupervisorReviewDialog({
         </DialogHeader>
         <SupervisorReviewForm
           report={report}
-          canEdit={true}
+          canEdit={canEdit}
           onSaved={() => onOpenChange(false)}
         />
       </DialogContent>
@@ -146,10 +141,12 @@ function DirectorReviewDialog({
   report,
   open,
   onOpenChange,
+  canEdit,
 }: {
   report: ContentReport
   open: boolean
   onOpenChange: (open: boolean) => void
+  canEdit: boolean
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -162,7 +159,7 @@ function DirectorReviewDialog({
         </DialogHeader>
         <DirectorReviewForm
           report={report}
-          canEdit={true}
+          canEdit={canEdit}
           onSaved={() => onOpenChange(false)}
         />
       </DialogContent>
@@ -174,10 +171,12 @@ function PublishingDialog({
   report,
   open,
   onOpenChange,
+  canPublishUpdate,
 }: {
   report: ContentReport
   open: boolean
   onOpenChange: (open: boolean) => void
+  canPublishUpdate: boolean
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -190,7 +189,7 @@ function PublishingDialog({
         </DialogHeader>
         <PublishingReviewForm
           report={report}
-          canPublishUpdate={true}
+          canPublishUpdate={canPublishUpdate}
           onSaved={() => onOpenChange(false)}
         />
       </DialogContent>
@@ -289,21 +288,27 @@ function getApprovalColumns({
       header: ({ column }) => (
         <SortButton label="Marketing Supervisor Status" column={column} />
       ),
-      cell: ({ row }) => <StatusBadge status={row.original.supervisorStatus} />,
+      cell: ({ row }) => (
+        <StatusBadge status={row.original.supervisorStatus} type="approval" />
+      ),
     },
     {
       accessorKey: "directorStatus",
       header: ({ column }) => (
         <SortButton label="Director of Marketing Status" column={column} />
       ),
-      cell: ({ row }) => <StatusBadge status={row.original.directorStatus} />,
+      cell: ({ row }) => (
+        <StatusBadge status={row.original.directorStatus} type="approval" />
+      ),
     },
     {
       accessorKey: "publishStatus",
       header: ({ column }) => (
         <SortButton label="Publish Status" column={column} />
       ),
-      cell: ({ row }) => <StatusBadge status={row.original.publishStatus} />,
+      cell: ({ row }) => (
+        <StatusBadge status={row.original.publishStatus} type="publish" />
+      ),
     },
     {
       accessorKey: "scheduledPublishedDate",
@@ -337,7 +342,7 @@ function getApprovalColumns({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openDetailsSheet(report)}>
+                <DropdownMenuItem onClick={() => openDetailsSheet(report)} className="flex flex-row gap-2 items-center">
                   <Eye className="size-4" />
                   View details
                 </DropdownMenuItem>
@@ -347,19 +352,20 @@ function getApprovalColumns({
                 {canSupervisorReview ? (
                   <DropdownMenuItem
                     onClick={() => openSupervisorReviewDialog(report)}
+                    className="flex flex-row gap-2 items-center"
                   >
                     <ShieldCheck className="size-4" />
                     Supervisor review
                   </DropdownMenuItem>
                 ) : null}
                 {canDirectorReview ? (
-                  <DropdownMenuItem onClick={() => openDirectorReviewDialog(report)}>
+                  <DropdownMenuItem onClick={() => openDirectorReviewDialog(report)} className="flex flex-row gap-2 items-center">
                     <FilePenLine className="size-4" />
                     Director review
                   </DropdownMenuItem>
                 ) : null}
                 {canPublishReport ? (
-                  <DropdownMenuItem onClick={() => openPublishingDialog(report)}>
+                  <DropdownMenuItem onClick={() => openPublishingDialog(report)} className="flex flex-row gap-2 items-center">
                     <CalendarClock className="size-4" />
                     Update publishing
                   </DropdownMenuItem>
@@ -369,6 +375,7 @@ function getApprovalColumns({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => copyAssetLink(report.assetLink || "")}
+                      className="flex flex-row gap-2 items-center"
                     >
                       <Clipboard className="size-4" />
                       Copy asset link
@@ -391,6 +398,7 @@ export function ApprovalDataTable({
   canDirectorReview,
   canPublishUpdate,
   showHeader = true,
+  embedded = false,
 }: ApprovalDataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const {
@@ -467,6 +475,136 @@ export function ApprovalDataTable({
       .catch(() => toast.error("Could not copy the asset link."))
   }
 
+  const tableSection = (
+    <>
+      <div className="w-full min-w-0 rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id} className="whitespace-nowrap">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={table.getAllColumns().length}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No approvals found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="align-top">
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Page {table.getState().pagination.pageIndex + 1} of{" "}
+          {table.getPageCount() || 1}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </>
+  )
+
+  const reviewDialogs = (
+    <>
+      {isSupervisorReviewDialogOpen && selectedApproval ? (
+        <SupervisorReviewDialog
+          key={`supervisor-${selectedApproval.id}`}
+          report={selectedApproval}
+          open={isSupervisorReviewDialogOpen}
+          canEdit={canSupervisorReview}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              closeSupervisorReviewDialog()
+            }
+          }}
+        />
+      ) : null}
+
+      {isDirectorReviewDialogOpen && selectedApproval && canDirectorReview ? (
+        <DirectorReviewDialog
+          key={`director-${selectedApproval.id}`}
+          report={selectedApproval}
+          open={isDirectorReviewDialogOpen}
+          canEdit={canDirectorReview}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              closeDirectorReviewDialog()
+            }
+          }}
+        />
+      ) : null}
+
+      {isPublishingDialogOpen && selectedApproval && canPublishUpdate ? (
+        <PublishingDialog
+          key={`publishing-${selectedApproval.id}`}
+          report={selectedApproval}
+          open={isPublishingDialogOpen}
+          canPublishUpdate={canPublishUpdate}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              closePublishingDialog()
+            }
+          }}
+        />
+      ) : null}
+    </>
+  )
+
+  if (embedded) {
+    return (
+      <div className="min-w-0 space-y-4">
+        {tableSection}
+        {reviewDialogs}
+      </div>
+    )
+  }
+
   return (
     <div className="min-w-0 space-y-6">
       {showHeader ? (
@@ -486,117 +624,11 @@ export function ApprovalDataTable({
         </CardHeader>
 
         <CardContent className="min-w-0 space-y-4">
-          <div className="w-full min-w-0 rounded-md border">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} className="whitespace-nowrap">
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={table.getAllColumns().length}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No approvals found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="align-top">
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount() || 1}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          {tableSection}
         </CardContent>
       </Card>
 
-      {isSupervisorReviewDialogOpen && selectedApproval ? (
-        <SupervisorReviewDialog
-          key={`supervisor-${selectedApproval.id}`}
-          report={selectedApproval}
-          open={isSupervisorReviewDialogOpen}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) {
-              closeSupervisorReviewDialog()
-            }
-          }}
-        />
-      ) : null}
-
-      {isDirectorReviewDialogOpen && selectedApproval ? (
-        <DirectorReviewDialog
-          key={`director-${selectedApproval.id}`}
-          report={selectedApproval}
-          open={isDirectorReviewDialogOpen}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) {
-              closeDirectorReviewDialog()
-            }
-          }}
-        />
-      ) : null}
-
-      {isPublishingDialogOpen && selectedApproval ? (
-        <PublishingDialog
-          key={`publishing-${selectedApproval.id}`}
-          report={selectedApproval}
-          open={isPublishingDialogOpen}
-          onOpenChange={(nextOpen) => {
-            if (!nextOpen) {
-              closePublishingDialog()
-            }
-          }}
-        />
-      ) : null}
+      {reviewDialogs}
     </div>
   )
 }

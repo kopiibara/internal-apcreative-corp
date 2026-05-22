@@ -84,8 +84,8 @@ function ApprovalVerificationDialogContent({
   const clearPendingKanbanMove = useApprovalStore(
     (state) => state.clearPendingKanbanMove
   )
-  const setSelectedApproval = useApprovalStore(
-    (state) => state.setSelectedApproval
+  const updateApprovalInStore = useApprovalStore(
+    (state) => state.updateApprovalInStore
   )
   const [notes, setNotes] = useState(payload.notes)
   const [confirmationAccepted, setConfirmationAccepted] = useState(false)
@@ -147,7 +147,7 @@ function ApprovalVerificationDialogContent({
         const updatedApproval = result.data?.updatedApproval
 
         if (updatedApproval) {
-          setSelectedApproval(updatedApproval)
+          updateApprovalInStore(updatedApproval)
           onApprovalUpdated?.(updatedApproval)
         }
         closeVerificationDialog()

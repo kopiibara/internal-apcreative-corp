@@ -1,4 +1,5 @@
 import type { AccountType } from "@/lib/account-type"
+import { getStatusBadgeClassName as getSharedStatusBadgeClassName } from "@/lib/status-badge"
 
 export const APPROVAL_STATUSES = [
   "Pending",
@@ -31,12 +32,13 @@ export const PUBLISH_STATUS_LABELS = {
   Cancelled: "Cancelled",
 } satisfies Record<PublishStatus, string>
 
+/** Admin approval Kanban column ids (shared workflow stages). */
 export type ApprovalKanbanColumnId =
   | "pending"
-  | "supervisor-approved"
-  | "approved"
   | "revision"
   | "rejected"
+  | "supervisor-approved"
+  | "ready-to-publish"
   | "scheduled"
   | "published"
 
@@ -45,6 +47,17 @@ export type ApprovalKanbanColumn = {
   title: string
   description: string
 }
+
+/** Canonical admin Kanban column order (aligned with employee publish workflow). */
+export const APPROVAL_KANBAN_COLUMN_ORDER = [
+  "pending",
+  "revision",
+  "rejected",
+  "supervisor-approved",
+  "ready-to-publish",
+  "scheduled",
+  "published",
+] as const satisfies readonly ApprovalKanbanColumnId[]
 
 export const APPROVAL_KANBAN_COLUMNS = [
   {
@@ -68,106 +81,57 @@ export const APPROVAL_KANBAN_COLUMNS = [
     description: "Supervisor-approved items waiting on director review.",
   },
   {
-    id: "approved",
-    title: "Approved",
-    description: "Items approved by supervisor and director.",
+    id: "ready-to-publish",
+    title: "Ready to Publish",
+    description: "Fully approved items ready for publishing.",
   },
   {
     id: "scheduled",
     title: "Scheduled",
-    description: "Approved content scheduled for publishing.",
+    description: "Items scheduled for publishing.",
   },
   {
     id: "published",
     title: "Published",
-    description: "Content marked as published.",
+    description: "Published content reports.",
   },
 ] as const satisfies readonly ApprovalKanbanColumn[]
 
-export const APPROVAL_KANBAN_COLUMN_IDS = [
-  "pending",
-  "revision",
-  "rejected",
-  "supervisor-approved",
-  "approved",
-  "scheduled",
-  "published",
-] as const
+export const APPROVAL_KANBAN_COLUMN_IDS = APPROVAL_KANBAN_COLUMN_ORDER
 
-const supervisorColumnIds: ApprovalKanbanColumnId[] = [
-  "pending",
-  "revision",
-  "rejected",
-  "supervisor-approved",
-  "approved",
-]
+const columnById = new Map(
+  APPROVAL_KANBAN_COLUMNS.map((column) => [column.id, column])
+)
 
-const directorColumnIds: ApprovalKanbanColumnId[] = [
-  "revision",
-  "rejected",
-  "supervisor-approved",
-  "approved",
-  "scheduled",
-  "published",
-]
+export function getApprovalKanbanColumn(columnId: ApprovalKanbanColumnId) {
+  return columnById.get(columnId)!
+}
 
-const developerColumnIds: ApprovalKanbanColumnId[] = [
-  "pending",
-  "revision",
-  "rejected",
-  "supervisor-approved",
-  "approved",
-  "scheduled",
-  "published",
-]
+export function getApprovalKanbanColumnTitle(columnId: string) {
+  const column = columnById.get(columnId as ApprovalKanbanColumnId)
+  return column?.title ?? columnId
+}
 
-export function getVisibleApprovalKanbanColumns({
-  accountType,
-  canDirectorReview,
-}: {
-  accountType: AccountType
-  canSupervisorReview: boolean
-  canDirectorReview: boolean
-  canPublishUpdate: boolean
+/**
+ * All workflow columns for admin Kanban (same stages as employee publish pipeline).
+ * Role-based visibility is not applied here; drag permissions remain in server actions.
+ */
+export function getVisibleApprovalKanbanColumns(options?: {
+  accountType?: AccountType
+  canSupervisorReview?: boolean
+  canDirectorReview?: boolean
+  canPublishUpdate?: boolean
 }) {
-  const visibleIds =
-    accountType === "FULL_STACK_DEVELOPER" ||
-    accountType === "MANAGER" ||
-    accountType === "EXECUTIVE"
-      ? developerColumnIds
-      : accountType === "SUPERVISOR"
-        ? supervisorColumnIds
-        : accountType === "DIRECTOR" || canDirectorReview
-          ? directorColumnIds
-          : developerColumnIds
-
-  return APPROVAL_KANBAN_COLUMNS.filter((column) =>
-    visibleIds.includes(column.id)
-  )
+  void options
+  return APPROVAL_KANBAN_COLUMN_ORDER.map((id) => getApprovalKanbanColumn(id))
 }
 
 export function getStatusBadgeVariant(status: string) {
   return status === "Approved" || status === "Published"
     ? "default"
-    : "outline"
+    : "neutral"
 }
 
-export function getStatusBadgeClassName(status: string) {
-  if (status === "Approved" || status === "Published") {
-    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-  }
-
-  if (status === "Rejected" || status === "Cancelled") {
-    return "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300"
-  }
-
-  if (status === "Revision") {
-    return "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-  }
-
-  if (status === "Scheduled") {
-    return "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
-  }
-
-  return "border-muted-foreground/30 bg-muted/40 text-muted-foreground"
+export function getStatusBadgeClassName(status: string, type: "approval" | "publish" = "approval") {
+  return getSharedStatusBadgeClassName(status, type)
 }

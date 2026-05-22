@@ -14,12 +14,16 @@ import {
   type KanbanMoveEvent,
 } from "@/components/reui/kanban"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  KANBAN_BOARD_FIT_ROW_CLASS,
+  KANBAN_OVERLAY_CLASS,
+} from "@/components/shared/kanban-board-scroll"
 import { filterTaskAssignments } from "@/lib/task-filters"
 import { TASK_KANBAN_COLUMNS } from "@/lib/task-type"
 import type { TaskAssignmentStatus } from "@/lib/task-statuses"
 import type { TaskAssignmentRecord } from "@/lib/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
+import { cn } from "@/lib/utils"
 
 type TaskKanbanBoardProps = {
   assignments: TaskAssignmentRecord[]
@@ -28,6 +32,59 @@ type TaskKanbanBoardProps = {
   showAssigneeOnCards?: boolean
   enableDrag?: boolean
   onOpenDetails?: (assignment: TaskAssignmentRecord) => void
+  onAssignmentUpdated?: (assignment: TaskAssignmentRecord) => void
+}
+
+const TASK_BOARD_ROW_CLASS = cn(KANBAN_BOARD_FIT_ROW_CLASS, "px-6 pb-1")
+
+function renderTaskColumns({
+  columns,
+  canDragCards,
+  permissions,
+  currentProfileId,
+  showAssigneeOnCards,
+  onOpenDetails,
+}: {
+  columns: Record<string, TaskAssignmentRecord[]>
+  canDragCards: boolean
+  permissions: TaskPermissionFlags
+  currentProfileId: number
+  showAssigneeOnCards: boolean
+  onOpenDetails?: (assignment: TaskAssignmentRecord) => void
+}) {
+  return TASK_KANBAN_COLUMNS.map((column) => (
+    <TaskKanbanColumn
+      key={column.id}
+      id={column.id}
+      title={column.title}
+      count={columns[column.id]?.length ?? 0}
+      enableDrag={canDragCards}
+    >
+      {(columns[column.id] ?? []).map((assignment) => {
+        const card = (
+          <TaskAssignmentCard
+            key={assignment.assignmentId}
+            assignment={assignment}
+            permissions={permissions}
+            currentProfileId={currentProfileId}
+            showAssignee={showAssigneeOnCards}
+            onOpenDetails={onOpenDetails}
+          />
+        )
+
+        return canDragCards ? (
+          <KanbanItem
+            key={assignment.assignmentId}
+            value={String(assignment.assignmentId)}
+          >
+            <KanbanItemHandle>{card}</KanbanItemHandle>
+          </KanbanItem>
+        ) : (
+          card
+        )
+      })}
+    </TaskKanbanColumn>
+  ))
 }
 
 export function TaskKanbanBoard({
@@ -37,6 +94,7 @@ export function TaskKanbanBoard({
   showAssigneeOnCards = true,
   enableDrag = false,
   onOpenDetails,
+  onAssignmentUpdated,
 }: TaskKanbanBoardProps) {
   const [pendingMove, setPendingMove] = useState<{
     assignment: TaskAssignmentRecord
@@ -101,93 +159,30 @@ export function TaskKanbanBoard({
     })
   }
 
-  const boardColumns = (
-    <div className="flex h-full min-w-max gap-4 p-1">
-      {TASK_KANBAN_COLUMNS.map((column) => (
-        <TaskKanbanColumn
-          key={column.id}
-          id={column.id}
-          title={column.title}
-          description={column.description}
-          count={columns[column.id]?.length ?? 0}
-          enableDrag={canDragCards}
-        >
-          {(columns[column.id] ?? []).map((assignment) => {
-            const card = (
-              <TaskAssignmentCard
-                key={assignment.assignmentId}
-                assignment={assignment}
-                permissions={permissions}
-                currentProfileId={currentProfileId}
-                showAssignee={showAssigneeOnCards}
-                onOpenDetails={onOpenDetails}
-              />
-            )
-
-            return canDragCards ? (
-              <KanbanItem
-                key={assignment.assignmentId}
-                value={String(assignment.assignmentId)}
-              >
-                <KanbanItemHandle>{card}</KanbanItemHandle>
-              </KanbanItem>
-            ) : (
-              card
-            )
-          })}
-        </TaskKanbanColumn>
-      ))}
-    </div>
-  )
+  const columnNodes = renderTaskColumns({
+    columns,
+    canDragCards,
+    permissions,
+    currentProfileId,
+    showAssigneeOnCards,
+    onOpenDetails,
+  })
 
   return (
     <>
-      <ScrollArea
-        className="h-full min-h-0 w-full min-w-0 flex-1 pb-3"
-        scrollbars="horizontal"
-      >
-        {canDragCards ? (
-          <Kanban
-            value={columns}
-            onValueChange={() => undefined}
-            getItemValue={(assignment) => String(assignment.assignmentId)}
-            onMove={handleMove}
-          >
-            <KanbanBoard className="flex h-full min-w-max gap-4 p-1">
-              {TASK_KANBAN_COLUMNS.map((column) => (
-                <TaskKanbanColumn
-                  key={column.id}
-                  id={column.id}
-                  title={column.title}
-                  description={column.description}
-                  count={columns[column.id]?.length ?? 0}
-                  enableDrag
-                >
-                  {(columns[column.id] ?? []).map((assignment) => (
-                    <KanbanItem
-                      key={assignment.assignmentId}
-                      value={String(assignment.assignmentId)}
-                    >
-                      <KanbanItemHandle>
-                        <TaskAssignmentCard
-                          assignment={assignment}
-                          permissions={permissions}
-                          currentProfileId={currentProfileId}
-                          showAssignee={showAssigneeOnCards}
-                          onOpenDetails={onOpenDetails}
-                        />
-                      </KanbanItemHandle>
-                    </KanbanItem>
-                  ))}
-                </TaskKanbanColumn>
-              ))}
-            </KanbanBoard>
-            <KanbanOverlay className="rounded-md border-2 border-dashed bg-muted/20" />
-          </Kanban>
-        ) : (
-          boardColumns
-        )}
-      </ScrollArea>
+      {canDragCards ? (
+        <Kanban
+          value={columns}
+          onValueChange={() => undefined}
+          getItemValue={(assignment) => String(assignment.assignmentId)}
+          onMove={handleMove}
+        >
+          <KanbanBoard className={TASK_BOARD_ROW_CLASS}>{columnNodes}</KanbanBoard>
+          <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
+        </Kanban>
+      ) : (
+        <div className={TASK_BOARD_ROW_CLASS}>{columnNodes}</div>
+      )}
 
       <TaskStatusChangeDialog
         key={`${pendingMove?.assignment.assignmentId ?? "none"}-${pendingMove?.toStatus ?? "none"}`}
@@ -198,6 +193,10 @@ export function TaskKanbanBoard({
           if (!open) {
             setPendingMove(null)
           }
+        }}
+        onAssignmentUpdated={(updatedAssignment) => {
+          onAssignmentUpdated?.(updatedAssignment)
+          setPendingMove(null)
         }}
       />
     </>

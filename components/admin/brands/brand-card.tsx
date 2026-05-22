@@ -2,13 +2,13 @@
 
 import { BarChart3, CheckCheck, Clock, FileText } from "lucide-react"
 
+import { StatusBadge } from "@/components/shared/status-badge"
 import { BrandActionsMenu } from "@/components/admin/brands/brand-actions-menu"
 import { BrandLogo } from "@/components/admin/brands/brand-logo"
 import type {
   BrandPermissionFlags,
   BrandWithAnalytics,
 } from "@/components/admin/brands/types"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 type BrandCardProps = {
@@ -45,9 +45,10 @@ export function BrandCard({ brand, permissions }: BrandCardProps) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="truncate text-base">{brand.name}</CardTitle>
-              <Badge variant={brand.isActive ? "default" : "outline"}>
-                {brand.isActive ? "Active" : "Inactive"}
-              </Badge>
+              <StatusBadge
+                status={brand.isActive ? "ACTIVE" : "INACTIVE"}
+                type="brand"
+              />
             </div>
             <p className="mt-1 truncate text-xs text-muted-foreground">
               /{brand.slug}

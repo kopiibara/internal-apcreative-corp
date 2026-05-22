@@ -206,7 +206,7 @@ export function ContentReportFormDialog({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >

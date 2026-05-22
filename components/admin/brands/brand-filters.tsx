@@ -6,6 +6,8 @@ import type { BrandWithAnalytics } from "@/components/admin/brands/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
+import { neoInputClass } from "@/lib/neo-ui"
 import { useBrandStore } from "@/stores/use-brand-store"
 
 type BrandFiltersProps = {
@@ -39,7 +41,7 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search brands"
-            className="h-9 pl-9"
+            className={cn("h-9 pl-9", neoInputClass)}
           />
         </div>
 
@@ -88,9 +90,9 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
 
         <Button
           type="button"
-          variant="outline"
+          variant="neutral"
           size="sm"
-          className="h-9 whitespace-nowrap"
+          className="whitespace-nowrap"
           onClick={resetBrandFilters}
         >
           Reset Filters

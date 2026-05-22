@@ -2,29 +2,23 @@
 
 import { useMemo, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import {
-  Archive,
-  Bell,
-  CheckCircle2,
-  ClockAlert,
-} from "lucide-react"
 import { toast } from "sonner"
 
 import { updateReminderStatus } from "@/app/admin/to-do/reminders/actions"
 import { ReminderCard } from "@/components/to-do/reminder-card"
+import { ReminderKanbanColumn } from "@/components/to-do/reminder-kanban-column"
 import {
   Kanban,
   KanbanBoard,
-  KanbanColumn,
-  KanbanColumnContent,
   KanbanItem,
   KanbanItemHandle,
   KanbanOverlay,
   type KanbanMoveEvent,
 } from "@/components/reui/kanban"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  KANBAN_BOARD_FIT_ROW_4_CLASS,
+  KANBAN_OVERLAY_CLASS,
+} from "@/components/shared/kanban-board-scroll"
 import {
   REMINDER_KANBAN_COLUMNS,
   type ReminderStatus,
@@ -32,16 +26,11 @@ import {
 import type { ReminderRecord } from "@/lib/reminders"
 import { cn } from "@/lib/utils"
 
-const icons = {
-  PENDING: Bell,
-  DUE: ClockAlert,
-  DONE: CheckCircle2,
-  ARCHIVED: Archive,
-}
-
 type ReminderKanbanBoardProps = {
   reminders: ReminderRecord[]
 }
+
+const REMINDER_BOARD_ROW_CLASS = cn(KANBAN_BOARD_FIT_ROW_4_CLASS, "px-6 pb-1")
 
 export function ReminderKanbanBoard({ reminders }: ReminderKanbanBoardProps) {
   const router = useRouter()
@@ -98,86 +87,35 @@ export function ReminderKanbanBoard({ reminders }: ReminderKanbanBoardProps) {
   }
 
   return (
-    <ScrollArea
-      className="h-full min-h-0 w-full min-w-0 flex-1 pb-3"
-      scrollbars="horizontal"
+    <Kanban
+      value={columns}
+      onValueChange={() => undefined}
+      getItemValue={(reminder) => String(reminder.id)}
+      onMove={handleMove}
     >
-      <Kanban
-        value={columns}
-        onValueChange={() => undefined}
-        getItemValue={(reminder) => String(reminder.id)}
-        onMove={handleMove}
-      >
-        <KanbanBoard className="flex h-full min-w-max gap-4 p-1">
-          {REMINDER_KANBAN_COLUMNS.map((column) => {
-            const Icon = icons[column.id]
-            const items = columns[column.id] ?? []
+      <KanbanBoard className={REMINDER_BOARD_ROW_CLASS}>
+        {REMINDER_KANBAN_COLUMNS.map((column) => {
+          const items = columns[column.id] ?? []
 
-            return (
-              <KanbanColumn
-                value={column.id}
-                key={column.id}
-                className="flex h-full min-h-0 min-w-[290px] w-80 shrink-0 flex-col"
-              >
-                <Card className="flex h-full min-h-0 flex-col rounded-md py-2 px-1">
-                  <CardHeader className="shrink-0 space-y-2 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/30 text-muted-foreground">
-                          <Icon className="size-4" />
-                        </span>
-                        <CardTitle className="truncate text-sm">
-                          {column.title}
-                        </CardTitle>
-                      </div>
-                      <Badge variant="outline" className="shrink-0">
-                        {items.length}
-                      </Badge>
-                    </div>
-                    <p className="text-xs leading-relaxed text-muted-foreground">
-                      {column.description}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="flex min-h-0 flex-1 flex-col px-3 py-2 pt-0">
-                    <ScrollArea
-                      className="h-full min-h-0 flex-1 rounded-lg border border-dashed"
-                      scrollbars="vertical"
-                    >
-                      <div
-                        className={cn(
-                          "flex min-h-full flex-col gap-3 p-2 pr-3",
-                          items.length === 0 &&
-                            "items-center justify-center py-6"
-                        )}
-                      >
-                        {items.length === 0 ? (
-                          <p className="text-center text-xs text-muted-foreground">
-                            No reminders.
-                          </p>
-                        ) : (
-                          <KanbanColumnContent value={column.id} className="gap-3">
-                            {items.map((reminder) => (
-                              <KanbanItem
-                                key={reminder.id}
-                                value={String(reminder.id)}
-                              >
-                                <KanbanItemHandle>
-                                  <ReminderCard reminder={reminder} />
-                                </KanbanItemHandle>
-                              </KanbanItem>
-                            ))}
-                          </KanbanColumnContent>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </KanbanColumn>
-            )
-          })}
-        </KanbanBoard>
-        <KanbanOverlay className="rounded-md border-2 border-dashed bg-muted/20" />
-      </Kanban>
-    </ScrollArea>
+          return (
+            <ReminderKanbanColumn
+              key={column.id}
+              id={column.id}
+              title={column.title}
+              count={items.length}
+            >
+              {items.map((reminder) => (
+                <KanbanItem key={reminder.id} value={String(reminder.id)}>
+                  <KanbanItemHandle>
+                    <ReminderCard reminder={reminder} />
+                  </KanbanItemHandle>
+                </KanbanItem>
+              ))}
+            </ReminderKanbanColumn>
+          )
+        })}
+      </KanbanBoard>
+      <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
+    </Kanban>
   )
 }

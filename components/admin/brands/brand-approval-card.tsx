@@ -3,7 +3,7 @@
 import { ExternalLink } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-import { ApprovalStatusBadges } from "@/components/admin/approvals/approval-status-badges"
+import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import type { RecentBrandApproval } from "@/lib/brand-analytics"
@@ -39,11 +39,11 @@ export function BrandApprovalCard({ approval }: BrandApprovalCardProps) {
         }
       }}
       className={cn(
-        "cursor-pointer rounded-md bg-card/50 py-2 transition-colors",
-        "hover:border-primary/40 hover:bg-card/80"
+        "cursor-pointer rounded-md border-2 border-border bg-card py-2 shadow-none transition-colors",
+        "hover:bg-muted/40"
       )}
     >
-      <CardContent className="space-y-3 p-0">
+      <CardContent className="space-y-3 px-4 py-1">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{approval.submittedByName}</p>
           <p className="truncate text-xs text-muted-foreground">
@@ -53,7 +53,7 @@ export function BrandApprovalCard({ approval }: BrandApprovalCardProps) {
 
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="secondary">{approval.contentType}</Badge>
-          <Badge variant="outline">{approval.platform}</Badge>
+          <Badge variant="neutral">{approval.platform}</Badge>
         </div>
 
         {approval.assetLink ? (

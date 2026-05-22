@@ -44,8 +44,8 @@ const demoReports: DemoReport[] = [
     scheduledPublishedDate: null,
   },
   {
-    stage: "approved",
-    title: "Approved sample",
+    stage: "ready-to-publish",
+    title: "Ready to publish sample",
     contentType: "Reel",
     platform: "All Platforms",
     supervisorStatus: "Approved",
@@ -176,8 +176,8 @@ async function upsertDemoReport(report: DemoReport, context: SeedContext) {
   const scheduledPublishedDate = getScheduledDateToken(report.scheduledPublishedDate);
   const stageMarkerPattern = `%${APPROVAL_KANBAN_DEMO_MARKER} [stage=${report.stage}]%`;
   const legacyStageMarkerPattern =
-    report.stage === "approved"
-      ? `%${APPROVAL_KANBAN_DEMO_MARKER} [stage=ready-to-publish]%`
+    report.stage === "ready-to-publish"
+      ? `%${APPROVAL_KANBAN_DEMO_MARKER} [stage=approved]%`
       : stageMarkerPattern;
 
   const existingResult = await query<{ id: number }>(

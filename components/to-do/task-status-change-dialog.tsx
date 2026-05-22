@@ -34,12 +34,14 @@ import {
   type TaskAssignmentStatus,
 } from "@/lib/task-statuses"
 import type { TaskAssignmentRecord } from "@/lib/tasks"
+import { useTaskStore } from "@/stores/use-task-store"
 
 type TaskStatusChangeDialogProps = {
   assignment: TaskAssignmentRecord | null
   toStatus?: TaskAssignmentStatus | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onAssignmentUpdated?: (assignment: TaskAssignmentRecord) => void
 }
 
 export function TaskStatusChangeDialog({
@@ -47,8 +49,12 @@ export function TaskStatusChangeDialog({
   toStatus,
   open,
   onOpenChange,
+  onAssignmentUpdated,
 }: TaskStatusChangeDialogProps) {
   const router = useRouter()
+  const updateTaskAssignmentInStore = useTaskStore(
+    (state) => state.updateTaskAssignmentInStore
+  )
   const [notes, setNotes] = useState("")
   const [selectedStatus, setSelectedStatus] =
     useState<TaskAssignmentStatus | null>(toStatus ?? null)
@@ -88,22 +94,29 @@ export function TaskStatusChangeDialog({
     startTransition(async () => {
       const result = isBlockerReview
         ? await confirmTaskBlocker({
-            assignmentId: assignment.assignmentId,
-            resolutionNote: notes.trim(),
-            dueDate: dueDate ?? assignment.dueDate,
-            nextStatus: effectiveToStatus,
-            confirmationAccepted,
-          })
+          assignmentId: assignment.assignmentId,
+          resolutionNote: notes.trim(),
+          dueDate: dueDate ?? assignment.dueDate,
+          nextStatus: effectiveToStatus,
+          confirmationAccepted,
+        })
         : await changeTaskAssignmentStatus({
-            assignmentId: assignment.assignmentId,
-            fromStatus: assignment.status,
-            toStatus: effectiveToStatus,
-            notes: notes.trim(),
-            confirmationAccepted,
-          })
+          assignmentId: assignment.assignmentId,
+          fromStatus: assignment.status,
+          toStatus: effectiveToStatus,
+          notes: notes.trim(),
+          confirmationAccepted,
+        })
 
       if (result.success) {
         toast.success(result.message)
+        const updatedAssignment = result.data?.updatedAssignment
+
+        if (updatedAssignment) {
+          updateTaskAssignmentInStore(updatedAssignment)
+          onAssignmentUpdated?.(updatedAssignment)
+        }
+
         resetForm()
         onOpenChange(false)
         router.refresh()
@@ -207,7 +220,7 @@ export function TaskStatusChangeDialog({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >

@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import type { TaskType } from "@/lib/task-type"
 
 type TaskTypeBadgeProps = {
@@ -6,9 +6,5 @@ type TaskTypeBadgeProps = {
 }
 
 export function TaskTypeBadge({ taskType }: TaskTypeBadgeProps) {
-  return (
-    <Badge variant={taskType === "GRADED" ? "default" : "secondary"}>
-      {taskType === "GRADED" ? "Graded" : "Personal"}
-    </Badge>
-  )
+  return <StatusBadge status={taskType} type="default" />
 }

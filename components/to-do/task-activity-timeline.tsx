@@ -8,10 +8,11 @@ import {
   TimelineSeparator,
   TimelineTitle,
 } from "@/components/reui/timeline"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { getTaskStatusLabel } from "@/lib/task-statuses"
+import { getInitialsFromName } from "@/lib/utils"
 import type { TaskActivityLogRecord } from "@/lib/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -66,14 +67,17 @@ export function TaskActivityTimeline({
   logs: TaskActivityLogRecord[]
 }) {
   return (
-    <Card className="rounded-md px-2 py-1">
-      <CardHeader className="p-4">
-        <CardTitle className="text-sm">Activity Timeline</CardTitle>
+    <Card className="flex min-h-0 flex-col gap-0 py-0 shadow-none">
+      <CardHeader className="shrink-0 items-center border-b-2 border-border px-4 py-3">
+        <CardTitle className="text-sm font-semibold">Comments / Activity</CardTitle>
       </CardHeader>
-      <CardContent className="p-4 pt-0">
-        <ScrollArea className="max-h-80 pr-3" scrollbars="vertical">
+      <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+        <ScrollArea
+          className="h-[min(360px,45vh)] max-h-[min(360px,45vh)] min-h-0 pr-3"
+          scrollbars="vertical"
+        >
           {logs.length > 0 ? (
-            <Timeline defaultValue={logs.length} className="w-full">
+            <Timeline defaultValue={logs.length} className="w-full min-w-0">
               {logs.map((log, index) => {
                 const metadataSummary = formatMetadata(log.metadata)
 
@@ -89,25 +93,41 @@ export function TaskActivityTimeline({
                     </TimelineHeader>
                     <TimelineIndicator />
                     <TimelineSeparator />
-                    <TimelineContent className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-foreground">
-                          {log.actorName}
-                        </span>
-                        {log.fromStatus && log.toStatus ? (
-                          <>
-                            <Badge variant="secondary">
-                              From {getTaskStatusLabel(log.fromStatus)}
-                            </Badge>
-                            <Badge variant="secondary">
-                              To {getTaskStatusLabel(log.toStatus)}
-                            </Badge>
-                          </>
-                        ) : null}
+                    <TimelineContent className="min-w-0 space-y-2">
+                      <div className="flex min-w-0 gap-3">
+                        <Avatar className="h-9 w-9 shrink-0 rounded-lg border-2 border-border">
+                          <AvatarFallback className="rounded-lg text-[10px] font-semibold">
+                            {getInitialsFromName(log.actorName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <div>
+                            <p className="text-sm font-semibold">
+                              {log.actorName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Task activity
+                            </p>
+                          </div>
+                          {log.fromStatus && log.toStatus ? (
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              <StatusBadge
+                                status={log.fromStatus}
+                                type="task"
+                                prefix="From"
+                              />
+                              <StatusBadge
+                                status={log.toStatus}
+                                type="task"
+                                prefix="To"
+                              />
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
 
                       {log.notes ? (
-                        <p className="whitespace-pre-wrap break-words rounded-md bg-muted/20 p-2 leading-relaxed">
+                        <p className="whitespace-pre-wrap break-words rounded-lg border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
                           {log.notes}
                         </p>
                       ) : null}
@@ -123,7 +143,9 @@ export function TaskActivityTimeline({
               })}
             </Timeline>
           ) : (
-            <p className="text-sm text-muted-foreground">No activity yet.</p>
+            <div className="flex min-h-[200px] items-center justify-center rounded-lg border-2 border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              No activity yet.
+            </div>
           )}
         </ScrollArea>
       </CardContent>

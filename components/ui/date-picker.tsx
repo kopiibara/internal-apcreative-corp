@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { CalendarIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -42,17 +43,18 @@ export function DatePicker({
   placeholder = "Pick a date",
   className,
 }: DatePickerProps) {
+  const [open, setOpen] = useState(false)
   const selectedDate = parseDateKey(value)
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           type="button"
-          variant="outline"
+          variant="neutral"
           disabled={disabled}
           className={cn(
-            "h-9 min-w-[180px] justify-start gap-2 font-normal",
+            "min-w-[180px] justify-start gap-2 font-normal",
             !value && "text-muted-foreground",
             className
           )}
@@ -63,9 +65,10 @@ export function DatePicker({
             : placeholder}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-2" align="start" sideOffset={8}>
         <Calendar
           mode="single"
+          className="border-0 shadow-none"
           selected={selectedDate ?? undefined}
           onSelect={(date) => {
             if (!date) {
@@ -73,6 +76,7 @@ export function DatePicker({
             }
 
             onChange(formatDateKeyInPhilippines(date))
+            setOpen(false)
           }}
         />
       </PopoverContent>

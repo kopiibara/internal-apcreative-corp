@@ -1,7 +1,12 @@
 "use client"
 
-import { ContentReportDetailsSummary } from "@/components/employee/approvals/approval-report-details-summary"
-import { ReviewNotesSummary } from "@/components/employee/approvals/review-notes-summary"
+import {
+  ApprovalDetailsGrid,
+  ApprovalDiscussionSection,
+  ApprovalMainDetails,
+  ApprovalMetadataPanel,
+  ApprovalSheetHeader,
+} from "@/components/shared/approval-details-display"
 import {
   Sheet,
   SheetContent,
@@ -28,20 +33,34 @@ export function ContentReportDetailsSheet() {
         }
       }}
     >
-      <SheetContent className="h-svh w-[95vw] sm:w-[50vw]! sm:max-w-[50vw]!">
-        <SheetHeader>
-          <SheetTitle>Content Report Details</SheetTitle>
-          <SheetDescription>
-            View the submitted report, approval status, and review notes.
-          </SheetDescription>
+      <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden sm:max-w-4xl! sm:w-[50vw]!  px-4">
+        <SheetHeader className="shrink-0 pb-4 ">
+          {selectedContentReport ? (
+            <ApprovalSheetHeader
+              report={selectedContentReport}
+              variant="employee"
+            />
+          ) : (
+            <>
+              <SheetTitle className="font-medium">Content Report Details</SheetTitle>
+              <SheetDescription>
+                View the submitted report, approval status, and review notes.
+              </SheetDescription>
+            </>
+          )}
         </SheetHeader>
 
         {selectedContentReport ? (
-          <ScrollArea className="min-h-0 flex-1" scrollbars="vertical">
-            <div className="space-y-6 px-6 pb-6">
-              <ContentReportDetailsSummary report={selectedContentReport} />
-              <ReviewNotesSummary report={selectedContentReport} />
-            </div>
+          <ScrollArea className="min-h-0 flex-1 pr-3" scrollbars="vertical">
+            <ApprovalDetailsGrid
+              main={
+                <>
+                  <ApprovalMainDetails report={selectedContentReport} />
+                  <ApprovalDiscussionSection report={selectedContentReport} />
+                </>
+              }
+              sidebar={<ApprovalMetadataPanel report={selectedContentReport} />}
+            />
           </ScrollArea>
         ) : null}
       </SheetContent>

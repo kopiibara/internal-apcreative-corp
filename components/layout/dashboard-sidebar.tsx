@@ -89,6 +89,9 @@ function getInitials(name?: string) {
         .toUpperCase()
 }
 
+const sidebarNavActiveClass =
+    "border-2 border-border bg-sidebar-primary font-medium text-sidebar-primary-foreground shadow-[var(--shadow-hard-sm)] hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+
 export function DashboardSidebar({
     mode,
     user,
@@ -189,21 +192,27 @@ export function DashboardSidebar({
     }
 
     return (
-        <Sidebar variant="sidebar" collapsible="icon" className="border-r">
+        <Sidebar
+            variant="sidebar"
+            collapsible="icon"
+            className="border-r-2 border-sidebar-border shadow-[var(--shadow-hard-sm)]"
+        >
             <SidebarHeader
                 className={
                     isCollapsed
                         ? "flex items-center justify-center px-2 py-4"
-                        : "px-6 py-6"
+                        : "px-6 py-4"
                 }
             >
                 {isCollapsed ? (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-semibold">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-border bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground shadow-[var(--shadow-hard-sm)]">
                         AP
                     </div>
                 ) : (
                     <div>
-                        <h1 className="text-xl font-bold">AP Creative</h1>
+                        <h1 className="text-xl font-bold tracking-tight text-sidebar-foreground">
+                            AP Creative
+                        </h1>
                         <p className="mt-1 text-sm text-muted-foreground">
                             Marketing Operations Command Center
                         </p>
@@ -211,7 +220,7 @@ export function DashboardSidebar({
                 )}
             </SidebarHeader>
 
-            <SidebarContent className={isCollapsed ? "px-2" : "px-4"}>
+            <SidebarContent className={isCollapsed ? "px-2" : "px-4 py-1"}>
                 {groups.map((group) => (
                     <SidebarGroup key={group.label}>
                         {!isCollapsed ? (
@@ -249,7 +258,7 @@ export function DashboardSidebar({
                                                                 className={cn(
                                                                     "relative mx-auto h-8 w-8 justify-center rounded-xl px-0",
                                                                     isActive &&
-                                                                        "bg-accent-foreground text-sidebar-primary-foreground font-medium rounded-md hover:bg-sidebar-primary hover:text-sidebar-primary-foreground border border-border transition-all duration-150"
+                                                                    sidebarNavActiveClass
                                                                 )}
                                                             >
                                                                 <item.icon className="h-3 w-3 shrink-0" />
@@ -324,7 +333,7 @@ export function DashboardSidebar({
                                                             ? "mx-auto h-8 w-8 justify-center rounded-xl px-0"
                                                             : "h-10 rounded-xl px-3",
                                                         isActive &&
-                                                            "bg-accent-foreground text-sidebar-primary-foreground font-medium rounded-md hover:bg-sidebar-primary hover:text-sidebar-primary-foreground border border-border transition-all duration-150"
+                                                        sidebarNavActiveClass
                                                     )}
                                                 >
                                                     <item.icon className="h-3 w-3 shrink-0" />
@@ -345,7 +354,7 @@ export function DashboardSidebar({
                                                                     "h-4 w-4 shrink-0 transition-transform",
                                                                     !item.badge && "ml-auto",
                                                                     isSubmenuOpen &&
-                                                                        "rotate-180"
+                                                                    "rotate-180"
                                                                 )}
                                                             />
                                                         </>
@@ -425,7 +434,7 @@ export function DashboardSidebar({
                                                         ? "mx-auto h-8 w-8 justify-center rounded-xl px-0"
                                                         : "h-10 rounded-xl px-3",
                                                     isActive &&
-                                                        "bg-accent-foreground text-sidebar-primary-foreground font-medium rounded-md hover:bg-sidebar-primary hover:text-sidebar-primary-foreground border border-border transition-all duration-150"
+                                                    sidebarNavActiveClass
                                                 )}
                                             >
                                                 <Link
@@ -437,11 +446,9 @@ export function DashboardSidebar({
                                                     }
                                                 >
                                                     <item.icon className="h-3 w-3 shrink-0" />
-
                                                     {!isCollapsed ? (
                                                         <>
                                                             <span>{item.title}</span>
-
                                                             {item.badge ? (
                                                                 <Badge
                                                                     variant="secondary"
@@ -535,7 +542,7 @@ export function DashboardSidebar({
                                 <DropdownMenuSeparator />
 
                                 <DropdownMenuGroup>
-                                    <DropdownMenuItem>
+                                    <DropdownMenuItem className="flex flex-row">
                                         <User className="h-4 w-4" />
                                         Account
                                     </DropdownMenuItem>
@@ -543,7 +550,7 @@ export function DashboardSidebar({
 
                                 <DropdownMenuSeparator />
 
-                                <DropdownMenuItem onClick={handleToggleTheme}>
+                                <DropdownMenuItem onClick={handleToggleTheme} className="flex flex-row">
                                     {mounted && resolvedTheme === "dark" ? (
                                         <Sun className="h-4 w-4" />
                                     ) : (
@@ -557,7 +564,7 @@ export function DashboardSidebar({
 
                                 <DropdownMenuSeparator />
 
-                                <DropdownMenuItem onClick={handleLogout}>
+                                <DropdownMenuItem onClick={handleLogout} className="flex flex-row">
                                     <LogOut className="h-4 w-4" />
                                     Log out
                                 </DropdownMenuItem>

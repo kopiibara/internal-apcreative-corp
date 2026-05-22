@@ -1,10 +1,10 @@
 import { BrandApprovalCard } from "@/components/admin/brands/brand-approval-card"
+import { KanbanColumnHeader } from "@/components/shared/kanban-column-header"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { getApprovalKanbanStage } from "@/lib/approval-kanban"
 import type { RecentBrandApproval } from "@/lib/brand-analytics"
 import { getKanbanStageConfig } from "@/lib/approval-kanban-status"
 import type { ApprovalKanbanColumnId } from "@/lib/approval-statuses"
-import { cn } from "@/lib/utils"
 
 type RecentBrandApprovalsProps = {
   approvals: RecentBrandApproval[]
@@ -18,19 +18,19 @@ const brandApprovalStages: {
     { id: "revision", title: "Revision" },
     { id: "rejected", title: "Rejected" },
     { id: "supervisor-approved", title: "Supervisor Approved" },
-    { id: "approved", title: "Approved" },
+    { id: "ready-to-publish", title: "Ready to Publish" },
+    { id: "scheduled", title: "Scheduled" },
+    { id: "published", title: "Published" },
   ]
 
 function getBrandApprovalStage(approval: RecentBrandApproval) {
-  const stage = getApprovalKanbanStage(approval)
-
-  return stage === "scheduled" || stage === "published" ? "approved" : stage
+  return getApprovalKanbanStage(approval)
 }
 
 export function RecentBrandApprovals({ approvals }: RecentBrandApprovalsProps) {
   if (approvals.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+      <div className="rounded-xl border-2 border-dashed border-border p-6 text-center text-sm text-muted-foreground">
         No recent approval requests for this brand.
       </div>
     )
@@ -48,7 +48,7 @@ export function RecentBrandApprovals({ approvals }: RecentBrandApprovalsProps) {
       revision: [],
       rejected: [],
       "supervisor-approved": [],
-      approved: [],
+      "ready-to-publish": [],
       scheduled: [],
       published: [],
     }
@@ -72,25 +72,17 @@ export function RecentBrandApprovals({ approvals }: RecentBrandApprovalsProps) {
           return (
             <section
               key={stage.id}
-              className="flex h-[360px] w-70 flex-col rounded-xl  border bg-card"
+              className="flex h-[360px] w-70 flex-col rounded-xl border-2 border-border bg-card"
             >
-              <div className="shrink-0 border-b p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium">{stage.title}</p>
-                  <span
-                    className={cn(
-                      "rounded-full border px-2 py-0.5 text-xs",
-                      config.badgeClassName
-                    )}
-                  >
-                    {stageApprovals.length}
-                  </span>
-                </div>
-              </div>
-              <ScrollArea className="min-h-0 flex-1 p-1" scrollbars="vertical">
+              <KanbanColumnHeader
+                title={stage.title}
+                count={stageApprovals.length}
+                countClassName={config.badgeClassName}
+              />
+              <ScrollArea className="min-h-0 flex-1 p-2" scrollbars="vertical">
                 <div className="space-y-3 pr-3 p-2">
                   {stageApprovals.length === 0 ? (
-                    <p className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                    <p className="rounded-lg border-2 border-dashed border-border p-4 text-center text-xs text-muted-foreground">
                       No requests.
                     </p>
                   ) : (

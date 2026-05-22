@@ -16,7 +16,7 @@ export function BrandTotalRequestsStat({
   return (
     <div
       className={cn(
-        "flex flex-col justify-between rounded-xl border p-3 sm:p-4",
+        "flex flex-col justify-between rounded-xl border-2 p-3 sm:p-4",
         config.className,
         className
       )}

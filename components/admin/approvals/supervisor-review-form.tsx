@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 
 import { ApprovalStatusSelect } from "@/components/admin/approvals/approval-status-select"
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -36,6 +36,11 @@ export function SupervisorReviewForm({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    if (!canEdit) {
+      toast.error("You do not have permission to update Supervisor Review.")
+      return
+    }
+
     openVerificationDialog({
       type: "supervisor",
       report,
@@ -46,12 +51,10 @@ export function SupervisorReviewForm({
   }
 
   return (
-    <Card size="sm">
+    <Card size="default" className="w-full">
       <CardHeader>
         <CardTitle>Supervisor Approval</CardTitle>
-        <CardDescription>
-          Edit marketing supervisor status and notes.
-        </CardDescription>
+
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">

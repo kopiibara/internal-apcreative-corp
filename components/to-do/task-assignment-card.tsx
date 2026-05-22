@@ -11,10 +11,10 @@ import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
 import { TaskProofDialog } from "@/components/to-do/task-proof-dialog"
 import { TaskRevisionDialog } from "@/components/to-do/task-revision-dialog"
 import { TaskStatusChangeDialog } from "@/components/to-do/task-status-change-dialog"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
 import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { isAssignmentCompletedOnTime } from "@/lib/task-type"
@@ -87,7 +87,7 @@ export function TaskAssignmentCard({
         className="cursor-pointer rounded-md py-2 transition-colors hover:bg-muted/40"
         onClick={() => onOpenDetails?.(assignment)}
       >
-        <CardContent className="space-y-3 p-3">
+        <CardContent className="space-y-3 px-4 py-1">
           <div className="flex items-start justify-between gap-2">
             <p className="line-clamp-2 text-sm font-medium leading-snug">
               {assignment.title}
@@ -122,25 +122,25 @@ export function TaskAssignmentCard({
             <span className="text-muted-foreground">Due:</span>{" "}
             {assignment.dueDate
               ? dateFormatter.format(new Date(assignment.dueDate))
-              : "—"}
+              : "â€”"}
           </p>
           {assignment.priority ? (
-            <p className="text-xs">
-              <span className="text-muted-foreground">Priority:</span>{" "}
-              {assignment.priority}
-            </p>
+            <StatusBadge
+              status={assignment.priority}
+              type="priority"
+              size="sm"
+              prefix="Priority"
+            />
           ) : null}
 
           {hasProof ? (
-            <Badge variant="outline" className="text-[10px]">
-              Proof submitted
-            </Badge>
+            <StatusBadge status="SUBMITTED" type="proof" size="sm" />
           ) : null}
 
           {hasBlocker ? (
-            <Badge variant="outline" className="border-destructive/40 bg-destructive/10 text-[10px] text-destructive">
+            <StatusBadge status="BLOCKER" type="task" size="sm">
               Blocker reported
-            </Badge>
+            </StatusBadge>
           ) : null}
 
           {assignment.revisionNote ? (
@@ -150,9 +150,11 @@ export function TaskAssignmentCard({
           ) : null}
 
           {assignment.status === "DONE" && onTimeStatus !== null ? (
-            <Badge variant={onTimeStatus ? "default" : "destructive"}>
-              {onTimeStatus ? "On time" : "Late"}
-            </Badge>
+            <StatusBadge
+              status={onTimeStatus ? "ON_TIME" : "LATE"}
+              type="proof"
+              size="sm"
+            />
           ) : null}
 
           <div
@@ -176,7 +178,7 @@ export function TaskAssignmentCard({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="neutral"
                   onClick={() => setBlockerOpen(true)}
                   disabled={isPending}
                 >
@@ -198,7 +200,7 @@ export function TaskAssignmentCard({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="neutral"
                   onClick={() => setRevisionOpen(true)}
                   disabled={isPending}
                 >
@@ -208,7 +210,7 @@ export function TaskAssignmentCard({
             ) : null}
 
             {assignment.proofUrl ? (
-              <Button type="button" size="sm" variant="outline" asChild>
+              <Button type="button" size="sm" variant="neutral" asChild>
                 <a href={assignment.proofUrl} target="_blank" rel="noreferrer">
                   <ExternalLink className="size-3" />
                   View proof
@@ -220,7 +222,7 @@ export function TaskAssignmentCard({
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
+                variant="neutral"
                 onClick={() => openEditDialog(assignment)}
                 disabled={isPending}
               >
@@ -233,7 +235,7 @@ export function TaskAssignmentCard({
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
+                variant="destructive"
                 onClick={handleDelete}
                 disabled={isPending}
               >

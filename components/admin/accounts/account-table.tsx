@@ -164,7 +164,7 @@ export function AccountTable({ accounts, brands, roles }: AccountTableProps) {
         <CardHeader className="gap-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle>Accounts</CardTitle>
-            <Button variant="outline" size="sm" onClick={resetAccountFilters}>
+            <Button variant="neutral" size="sm" onClick={resetAccountFilters}>
               Reset Filters
             </Button>
           </div>
@@ -298,7 +298,7 @@ export function AccountTable({ accounts, brands, roles }: AccountTableProps) {
                           account.brandAccess.map((access) => (
                             <Badge
                               key={access.id}
-                              variant={access.isActive ? "secondary" : "outline"}
+                              variant={access.isActive ? "secondary" : "neutral"}
                             >
                               {access.brandName}
                               {access.isPrimary ? " / Primary" : ""}
@@ -315,7 +315,7 @@ export function AccountTable({ accounts, brands, roles }: AccountTableProps) {
                           </span>
                         ) : (
                           account.brandAccess.map((access) => (
-                            <Badge key={access.id} variant="outline">
+                            <Badge key={access.id} variant="neutral">
                               {access.roleName}
                             </Badge>
                           ))
@@ -385,9 +385,9 @@ export function AccountTable({ accounts, brands, roles }: AccountTableProps) {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               onClick={handleDisableAccount}
               disabled={isPending}
-              className="bg-destructive/10 text-destructive hover:bg-destructive/20"
             >
               {isPending ? "Disabling..." : "Disable Account"}
             </AlertDialogAction>

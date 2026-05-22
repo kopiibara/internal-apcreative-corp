@@ -219,29 +219,29 @@ export function AccountFormDialog({
     startTransition(async () => {
       const result = isCreateMode
         ? await createAccount({
-            fullName: formState.fullName,
-            email: formState.email,
-            department: formState.department,
-            phoneNumber: formState.phoneNumber,
-            status: formState.status,
-            brandAssignments: brandAssignments
-              .filter(
-                (assignment) => assignment.brandId && assignment.roleId
-              )
-              .map((assignment) => ({
-                brandId: Number(assignment.brandId),
-                roleId: Number(assignment.roleId),
-                isPrimary: assignment.isPrimary,
-                isActive: assignment.isActive,
-              })),
-          })
+          fullName: formState.fullName,
+          email: formState.email,
+          department: formState.department,
+          phoneNumber: formState.phoneNumber,
+          status: formState.status,
+          brandAssignments: brandAssignments
+            .filter(
+              (assignment) => assignment.brandId && assignment.roleId
+            )
+            .map((assignment) => ({
+              brandId: Number(assignment.brandId),
+              roleId: Number(assignment.roleId),
+              isPrimary: assignment.isPrimary,
+              isActive: assignment.isActive,
+            })),
+        })
         : await updateAccount({
-            profileId: account?.id,
-            fullName: formState.fullName,
-            department: formState.department,
-            phoneNumber: formState.phoneNumber,
-            status: formState.status,
-          })
+          profileId: account?.id,
+          fullName: formState.fullName,
+          department: formState.department,
+          phoneNumber: formState.phoneNumber,
+          status: formState.status,
+        })
 
       if (result.success) {
         toast.success(result.message)
@@ -266,7 +266,7 @@ export function AccountFormDialog({
           <section className="space-y-3">
             <div className="text-sm font-medium">Basic account information</div>
             <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor={`${mode}-full-name`}>Full name</Label>
                 <Input
                   id={`${mode}-full-name`}
@@ -316,7 +316,7 @@ export function AccountFormDialog({
                 <span className="font-medium">
                   {editPrimaryRoleName ?? "No active role"}
                 </span>
-                <Badge variant="outline">
+                <Badge variant="neutral">
                   {getSystemAccessLabel(account.accountType)}
                 </Badge>
               </div>
@@ -412,7 +412,7 @@ export function AccountFormDialog({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >

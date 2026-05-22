@@ -26,6 +26,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { TASK_PROOF_TYPES } from "@/lib/task-type"
 import type { TaskAssignmentRecord } from "@/lib/tasks"
+import { useTaskStore } from "@/stores/use-task-store"
 
 type TaskProofDialogProps = {
   assignment: TaskAssignmentRecord | null
@@ -39,6 +40,9 @@ export function TaskProofDialog({
   onOpenChange,
 }: TaskProofDialogProps) {
   const router = useRouter()
+  const updateTaskAssignmentInStore = useTaskStore(
+    (state) => state.updateTaskAssignmentInStore
+  )
   const [isPending, startTransition] = useTransition()
   const [proofType, setProofType] = useState<string>("LINK")
   const [proofUrl, setProofUrl] = useState("")
@@ -61,6 +65,9 @@ export function TaskProofDialog({
 
       if (result.success) {
         toast.success(result.message)
+        if (result.data?.updatedAssignment) {
+          updateTaskAssignmentInStore(result.data.updatedAssignment)
+        }
         onOpenChange(false)
         setProofUrl("")
         setProofNote("")
@@ -140,7 +147,7 @@ export function TaskProofDialog({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >

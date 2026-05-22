@@ -15,12 +15,11 @@ import {
 } from "@/types/content-report"
 import { getCurrentProfileContext } from "@/lib/auth-session"
 import { getApprovalContentReportById } from "@/lib/content-reports"
-import { can, canDirectorReview } from "@/lib/permissions"
+import { canApprovalAction, canDirectorReview } from "@/lib/permissions"
 import { query, transaction } from "@/lib/db"
 import { enforceRateLimit } from "@/lib/rate-limit"
 
-const ADMIN_APPROVALS_PATH = "/admin/approvals"
-const EMPLOYEE_CONTENT_REPORT_PATH = "/employee/content-report"
+import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard-revalidate-paths"
 
 export type ActionResult<T = unknown> = {
   success: boolean
@@ -51,6 +50,25 @@ function getSupervisorReviewPermissionKey(
     : "approvals.supervisor_review"
 }
 
+function getPermissionDeniedMessage(permissionKey: string) {
+  if (permissionKey === "approvals.director_review") {
+    return "You do not have permission to update Director Review."
+  }
+
+  if (permissionKey === "approvals.publish_update") {
+    return "You do not have permission to update Publishing."
+  }
+
+  if (
+    permissionKey === "approvals.supervisor_review" ||
+    permissionKey === "approvals.request_revision"
+  ) {
+    return "You do not have permission to update Supervisor Review."
+  }
+
+  return "You do not have permission to perform this action."
+}
+
 async function authorizeApprovalAction(permissionKey: string) {
   const context = await getCurrentProfileContext()
 
@@ -72,13 +90,17 @@ async function authorizeApprovalAction(permissionKey: string) {
     }
   }
 
-  const allowed = await can(context.profile.auth_user_id, permissionKey)
+  const allowed = await canApprovalAction(
+    context.profile.auth_user_id,
+    context.profile.id,
+    permissionKey
+  )
 
   if (!allowed) {
     return {
       error: {
         success: false,
-        message: "You do not have permission to perform this action.",
+        message: getPermissionDeniedMessage(permissionKey),
       } satisfies ActionResult,
     }
   }
@@ -111,8 +133,9 @@ async function getReviewGate(reportId: number) {
 }
 
 function revalidateApprovalRoutes() {
-  revalidatePath(ADMIN_APPROVALS_PATH)
-  revalidatePath(EMPLOYEE_CONTENT_REPORT_PATH)
+  for (const route of APPROVAL_REVALIDATE_PATHS) {
+    revalidatePath(route)
+  }
 }
 
 function serializeStatus(value: unknown) {
@@ -334,7 +357,7 @@ export async function updateDirectorReview(
   if (!hasDirectorAccess) {
     return {
       success: false,
-      message: "You do not have permission to perform this action.",
+      message: "You do not have permission to update Director Review.",
     }
   }
 
@@ -625,16 +648,19 @@ export async function updateApprovalKanbanColumn(
     }
   }
 
-  const canSupervisorReview = await can(
+  const canSupervisorReview = await canApprovalAction(
     context.profile.auth_user_id,
+    context.profile.id,
     "approvals.supervisor_review"
   )
-  const canRequestRevision = await can(
+  const canRequestRevision = await canApprovalAction(
     context.profile.auth_user_id,
+    context.profile.id,
     "approvals.request_revision"
   )
-  const canPublishUpdate = await can(
+  const canPublishUpdate = await canApprovalAction(
     context.profile.auth_user_id,
+    context.profile.id,
     "approvals.publish_update"
   )
   const hasDirectorAccess = await canDirectorReview(
@@ -683,7 +709,7 @@ export async function updateApprovalKanbanColumn(
 
       if (parsed.data.toColumn === "pending") {
         if (!canSupervisorReview) {
-          throw new Error("You do not have permission to perform this action.")
+          throw new Error("You do not have permission to update Supervisor Review.")
         }
 
         await client.query(
@@ -712,7 +738,7 @@ export async function updateApprovalKanbanColumn(
 
       if (parsed.data.toColumn === "supervisor-approved") {
         if (!canSupervisorReview) {
-          throw new Error("You do not have permission to perform this action.")
+          throw new Error("You do not have permission to update Supervisor Review.")
         }
 
         await client.query(
@@ -752,11 +778,8 @@ export async function updateApprovalKanbanColumn(
         const shouldUpdateDirector = current.supervisor_status === "Approved"
 
         if (shouldUpdateDirector) {
-          const canApplyDirectorDecision =
-            nextStatus === "Revision" ? canRequestRevision : hasDirectorAccess
-
-          if (!canApplyDirectorDecision) {
-            throw new Error("You do not have permission to perform this action.")
+          if (!hasDirectorAccess) {
+            throw new Error("You do not have permission to update Director Review.")
           }
 
           await client.query(
@@ -787,7 +810,7 @@ export async function updateApprovalKanbanColumn(
           nextStatus === "Revision" ? canRequestRevision : canSupervisorReview
 
         if (!canApplySupervisorDecision) {
-          throw new Error("You do not have permission to perform this action.")
+          throw new Error("You do not have permission to update Supervisor Review.")
         }
 
         await client.query(
@@ -814,9 +837,9 @@ export async function updateApprovalKanbanColumn(
         return
       }
 
-      if (parsed.data.toColumn === "approved") {
+      if (parsed.data.toColumn === "ready-to-publish") {
         if (!hasDirectorAccess) {
-          throw new Error("You do not have permission to perform this action.")
+          throw new Error("You do not have permission to update Director Review.")
         }
 
         if (current.supervisor_status !== "Approved") {
@@ -852,7 +875,7 @@ export async function updateApprovalKanbanColumn(
         parsed.data.toColumn === "published"
       ) {
         if (!canPublishUpdate) {
-          throw new Error("You do not have permission to perform this action.")
+          throw new Error("You do not have permission to update Publishing.")
         }
 
         if (!canEditPublishingFields({

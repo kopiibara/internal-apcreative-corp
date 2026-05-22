@@ -7,7 +7,7 @@ import {
   fetchMetaMonitoringAction,
   triggerMetaSyncAction,
 } from "@/app/admin/platform-analytics/actions"
-import { Badge } from "@/components/ui/badge"
+import { StatusBadge } from "@/components/shared/status-badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -52,15 +52,6 @@ function MetricCard({
       </CardHeader>
     </Card>
   )
-}
-
-function statusVariant(
-  status: string
-): "default" | "secondary" | "destructive" | "outline" {
-  if (status === "PROCESSED") return "default"
-  if (status === "FAILED") return "destructive"
-  if (status === "PROCESSING") return "secondary"
-  return "outline"
 }
 
 export function MetaFacebookMonitoringDashboard({
@@ -140,7 +131,7 @@ export function MetaFacebookMonitoringDashboard({
             <>
               <Button
                 type="button"
-                variant="outline"
+                variant="neutral"
                 disabled={isPending}
                 onClick={() => handleSync("hourly_posts")}
               >
@@ -148,7 +139,7 @@ export function MetaFacebookMonitoringDashboard({
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="neutral"
                 disabled={isPending}
                 onClick={() => handleSync("daily_page")}
               >
@@ -309,8 +300,8 @@ export function MetaFacebookMonitoringDashboard({
                             <td className="py-2 pr-4">
                               {post.published_at
                                 ? dateFormatter.format(
-                                    new Date(post.published_at)
-                                  )
+                                  new Date(post.published_at)
+                                )
                                 : "—"}
                             </td>
                             <td className="py-2 pr-4">
@@ -370,9 +361,7 @@ export function MetaFacebookMonitoringDashboard({
                         className="rounded-lg border p-3 text-sm"
                       >
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={statusVariant(event.processing_status)}>
-                            {event.processing_status}
-                          </Badge>
+                          <StatusBadge status={event.processing_status} />
                           <span className="font-medium">
                             {event.event_type ?? event.field_name ?? "event"}
                           </span>

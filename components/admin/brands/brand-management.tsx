@@ -131,7 +131,7 @@ export function BrandManagement({
   }
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="min-w-0 space-y-4 rounded-xl bg-background p-1 md:p-0">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">Brands</h1>
@@ -147,9 +147,9 @@ export function BrandManagement({
         ) : null}
       </div>
 
-      <Card>
-        <CardHeader className="gap-3">
-          <CardTitle>Brand selector</CardTitle>
+      <Card className="shadow-none">
+        <CardHeader className="gap-3 border-b-2 border-border">
+          <CardTitle className="font-semibold">Brand selector</CardTitle>
           <BrandFilters
             brands={filteredBrands}
             selectedBrandId={selectedViewBrand?.id ?? null}
@@ -164,9 +164,11 @@ export function BrandManagement({
             permissions={permissions}
           />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Approval Requests</CardTitle>
+          <Card className="shadow-none">
+            <CardHeader className="border-b-2 border-border">
+              <CardTitle className="font-semibold">
+                Recent Approval Requests
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <RecentBrandApprovals
@@ -229,7 +231,11 @@ export function BrandManagement({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-            <Button onClick={handleDeactivateToggle} disabled={isPending}>
+            <Button
+              variant={selectedBrand?.isActive ? "destructive" : "default"}
+              onClick={handleDeactivateToggle}
+              disabled={isPending}
+            >
               {isPending ? "Saving..." : "Confirm"}
             </Button>
           </AlertDialogFooter>

@@ -1,6 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
+import { toast } from "sonner"
 
 import { ApprovalDataTable } from "@/components/admin/approvals/approval-data-table"
 import { ApprovalDeepLinkOpener } from "@/components/admin/approvals/approval-deep-link-opener"
@@ -9,6 +10,12 @@ import { ApprovalFilters } from "@/components/admin/approvals/approval-filters"
 import { ApprovalKanbanCard } from "@/components/admin/approvals/approval-kanban-card"
 import { ApprovalKanbanColumn } from "@/components/admin/approvals/approval-kanban-column"
 import { ApprovalVerificationDialog } from "@/components/admin/approvals/approval-verification-dialog"
+import { BoardSection } from "@/components/shared/board-section"
+import {
+  KanbanBoardScroll,
+  KANBAN_BOARD_SCROLL_ROW_CLASS,
+  KANBAN_OVERLAY_CLASS,
+} from "@/components/shared/kanban-board-scroll"
 import {
   Kanban,
   KanbanBoard,
@@ -24,13 +31,16 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { getApprovalKanbanStage } from "@/lib/approval-kanban"
 import { filterApprovalReports } from "@/lib/approval-filters"
 import { getVisibleApprovalKanbanColumns } from "@/lib/approval-statuses"
 import type { AccountType } from "@/lib/auth-session"
+import { cn } from "@/lib/utils"
 import { useApprovalStore } from "@/stores/use-approval-store"
-import type { ContentReport } from "@/types/content-report"
+import {
+  canEditPublishingFields,
+  type ContentReport,
+} from "@/types/content-report"
 
 type ApprovalKanbanBoardProps = {
   reports: ContentReport[]
@@ -64,9 +74,6 @@ export function ApprovalKanbanBoard({
   canPublishUpdate,
   approvalId,
 }: ApprovalKanbanBoardProps) {
-  const [updatedApprovals, setUpdatedApprovals] = useState<
-    Record<number, ContentReport>
-  >({})
   const {
     activeView,
     searchQuery,
@@ -76,16 +83,16 @@ export function ApprovalKanbanBoard({
     selectedSupervisorStatusFilter,
     selectedDirectorStatusFilter,
     selectedPublishStatusFilter,
-    selectedApprovalId,
+    approvalPatches,
     openDetailsSheet,
     openVerificationDialog,
     setActiveView,
-    setSelectedApproval,
+    updateApprovalInStore,
   } = useApprovalStore()
 
   const currentReports = useMemo(
-    () => reports.map((report) => updatedApprovals[report.id] ?? report),
-    [reports, updatedApprovals]
+    () => reports.map((report) => approvalPatches[report.id] ?? report),
+    [reports, approvalPatches]
   )
 
   const filteredReports = useMemo(() => {
@@ -125,17 +132,6 @@ export function ApprovalKanbanBoard({
     [filteredReports, visibleColumns]
   )
 
-  function upsertApproval(updatedApproval: ContentReport) {
-    setUpdatedApprovals((current) => ({
-      ...current,
-      [updatedApproval.id]: updatedApproval,
-    }))
-
-    if (selectedApprovalId === updatedApproval.id) {
-      setSelectedApproval(updatedApproval)
-    }
-  }
-
   function handleMove({
     activeContainer,
     overContainer,
@@ -151,6 +147,41 @@ export function ApprovalKanbanBoard({
       return
     }
 
+    if (
+      (overContainer === "pending" || overContainer === "supervisor-approved") &&
+      !canSupervisorReview
+    ) {
+      toast.error("You do not have permission to update Supervisor Review.")
+      return
+    }
+
+    if (overContainer === "revision" || overContainer === "rejected") {
+      const isDirectorStage = report.supervisorStatus === "Approved"
+
+      if (isDirectorStage && !canDirectorReview) {
+        toast.error("You do not have permission to perform Director Review.")
+        return
+      }
+
+      if (!isDirectorStage && !canSupervisorReview) {
+        toast.error("You do not have permission to update Supervisor Review.")
+        return
+      }
+    }
+
+    if (overContainer === "ready-to-publish" && !canDirectorReview) {
+      toast.error("You do not have permission to perform Director Review.")
+      return
+    }
+
+    if (
+      (overContainer === "scheduled" || overContainer === "published") &&
+      (!canPublishUpdate || !canEditPublishingFields(report))
+    ) {
+      toast.error("You do not have permission to update Publishing.")
+      return
+    }
+
     openVerificationDialog({
       type: "kanban",
       report,
@@ -158,11 +189,9 @@ export function ApprovalKanbanBoard({
       toColumn: overContainer,
       notes: "",
       onSaved: (updatedApproval) => {
-        if (!updatedApproval) {
-          return
+        if (updatedApproval) {
+          updateApprovalInStore(updatedApproval)
         }
-
-        upsertApproval(updatedApproval)
       },
     })
   }
@@ -170,8 +199,9 @@ export function ApprovalKanbanBoard({
   return (
     <div className="min-h-0 min-w-0 space-y-4 overflow-hidden">
       <ApprovalDeepLinkOpener reports={currentReports} approvalId={approvalId} />
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-normal">Approvals</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Review submissions through the approval workflow and update
@@ -179,15 +209,20 @@ export function ApprovalKanbanBoard({
           </p>
         </div>
 
-        <Tabs
-          value={activeView}
-          onValueChange={(value) => setActiveView(value as "kanban" | "table")}
-        >
-          <TabsList>
-            <TabsTrigger value="kanban">Kanban View</TabsTrigger>
-            <TabsTrigger value="table">Table View</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex min-w-0 flex-wrap items-center justify-start gap-3 lg:shrink-0 lg:justify-end">
+          <Tabs
+            value={activeView}
+            onValueChange={(value) =>
+              setActiveView(value as "kanban" | "table")
+            }
+            className="w-auto shrink-0"
+          >
+            <TabsList>
+              <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
+              <TabsTrigger value="table">Table View</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
 
       <Tabs
@@ -195,21 +230,27 @@ export function ApprovalKanbanBoard({
         onValueChange={(value) => setActiveView(value as "kanban" | "table")}
       >
         <TabsContent value="kanban" className="mt-0 min-w-0 overflow-hidden">
-          <Card className="w-full min-w-0 border-0 bg-card text-card shadow-none">
-            <CardHeader className="gap-3">
-              <CardTitle className="text-card-foreground">Approval workflow</CardTitle>
+          <BoardSection className="w-full min-w-0 overflow-hidden pb-1 gap-2">
+            <CardHeader className="min-w-0 shrink-0 gap-3">
+              <CardTitle className="text-card-foreground">
+                Content approval
+              </CardTitle>
               <ApprovalFilters reports={currentReports} />
             </CardHeader>
-
-            <CardContent className="min-w-0 overflow-hidden">
-              <ScrollArea className="w-full pb-3" scrollbars="horizontal">
+            <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
+              <KanbanBoardScroll>
                 <Kanban
                   value={columns}
                   onValueChange={() => undefined}
                   getItemValue={(report) => String(report.id)}
                   onMove={handleMove}
                 >
-                  <KanbanBoard className="flex h-[calc(100vh-260px)] min-h-[420px] w-max min-w-full gap-4 p-4">
+                  <KanbanBoard
+                    className={cn(
+                      KANBAN_BOARD_SCROLL_ROW_CLASS,
+                      "px-6 pb-1 items-start"
+                    )}
+                  >
                     {visibleColumns.map((column) => (
                       <ApprovalKanbanColumn
                         key={column.id}
@@ -231,21 +272,32 @@ export function ApprovalKanbanBoard({
                       </ApprovalKanbanColumn>
                     ))}
                   </KanbanBoard>
-                  <KanbanOverlay className="rounded-md border-2 border-dashed bg-muted/20" />
+                  <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
                 </Kanban>
-              </ScrollArea>
+              </KanbanBoardScroll>
             </CardContent>
-          </Card>
+          </BoardSection>
         </TabsContent>
 
-        <TabsContent value="table" className="mt-0">
-          <ApprovalDataTable
-            reports={currentReports}
-            canSupervisorReview={canSupervisorReview}
-            canDirectorReview={canDirectorReview}
-            canPublishUpdate={canPublishUpdate}
-            showHeader={false}
-          />
+        <TabsContent value="table" className="mt-0 min-w-0 overflow-hidden">
+          <Card className="w-full min-w-0 overflow-hidden">
+            <CardHeader className="gap-3">
+              <CardTitle className="text-card-foreground">
+                Content approval
+              </CardTitle>
+              <ApprovalFilters reports={currentReports} />
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <ApprovalDataTable
+                reports={currentReports}
+                canSupervisorReview={canSupervisorReview}
+                canDirectorReview={canDirectorReview}
+                canPublishUpdate={canPublishUpdate}
+                showHeader={false}
+                embedded
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -254,7 +306,7 @@ export function ApprovalKanbanBoard({
         canDirectorReview={canDirectorReview}
         canPublishUpdate={canPublishUpdate}
       />
-      <ApprovalVerificationDialog onApprovalUpdated={upsertApproval} />
+      <ApprovalVerificationDialog onApprovalUpdated={updateApprovalInStore} />
     </div>
   )
 }

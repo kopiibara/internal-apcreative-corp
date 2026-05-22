@@ -55,9 +55,11 @@ export function LoginForm() {
     }
 
     return (
-        <Card className="w-full max-w-md">
-            <CardHeader>
-                <CardTitle>AP Creative Dashboard</CardTitle>
+        <Card className="relative z-10 w-full max-w-md border-2 border-border shadow-[var(--shadow-hard)]">
+            <CardHeader className="border-b border-border/60 pb-4">
+                <CardTitle className="text-xl tracking-tight">
+                    AP Creative Dashboard
+                </CardTitle>
                 <CardDescription>
                     Sign in to access your internal dashboard.
                 </CardDescription>
@@ -91,7 +93,11 @@ export function LoginForm() {
                         />
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={isLoading}>
+                    <Button
+                        type="submit"
+                        className="w-full font-semibold"
+                        disabled={isLoading}
+                    >
                         {isLoading ? "Signing in..." : "Sign In"}
                     </Button>
                 </form>

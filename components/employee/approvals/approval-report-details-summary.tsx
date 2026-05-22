@@ -1,3 +1,6 @@
+import { Clock, ExternalLink } from "lucide-react"
+
+import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -16,15 +19,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
-}) 
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <Badge variant={status === "Approved" ? "default" : "outline"}>
-      {status}
-    </Badge>
-  )
-}
+})
 
 function getDateLabel(value: string | null) {
   return value ? dateFormatter.format(new Date(value)) : "Not scheduled"
@@ -49,7 +44,7 @@ function DetailField({
 
 function LongText({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border bg-muted/20 p-3 text-sm leading-relaxed">
+    <div className="rounded-lg border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
       <p className="whitespace-pre-wrap break-words">{children}</p>
     </div>
   )
@@ -59,40 +54,48 @@ export function ContentReportDetailsSummary({
   report,
 }: ContentReportDetailsSummaryProps) {
   return (
-    <Card size="sm">
+    <Card size="sm" className="shadow-none border-0">
       <CardHeader>
-        <CardTitle>Content Details</CardTitle>
+        <CardTitle className="font-bold text-xl"> {report.brandName ?? "No brand"}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <DetailField label="Date Submitted">
-            {dateFormatter.format(new Date(report.dateSubmitted))}
-          </DetailField>
-          <DetailField label="Brand">
-            {report.brandName ?? "No brand"}
-          </DetailField>
-          <DetailField label="Content Type">{report.contentType}</DetailField>
-          <DetailField label="Platform">{report.platform}</DetailField>
-          <DetailField label="Asset Link">
-            {report.assetLink ? (
-              <a
-                href={report.assetLink}
-                target="_blank"
-                rel="noreferrer"
-                className="break-all underline-offset-4 hover:underline"
-              >
-                {report.assetLink}
-              </a>
-            ) : (
-              <span className="text-muted-foreground">No link</span>
-            )}
-          </DetailField>
-          <DetailField label="Scheduled / Published Date">
-            {getDateLabel(report.scheduledPublishedDate)}
-          </DetailField>
+      <CardContent className="space-y-5 ">
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary" className="bg-gray-200">
+              <Clock className="size-3" />
+              {dateFormatter.format(new Date(report.dateSubmitted))}
+            </Badge>
+            <Badge variant="outline">
+              {report.assetLink ? (
+                <a
+                  href={report.assetLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium underline-offset-2 hover:underline"
+                >
+                  <ExternalLink className="size-3" />
+                  Open asset
+                </a>
+              ) : (
+                <span className="text-xs text-muted-foreground">No asset link</span>
+              )}
+            </Badge>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="secondary">{report.contentType}</Badge>
+            <Badge variant="neutral">{report.platform}</Badge>
+          </div>
+          <ApprovalStatusBadges
+            supervisorStatus={report.supervisorStatus}
+            directorStatus={report.directorStatus}
+            publishStatus={report.publishStatus}
+            compact
+          />
         </div>
 
         <Separator />
+
+
 
         <DetailField label="Content Inspo">
           <LongText>{report.contentInspo ?? "None"}</LongText>
@@ -103,20 +106,6 @@ export function ContentReportDetailsSummary({
         <DetailField label="Employee Notes / Comments">
           <LongText>{report.employeeComments ?? "No employee comments"}</LongText>
         </DetailField>
-
-        <Separator />
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <DetailField label="Marketing Supervisor Status">
-            <StatusBadge status={report.supervisorStatus} />
-          </DetailField>
-          <DetailField label="Director of Marketing Status">
-            <StatusBadge status={report.directorStatus} />
-          </DetailField>
-          <DetailField label="Publish Status">
-            <StatusBadge status={report.publishStatus} />
-          </DetailField>
-        </div>
       </CardContent>
     </Card>
   )

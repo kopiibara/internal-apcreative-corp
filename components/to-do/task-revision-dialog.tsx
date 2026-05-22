@@ -17,6 +17,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { TaskAssignmentRecord } from "@/lib/tasks"
+import { useTaskStore } from "@/stores/use-task-store"
 
 type TaskRevisionDialogProps = {
   assignment: TaskAssignmentRecord | null
@@ -30,6 +31,9 @@ export function TaskRevisionDialog({
   onOpenChange,
 }: TaskRevisionDialogProps) {
   const router = useRouter()
+  const updateTaskAssignmentInStore = useTaskStore(
+    (state) => state.updateTaskAssignmentInStore
+  )
   const [isPending, startTransition] = useTransition()
   const [revisionNote, setRevisionNote] = useState("")
 
@@ -48,6 +52,9 @@ export function TaskRevisionDialog({
 
       if (result.success) {
         toast.success(result.message)
+        if (result.data?.updatedAssignment) {
+          updateTaskAssignmentInStore(result.data.updatedAssignment)
+        }
         onOpenChange(false)
         setRevisionNote("")
         router.refresh()
@@ -84,7 +91,7 @@ export function TaskRevisionDialog({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="neutral"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >
