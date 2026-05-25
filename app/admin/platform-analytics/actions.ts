@@ -4,12 +4,15 @@ import { revalidatePath } from "next/cache";
 
 import {
   metaMonitoringFiltersSchema,
+  platformAnalyticsFiltersSchema,
   registerMetaPageSchema,
 } from "@/app/admin/platform-analytics/schema";
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import { query } from "@/lib/db";
 import { bootstrapMetaMonitoring } from "@/lib/meta/bootstrap";
 import { getMetaMonitoringDashboardData } from "@/lib/meta/monitoring-data";
+import { getPlatformAnalyticsDashboardData } from "@/lib/platform-analytics/get-dashboard-data";
+import type { AnalyticsPlatform, MetaScope } from "@/lib/platform-analytics/types";
 import {
   runMetaSyncJob,
   syncDailyPageSnapshots,
@@ -43,7 +46,7 @@ async function authorizeMetaView(): Promise<MetaMonitoringActionResult<never> | 
   if (!allowed) {
     return {
       success: false,
-      message: "You do not have permission to view Meta monitoring.",
+      message: "You do not have permission to view Platform Analytics.",
     };
   }
 
@@ -69,11 +72,42 @@ async function authorizeMetaManage(): Promise<MetaMonitoringActionResult<never> 
   if (!allowed) {
     return {
       success: false,
-      message: "You do not have permission to manage Meta monitoring.",
+      message: "You do not have permission to manage Platform Analytics.",
     };
   }
 
   return null;
+}
+
+export async function fetchPlatformAnalyticsAction(input?: {
+  platform?: AnalyticsPlatform;
+  accountId?: string | null;
+  metaScope?: MetaScope;
+}): Promise<
+  MetaMonitoringActionResult<
+    Awaited<ReturnType<typeof getPlatformAnalyticsDashboardData>>
+  >
+> {
+  const authError = await authorizeMetaView();
+  if (authError) {
+    return authError;
+  }
+
+  const parsed = platformAnalyticsFiltersSchema.safeParse(input ?? {});
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: "Invalid platform analytics filters.",
+    };
+  }
+
+  const data = await getPlatformAnalyticsDashboardData({
+    platform: parsed.data.platform,
+    accountId: parsed.data.accountId ?? null,
+    metaScope: parsed.data.metaScope,
+  });
+
+  return { success: true, message: "Platform analytics loaded.", data };
 }
 
 export async function fetchMetaMonitoringAction(input?: {

@@ -18,7 +18,10 @@ import {
 } from "@/lib/auth/account-type";
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import { can } from "@/lib/permissions";
-import { getDefaultTemporaryPassword } from "@/lib/server/account-secrets";
+import {
+  getDefaultAccountPassword,
+  getDefaultTemporaryPassword,
+} from "@/lib/server/account-secrets";
 import { query, transaction } from "@/lib/db";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
@@ -1222,11 +1225,23 @@ export async function forceChangeAccountPassword(
     return { success: false, message: rateLimit.message };
   }
 
+  let defaultPassword: string;
+
+  try {
+    defaultPassword = getDefaultAccountPassword();
+  } catch {
+    return {
+      success: false,
+      message:
+        "Default account password is not configured. Set DEFAULT_ACCOUNT_PASSWORD on the server.",
+    };
+  }
+
   try {
     await auth.api.setUserPassword({
       body: {
         userId: authorization.target.auth_user_id,
-        newPassword: parsed.data.newPassword,
+        newPassword: defaultPassword,
       },
       headers: await headers(),
     });
@@ -1253,15 +1268,17 @@ export async function forceChangeAccountPassword(
           summary,
           metadata
         )
-        VALUES ($1, $2, 'PASSWORD_FORCE_CHANGED', $3, $4::jsonb)
+        VALUES ($1, $2, 'PASSWORD_RESET_TO_DEFAULT', $3, $4::jsonb)
         `,
         [
           authorization.context.profile.id,
           parsed.data.profileId,
-          `Password was force changed for ${authorization.target.full_name}.`,
+          "Password was reset to the system default password.",
           JSON.stringify({
             requirePasswordChange: parsed.data.requirePasswordChange,
             reason: parsed.data.reason,
+            resetType: "DEFAULT_PASSWORD",
+            targetFullName: authorization.target.full_name,
             targetAccountType: authorization.target.account_type,
           }),
         ],
@@ -1273,7 +1290,7 @@ export async function forceChangeAccountPassword(
 
     return {
       success: true,
-      message: "Password changed successfully.",
+      message: "Password reset to the system default successfully.",
     };
   } catch (error) {
     console.error("forceChangeAccountPassword failed:", error);
@@ -1283,7 +1300,7 @@ export async function forceChangeAccountPassword(
       message:
         error instanceof Error
           ? error.message
-          : "Unable to force change password.",
+          : "Unable to reset password to default.",
     };
   }
 }

@@ -92,10 +92,21 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 function formatAction(action: string) {
+  if (action === "PASSWORD_RESET_TO_DEFAULT") {
+    return "Password reset to default"
+  }
+
   return action
     .split("_")
     .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
     .join(" ")
+}
+
+function isPasswordResetLog(action: string) {
+  return (
+    action === "PASSWORD_RESET_TO_DEFAULT" ||
+    action === "PASSWORD_FORCE_CHANGED"
+  )
 }
 
 export function AccountDetailsSheet({
@@ -157,8 +168,7 @@ export function AccountDetailsSheet({
                       label="Phone"
                       value={account.phoneNumber ?? "Not set"}
                     />
-                    <Field label="Created" value={formatDateTime(account.createdAt)} />
-                    <Field label="Updated" value={formatDateTime(account.updatedAt)} />
+
                   </div>
                 </Section>
 
@@ -226,15 +236,16 @@ export function AccountDetailsSheet({
                                     </p>
                                   </div>
                                   <p className="whitespace-pre-wrap break-words rounded-lg border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
-                                    {log.summary}
+                                    {log.metadata &&
+                                      typeof log.metadata.reason === "string" &&
+                                      log.metadata.reason ? (
+                                      <p className="text-xs text-muted-foreground">
+                                        Reason: {log.metadata.reason}
+                                      </p>
+                                    ) : null}
                                   </p>
-                                  {log.metadata &&
-                                    typeof log.metadata.reason === "string" &&
-                                    log.metadata.reason ? (
-                                    <p className="text-xs text-muted-foreground">
-                                      Reason: {log.metadata.reason}
-                                    </p>
-                                  ) : null}
+
+
                                 </div>
                               </div>
                             </TimelineContent>
@@ -249,7 +260,6 @@ export function AccountDetailsSheet({
               <aside className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:self-start">
                 <Section title="Account Metadata">
                   <Field label="Profile ID" value={account.id} />
-                  <Field label="Auth User ID" value={account.authUserId} />
                   <Field label="Account Type" value={account.accountType} />
                   <Field label="Created" value={formatDateTime(account.createdAt)} />
                   <Field label="Updated" value={formatDateTime(account.updatedAt)} />

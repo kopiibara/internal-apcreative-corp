@@ -15,7 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import type { AccountListItem } from "@/lib/auth/accounts"
@@ -32,15 +31,11 @@ export function ForcePasswordDialog({
   onOpenChange,
 }: ForcePasswordDialogProps) {
   const router = useRouter()
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [reason, setReason] = useState("")
   const [requirePasswordChange, setRequirePasswordChange] = useState(true)
   const [isPending, startTransition] = useTransition()
 
   function reset() {
-    setNewPassword("")
-    setConfirmPassword("")
     setReason("")
     setRequirePasswordChange(true)
   }
@@ -55,8 +50,6 @@ export function ForcePasswordDialog({
     startTransition(async () => {
       const result = await forceChangeAccountPassword({
         profileId: account.id,
-        newPassword,
-        confirmPassword,
         requirePasswordChange,
         reason,
       })
@@ -85,40 +78,19 @@ export function ForcePasswordDialog({
         <DialogHeader>
           <DialogTitle>Force Change Password</DialogTitle>
           <DialogDescription>
-            Set a new password for {account?.fullName ?? "this account"}.
-            Password values are never written to account logs.
+            This will reset the selected account password back to the system
+            default password. The password value will not be shown or stored in
+            logs.
+            {account ? (
+              <>
+                {" "}
+                Target: {account.fullName} ({account.email}).
+              </>
+            ) : null}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="force-new-password">New password</Label>
-            <Input
-              id="force-new-password"
-              type="password"
-              value={newPassword}
-              minLength={8}
-              onChange={(event) => setNewPassword(event.target.value)}
-              autoComplete="new-password"
-              disabled={isPending}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="force-confirm-password">Confirm password</Label>
-            <Input
-              id="force-confirm-password"
-              type="password"
-              value={confirmPassword}
-              minLength={8}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              autoComplete="new-password"
-              disabled={isPending}
-              required
-            />
-          </div>
-
           <label className="flex items-center gap-2 rounded-lg border-2 border-black p-3 text-sm font-medium">
             <Checkbox
               checked={requirePasswordChange}
@@ -150,8 +122,8 @@ export function ForcePasswordDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "Changing..." : "Change Password"}
+            <Button type="submit" variant="destructive" disabled={isPending}>
+              {isPending ? "Resetting..." : "Reset to Default Password"}
             </Button>
           </DialogFooter>
         </form>

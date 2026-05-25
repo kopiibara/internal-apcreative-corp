@@ -106,25 +106,11 @@ export const disableAccountSchema = z.object({
   profileId: z.coerce.number().int().positive(),
 });
 
-export const forceChangePasswordSchema = z
-  .object({
-    profileId: z.coerce.number().int().positive(),
-    newPassword: z
-      .string()
-      .min(8, "New password must be at least 8 characters."),
-    confirmPassword: z.string().min(1, "Confirm the new password."),
-    requirePasswordChange: z.coerce.boolean().default(true),
-    reason: optionalTextSchema,
-  })
-  .superRefine((value, context) => {
-    if (value.newPassword !== value.confirmPassword) {
-      context.addIssue({
-        code: "custom",
-        path: ["confirmPassword"],
-        message: "New password and confirmation must match.",
-      });
-    }
-  });
+export const forceChangePasswordSchema = z.object({
+  profileId: z.coerce.number().int().positive(),
+  requirePasswordChange: z.coerce.boolean().default(true),
+  reason: optionalTextSchema,
+});
 
 export const softDeleteAccountSchema = z.object({
   profileId: z.coerce.number().int().positive(),
