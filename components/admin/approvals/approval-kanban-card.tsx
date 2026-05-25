@@ -32,7 +32,7 @@ export function ApprovalKanbanCard({
 
   return (
     <Card
-      className="cursor-pointer bg-white rounded-lg border px-1.5 py-1 shadow-sm transition-colors hover:bg-muted"
+      className="cursor-pointer bg-white rounded-lg px-3 py-2 shadow-sm transition-colors hover:bg-muted"
       onClick={onClick}
     >
       <CardContent className="space-y-3 p-2">
@@ -40,7 +40,7 @@ export function ApprovalKanbanCard({
           {report.brandName ?? "No brand"}
         </p>
         <p className="truncate text-sm ">
-          {report.submittedByName}
+          Submitted by <strong>{report.submittedByName}</strong>
         </p>
         <div className="flex flex-row gap-2">
           <Badge className="bg-gray-200">
