@@ -13,7 +13,9 @@ import {
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
+import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { adminGroups, employeeGroups, type SidebarGroupItem } from "@/types/sidebar"
+import { cn } from "@/lib/utils"
 
 function formatDateTime(date: Date) {
     return new Intl.DateTimeFormat("en-US", {
@@ -108,6 +110,8 @@ type DashboardUser = {
     accountType: string
     roleSlugs?: string[]
     canAccessAdsCampaigns?: boolean
+    canAccessTaskBoard?: boolean
+    canAccessReminders?: boolean
     imageUrl?: string | null
     mustChangePassword?: boolean
 }
@@ -136,6 +140,7 @@ export function DashboardShell({
     const headerTitle =
         getTitleFromGroups(pathname, role === "admin" ? adminGroups : employeeGroups) ??
         title
+    const isWideLayout = isWideLayoutRoute(pathname)
 
     return (
         <TooltipProvider delayDuration={0}>
@@ -159,6 +164,8 @@ export function DashboardShell({
                         accountType: user.accountType,
                         roleSlugs: user.roleSlugs,
                         canAccessAdsCampaigns: user.canAccessAdsCampaigns,
+                        canAccessTaskBoard: user.canAccessTaskBoard,
+                        canAccessReminders: user.canAccessReminders,
                         imageUrl: user.imageUrl,
                     }}
                 />
@@ -212,7 +219,14 @@ export function DashboardShell({
                         </div>
                     </header>
 
-                    <main className="relative z-0 min-h-0 flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 md:p-6">
+                    <main
+                        className={cn(
+                            "relative z-0 min-h-0 flex-1 min-w-0 overflow-x-hidden p-4 md:p-6",
+                            isWideLayout
+                                ? "flex flex-col overflow-hidden"
+                                : "overflow-y-auto"
+                        )}
+                    >
                         <div
                             aria-hidden
                             className="pointer-events-none absolute inset-0 opacity-[0.04] dark:opacity-[0.06]"
@@ -222,7 +236,12 @@ export function DashboardShell({
                                 backgroundSize: "6px 6px",
                             }}
                         />
-                        <div className="relative z-1">
+                        <div
+                            className={cn(
+                                "relative z-1",
+                                isWideLayout && "flex min-h-0 flex-1 flex-col"
+                            )}
+                        >
                             <PageTransition>{children}</PageTransition>
                         </div>
                     </main>

@@ -7,12 +7,9 @@ import {
   deleteContentReportSchema,
   updateContentReportSchema,
 } from "@/app/employee/approvals/schema";
-import { getPrimaryActiveBrandId } from "@/lib/content-reports";
+import { resolveContentReportBrandId } from "@/lib/content-reports";
 import { canEmployeeEditReport } from "@/types/content-report";
-import {
-  getCurrentProfileContext,
-  isEmployeeAccountType,
-} from "@/lib/auth/auth-session";
+import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import { query, transaction } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { enforceRateLimit } from "@/lib/rate-limit";
@@ -27,6 +24,7 @@ export type ActionResult<T = unknown> = {
 
 type ReportOwnershipRow = {
   submitted_by_profile_id: number;
+  brand_id: number | null;
   supervisor_status: "Pending" | "Approved" | "Rejected" | "Revision";
   director_status: "Pending" | "Approved" | "Rejected" | "Revision";
   publish_status: "Pending" | "Scheduled" | "Published" | "Cancelled";
@@ -74,6 +72,7 @@ async function getReportOwnership(reportId: number) {
     `
     SELECT
       submitted_by_profile_id,
+      brand_id,
       supervisor_status,
       director_status,
       publish_status
@@ -118,14 +117,19 @@ export async function createContentReport(
   }
 
   const { profile } = authorization.context;
-  const brandId = await getPrimaryActiveBrandId(profile.id);
+  const brandResolution = await resolveContentReportBrandId(
+    profile.id,
+    parsed.data.brandId,
+  );
 
-  if (isEmployeeAccountType(profile.account_type) && !brandId) {
+  if (!brandResolution.ok) {
     return {
       success: false,
-      message: "Your account needs an active brand before submitting reports.",
+      message: brandResolution.message,
     };
   }
+
+  const brandId = brandResolution.brandId;
 
   try {
     await query(
@@ -228,22 +232,37 @@ export async function updateContentReport(
     };
   }
 
+  const brandResolution = await resolveContentReportBrandId(
+    profile.id,
+    parsed.data.brandId,
+    report.brand_id,
+  );
+
+  if (!brandResolution.ok) {
+    return {
+      success: false,
+      message: brandResolution.message,
+    };
+  }
+
   try {
     await query(
       `
       UPDATE content_report
       SET
-        content_type = $2,
-        platform = $3,
-        content_inspo = $4,
-        caption = $5,
-        asset_link = $6,
-        employee_comments = $7,
+        brand_id = $2,
+        content_type = $3,
+        platform = $4,
+        content_inspo = $5,
+        caption = $6,
+        asset_link = $7,
+        employee_comments = $8,
         updated_at = now()
       WHERE id = $1
       `,
       [
         parsed.data.reportId,
+        brandResolution.brandId,
         parsed.data.contentType,
         parsed.data.platform,
         parsed.data.contentInspo,
@@ -312,6 +331,7 @@ export async function cancelContentReport(
         `
         SELECT
           submitted_by_profile_id,
+          brand_id,
           supervisor_status,
           director_status,
           publish_status

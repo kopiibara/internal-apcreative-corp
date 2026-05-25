@@ -144,11 +144,6 @@ export const employeeGroups: SidebarGroupItem[] = [
         ],
       },
       {
-        title: "Platform Analytics",
-        href: "/employee/platform-analytics",
-        icon: BarChart3,
-      },
-      {
         title: "Ads Campaigns",
         href: "/employee/ads-campaigns",
         icon: Megaphone,

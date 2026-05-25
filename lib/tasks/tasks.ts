@@ -390,7 +390,7 @@ export async function getTaskAssignmentsForViewer({
     WHERE
       ${
         canViewAll
-          ? "TRUE"
+          ? "t.task_type = 'GRADED'"
           : "(ta.assigned_to_profile_id = $1 OR t.created_by_profile_id = $1)"
       }
     ORDER BY

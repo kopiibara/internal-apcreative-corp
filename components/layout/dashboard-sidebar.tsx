@@ -60,6 +60,8 @@ type SidebarUser = {
     accountType?: string
     roleSlugs?: string[]
     canAccessAdsCampaigns?: boolean
+    canAccessTaskBoard?: boolean
+    canAccessReminders?: boolean
     imageUrl?: string | null
 }
 
@@ -102,6 +104,8 @@ export function DashboardSidebar({
             user?.roleSlugs?.includes("full-stack-developer"))
     const taskBadge = formatSidebarBadge(employeeActionableTaskCount)
     const canSeeAdsCampaigns = user?.canAccessAdsCampaigns === true
+    const canSeeTaskBoard = user?.canAccessTaskBoard === true
+    const canSeeReminders = user?.canAccessReminders !== false
     const groups =
         mode === "admin"
             ? adminGroups
@@ -123,18 +127,47 @@ export function DashboardSidebar({
                                 item.href !== "/employee/ads-campaigns" ||
                                 canSeeAdsCampaigns
                         )
-                        .map((item) =>
-                            item.title === "To-Do"
-                                ? {
-                                    ...item,
-                                    badge: taskBadge,
-                                    subItems: item.subItems?.map((subItem) =>
-                                        subItem.href === "/employee/to-do/tasks"
-                                            ? { ...subItem, badge: taskBadge }
-                                            : subItem
-                                    ),
-                                }
-                                : item
+                        .map((item) => {
+                            if (item.title !== "To-Do") {
+                                return item
+                            }
+
+                            const subItems = item.subItems
+                                ?.filter((subItem) => {
+                                    if (
+                                        subItem.href ===
+                                            "/employee/to-do/tasks" &&
+                                        !canSeeTaskBoard
+                                    ) {
+                                        return false
+                                    }
+
+                                    if (
+                                        subItem.href ===
+                                            "/employee/to-do/reminders" &&
+                                        !canSeeReminders
+                                    ) {
+                                        return false
+                                    }
+
+                                    return true
+                                })
+                                .map((subItem) =>
+                                    subItem.href === "/employee/to-do/tasks"
+                                        ? { ...subItem, badge: taskBadge }
+                                        : subItem
+                                )
+
+                            return {
+                                ...item,
+                                badge: canSeeTaskBoard ? taskBadge : undefined,
+                                subItems,
+                            }
+                        })
+                        .filter(
+                            (item) =>
+                                item.title !== "To-Do" ||
+                                (item.subItems?.length ?? 0) > 0
                         ),
                 }))
                 .filter((group) => group.items.length > 0)

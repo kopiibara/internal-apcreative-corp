@@ -58,6 +58,7 @@ const optionalUrlSchema = z.preprocess((value) => {
 }, z.string().url("Asset link must be a valid URL.").nullable());
 
 export const createContentReportSchema = z.object({
+  brandId: z.coerce.number().int().positive().optional(),
   contentType: z.enum(contentTypes),
   platform: z.enum(platformOptions).default("Meta (Instagram and Facebook)"),
   contentInspo: optionalTextSchema,

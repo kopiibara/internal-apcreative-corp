@@ -1,3 +1,4 @@
+import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import { query } from "@/lib/db";
 import type {
   ContentType,
@@ -38,6 +39,12 @@ type ContentReportRow = {
 
 type BrandAssignmentRow = {
   brand_id: number;
+};
+
+export type ContentReportBrandOption = {
+  id: number;
+  name: string;
+  isPrimary: boolean;
 };
 
 type ApprovalActivityLogRow = {
@@ -250,4 +257,97 @@ export async function getPrimaryActiveBrandId(profileId: number) {
   );
 
   return result.rows[0]?.brand_id ?? null;
+}
+
+export async function getEmployeeContentReportBrandOptions(profileId: number) {
+  const result = await query<{
+    id: number;
+    name: string;
+    is_primary: boolean;
+  }>(
+    `
+    SELECT b.id, b.name, uba.is_primary
+    FROM user_brand_access uba
+    JOIN brand b ON b.id = uba.brand_id
+    WHERE uba.profile_id = $1
+      AND uba.is_active = true
+      AND b.is_active = true
+      AND b.slug <> $2
+    ORDER BY uba.is_primary DESC, b.name ASC, b.id ASC
+    `,
+    [profileId, ALL_BRAND_SLUG],
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    isPrimary: row.is_primary,
+  })) satisfies ContentReportBrandOption[];
+}
+
+export function mergeContentReportBrandOptions(
+  brandOptions: ContentReportBrandOption[],
+  report?: { brandId: number | null; brandName: string | null } | null,
+) {
+  if (
+    report?.brandId == null ||
+    brandOptions.some((brand) => brand.id === report.brandId)
+  ) {
+    return brandOptions;
+  }
+
+  return [
+    ...brandOptions,
+    {
+      id: report.brandId,
+      name: report.brandName ?? `Brand #${report.brandId}`,
+      isPrimary: false,
+    },
+  ];
+}
+
+export async function resolveContentReportBrandId(
+  profileId: number,
+  requestedBrandId?: number,
+  existingBrandId?: number | null,
+) {
+  const brands = await getEmployeeContentReportBrandOptions(profileId);
+
+  if (brands.length === 0) {
+    return {
+      ok: false as const,
+      message:
+        "Your account needs an active brand assignment before submitting reports.",
+    };
+  }
+
+  if (requestedBrandId != null) {
+    const selected = brands.find((brand) => brand.id === requestedBrandId);
+
+    if (!selected) {
+      return {
+        ok: false as const,
+        message: "You do not have access to the selected brand.",
+      };
+    }
+
+    return { ok: true as const, brandId: selected.id };
+  }
+
+  if (existingBrandId != null) {
+    const existing = brands.find((brand) => brand.id === existingBrandId);
+
+    if (existing) {
+      return { ok: true as const, brandId: existing.id };
+    }
+  }
+
+  if (brands.length === 1) {
+    return { ok: true as const, brandId: brands[0].id };
+  }
+
+  return {
+    ok: false as const,
+    message: "Select a brand for this approval request.",
+  };
 }

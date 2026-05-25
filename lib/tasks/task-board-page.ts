@@ -7,6 +7,10 @@ import {
 } from "@/lib/auth/account-type";
 import { can, requirePermission } from "@/lib/permissions";
 import {
+  getBrandOfficerAssignableProfiles,
+  profileHasBrandOfficerRole,
+} from "@/lib/tasks/brand-officer-task-assign";
+import {
   getAssignableProfilesWithBrands,
   getTaskAssignmentsForEmployee,
   getTaskAssignmentsForViewer,
@@ -78,7 +82,7 @@ export async function loadAdminTaskBoardPage() {
 export type EmployeeTaskBoardPageData = {
   variant: "employee";
   assignments: Awaited<ReturnType<typeof getTaskAssignmentsForEmployee>>;
-  assignees: [];
+  assignees: Awaited<ReturnType<typeof getBrandOfficerAssignableProfiles>>;
   currentProfileId: number;
   currentAccountType: AccountType;
   permissions: TaskPermissionFlags;
@@ -91,28 +95,36 @@ export async function loadEmployeeTaskBoardPageData(profile: {
 }): Promise<EmployeeTaskBoardPageData> {
   const authUserId = profile.auth_user_id;
 
-  const [assignments, permissions] = await Promise.all([
-    getTaskAssignmentsForEmployee(profile.id),
-    loadTaskPermissions(authUserId, profile.account_type),
-  ]);
+  const [assignments, permissions, isBrandOfficer, canAssignTeamTasks] =
+    await Promise.all([
+      getTaskAssignmentsForEmployee(profile.id),
+      loadTaskPermissions(authUserId, profile.account_type),
+      profileHasBrandOfficerRole(profile.id),
+      can(authUserId, "tasks.assign"),
+    ]);
+
+  const canAssignBrandTeamTasks = isBrandOfficer && canAssignTeamTasks;
+  const assignees = canAssignBrandTeamTasks
+    ? await getBrandOfficerAssignableProfiles(profile.id)
+    : [];
 
   return {
     variant: "employee",
     assignments,
-    assignees: [],
+    assignees,
     currentProfileId: profile.id,
     currentAccountType: profile.account_type,
     permissions: {
       ...permissions,
-      canAssign: false,
+      canAssign: canAssignBrandTeamTasks,
       canReview: false,
       canViewAll: false,
       canManageAll: false,
       canDelete: false,
       canUpdate: false,
       isEmployee: true,
-      canCreate: permissions.canCreate || permissions.canSubmitProof,
-      canSubmitProof: permissions.canSubmitProof || permissions.canCreate,
+      canCreate: canAssignBrandTeamTasks,
+      canSubmitProof: permissions.canSubmitProof,
     },
   };
 }

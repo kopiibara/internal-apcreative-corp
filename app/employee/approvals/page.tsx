@@ -1,26 +1,27 @@
 import { EmployeeApprovalKanbanBoard } from "@/components/employee/approvals/approval-kanban-board"
-import { getMyContentReports } from "@/lib/content-reports"
-import { getCurrentProfileContext } from "@/lib/auth/auth-session"
-import { can } from "@/lib/permissions"
+import {
+  getEmployeeContentReportBrandOptions,
+  getMyContentReports,
+} from "@/lib/content-reports"
+import { requireEmployee } from "@/lib/auth/auth-session"
 import { redirect } from "next/navigation"
 
 export default async function ApprovalsPage() {
-  const context = await getCurrentProfileContext()
+  const { profile } = await requireEmployee()
 
-  if (!context || context.profile.status !== "ACTIVE") {
+  if (profile.status !== "ACTIVE") {
     redirect("/login")
   }
 
-  const allowed = await can(
-    context.profile.auth_user_id,
-    "content_reports.view"
+  const [reports, brandOptions] = await Promise.all([
+    getMyContentReports(profile.id),
+    getEmployeeContentReportBrandOptions(profile.id),
+  ])
+
+  return (
+    <EmployeeApprovalKanbanBoard
+      reports={reports}
+      brandOptions={brandOptions}
+    />
   )
-
-  if (!allowed) {
-    redirect("/employee/dashboard")
-  }
-
-  const reports = await getMyContentReports(context.profile.id)
-
-  return <EmployeeApprovalKanbanBoard reports={reports} />
 }
