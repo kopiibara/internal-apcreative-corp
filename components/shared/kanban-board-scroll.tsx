@@ -55,7 +55,7 @@ export function KanbanBoardShell({
 }: KanbanBoardShellProps) {
   return (
     <ScrollArea
-      className={cn("w-full min-w-0 pb-4", className)}
+      className={cn("w-full min-w-0 pb-2", className)}
       scrollbars="horizontal"
     >
       {children}

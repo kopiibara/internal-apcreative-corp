@@ -262,9 +262,7 @@ export function ApprovalKanbanBoard({
         <TabsContent value="kanban" className="mt-0 min-w-0 overflow-hidden">
           <BoardSection className="w-full min-w-0 overflow-hidden pb-1 gap-2">
             <CardHeader className="min-w-0 shrink-0 gap-3">
-              <CardTitle className="text-card-foreground">
-                Content approval
-              </CardTitle>
+
               <ApprovalFilters reports={currentReports} />
             </CardHeader>
             <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
@@ -316,9 +314,7 @@ export function ApprovalKanbanBoard({
         <TabsContent value="table" className="mt-0 min-w-0 overflow-hidden">
           <Card className="w-full min-w-0 overflow-hidden">
             <CardHeader className="gap-3">
-              <CardTitle className="text-card-foreground">
-                Content approval
-              </CardTitle>
+
               <ApprovalFilters reports={currentReports} />
             </CardHeader>
             <CardContent className="min-w-0">

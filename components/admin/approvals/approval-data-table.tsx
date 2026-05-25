@@ -655,7 +655,6 @@ export function ApprovalDataTable({
 
       <Card className="w-full min-w-0 overflow-hidden">
         <CardHeader className="gap-3">
-          <CardTitle>Content approval </CardTitle>
           <ApprovalFilters reports={reports} />
         </CardHeader>
 

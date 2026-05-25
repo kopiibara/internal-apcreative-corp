@@ -149,8 +149,8 @@ export const employeeGroups: SidebarGroupItem[] = [
         icon: BarChart3,
       },
       {
-        title: "Ads Performance",
-        href: "/employee/ads-performance",
+        title: "Ads Campaigns",
+        href: "/employee/ads-campaigns",
         icon: Megaphone,
       },
     ],

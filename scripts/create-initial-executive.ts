@@ -29,13 +29,6 @@ const defaultPassword =
 
 const bootstrapAccounts: BootstrapAccount[] = [
   {
-    name: "Ms. Angela",
-    email: "director@apcreativecorp.com",
-    password: defaultPassword,
-    accountType: "DIRECTOR",
-    department: "Marketing",
-  },
-  {
     name: "Marketing Supervisor",
     email: "supervisor@apcreativecorp.com",
     password: defaultPassword,
