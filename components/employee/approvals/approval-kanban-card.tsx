@@ -1,6 +1,6 @@
 "use client"
 
-import { ExternalLink, Clock, Paperclip, PenLine } from "lucide-react"
+import { ExternalLink, PenLine } from "lucide-react"
 
 import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
 import { Badge } from "@/components/ui/badge"
@@ -32,45 +32,26 @@ export function EmployeeApprovalKanbanCard({
 
   return (
     <Card
-      size="sm"
-      className="cursor-pointer rounded-lg  p-4 transition-colors hover:bg-muted"
+      className="cursor-pointer rounded-lg bg-white py-2 transition-colors hover:bg-muted"
       onClick={() => onOpenDetails(report)}
     >
-      <CardContent className="space-y-3 p-1">
-        <h2 className="truncate  font-bold">
-          {report.brandName ?? "No brand"}
-        </h2>
-
-        <div className="flex flex-row gap-2">
-
-          <Badge className="bg-gray-200">
-            <Clock /> {dateFormatter.format(new Date(report.dateSubmitted))}
-          </Badge>
-
-          <Badge >
-
-            {report.assetLink ? (
-              <a
-                href={report.assetLink}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-medium underline-offset-2 hover:underline"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <ExternalLink className="size-3" />
-                Open asset
-              </a>
-            ) : (
-              <span className="text-xs text-muted-foreground">No asset link</span>
-            )}
-          </Badge>
+      <CardContent className="space-y-3 px-4 py-1">
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="line-clamp-2 font-bold leading-snug">
+            {report.brandName ?? "No brand"}
+          </h2>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <Badge variant="secondary">{report.contentType}</Badge>
+            <Badge variant="neutral">{report.platform}</Badge>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          <Badge variant="secondary"> <Paperclip />{report.contentType}</Badge>
-          <Badge variant="neutral">{report.platform}</Badge>
-        </div>
-
+        <p className="text-xs">
+          <span className="text-muted-foreground">Submitted:</span>{" "}
+          <span className="font-medium">
+            {dateFormatter.format(new Date(report.dateSubmitted))}
+          </span>
+        </p>
 
         <ApprovalStatusBadges
           supervisorStatus={report.supervisorStatus}
@@ -79,41 +60,47 @@ export function EmployeeApprovalKanbanCard({
           compact
         />
 
-        {hasSupervisorNote || hasDirectorNote ? (
-          <div
-            className="flex flex-wrap gap-1"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {hasSupervisorNote ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-auto p-0 hover:bg-transparent"
-                onClick={() => onOpenDetails(report)}
+        <div
+          className="flex flex-wrap gap-1.5 pt-1"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {report.assetLink ? (
+            <Button type="button" size="sm" variant="neutral" asChild>
+              <a
+                href={report.assetLink}
+                target="_blank"
+                rel="noreferrer"
               >
-                <Badge variant="secondary" className="text-[10px] px-1.5 inline-flex items-center gap-1 underline-offset-2 hover:underline">
-                  <PenLine />
-                  Supervisor Note
-                </Badge>
-              </Button>
-            ) : null}
-            {hasDirectorNote ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-auto p-0 hover:bg-transparent"
-                onClick={() => onOpenDetails(report)}
-              >
-                <Badge variant="secondary" className="text-[10px] px-1.5 inline-flex items-center gap-1 underline-offset-2 hover:underline">
-                  <PenLine />
-                  Director Note
-                </Badge>
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
+                <ExternalLink className="size-3" />
+                Open asset
+              </a>
+            </Button>
+          ) : null}
+
+          {hasSupervisorNote ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="neutral"
+              onClick={() => onOpenDetails(report)}
+            >
+              <PenLine className="size-3" />
+              Supervisor Note
+            </Button>
+          ) : null}
+
+          {hasDirectorNote ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="neutral"
+              onClick={() => onOpenDetails(report)}
+            >
+              <PenLine className="size-3" />
+              Director Note
+            </Button>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   )

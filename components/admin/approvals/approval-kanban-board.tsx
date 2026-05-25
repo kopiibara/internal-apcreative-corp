@@ -12,7 +12,7 @@ import { ApprovalKanbanColumn } from "@/components/admin/approvals/approval-kanb
 import { ApprovalVerificationDialog } from "@/components/admin/approvals/approval-verification-dialog"
 import { BoardSection } from "@/components/shared/board-section"
 import {
-  KanbanBoardScroll,
+  KanbanBoardShell,
   KANBAN_BOARD_SCROLL_ROW_CLASS,
   KANBAN_OVERLAY_CLASS,
 } from "@/components/shared/kanban-board-scroll"
@@ -221,8 +221,13 @@ export function ApprovalKanbanBoard({
     })
   }
 
+  const approvalBoardRowClass = cn(
+    KANBAN_BOARD_SCROLL_ROW_CLASS,
+    "px-3 pb-1 sm:px-6"
+  )
+
   return (
-    <div className="min-h-0 min-w-0 space-y-4 overflow-hidden">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
       <ApprovalDeepLinkOpener reports={currentReports} approvalId={approvalId} />
 
       <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -263,7 +268,7 @@ export function ApprovalKanbanBoard({
               <ApprovalFilters reports={currentReports} />
             </CardHeader>
             <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
-              <KanbanBoardScroll>
+              <KanbanBoardShell>
                 <Kanban
                   key={boardSyncKey}
                   value={columns}
@@ -271,18 +276,13 @@ export function ApprovalKanbanBoard({
                   getItemValue={(report) => String(report.id)}
                   onMove={handleMove}
                 >
-                  <KanbanBoard
-                    className={cn(
-                      KANBAN_BOARD_SCROLL_ROW_CLASS,
-                      "px-6 pb-1 items-start"
-                    )}
-                  >
+                  <KanbanBoard className={approvalBoardRowClass}>
                     {visibleColumns.map((column) => (
                       <ApprovalKanbanColumn
                         key={column.id}
                         id={column.id}
                         title={column.title}
-                        reports={columns[column.id] ?? []}
+                        count={columns[column.id]?.length ?? 0}
                       >
                         {(columns[column.id] ?? []).map((report) => (
                           <KanbanItem
@@ -308,7 +308,7 @@ export function ApprovalKanbanBoard({
                   </KanbanBoard>
                   <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
                 </Kanban>
-              </KanbanBoardScroll>
+              </KanbanBoardShell>
             </CardContent>
           </BoardSection>
         </TabsContent>

@@ -83,7 +83,7 @@ export function TaskAssignmentCard({
   return (
     <>
       <Card
-        className="cursor-pointer rounded-lg py-2 transition-colors hover:bg-muted bg-white"
+        className="cursor-pointer rounded-lg py-3 px-1 transition-colors hover:bg-muted bg-white"
         onClick={() => onOpenDetails?.(assignment)}
       >
         <CardContent className="space-y-3 px-4 py-1">

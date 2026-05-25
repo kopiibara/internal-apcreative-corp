@@ -14,8 +14,9 @@ import { EmployeeApprovalKanbanColumn } from "@/components/employee/approvals/ap
 import { EmployeeApprovalTableView } from "@/components/employee/approvals/approval-table-view"
 import { BoardSection } from "@/components/shared/board-section"
 import {
-  KanbanBoardScroll,
+  KanbanBoardShell,
   KanbanColumnsRow,
+  KANBAN_BOARD_SCROLL_ROW_CLASS,
 } from "@/components/shared/kanban-board-scroll"
 import {
   AlertDialog,
@@ -42,6 +43,7 @@ import {
 } from "@/lib/approvals/approval-kanban"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 import type { ContentReport } from "@/types/content-report"
+import { cn } from "@/lib/utils"
 
 type EmployeeApprovalKanbanBoardProps = {
   reports: ContentReport[]
@@ -134,8 +136,13 @@ export function EmployeeApprovalKanbanBoard({
     })
   }
 
+  const employeeBoardRowClass = cn(
+    KANBAN_BOARD_SCROLL_ROW_CLASS,
+    "px-3 pb-1 sm:px-6"
+  )
+
   return (
-    <div className="min-h-0 min-w-0 space-y-4 overflow-hidden">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
       <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-normal">
@@ -183,8 +190,8 @@ export function EmployeeApprovalKanbanBoard({
               <EmployeeApprovalFilters reports={reports} />
             </CardHeader>
             <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
-              <KanbanBoardScroll>
-                <KanbanColumnsRow className="px-3 pb-1 sm:px-6">
+              <KanbanBoardShell>
+                <KanbanColumnsRow className={employeeBoardRowClass}>
                   {EMPLOYEE_APPROVAL_KANBAN_COLUMNS.map((column) => (
                     <EmployeeApprovalKanbanColumn
                       key={column.id}
@@ -202,7 +209,7 @@ export function EmployeeApprovalKanbanBoard({
                     </EmployeeApprovalKanbanColumn>
                   ))}
                 </KanbanColumnsRow>
-              </KanbanBoardScroll>
+              </KanbanBoardShell>
             </CardContent>
           </BoardSection>
         </TabsContent>

@@ -15,16 +15,19 @@ function Checkbox({
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        "peer size-4 shrink-0 -2 -border ring-offset-white focus-visible:-hidden focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-main data-[state=checked]:text-white",
+        "peer size-4 shrink-0 rounded-md border-2 border-border bg-background shadow-[var(--shadow-hard-sm)] ring-offset-background transition-colors",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        "data-[state=checked]:border-border data-[state=checked]:bg-blue data-[state=checked]:text-white",
         className,
       )}
       {...props}
     >
       <CheckboxPrimitive.Indicator
         data-slot="checkbox-indicator"
-        className={cn("flex items-center justify-center text-current")}
+        className="flex items-center justify-center text-current"
       >
-        <Check className="size-4 text-main-foreground" />
+        <Check className="size-3.5 stroke-[3]" />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   )

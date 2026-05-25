@@ -69,7 +69,25 @@ export function ApprovalActivityTimeline({
               <TimelineDate>
                 {dateTimeFormatter.format(new Date(log.createdAt))}
               </TimelineDate>
-              <TimelineTitle>{getActionLabel(log.action)}</TimelineTitle>
+              <TimelineTitle className="flex flex-row w-full justify-between">
+                {getActionLabel(log.action)}
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {log.fromStatus ? (
+                    <StatusBadge
+                      status={log.fromStatus}
+                      type="approval"
+                      prefix="From"
+                    />
+                  ) : null}
+                  {log.toStatus ? (
+                    <StatusBadge
+                      status={log.toStatus}
+                      type="approval"
+                      prefix="To"
+                    />
+                  ) : null}
+                </div>
+              </TimelineTitle>
             </TimelineHeader>
             <TimelineIndicator />
             <TimelineSeparator />
@@ -77,22 +95,7 @@ export function ApprovalActivityTimeline({
               <div className="flex flex-wrap items-center gap-2">
 
               </div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                {log.fromStatus ? (
-                  <StatusBadge
-                    status={log.fromStatus}
-                    type="approval"
-                    prefix="From"
-                  />
-                ) : null}
-                {log.toStatus ? (
-                  <StatusBadge
-                    status={log.toStatus}
-                    type="approval"
-                    prefix="To"
-                  />
-                ) : null}
-              </div>
+
               {log.notes ? (
                 <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
                   {log.notes}
