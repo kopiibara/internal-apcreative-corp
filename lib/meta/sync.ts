@@ -5,7 +5,10 @@ import {
   calculateEngagementRate,
   fetchPageInsights,
   fetchPageSummary,
+  fetchPostInsights,
   fetchRecentPagePosts,
+  PAGE_INSIGHT_METRICS,
+  parseInsightValues,
 } from "@/lib/meta/graph-api"
 import type { MetaFacebookPageRow, MetaSyncType } from "@/lib/meta/types"
 
@@ -75,13 +78,11 @@ export async function syncDailyPageSnapshots() {
       let insightsMetrics: Record<string, unknown> = {}
 
       try {
-        const insights = await fetchPageInsights(page, [
-          "page_impressions",
-          "page_engaged_users",
-          "page_post_engagements",
-        ])
+        const insights = await fetchPageInsights(page, PAGE_INSIGHT_METRICS)
+        const parsed = parseInsightValues(insights.data ?? [])
         insightsMetrics = {
           insights: insights.data,
+          parsed,
         }
       } catch {
         insightsMetrics = { insights: [] }
@@ -166,6 +167,18 @@ export async function syncHourlyPostMetrics() {
           followers: summary.followers_count ?? null,
         })
 
+        let postInsights: Record<string, unknown> = {}
+
+        try {
+          const insightsResponse = await fetchPostInsights(post.id, page)
+          postInsights = {
+            raw: insightsResponse.data,
+            parsed: parseInsightValues(insightsResponse.data ?? []),
+          }
+        } catch {
+          postInsights = {}
+        }
+
         await query(
           `
           INSERT INTO meta_post_metrics (
@@ -178,10 +191,11 @@ export async function syncHourlyPostMetrics() {
             comments_count,
             shares_count,
             engagement_rate,
+            insights,
             last_synced_at,
             updated_at
           )
-          VALUES ($1, $2, $3, $4, $5::timestamptz, $6, $7, $8, $9, now(), now())
+          VALUES ($1, $2, $3, $4, $5::timestamptz, $6, $7, $8, $9, $10::jsonb, now(), now())
           ON CONFLICT (facebook_page_id, post_id)
           DO UPDATE SET
             message = EXCLUDED.message,
@@ -191,6 +205,7 @@ export async function syncHourlyPostMetrics() {
             comments_count = EXCLUDED.comments_count,
             shares_count = EXCLUDED.shares_count,
             engagement_rate = EXCLUDED.engagement_rate,
+            insights = EXCLUDED.insights,
             last_synced_at = now(),
             updated_at = now()
           `,
@@ -204,6 +219,7 @@ export async function syncHourlyPostMetrics() {
             comments,
             shares,
             engagementRate,
+            JSON.stringify(postInsights),
           ]
         )
 

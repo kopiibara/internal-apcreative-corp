@@ -6,6 +6,29 @@ import {
 } from "@/lib/meta/config"
 import type { MetaFacebookPageRow } from "@/lib/meta/types"
 
+export type DiscoveredFacebookPage = {
+  id: string
+  name: string
+  followers_count?: number
+  fan_count?: number
+  link?: string
+}
+
+export const PAGE_INSIGHT_METRICS = [
+  "page_impressions",
+  "page_impressions_unique",
+  "page_engaged_users",
+  "page_post_engagements",
+  "page_views_total",
+  "page_fan_adds",
+] as const
+
+export const POST_INSIGHT_METRICS = [
+  "post_impressions",
+  "post_engaged_users",
+  "post_clicks",
+] as const
+
 type GraphApiError = {
   error?: {
     message?: string
@@ -44,6 +67,30 @@ async function metaGraphFetch<T>(
   }
 
   return body
+}
+
+export async function discoverFacebookPagesFromToken(accessToken: string) {
+  try {
+    const me = await metaGraphFetch<DiscoveredFacebookPage>("/me", accessToken, {
+      fields: "id,name,followers_count,fan_count,link",
+    })
+
+    if (me.id) {
+      return [me]
+    }
+  } catch {
+    // Fall through to managed accounts (user/system token).
+  }
+
+  const accounts = await metaGraphFetch<{ data: DiscoveredFacebookPage[] }>(
+    "/me/accounts",
+    accessToken,
+    {
+      fields: "id,name,followers_count,fan_count,link,access_token",
+    }
+  )
+
+  return accounts.data ?? []
 }
 
 export async function fetchPageSummary(
@@ -97,7 +144,30 @@ export async function fetchRecentPagePosts(
 
 export async function fetchPageInsights(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
-  metricNames: string[]
+  metricNames: readonly string[] = PAGE_INSIGHT_METRICS
+) {
+  const token = resolveMetaPageAccessToken(page.access_token_env_key)
+  if (!token) {
+    throw new Error("Meta Page access token is not configured.")
+  }
+
+  return metaGraphFetch<{
+    data: Array<{
+      name: string
+      title?: string
+      description?: string
+      period: string
+      values: Array<{ value: number | Record<string, number>; end_time?: string }>
+    }>
+  }>(`/${page.facebook_page_id}/insights`, token, {
+    metric: metricNames.join(","),
+    period: "day",
+  })
+}
+
+export async function fetchPostInsights(
+  postId: string,
+  page: Pick<MetaFacebookPageRow, "access_token_env_key">
 ) {
   const token = resolveMetaPageAccessToken(page.access_token_env_key)
   if (!token) {
@@ -108,12 +178,32 @@ export async function fetchPageInsights(
     data: Array<{
       name: string
       period: string
-      values: Array<{ value: number | Record<string, number>; end_time?: string }>
+      values: Array<{ value: number; end_time?: string }>
     }>
-  }>(`/${page.facebook_page_id}/insights`, token, {
-    metric: metricNames.join(","),
-    period: "day",
+  }>(`/${postId}/insights`, token, {
+    metric: POST_INSIGHT_METRICS.join(","),
+    period: "lifetime",
   })
+}
+
+export function parseInsightValues(
+  insights: Array<{
+    name: string
+    values: Array<{ value: number | Record<string, number> }>
+  }>
+) {
+  const result: Record<string, number> = {}
+
+  for (const metric of insights) {
+    const latest = metric.values[metric.values.length - 1]
+    const value = latest?.value
+
+    if (typeof value === "number") {
+      result[metric.name] = value
+    }
+  }
+
+  return result
 }
 
 export function calculateEngagementRate(input: {
