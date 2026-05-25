@@ -44,6 +44,8 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   INVITED:
     "border-cyan-600 bg-cyan-100 text-cyan-950 dark:bg-cyan-950/40 dark:text-cyan-200",
   DISABLED: "border-border bg-muted/50 text-muted-foreground",
+  DELETED:
+    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
   SUSPENDED:
     "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
   PAUSED:

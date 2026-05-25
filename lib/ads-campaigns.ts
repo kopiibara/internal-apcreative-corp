@@ -340,6 +340,100 @@ export async function getEmployeeAdsCampaignPageData(profile: AdsCampaignProfile
   }
 }
 
+export async function getAdminAdsCampaignPageData(profile: AdsCampaignProfile) {
+  await assertAdsCampaignPermission(profile, "ads_campaigns.view")
+
+  const [brandRows, campaignRows, metricRows, summaryRows] = await Promise.all([
+    query<AssignedBrandRow>(
+      `
+      SELECT id, name, false AS is_primary
+      FROM brand
+      WHERE is_active = true
+      ORDER BY name ASC, id ASC
+      `
+    ),
+    query<AdsCampaignRow>(
+      `
+      SELECT
+        ac.id,
+        ac.profile_id,
+        ac.brand_id,
+        b.name AS brand_name,
+        ac.platform,
+        ac.campaign_name,
+        ac.objective,
+        ac.spend,
+        ac.leads,
+        ac.ctr,
+        ac.roas,
+        ac.status,
+        ac.start_date,
+        ac.end_date,
+        ac.notes
+      FROM ads_campaigns ac
+      JOIN brand b ON b.id = ac.brand_id
+      ORDER BY ac.updated_at DESC, ac.id DESC
+      `
+    ),
+    query<GoogleAdsMetricRow>(
+      `
+      SELECT
+        id,
+        brand_id,
+        metric_date,
+        impressions,
+        avg_target_cpa,
+        conversions,
+        cost,
+        source_file_name
+      FROM google_ads_daily_metrics
+      ORDER BY metric_date ASC, id ASC
+      `
+    ),
+    query<GoogleAdsSummaryRow>(
+      `
+      SELECT
+        COALESCE(SUM(cost), 0) AS total_cost,
+        COALESCE(SUM(impressions), 0) AS total_impressions,
+        COALESCE(SUM(conversions), 0) AS total_conversions,
+        CASE
+          WHEN SUM(conversions) > 0 THEN SUM(cost) / SUM(conversions)
+          ELSE NULL
+        END AS avg_cpa,
+        MAX(created_at) AS last_imported_at,
+        (
+          SELECT source_file_name
+          FROM google_ads_daily_metrics
+          ORDER BY created_at DESC, id DESC
+          LIMIT 1
+        ) AS last_source_file_name
+      FROM google_ads_daily_metrics
+      `
+    ),
+  ])
+  const summaryRow = summaryRows.rows[0]
+
+  return {
+    brands: brandRows.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      isPrimary: row.is_primary,
+    })),
+    campaigns: campaignRows.rows.map(mapCampaign),
+    metrics: metricRows.rows.map(mapMetric),
+    summary: {
+      totalCost: Number(summaryRow?.total_cost ?? 0),
+      totalImpressions: Number(summaryRow?.total_impressions ?? 0),
+      totalConversions: Number(summaryRow?.total_conversions ?? 0),
+      avgCpa: toNumber(summaryRow?.avg_cpa),
+      lastImportedAt: summaryRow?.last_imported_at
+        ? new Date(summaryRow.last_imported_at).toISOString()
+        : null,
+      lastSourceFileName: summaryRow?.last_source_file_name ?? null,
+    },
+  }
+}
+
 export async function createAdsCampaignForEmployee(
   profile: AdsCampaignProfile,
   input: z.infer<typeof adsCampaignFormSchema>

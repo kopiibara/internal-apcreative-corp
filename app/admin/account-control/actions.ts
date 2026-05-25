@@ -26,7 +26,9 @@ import {
   brandAssignmentSchema,
   createAccountSchema,
   disableAccountSchema,
+  forceChangePasswordSchema,
   removeBrandAccessSchema,
+  softDeleteAccountSchema,
   updateAccountSchema,
   validateBrandAssignments,
 } from "@/app/admin/account-control/schema";
@@ -49,10 +51,29 @@ type AuthUserLookupRow = {
   id: string;
 };
 
+type AccountActionProfileRow = {
+  id: number;
+  auth_user_id: string;
+  full_name: string;
+  email: string;
+  account_type: AccountType;
+  status: string;
+};
+
 type RoleRow = {
   id: number;
   slug: string;
   name: string;
+};
+
+const accountActionRanks: Record<AccountType, number> = {
+  CLIENT: 10,
+  EMPLOYEE: 20,
+  SUPERVISOR: 70,
+  MANAGER: 80,
+  DIRECTOR: 85,
+  EXECUTIVE: 90,
+  FULL_STACK_DEVELOPER: 100,
 };
 
 type BrandRow = {
@@ -233,6 +254,140 @@ async function revokeAuthSessionsIfPossible(userId: string) {
   }
 }
 
+function canUseSensitiveAccountAction(accountType: AccountType) {
+  return (
+    accountType === "FULL_STACK_DEVELOPER" ||
+    accountType === "SUPERVISOR" ||
+    accountType === "MANAGER" ||
+    accountType === "DIRECTOR" ||
+    accountType === "EXECUTIVE"
+  );
+}
+
+async function getActionProfile(profileId: number) {
+  const result = await query<AccountActionProfileRow>(
+    `
+    SELECT id, auth_user_id, full_name, email, account_type, status
+    FROM profile
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [profileId],
+  );
+
+  return result.rows[0] ?? null;
+}
+
+async function authorizeSensitiveAccountAction(targetProfileId: number) {
+  const context = await getCurrentProfileContext();
+
+  if (!context) {
+    return {
+      error: {
+        success: false,
+        message: "You must be signed in to perform this action.",
+      } satisfies ActionResult,
+    };
+  }
+
+  if (context.profile.status !== "ACTIVE") {
+    return {
+      error: {
+        success: false,
+        message: "Your account is not active.",
+      } satisfies ActionResult,
+    };
+  }
+
+  if (!canUseSensitiveAccountAction(context.profile.account_type)) {
+    return {
+      error: {
+        success: false,
+        message: "You do not have permission to perform this action.",
+      } satisfies ActionResult,
+    };
+  }
+
+  const allowed = await can(context.profile.auth_user_id, "accounts.update");
+
+  if (!allowed) {
+    return {
+      error: {
+        success: false,
+        message: "You do not have permission to manage accounts.",
+      } satisfies ActionResult,
+    };
+  }
+
+  const target = await getActionProfile(targetProfileId);
+
+  if (!target) {
+    return {
+      error: {
+        success: false,
+        message: "Target account was not found.",
+      } satisfies ActionResult,
+    };
+  }
+
+  if (target.status === "DELETED" || target.status === "ARCHIVED") {
+    return {
+      error: {
+        success: false,
+        message: "This account can no longer be modified.",
+      } satisfies ActionResult,
+    };
+  }
+
+  if (
+    accountActionRanks[context.profile.account_type] <
+    accountActionRanks[target.account_type]
+  ) {
+    return {
+      error: {
+        success: false,
+        message: "You cannot manage a higher-access account.",
+      } satisfies ActionResult,
+    };
+  }
+
+  return { context, target, error: null };
+}
+
+async function createAccountControlLog({
+  actorProfileId,
+  targetProfileId,
+  action,
+  summary,
+  metadata,
+}: {
+  actorProfileId: number;
+  targetProfileId: number;
+  action: string;
+  summary: string;
+  metadata?: Record<string, unknown>;
+}) {
+  await query(
+    `
+    INSERT INTO account_control_logs (
+      actor_profile_id,
+      target_profile_id,
+      action,
+      summary,
+      metadata
+    )
+    VALUES ($1, $2, $3, $4, $5::jsonb)
+    `,
+    [
+      actorProfileId,
+      targetProfileId,
+      action,
+      summary,
+      metadata ? JSON.stringify(metadata) : null,
+    ],
+  );
+}
+
 function getBrandAssignmentValidationMessage(
   accountType: AccountType,
   assignments: z.infer<typeof brandAssignmentSchema>[],
@@ -348,6 +503,7 @@ export async function createAccount(input: unknown): Promise<ActionResult> {
     : DEFAULT_DEPARTMENT;
 
   let authUserId: string | undefined;
+  let createdProfileId: number | null = null;
 
   try {
     const createdUser = await auth.api.createUser({
@@ -395,6 +551,7 @@ export async function createAccount(input: unknown): Promise<ActionResult> {
       if (!profileId) {
         throw new Error("Profile was not created.");
       }
+      createdProfileId = profileId;
 
       for (const assignment of data.brandAssignments) {
         await client.query(
@@ -447,6 +604,21 @@ export async function createAccount(input: unknown): Promise<ActionResult> {
     });
 
     revalidatePath(ACCOUNT_CONTROL_PATH);
+
+    const actor = await getCurrentProfileContext();
+
+    if (actor && createdProfileId) {
+      await createAccountControlLog({
+        actorProfileId: actor.profile.id,
+        targetProfileId: createdProfileId,
+        action: "ACCOUNT_CREATED",
+        summary: `Account created for ${data.fullName}.`,
+        metadata: {
+          targetAccountType: accountType,
+          status: data.status,
+        },
+      });
+    }
 
     return {
       success: true,
@@ -559,6 +731,19 @@ export async function updateAccount(input: unknown): Promise<ActionResult> {
     });
 
     revalidatePath(ACCOUNT_CONTROL_PATH);
+    const actor = await getCurrentProfileContext();
+
+    if (actor) {
+      await createAccountControlLog({
+        actorProfileId: actor.profile.id,
+        targetProfileId: data.profileId,
+        action: "ACCOUNT_UPDATED",
+        summary: `Account profile was updated for ${data.fullName}.`,
+        metadata: {
+          status: data.status,
+        },
+      });
+    }
 
     return {
       success: true,
@@ -621,6 +806,19 @@ export async function disableAccount(input: unknown): Promise<ActionResult> {
     }
 
     revalidatePath(ACCOUNT_CONTROL_PATH);
+    const actor = await getCurrentProfileContext();
+
+    if (actor) {
+      await createAccountControlLog({
+        actorProfileId: actor.profile.id,
+        targetProfileId: parsed.data.profileId,
+        action: "LOGIN_ACCESS_UPDATED",
+        summary: "Account was disabled.",
+        metadata: {
+          newStatus: "DISABLED",
+        },
+      });
+    }
 
     return {
       success: true,
@@ -794,6 +992,22 @@ export async function assignBrandAccess(input: unknown): Promise<ActionResult> {
     });
 
     revalidatePath(ACCOUNT_CONTROL_PATH);
+    const actor = await getCurrentProfileContext();
+
+    if (actor) {
+      await createAccountControlLog({
+        actorProfileId: actor.profile.id,
+        targetProfileId: data.profileId,
+        action: "BRAND_ACCESS_UPDATED",
+        summary: "Brand access was updated.",
+        metadata: {
+          brandId: data.brandId,
+          roleId: data.roleId,
+          isPrimary: data.isPrimary,
+          isActive: data.isActive,
+        },
+      });
+    }
 
     return {
       success: true,
@@ -946,6 +1160,20 @@ export async function removeBrandAccess(input: unknown): Promise<ActionResult> {
     });
 
     revalidatePath(ACCOUNT_CONTROL_PATH);
+    const actor = await getCurrentProfileContext();
+
+    if (actor) {
+      await createAccountControlLog({
+        actorProfileId: actor.profile.id,
+        targetProfileId: data.profileId,
+        action: "BRAND_ACCESS_UPDATED",
+        summary: "Brand access was revoked.",
+        metadata: {
+          brandId: data.brandId,
+          isActive: false,
+        },
+      });
+    }
 
     return {
       success: true,
@@ -960,6 +1188,257 @@ export async function removeBrandAccess(input: unknown): Promise<ActionResult> {
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
+    };
+  }
+}
+
+export async function forceChangeAccountPassword(
+  input: unknown,
+): Promise<ActionResult> {
+  const parsed = forceChangePasswordSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid password details.",
+    };
+  }
+
+  const authorization = await authorizeSensitiveAccountAction(
+    parsed.data.profileId,
+  );
+
+  if (authorization.error) {
+    return authorization.error;
+  }
+
+  const rateLimit = await enforceRateLimit({
+    bucket: "account:force-password",
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+  });
+
+  if (!rateLimit.success) {
+    return { success: false, message: rateLimit.message };
+  }
+
+  try {
+    await auth.api.setUserPassword({
+      body: {
+        userId: authorization.target.auth_user_id,
+        newPassword: parsed.data.newPassword,
+      },
+      headers: await headers(),
+    });
+
+    await transaction(async (client) => {
+      await client.query(
+        `
+        UPDATE profile
+        SET
+          must_change_password = $2,
+          password_changed_at = now(),
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [parsed.data.profileId, parsed.data.requirePasswordChange],
+      );
+
+      await client.query(
+        `
+        INSERT INTO account_control_logs (
+          actor_profile_id,
+          target_profile_id,
+          action,
+          summary,
+          metadata
+        )
+        VALUES ($1, $2, 'PASSWORD_FORCE_CHANGED', $3, $4::jsonb)
+        `,
+        [
+          authorization.context.profile.id,
+          parsed.data.profileId,
+          `Password was force changed for ${authorization.target.full_name}.`,
+          JSON.stringify({
+            requirePasswordChange: parsed.data.requirePasswordChange,
+            reason: parsed.data.reason,
+            targetAccountType: authorization.target.account_type,
+          }),
+        ],
+      );
+    });
+
+    await revokeAuthSessionsIfPossible(authorization.target.auth_user_id);
+    revalidatePath(ACCOUNT_CONTROL_PATH);
+
+    return {
+      success: true,
+      message: "Password changed successfully.",
+    };
+  } catch (error) {
+    console.error("forceChangeAccountPassword failed:", error);
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unable to force change password.",
+    };
+  }
+}
+
+async function ensureCanSoftDeleteTarget(
+  actorProfileId: number,
+  target: AccountActionProfileRow,
+) {
+  if (actorProfileId === target.id) {
+    return "You cannot soft delete your own account.";
+  }
+
+  if (
+    target.account_type === "FULL_STACK_DEVELOPER" ||
+    target.account_type === "SUPERVISOR" ||
+    target.account_type === "MANAGER" ||
+    target.account_type === "DIRECTOR" ||
+    target.account_type === "EXECUTIVE"
+  ) {
+    const remainingResult = await query<{ remaining_count: number }>(
+      `
+      SELECT COUNT(*)::integer AS remaining_count
+      FROM profile
+      WHERE status = 'ACTIVE'
+        AND id <> $1
+        AND account_type IN (
+          'FULL_STACK_DEVELOPER',
+          'SUPERVISOR',
+          'MANAGER',
+          'DIRECTOR',
+          'EXECUTIVE'
+        )
+      `,
+      [target.id],
+    );
+
+    if ((remainingResult.rows[0]?.remaining_count ?? 0) < 1) {
+      return "At least one active full-access admin account must remain.";
+    }
+  }
+
+  if (target.account_type === "FULL_STACK_DEVELOPER") {
+    const remainingFullStackResult = await query<{ remaining_count: number }>(
+      `
+      SELECT COUNT(*)::integer AS remaining_count
+      FROM profile
+      WHERE status = 'ACTIVE'
+        AND id <> $1
+        AND account_type = 'FULL_STACK_DEVELOPER'
+      `,
+      [target.id],
+    );
+
+    if ((remainingFullStackResult.rows[0]?.remaining_count ?? 0) < 1) {
+      return "At least one active Full Stack Developer account must remain.";
+    }
+  }
+
+  return null;
+}
+
+export async function softDeleteAccount(input: unknown): Promise<ActionResult> {
+  const parsed = softDeleteAccountSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid account.",
+    };
+  }
+
+  const authorization = await authorizeSensitiveAccountAction(
+    parsed.data.profileId,
+  );
+
+  if (authorization.error) {
+    return authorization.error;
+  }
+
+  const safetyError = await ensureCanSoftDeleteTarget(
+    authorization.context.profile.id,
+    authorization.target,
+  );
+
+  if (safetyError) {
+    return {
+      success: false,
+      message: safetyError,
+    };
+  }
+
+  try {
+    const deletedAt = new Date().toISOString();
+
+    await transaction(async (client) => {
+      await client.query(
+        `
+        UPDATE profile
+        SET
+          status = 'DELETED',
+          deleted_at = now(),
+          deleted_by_profile_id = $2,
+          deleted_reason = $3,
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [
+          parsed.data.profileId,
+          authorization.context.profile.id,
+          parsed.data.reason,
+        ],
+      );
+
+      await client.query(
+        `
+        INSERT INTO account_control_logs (
+          actor_profile_id,
+          target_profile_id,
+          action,
+          summary,
+          metadata
+        )
+        VALUES ($1, $2, 'ACCOUNT_SOFT_DELETED', $3, $4::jsonb)
+        `,
+        [
+          authorization.context.profile.id,
+          parsed.data.profileId,
+          `Account was soft deleted for ${authorization.target.full_name}.`,
+          JSON.stringify({
+            reason: parsed.data.reason,
+            previousStatus: authorization.target.status,
+            newStatus: "DELETED",
+            deletedAt,
+            deletedBy: authorization.context.profile.id,
+          }),
+        ],
+      );
+    });
+
+    await revokeAuthSessionsIfPossible(authorization.target.auth_user_id);
+    revalidatePath(ACCOUNT_CONTROL_PATH);
+
+    return {
+      success: true,
+      message: "Account soft deleted successfully.",
+    };
+  } catch (error) {
+    console.error("softDeleteAccount failed:", error);
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unable to soft delete account.",
     };
   }
 }

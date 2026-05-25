@@ -106,8 +106,8 @@ export const adminGroups: SidebarGroupItem[] = [
     label: "Paid Media",
     items: [
       {
-        title: "Ads & Campaigns",
-        href: "/admin/ads&campaigns",
+        title: "Ads Campaigns",
+        href: "/admin/ads-campaigns",
         icon: Megaphone,
       },
     ],

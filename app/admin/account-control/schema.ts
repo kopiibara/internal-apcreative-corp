@@ -15,6 +15,7 @@ export const profileStatuses = [
   "DISABLED",
   "SUSPENDED",
   "ARCHIVED",
+  "DELETED",
 ] as const;
 
 export type ProfileStatus = (typeof profileStatuses)[number];
@@ -105,6 +106,31 @@ export const disableAccountSchema = z.object({
   profileId: z.coerce.number().int().positive(),
 });
 
+export const forceChangePasswordSchema = z
+  .object({
+    profileId: z.coerce.number().int().positive(),
+    newPassword: z
+      .string()
+      .min(8, "New password must be at least 8 characters."),
+    confirmPassword: z.string().min(1, "Confirm the new password."),
+    requirePasswordChange: z.coerce.boolean().default(true),
+    reason: optionalTextSchema,
+  })
+  .superRefine((value, context) => {
+    if (value.newPassword !== value.confirmPassword) {
+      context.addIssue({
+        code: "custom",
+        path: ["confirmPassword"],
+        message: "New password and confirmation must match.",
+      });
+    }
+  });
+
+export const softDeleteAccountSchema = z.object({
+  profileId: z.coerce.number().int().positive(),
+  reason: optionalTextSchema,
+});
+
 export const assignBrandAccessSchema = z.object({
   profileId: z.coerce.number().int().positive(),
   brandId: z.coerce.number().int().positive("Select a brand."),
@@ -121,3 +147,5 @@ export const removeBrandAccessSchema = z.object({
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
 export type AssignBrandAccessInput = z.infer<typeof assignBrandAccessSchema>;
+export type ForceChangePasswordInput = z.infer<typeof forceChangePasswordSchema>;
+export type SoftDeleteAccountInput = z.infer<typeof softDeleteAccountSchema>;

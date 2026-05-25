@@ -22,7 +22,8 @@ export type ProfileStatus =
   | "INVITED"
   | "DISABLED"
   | "SUSPENDED"
-  | "ARCHIVED";
+  | "ARCHIVED"
+  | "DELETED";
 
 type ProfileRow = {
   id: number;
