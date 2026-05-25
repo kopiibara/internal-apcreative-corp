@@ -7,8 +7,10 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth/auth";
 import {
-  DEFAULT_DEPARTMENT,
+  ALL_BRAND_ASSIGNMENT_ERROR_MESSAGE,
   CLIENT_VIEWER_DEPARTMENT,
+  DEFAULT_DEPARTMENT,
+  isAllBrandAllowedRoleSlug,
 } from "@/lib/auth/account-defaults";
 import {
   deriveAccountTypeFromRoleSlugs,
@@ -187,8 +189,8 @@ async function getAllBrandAssignmentError(
 
     const role = rolesById.get(assignment.roleId);
 
-    if (role?.slug !== "full-stack-developer") {
-      return "All Brand can only be assigned with the Full Stack Developer role.";
+    if (!role || !isAllBrandAllowedRoleSlug(role.slug)) {
+      return ALL_BRAND_ASSIGNMENT_ERROR_MESSAGE;
     }
   }
 

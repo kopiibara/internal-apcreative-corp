@@ -14,10 +14,17 @@ import {
   type AssignedAdsBrand,
   type CampaignStatus,
   type GoogleAdsMetric,
+  type GoogleAdsMetricAvailability,
   type GoogleAdsSummary,
 } from "@/lib/ads-campaigns-types"
 import { query, transaction } from "@/lib/db"
 import { sanitizeFileName } from "@/lib/security/sanitize-text"
+import {
+  GOOGLE_ADS_MAX_CSV_BYTES,
+  GOOGLE_ADS_MAX_CSV_ROWS,
+  parseGoogleAdsCsv,
+} from "@/lib/ads-campaigns/google-ads-csv-parser"
+import { summarizeGoogleAdsMetrics } from "@/lib/ads-campaigns/google-ads-metrics-display"
 
 export { ADS_PLATFORMS, CAMPAIGN_OBJECTIVES, CAMPAIGN_STATUSES }
 export type {
@@ -27,6 +34,7 @@ export type {
   AssignedAdsBrand,
   CampaignStatus,
   GoogleAdsMetric,
+  GoogleAdsMetricAvailability,
   GoogleAdsSummary,
 }
 
@@ -62,6 +70,10 @@ type GoogleAdsMetricRow = {
   avg_target_cpa: string | number | null
   conversions: string | number
   cost: string | number
+  conversion_value: string | number | null
+  conversion_value_per_click: string | number | null
+  import_template: string | null
+  raw_metrics: Record<string, string | number | null> | null
   source_file_name: string | null
 }
 
@@ -69,9 +81,11 @@ type GoogleAdsSummaryRow = {
   total_cost: string | number | null
   total_impressions: string | number | null
   total_conversions: string | number | null
+  total_conversion_value: string | number | null
   avg_cpa: string | number | null
   last_imported_at: Date | string | null
   last_source_file_name: string | null
+  last_import_template: string | null
 }
 
 export const adsCampaignFormSchema = z.object({
@@ -114,7 +128,11 @@ export const adsCampaignFormSchema = z.object({
 export const googleAdsImportSchema = z.object({
   brandId: z.coerce.number().int().positive(),
   fileName: z.string().trim().min(1, "File name is required."),
-  csvText: z.string().trim().min(1, "CSV file is empty."),
+  csvText: z
+    .string()
+    .trim()
+    .min(1, "CSV file is empty.")
+    .max(GOOGLE_ADS_MAX_CSV_BYTES, "CSV file is too large."),
 })
 
 export async function getAssignedAdsBrands(profileId: number) {
@@ -225,8 +243,33 @@ function mapMetric(row: GoogleAdsMetricRow): GoogleAdsMetric {
     avgTargetCpa: toNumber(row.avg_target_cpa),
     conversions: Number(row.conversions),
     cost: Number(row.cost),
+    conversionValue: toNumber(row.conversion_value),
+    conversionValuePerClick: toNumber(row.conversion_value_per_click),
+    importTemplate: row.import_template,
+    rawMetrics: row.raw_metrics ?? {},
     sourceFileName: row.source_file_name,
   }
+}
+
+function buildSummaryFromMetrics(
+  metrics: GoogleAdsMetric[],
+  summaryRow?: GoogleAdsSummaryRow | null,
+): GoogleAdsSummary {
+  const computed = summarizeGoogleAdsMetrics(metrics)
+
+  return {
+    ...computed,
+    lastImportedAt: summaryRow?.last_imported_at
+      ? new Date(summaryRow.last_imported_at).toISOString()
+      : null,
+    lastSourceFileName: summaryRow?.last_source_file_name ?? null,
+    lastImportTemplate:
+      summaryRow?.last_import_template ?? computed.lastImportTemplate,
+  }
+}
+
+function emptyGoogleAdsSummary(): GoogleAdsSummary {
+  return buildSummaryFromMetrics([])
 }
 
 export async function getEmployeeAdsCampaignPageData(profile: AdsCampaignProfile) {
@@ -240,14 +283,7 @@ export async function getEmployeeAdsCampaignPageData(profile: AdsCampaignProfile
       brands,
       campaigns: [] as AdsCampaign[],
       metrics: [] as GoogleAdsMetric[],
-      summary: {
-        totalCost: 0,
-        totalImpressions: 0,
-        totalConversions: 0,
-        avgCpa: null,
-        lastImportedAt: null,
-        lastSourceFileName: null,
-      } satisfies GoogleAdsSummary,
+      summary: emptyGoogleAdsSummary(),
     }
   }
 
@@ -288,6 +324,10 @@ export async function getEmployeeAdsCampaignPageData(profile: AdsCampaignProfile
         avg_target_cpa,
         conversions,
         cost,
+        conversion_value,
+        conversion_value_per_click,
+        import_template,
+        raw_metrics,
         source_file_name
       FROM google_ads_daily_metrics
       WHERE profile_id = $1
@@ -314,7 +354,16 @@ export async function getEmployeeAdsCampaignPageData(profile: AdsCampaignProfile
             AND brand_id = ANY($2::int[])
           ORDER BY created_at DESC, id DESC
           LIMIT 1
-        ) AS last_source_file_name
+        ) AS last_source_file_name,
+        (
+          SELECT import_template
+          FROM google_ads_daily_metrics
+          WHERE profile_id = $1
+            AND brand_id = ANY($2::int[])
+          ORDER BY created_at DESC, id DESC
+          LIMIT 1
+        ) AS last_import_template,
+        COALESCE(SUM(conversion_value), 0) AS total_conversion_value
       FROM google_ads_daily_metrics
       WHERE profile_id = $1
         AND brand_id = ANY($2::int[])
@@ -323,21 +372,13 @@ export async function getEmployeeAdsCampaignPageData(profile: AdsCampaignProfile
     ),
   ])
   const summaryRow = summaryRows.rows[0]
+  const metrics = metricRows.rows.map(mapMetric)
 
   return {
     brands,
     campaigns: campaignRows.rows.map(mapCampaign),
-    metrics: metricRows.rows.map(mapMetric),
-    summary: {
-      totalCost: Number(summaryRow?.total_cost ?? 0),
-      totalImpressions: Number(summaryRow?.total_impressions ?? 0),
-      totalConversions: Number(summaryRow?.total_conversions ?? 0),
-      avgCpa: toNumber(summaryRow?.avg_cpa),
-      lastImportedAt: summaryRow?.last_imported_at
-        ? new Date(summaryRow.last_imported_at).toISOString()
-        : null,
-      lastSourceFileName: summaryRow?.last_source_file_name ?? null,
-    },
+    metrics,
+    summary: buildSummaryFromMetrics(metrics, summaryRow),
   }
 }
 
@@ -386,6 +427,10 @@ export async function getAdminAdsCampaignPageData(profile: AdsCampaignProfile) {
         avg_target_cpa,
         conversions,
         cost,
+        conversion_value,
+        conversion_value_per_click,
+        import_template,
+        raw_metrics,
         source_file_name
       FROM google_ads_daily_metrics
       ORDER BY metric_date ASC, id ASC
@@ -407,12 +452,20 @@ export async function getAdminAdsCampaignPageData(profile: AdsCampaignProfile) {
           FROM google_ads_daily_metrics
           ORDER BY created_at DESC, id DESC
           LIMIT 1
-        ) AS last_source_file_name
+        ) AS last_source_file_name,
+        (
+          SELECT import_template
+          FROM google_ads_daily_metrics
+          ORDER BY created_at DESC, id DESC
+          LIMIT 1
+        ) AS last_import_template,
+        COALESCE(SUM(conversion_value), 0) AS total_conversion_value
       FROM google_ads_daily_metrics
       `
     ),
   ])
   const summaryRow = summaryRows.rows[0]
+  const metrics = metricRows.rows.map(mapMetric)
 
   return {
     brands: brandRows.rows.map((row) => ({
@@ -421,17 +474,8 @@ export async function getAdminAdsCampaignPageData(profile: AdsCampaignProfile) {
       isPrimary: row.is_primary,
     })),
     campaigns: campaignRows.rows.map(mapCampaign),
-    metrics: metricRows.rows.map(mapMetric),
-    summary: {
-      totalCost: Number(summaryRow?.total_cost ?? 0),
-      totalImpressions: Number(summaryRow?.total_impressions ?? 0),
-      totalConversions: Number(summaryRow?.total_conversions ?? 0),
-      avgCpa: toNumber(summaryRow?.avg_cpa),
-      lastImportedAt: summaryRow?.last_imported_at
-        ? new Date(summaryRow.last_imported_at).toISOString()
-        : null,
-      lastSourceFileName: summaryRow?.last_source_file_name ?? null,
-    },
+    metrics,
+    summary: buildSummaryFromMetrics(metrics, summaryRow),
   }
 }
 
@@ -630,129 +674,7 @@ export async function deleteAdsCampaignForEmployee(
   )
 }
 
-type ParsedGoogleAdsMetric = {
-  metricDate: string
-  impressions: number
-  avgTargetCpa: number | null
-  conversions: number
-  cost: number
-}
-
-function splitCsvLine(line: string) {
-  const cells: string[] = []
-  let current = ""
-  let inQuotes = false
-
-  for (let index = 0; index < line.length; index += 1) {
-    const character = line[index]
-    const nextCharacter = line[index + 1]
-
-    if (character === '"' && nextCharacter === '"') {
-      current += '"'
-      index += 1
-      continue
-    }
-
-    if (character === '"') {
-      inQuotes = !inQuotes
-      continue
-    }
-
-    if (character === "," && !inQuotes) {
-      cells.push(current.trim())
-      current = ""
-      continue
-    }
-
-    current += character
-  }
-
-  cells.push(current.trim())
-  return cells
-}
-
-function parseCurrency(value: string, nullable = false) {
-  const normalized = value.trim()
-
-  if (!normalized || normalized === "—" || normalized === "-") {
-    return nullable ? null : 0
-  }
-
-  const numeric = Number(normalized.replace(/[₱,\s]/g, ""))
-
-  if (Number.isNaN(numeric)) {
-    throw new Error(`Invalid currency value: ${value}`)
-  }
-
-  return numeric
-}
-
-function parseNumberCell(value: string, columnName: string) {
-  const numeric = Number(value.trim().replace(/,/g, ""))
-
-  if (Number.isNaN(numeric)) {
-    throw new Error(`Invalid ${columnName} value: ${value}`)
-  }
-
-  return numeric
-}
-
-function parseGoogleAdsDate(value: string) {
-  const parsed = new Date(value)
-
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error(`Invalid Date value: ${value}`)
-  }
-
-  return parsed.toISOString().slice(0, 10)
-}
-
-export function parseGoogleAdsCsv(csvText: string) {
-  const rows = csvText
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-
-  if (rows.length < 2) {
-    throw new Error("CSV must include a header row and at least one data row.")
-  }
-
-  const headers = splitCsvLine(rows[0])
-  const requiredColumns = ["Date", "Impr.", "Avg. target CPA", "Conversions", "Cost"]
-  const columnIndex = new Map(headers.map((header, index) => [header, index]))
-  const missingColumn = requiredColumns.find((column) => !columnIndex.has(column))
-
-  if (missingColumn) {
-    throw new Error(`CSV is missing required column: ${missingColumn}`)
-  }
-
-  const parsedRows: ParsedGoogleAdsMetric[] = []
-
-  for (const line of rows.slice(1)) {
-    const cells = splitCsvLine(line)
-
-    if (cells.every((cell) => !cell.trim())) {
-      continue
-    }
-
-    const getCell = (column: string) => cells[columnIndex.get(column) ?? -1] ?? ""
-
-    parsedRows.push({
-      metricDate: parseGoogleAdsDate(getCell("Date")),
-      impressions: parseNumberCell(getCell("Impr."), "Impr."),
-      avgTargetCpa: parseCurrency(getCell("Avg. target CPA"), true),
-      conversions: parseNumberCell(getCell("Conversions"), "Conversions"),
-      cost: parseCurrency(getCell("Cost")) ?? 0,
-    })
-  }
-
-  if (parsedRows.length === 0) {
-    throw new Error("CSV did not contain any importable rows.")
-  }
-
-  return parsedRows
-}
+export { parseGoogleAdsCsv, previewGoogleAdsCsv } from "@/lib/ads-campaigns/google-ads-csv-parser"
 
 export async function importGoogleAdsMetricsForEmployee({
   profile,
@@ -769,10 +691,21 @@ export async function importGoogleAdsMetricsForEmployee({
   await assertEmployeeBrandAccess(profile, brandId)
 
   const safeFileName = sanitizeFileName(fileName)
-  const parsedRows = parseGoogleAdsCsv(csvText)
+
+  if (csvText.length > GOOGLE_ADS_MAX_CSV_BYTES) {
+    throw new Error("CSV file is too large. Maximum size is 2 MB.")
+  }
+
+  const parsed = parseGoogleAdsCsv(csvText)
+
+  if (parsed.rowCount > GOOGLE_ADS_MAX_CSV_ROWS) {
+    throw new Error(
+      `CSV exceeds the ${GOOGLE_ADS_MAX_CSV_ROWS} row import limit.`,
+    )
+  }
 
   await transaction(async (client) => {
-    for (const row of parsedRows) {
+    for (const row of parsed.rows) {
       await client.query(
         `
         INSERT INTO google_ads_daily_metrics (
@@ -783,15 +716,24 @@ export async function importGoogleAdsMetricsForEmployee({
           avg_target_cpa,
           conversions,
           cost,
+          conversion_value,
+          conversion_value_per_click,
+          import_template,
+          raw_metrics,
           source_file_name
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        ON CONFLICT (profile_id, brand_id, metric_date, source_file_name)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        ON CONFLICT (profile_id, brand_id, metric_date)
         DO UPDATE SET
           impressions = EXCLUDED.impressions,
           avg_target_cpa = EXCLUDED.avg_target_cpa,
           conversions = EXCLUDED.conversions,
           cost = EXCLUDED.cost,
+          conversion_value = EXCLUDED.conversion_value,
+          conversion_value_per_click = EXCLUDED.conversion_value_per_click,
+          import_template = EXCLUDED.import_template,
+          raw_metrics = EXCLUDED.raw_metrics,
+          source_file_name = EXCLUDED.source_file_name,
           updated_at = now()
         `,
         [
@@ -802,11 +744,15 @@ export async function importGoogleAdsMetricsForEmployee({
           row.avgTargetCpa,
           row.conversions,
           row.cost,
+          row.conversionValue,
+          row.conversionValuePerClick,
+          row.sourceTemplate,
+          JSON.stringify(row.rawMetrics),
           safeFileName,
-        ]
+        ],
       )
     }
   })
 
-  return parsedRows.length
+  return parsed
 }
