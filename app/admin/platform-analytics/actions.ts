@@ -8,8 +8,13 @@ import {
 } from "@/app/admin/platform-analytics/schema";
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import { query } from "@/lib/db";
+import { bootstrapMetaMonitoring } from "@/lib/meta/bootstrap";
 import { getMetaMonitoringDashboardData } from "@/lib/meta/monitoring-data";
-import { runMetaSyncJob } from "@/lib/meta/sync";
+import {
+  runMetaSyncJob,
+  syncDailyPageSnapshots,
+  syncHourlyPostMetrics,
+} from "@/lib/meta/sync";
 import type { MetaSyncType } from "@/lib/meta/types";
 import { can } from "@/lib/permissions";
 
@@ -149,6 +154,85 @@ export async function registerMetaFacebookPageAction(input: {
     success: true,
     message: "Facebook Page registered for monitoring.",
   };
+}
+
+export async function bootstrapMetaMonitoringAction(): Promise<
+  MetaMonitoringActionResult<{
+    discoveredPages: Array<{ id: string; name: string }>;
+    registeredCount: number;
+    dailySnapshots: number;
+    postMetrics: number;
+    warnings: string[];
+  }>
+> {
+  const authError = await authorizeMetaManage();
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const result = await bootstrapMetaMonitoring();
+    revalidatePath("/admin/platform-analytics");
+
+    const hasData = result.dailySnapshots > 0 || result.postMetrics > 0;
+
+    return {
+      success: hasData || result.errors.length === 0,
+      message: hasData
+        ? `Connected ${result.registeredCount} page(s) and synced analytics.`
+        : "Pages registered but analytics sync returned no records. See warnings.",
+      data: {
+        discoveredPages: result.discoveredPages.map((p) => ({
+          id: p.id,
+          name: p.name,
+        })),
+        registeredCount: result.registeredCount,
+        dailySnapshots: result.dailySnapshots,
+        postMetrics: result.postMetrics,
+        warnings: result.errors,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to connect Facebook and sync analytics.",
+    };
+  }
+}
+
+export async function syncAllMetaMonitoringAction(): Promise<
+  MetaMonitoringActionResult<{
+    dailySnapshots: number;
+    postMetrics: number;
+  }>
+> {
+  const authError = await authorizeMetaManage();
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const [dailySnapshots, postMetrics] = await Promise.all([
+      syncDailyPageSnapshots(),
+      syncHourlyPostMetrics(),
+    ]);
+    revalidatePath("/admin/platform-analytics");
+
+    return {
+      success: true,
+      message: "Full analytics sync completed.",
+      data: { dailySnapshots, postMetrics },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Full analytics sync failed.",
+    };
+  }
 }
 
 export async function triggerMetaSyncAction(
