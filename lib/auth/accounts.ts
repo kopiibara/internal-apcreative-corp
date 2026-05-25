@@ -15,6 +15,16 @@ export type AccountBrandAccess = {
   revokedAt: string | null
 }
 
+export type AccountControlLogItem = {
+  id: number
+  action: string
+  summary: string
+  metadata: Record<string, unknown> | null
+  createdAt: string
+  actorName: string
+  actorAccountType: AccountType
+}
+
 export type AccountListItem = {
   id: number
   authUserId: string
@@ -25,8 +35,15 @@ export type AccountListItem = {
   department: string | null
   phoneNumber: string | null
   status: ProfileStatus
+  mustChangePassword: boolean
+  passwordChangedAt: string | null
+  firstLoginCompletedAt: string | null
+  deletedAt: string | null
+  deletedReason: string | null
   createdAt: string
+  updatedAt: string
   brandAccess: AccountBrandAccess[]
+  logs: AccountControlLogItem[]
 }
 
 export type BrandOption = {
@@ -52,8 +69,15 @@ type AccountRow = {
   department: string | null
   phone_number: string | null
   status: ProfileStatus
+  must_change_password: boolean
+  password_changed_at: Date | null
+  first_login_completed_at: Date | null
+  deleted_at: Date | null
+  deleted_reason: string | null
   created_at: Date
+  updated_at: Date
   brand_access: AccountBrandAccess[] | null
+  account_logs: AccountControlLogItem[] | null
 }
 
 type BrandRow = {
@@ -82,7 +106,13 @@ export async function getAccounts() {
       p.department,
       p.phone_number,
       p.status,
+      p.must_change_password,
+      p.password_changed_at,
+      p.first_login_completed_at,
+      p.deleted_at,
+      p.deleted_reason,
       p.created_at,
+      p.updated_at,
       COALESCE(
         json_agg(
           json_build_object(
@@ -100,6 +130,27 @@ export async function getAccounts() {
         ) FILTER (WHERE uba.id IS NOT NULL),
         '[]'::json
       ) AS brand_access
+      ,
+      COALESCE(
+        (
+          SELECT json_agg(
+            json_build_object(
+              'id', acl.id,
+              'action', acl.action,
+              'summary', acl.summary,
+              'metadata', acl.metadata,
+              'createdAt', acl.created_at,
+              'actorName', actor.full_name,
+              'actorAccountType', actor.account_type
+            )
+            ORDER BY acl.created_at DESC, acl.id DESC
+          )
+          FROM account_control_logs acl
+          JOIN profile actor ON actor.id = acl.actor_profile_id
+          WHERE acl.target_profile_id = p.id
+        ),
+        '[]'::json
+      ) AS account_logs
     FROM profile p
     LEFT JOIN user_brand_access uba ON uba.profile_id = p.id
     LEFT JOIN brand b ON b.id = uba.brand_id
@@ -119,8 +170,18 @@ export async function getAccounts() {
     department: row.department,
     phoneNumber: row.phone_number,
     status: row.status,
+    mustChangePassword: row.must_change_password,
+    passwordChangedAt: row.password_changed_at?.toISOString() ?? null,
+    firstLoginCompletedAt: row.first_login_completed_at?.toISOString() ?? null,
+    deletedAt: row.deleted_at?.toISOString() ?? null,
+    deletedReason: row.deleted_reason,
     createdAt: row.created_at.toISOString(),
+    updatedAt: row.updated_at.toISOString(),
     brandAccess: row.brand_access ?? [],
+    logs: (row.account_logs ?? []).map((log) => ({
+      ...log,
+      createdAt: new Date(log.createdAt).toISOString(),
+    })),
   }))
 }
 

@@ -562,11 +562,9 @@ export function DashboardSidebar({
                                             <User className="h-4 w-4" />
                                             Account
                                         </DropdownMenuItem>
-                                        </DropdownMenuGroup>
-
+                                    </DropdownMenuGroup>
                                     <DropdownMenuSeparator />
                                 */}
-
 
                                 <DropdownMenuItem onClick={handleLogout} className="flex flex-row">
                                     <LogOut className="h-4 w-4" />

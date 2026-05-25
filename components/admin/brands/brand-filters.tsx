@@ -3,9 +3,10 @@
 import { Search } from "lucide-react"
 
 import type { BrandWithAnalytics } from "@/components/admin/brands/types"
+import { FilterBadge } from "@/components/shared/filter-badge"
+import { FilterBadgeGroup } from "@/components/shared/filter-badge-group"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { neoInputClass } from "@/lib/ui/neo-ui"
 import { useBrandStore } from "@/stores/use-brand-store"
@@ -33,9 +34,32 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
   } = useBrandStore()
 
   return (
-    <ScrollArea className="w-full pb-2" scrollbars="horizontal">
-      <div className="flex w-max min-w-full items-center gap-2 pr-3">
-        <div className="relative min-w-[260px] md:min-w-[320px]">
+    <div className="flex min-w-0 flex-col gap-3">
+      <FilterBadgeGroup label="" className="min-w-0">
+        <FilterBadge
+          active={selectedBrandFilter === "all"}
+          onClick={() => setSelectedBrandFilter("all")}
+        >
+          All Brands
+        </FilterBadge>
+
+        {brands.map((brand) => (
+          <FilterBadge
+            key={brand.id}
+            active={
+              selectedBrandFilter !== "all" &&
+              selectedBrandId === brand.id &&
+              selectedBrandFilter === String(brand.id)
+            }
+            onClick={() => setSelectedBrandFilter(String(brand.id))}
+          >
+            {brand.name}
+          </FilterBadge>
+        ))}
+      </FilterBadgeGroup>
+
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="relative min-w-0 sm:w-[260px] md:w-[320px]">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchQuery}
@@ -45,59 +69,33 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
           />
         </div>
 
-        <span className="text-muted-foreground">|</span>
-
-        <div className="flex items-center gap-2">
-
-          {brands.map((brand) => (
-            <Button
-              key={brand.id}
-              type="button"
-              variant={
-                selectedBrandFilter !== "all" && selectedBrandId === brand.id
-                  ? "default"
-                  : "outline"
-              }
-              size="sm"
-              onClick={() => setSelectedBrandFilter(String(brand.id))}
-            >
-              {brand.name}
-            </Button>
-          ))}
-        </div>
-
-        <span className="text-muted-foreground">|</span>
-
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {(["active", "inactive"] as const).map((status) => (
-            <Button
+            <FilterBadge
               key={status}
-              type="button"
-              variant={selectedStatusFilter === status ? "default" : "outline"}
-              size="sm"
-              onClick={() =>
+              active={selectedStatusFilter === status}
+              onClick={() => {
                 setSelectedStatusFilter(
                   selectedStatusFilter === status ? "all" : status
                 )
-              }
+                setSelectedBrandFilter("all")
+              }}
             >
               {statusLabels[status]}
-            </Button>
+            </FilterBadge>
           ))}
+
+          <Button
+            type="button"
+            variant="neutral"
+            size="sm"
+            className="h-9 whitespace-nowrap rounded-lg shadow-none hover:translate-x-0 hover:translate-y-0 hover:shadow-none active:translate-x-0 active:translate-y-0"
+            onClick={resetBrandFilters}
+          >
+            Reset Filters
+          </Button>
         </div>
-
-        <span className="text-muted-foreground">|</span>
-
-        <Button
-          type="button"
-          variant="neutral"
-          size="sm"
-          className="whitespace-nowrap"
-          onClick={resetBrandFilters}
-        >
-          Reset Filters
-        </Button>
       </div>
-    </ScrollArea>
+    </div>
   )
 }

@@ -20,8 +20,11 @@ import {
   profileStatuses,
 } from "@/app/admin/account-control/schema"
 import { AccountFormDialog } from "@/components/admin/accounts/account-form-dialog"
+import { AccountDetailsSheet } from "@/components/admin/accounts/account-details-sheet"
 import { AccountPageHeader } from "@/components/admin/accounts/account-page-header"
 import { AccountStatusMenu } from "@/components/admin/accounts/account-status-menu"
+import { ForcePasswordDialog } from "@/components/admin/accounts/force-password-dialog"
+import { SoftDeleteAccountDialog } from "@/components/admin/accounts/soft-delete-account-dialog"
 import {
   AccountStatusBadge,
   AccountTypeBadge,
@@ -214,6 +217,9 @@ export function AccountDataTable({
     isCreateDialogOpen,
     isEditDialogOpen,
     isDisableDialogOpen,
+    isDetailsSheetOpen,
+    isForcePasswordDialogOpen,
+    isSoftDeleteDialogOpen,
     searchQuery,
     selectedRoleFilter,
     selectedBrandFilter,
@@ -222,6 +228,13 @@ export function AccountDataTable({
     closeCreateDialog,
     closeEditDialog,
     closeDisableDialog,
+    openDetailsSheet,
+    closeDetailsSheet,
+    openEditDialog,
+    openForcePasswordDialog,
+    closeForcePasswordDialog,
+    openSoftDeleteDialog,
+    closeSoftDeleteDialog,
     setSearchQuery,
     setSelectedRoleFilter,
     setSelectedBrandFilter,
@@ -242,7 +255,9 @@ export function AccountDataTable({
         (account.department ?? "").toLowerCase().includes(query)
 
       const matchesStatus =
-        selectedStatusFilter === "all" ||
+        selectedStatusFilter === "all"
+          ? account.status !== "DELETED"
+          :
         account.status === selectedStatusFilter
       const matchesAccountType =
         selectedAccountTypeFilter === "all" ||
@@ -446,9 +461,21 @@ export function AccountDataTable({
                   </TableRow>
                 ) : (
                   table.getRowModel().rows.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow
+                      key={row.id}
+                      className="cursor-pointer"
+                      onClick={() => openDetailsSheet(row.original)}
+                    >
                       {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="align-top">
+                        <TableCell
+                          key={cell.id}
+                          className="align-top"
+                          onClick={
+                            cell.column.id === "actions"
+                              ? (event) => event.stopPropagation()
+                              : undefined
+                          }
+                        >
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext()
@@ -519,6 +546,48 @@ export function AccountDataTable({
         />
       ) : null}
 
+      <AccountDetailsSheet
+        account={selectedAccount}
+        open={isDetailsSheetOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            closeDetailsSheet()
+          }
+        }}
+        onEdit={(account) => {
+          closeDetailsSheet()
+          openEditDialog(account)
+        }}
+        onForcePassword={(account) => {
+          closeDetailsSheet()
+          openForcePasswordDialog(account)
+        }}
+        onSoftDelete={(account) => {
+          closeDetailsSheet()
+          openSoftDeleteDialog(account)
+        }}
+      />
+
+      <ForcePasswordDialog
+        account={selectedAccount}
+        open={isForcePasswordDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            closeForcePasswordDialog()
+          }
+        }}
+      />
+
+      <SoftDeleteAccountDialog
+        account={selectedAccount}
+        open={isSoftDeleteDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            closeSoftDeleteDialog()
+          }
+        }}
+      />
+
       <AlertDialog
         open={isDisableDialogOpen}
         onOpenChange={(nextOpen) => {
@@ -531,8 +600,7 @@ export function AccountDataTable({
           <AlertDialogHeader>
             <AlertDialogTitle>Disable account?</AlertDialogTitle>
             <AlertDialogDescription>
-              This sets the profile status to DISABLED and revokes active
-              Better Auth sessions when available.
+              This will immediately log the user out and prevent them from accessing the system until their account is re-enabled.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
