@@ -1,7 +1,13 @@
-import { MetaFacebookMonitoringDashboard } from "@/components/admin/platform-analytics/meta-facebook-monitoring-dashboard"
+import { PlatformAnalyticsDashboard } from "@/components/admin/platform-analytics/platform-analytics-dashboard"
 import { bootstrapMetaMonitoring } from "@/lib/meta/bootstrap"
-import { getMetaMonitoringDashboardData } from "@/lib/meta/monitoring-data"
+import { getPlatformAnalyticsDashboardData } from "@/lib/platform-analytics/get-dashboard-data"
 import { can, requirePermission } from "@/lib/permissions"
+
+export const metadata = {
+  title: "Platform Analytics",
+  description:
+    "Unified analytics for Meta, TikTok, YouTube, and Google Ads.",
+}
 
 export default async function AdminPlatformAnalyticsPage() {
   const context = await requirePermission("meta_monitoring.view")
@@ -10,22 +16,30 @@ export default async function AdminPlatformAnalyticsPage() {
     "meta_monitoring.manage"
   )
 
-  let initialData = await getMetaMonitoringDashboardData()
+  let initialData = await getPlatformAnalyticsDashboardData({
+    platform: "META",
+    accountId: null,
+    metaScope: "combined",
+  })
   let bootstrapMessage: string | null = null
 
   if (
     canManage &&
-    initialData.integrationStatus.needsBootstrap &&
-    initialData.integrationStatus.graphTokenConfigured
+    initialData.metaNeedsBootstrap &&
+    initialData.platform === "META"
   ) {
     try {
       const result = await bootstrapMetaMonitoring()
-      initialData = await getMetaMonitoringDashboardData()
+      initialData = await getPlatformAnalyticsDashboardData({
+        platform: "META",
+        accountId: null,
+        metaScope: "combined",
+      })
       bootstrapMessage =
         result.dailySnapshots > 0 || result.postMetrics > 0
-          ? `Auto-connected ${result.registeredCount} Facebook Page(s) and synced analytics.`
+          ? `Auto-connected ${result.registeredCount} Meta account(s) and synced analytics.`
           : result.errors[0] ??
-            "Pages registered. Run sync again if analytics are still empty."
+            "Accounts registered. Run sync again if analytics are still empty."
     } catch (error) {
       bootstrapMessage =
         error instanceof Error
@@ -35,7 +49,7 @@ export default async function AdminPlatformAnalyticsPage() {
   }
 
   return (
-    <MetaFacebookMonitoringDashboard
+    <PlatformAnalyticsDashboard
       initialData={initialData}
       canManage={canManage}
       bootstrapMessage={bootstrapMessage}

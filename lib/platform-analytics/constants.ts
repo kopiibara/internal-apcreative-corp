@@ -1,0 +1,60 @@
+import type { AnalyticsPlatform, PlatformCode } from "@/lib/platform-analytics/types"
+
+export const PLATFORM_NAV: { value: AnalyticsPlatform; label: string }[] = [
+  { value: "META", label: "Meta" },
+  { value: "TIKTOK", label: "TikTok" },
+  { value: "YOUTUBE", label: "YouTube" },
+  { value: "GOOGLE", label: "Google" },
+]
+
+export const PAGE_TITLE = "Platform Analytics"
+
+export const PAGE_SUBTITLE =
+  "View platform-specific analytics for Meta, TikTok, YouTube, and Google Ads, including audience growth, content performance, campaign results, webhook activity, and sync status."
+
+export const PLATFORM_LABELS: Record<PlatformCode, string> = {
+  META: "Meta",
+  TIKTOK: "TikTok",
+  YOUTUBE: "YouTube",
+  GOOGLE: "Google",
+}
+
+export const PLATFORM_VIEW_COPY: Record<
+  PlatformCode,
+  { title: string; subtitle: string; liveBadge: string; demoBadge: string }
+> = {
+  META: {
+    title: "Meta Analytics",
+    subtitle:
+      "Track Facebook and Instagram performance, including followers, page likes, reach, impressions, engagement, posts, and webhook activity.",
+    liveBadge: "Live Integration",
+    demoBadge: "Not Connected",
+  },
+  TIKTOK: {
+    title: "TikTok Analytics",
+    subtitle:
+      "Track TikTok account performance, video views, followers, engagement, profile activity, and webhook activity once connected.",
+    liveBadge: "Live Integration",
+    demoBadge: "Demo Data",
+  },
+  YOUTUBE: {
+    title: "YouTube Analytics",
+    subtitle:
+      "Track YouTube channel performance, subscribers, views, watch time, video engagement, and webhook activity once connected.",
+    liveBadge: "Live Integration",
+    demoBadge: "Demo Data",
+  },
+  GOOGLE: {
+    title: "Google Ads Analytics",
+    subtitle:
+      "Track Google Ads performance, campaign results, impressions, clicks, spend, conversions, and webhook activity once connected.",
+    liveBadge: "Live Integration",
+    demoBadge: "Demo Data",
+  },
+}
+
+export const META_SCOPE_OPTIONS = [
+  { value: "combined", label: "Combined" },
+  { value: "facebook", label: "Facebook" },
+  { value: "instagram", label: "Instagram" },
+] as const
