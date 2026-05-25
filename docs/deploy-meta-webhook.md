@@ -42,6 +42,10 @@ npm run db:migrate
 
 Migration: `020_meta_facebook_monitoring.sql`
 
+## Deploy via pull request (staging → main)
+
+Merge a PR from `staging` into `main` to trigger a fresh Vercel production deployment when branches were already in sync.
+
 ## If production still shows the old UI after redeploy
 
 - Confirm the deployment commit is `311e645` or newer (Vercel deployment details).
