@@ -195,7 +195,7 @@ export function DashboardSidebar({
         <Sidebar
             variant="sidebar"
             collapsible="icon"
-            className="border-r-2 border-sidebar-border shadow-[var(--shadow-hard-sm)]"
+            className="border-r-2 border-sidebar-border shadow-hard-sm"
         >
             <SidebarHeader
                 className={
@@ -205,7 +205,7 @@ export function DashboardSidebar({
                 }
             >
                 {isCollapsed ? (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-border bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground shadow-[var(--shadow-hard-sm)]">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-border bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground shadow-hard-sm">
                         AP
                     </div>
                 ) : (
