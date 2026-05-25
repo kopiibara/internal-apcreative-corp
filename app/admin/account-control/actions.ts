@@ -1392,6 +1392,16 @@ export async function softDeleteAccount(input: unknown): Promise<ActionResult> {
     };
   }
 
+  const rateLimit = await enforceRateLimit({
+    bucket: "account:soft-delete",
+    limit: 20,
+    windowMs: 10 * 60 * 1000,
+  });
+
+  if (!rateLimit.success) {
+    return { success: false, message: rateLimit.message };
+  }
+
   try {
     const deletedAt = new Date().toISOString();
 

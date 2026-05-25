@@ -6,9 +6,10 @@ import {
   AccountStatusBadge,
   AccountTypeBadge,
 } from "@/components/admin/accounts/account-status-badge"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { AccountTimelineSection } from "@/components/admin/accounts/account-timeline-section"
 import {
   Card,
   CardContent,
@@ -23,18 +24,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import {
-  Timeline,
-  TimelineContent,
-  TimelineDate,
-  TimelineHeader,
-  TimelineIndicator,
-  TimelineItem,
-  TimelineSeparator,
-  TimelineTitle,
-} from "@/components/reui/timeline"
 import type { AccountListItem } from "@/lib/auth/accounts"
-import { getInitialsFromName } from "@/lib/utils"
 
 type AccountDetailsSheetProps = {
   account: AccountListItem | null
@@ -91,24 +81,6 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function formatAction(action: string) {
-  if (action === "PASSWORD_RESET_TO_DEFAULT") {
-    return "Password reset to default"
-  }
-
-  return action
-    .split("_")
-    .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
-    .join(" ")
-}
-
-function isPasswordResetLog(action: string) {
-  return (
-    action === "PASSWORD_RESET_TO_DEFAULT" ||
-    action === "PASSWORD_FORCE_CHANGED"
-  )
-}
-
 export function AccountDetailsSheet({
   account,
   open,
@@ -124,6 +96,12 @@ export function AccountDetailsSheet({
           {account ? (
             <>
               <SheetTitle className="flex flex-wrap items-center gap-3 font-medium">
+                <UserAvatar
+                  profileId={account.id}
+                  name={account.fullName}
+                  email={account.email}
+                  size="lg"
+                />
                 <span className="text-xl font-bold sm:text-2xl">
                   Account Details
                 </span>
@@ -199,61 +177,10 @@ export function AccountDetailsSheet({
                 </Section>
 
                 <Section title="Account Timeline">
-                  {account.logs.length === 0 ? (
-                    <p className="rounded-lg border-2 border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-                      No account activity logs yet.
-                    </p>
-                  ) : (
-                    <ScrollArea
-                      className="h-[min(360px,45vh)] min-h-0 pr-3"
-                      scrollbars="vertical"
-                    >
-                      <Timeline defaultValue={account.logs.length} className="w-full min-w-0">
-                        {account.logs.map((log, index) => (
-                          <TimelineItem key={log.id} step={index + 1}>
-                            <TimelineHeader>
-                              <TimelineDate>
-                                {formatDateTime(log.createdAt)}
-                              </TimelineDate>
-                              <TimelineTitle>{formatAction(log.action)}</TimelineTitle>
-                            </TimelineHeader>
-                            <TimelineIndicator />
-                            <TimelineSeparator />
-                            <TimelineContent className="min-w-0 space-y-2">
-                              <div className="flex min-w-0 gap-3">
-                                <Avatar className="h-9 w-9 shrink-0 rounded-lg border-2 border-border">
-                                  <AvatarFallback className="rounded-lg text-[10px] font-semibold">
-                                    {getInitialsFromName(log.actorName)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div className="min-w-0 flex-1 space-y-2">
-                                  <div>
-                                    <p className="text-sm font-semibold">
-                                      {log.actorName}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {log.actorAccountType}
-                                    </p>
-                                  </div>
-                                  <p className="whitespace-pre-wrap break-words rounded-lg border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
-                                    {log.metadata &&
-                                      typeof log.metadata.reason === "string" &&
-                                      log.metadata.reason ? (
-                                      <p className="text-xs text-muted-foreground">
-                                        Reason: {log.metadata.reason}
-                                      </p>
-                                    ) : null}
-                                  </p>
-
-
-                                </div>
-                              </div>
-                            </TimelineContent>
-                          </TimelineItem>
-                        ))}
-                      </Timeline>
-                    </ScrollArea>
-                  )}
+                  <AccountTimelineSection
+                    logs={account.logs}
+                    targetFullName={account.fullName}
+                  />
                 </Section>
               </div>
 

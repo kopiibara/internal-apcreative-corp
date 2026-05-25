@@ -3,6 +3,7 @@
 import { Clock, ExternalLink, Paperclip, PenLine } from "lucide-react"
 
 import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -39,9 +40,17 @@ export function ApprovalKanbanCard({
         <p className="truncate text-md font-bold">
           {report.brandName ?? "No brand"}
         </p>
-        <p className="truncate text-sm ">
-          Submitted by <strong>{report.submittedByName}</strong>
-        </p>
+        <div className="flex min-w-0 items-center gap-2 text-sm">
+          <UserAvatar
+            profileId={report.submittedByProfileId}
+            name={report.submittedByName}
+            email={report.submittedByEmail}
+            size="sm"
+          />
+          <p className="truncate">
+            Submitted by <strong>{report.submittedByName}</strong>
+          </p>
+        </div>
         <div className="flex flex-row gap-2">
           <Badge className="bg-gray-200">
             <Clock /> {dateFormatter.format(new Date(report.dateSubmitted))}

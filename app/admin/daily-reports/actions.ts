@@ -9,6 +9,7 @@ import {
 import type { DailyReportData } from "@/lib/daily-reports/daily-report-types";
 import { getDailyReportData } from "@/lib/daily-reports/daily-reports";
 import { can } from "@/lib/permissions";
+import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
 
 export type DailyReportActionResult<T = unknown> = {
   success: boolean;
@@ -54,6 +55,16 @@ export async function fetchDailyReportAction(
 
   if (authError) {
     return authError;
+  }
+
+  const rateLimitError = await rejectIfRateLimited({
+    bucket: "daily-reports:fetch",
+    limit: 60,
+    windowMs: 60_000,
+  });
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const parsed = fetchDailyReportSchema.safeParse(input);

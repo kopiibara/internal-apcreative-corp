@@ -17,6 +17,7 @@ import {
   type GoogleAdsSummary,
 } from "@/lib/ads-campaigns-types"
 import { query, transaction } from "@/lib/db"
+import { sanitizeFileName } from "@/lib/security/sanitize-text"
 
 export { ADS_PLATFORMS, CAMPAIGN_OBJECTIVES, CAMPAIGN_STATUSES }
 export type {
@@ -766,6 +767,8 @@ export async function importGoogleAdsMetricsForEmployee({
 }) {
   await assertAdsCampaignPermission(profile, "ads_campaigns.import", brandId)
   await assertEmployeeBrandAccess(profile, brandId)
+
+  const safeFileName = sanitizeFileName(fileName)
   const parsedRows = parseGoogleAdsCsv(csvText)
 
   await transaction(async (client) => {
@@ -799,7 +802,7 @@ export async function importGoogleAdsMetricsForEmployee({
           row.avgTargetCpa,
           row.conversions,
           row.cost,
-          fileName,
+          safeFileName,
         ]
       )
     }

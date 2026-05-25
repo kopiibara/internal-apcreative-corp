@@ -24,6 +24,7 @@ import { AccountDetailsSheet } from "@/components/admin/accounts/account-details
 import { AccountPageHeader } from "@/components/admin/accounts/account-page-header"
 import { AccountStatusMenu } from "@/components/admin/accounts/account-status-menu"
 import { ForcePasswordDialog } from "@/components/admin/accounts/force-password-dialog"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { SoftDeleteAccountDialog } from "@/components/admin/accounts/soft-delete-account-dialog"
 import {
   AccountStatusBadge,
@@ -111,7 +112,15 @@ function getAccountColumns(): ColumnDef<AccountListItem>[] {
       accessorKey: "fullName",
       header: ({ column }) => <SortButton label="Full Name" column={column} />,
       cell: ({ row }) => (
-        <div className="font-medium">{row.original.fullName}</div>
+        <div className="flex items-center gap-3">
+          <UserAvatar
+            profileId={row.original.id}
+            name={row.original.fullName}
+            email={row.original.email}
+            size="sm"
+          />
+          <div className="min-w-0 font-medium">{row.original.fullName}</div>
+        </div>
       ),
     },
     {

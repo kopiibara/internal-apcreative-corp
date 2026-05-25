@@ -7,6 +7,7 @@ import { toast } from "sonner"
 
 import { createTask } from "@/app/admin/to-do/actions"
 import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -238,6 +239,11 @@ export function TaskCreateDialog({
                               isSelected ? "opacity-100" : "opacity-0"
                             )}
                           />
+                          <UserAvatar
+                            profileId={assignee.id}
+                            name={assignee.fullName}
+                            size="sm"
+                          />
                           <span className="min-w-0 flex-1">
                             <span className="block font-medium">
                               {assignee.fullName}
@@ -261,10 +267,14 @@ export function TaskCreateDialog({
                     className="rounded-lg border bg-muted/20 px-4 py-2 pb-4"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium flex flex-row gap-4 justify-center items-center">
+                      <span className="flex flex-row items-center gap-3 text-sm font-medium">
+                        <UserAvatar
+                          profileId={assignee.id}
+                          name={assignee.fullName}
+                          size="sm"
+                        />
                         {assignee.fullName}
                         <TaskAssigneeBrands brands={assignee.brands} className="mt-1" />
-
                       </span>
 
                       <Button
