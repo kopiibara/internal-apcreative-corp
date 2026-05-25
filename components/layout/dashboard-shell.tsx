@@ -106,6 +106,7 @@ type DashboardUser = {
     email: string
     accountType: string
     roleSlugs?: string[]
+    canAccessAdsCampaigns?: boolean
     mustChangePassword?: boolean
 }
 
@@ -154,6 +155,7 @@ export function DashboardShell({
                         email: user.email,
                         accountType: user.accountType,
                         roleSlugs: user.roleSlugs,
+                        canAccessAdsCampaigns: user.canAccessAdsCampaigns,
                     }}
                 />
 

@@ -30,7 +30,6 @@ const COPY = {
     title: "To-Do Task",
     description:
       "Assign work, collect proof, and review completion in a Kanban workflow.",
-    cardTitle: "Task board",
     createLabel: "Add Task",
   },
   employee: {
@@ -83,7 +82,7 @@ export function TaskBoard({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between pr-1">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">{copy.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
@@ -97,14 +96,13 @@ export function TaskBoard({
       </div>
 
       {hasNoTasks ? (
-        <p className="shrink-0 rounded-lg border border-dashed bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        <p className="shrink-0 rounded-lg border border-dashed bg-muted/20 px-4 py-0 text-sm text-muted-foreground">
           No tasks assigned yet. Create a personal task to get started.
         </p>
       ) : null}
 
-      <BoardSection className="w-full min-w-0 overflow-hidden pb-1 gap-2">
+      <BoardSection className="w-full min-w-0 overflow-hidden py-4 gap-2 ">
         <CardHeader className="min-w-0 shrink-0 gap-3">
-          <CardTitle className="text-card-foreground">{copy.cardTitle}</CardTitle>
           <TaskFilters
             assignees={assignees}
             showAssigneeFilter={!isEmployeeView}

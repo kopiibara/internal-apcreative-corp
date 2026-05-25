@@ -114,7 +114,7 @@ function AssignmentRow({
   removeLabel?: string
 }) {
   return (
-    <div className="grid gap-3 rounded-xl border p-3 lg:grid-cols-[1.2fr_1fr_auto_auto_auto] lg:items-center">
+    <div className="grid min-w-0 gap-3 rounded-lg border-2 border-black p-3 xl:grid-cols-[1.2fr_1fr_auto_auto_auto] xl:items-center">
       <BrandSelect
         brands={brands}
         value={assignment.brandId}
@@ -272,7 +272,7 @@ function EditAccessRow({
   }
 
   return (
-    <div className="grid gap-3 rounded-xl border p-3 lg:grid-cols-[1.2fr_1fr_auto_auto_auto_auto] lg:items-center">
+    <div className="grid min-w-0 gap-3 rounded-lg border-2 border-black p-3 xl:grid-cols-[1.2fr_1fr_auto_auto_auto_auto] xl:items-center">
       <div className="text-sm font-medium">{access.brandName}</div>
 
       <AccountRoleSelect
@@ -302,7 +302,6 @@ function EditAccessRow({
 
       <Button
         type="button"
-        variant="outline"
         size="sm"
         disabled={isPending}
         onClick={handleSave}
@@ -312,7 +311,7 @@ function EditAccessRow({
 
       <Button
         type="button"
-        variant="ghost"
+        variant="destructive"
         size="sm"
         disabled={isPending || !access.isActive}
         onClick={handleRemove}
@@ -379,7 +378,7 @@ function EditBrandAccess({ profileId, brands, roles, access }: EditBrandAccessPr
 
       <div className="space-y-3">
         <div className="text-sm font-medium">Assign another brand</div>
-        <div className="grid gap-3 rounded-xl border p-3 lg:grid-cols-[1.2fr_1fr_auto_auto_auto] lg:items-center">
+        <div className="grid min-w-0 gap-3 rounded-lg border-2 border-black p-3 xl:grid-cols-[1.2fr_1fr_auto_auto_auto] xl:items-center">
           <BrandSelect
             brands={brands}
             value={newAssignment.brandId}

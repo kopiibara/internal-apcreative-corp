@@ -28,8 +28,8 @@ export function AccountStatusMenu({ account }: AccountStatusMenuProps) {
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => openEditDialog(account)}>
+      <DropdownMenuContent align="end" >
+        <DropdownMenuItem onClick={() => openEditDialog(account)} className="flex flex-row gap-2 ">
           <Pencil className="size-4" />
           Edit account
         </DropdownMenuItem>
@@ -38,6 +38,7 @@ export function AccountStatusMenu({ account }: AccountStatusMenuProps) {
           variant="destructive"
           onClick={() => openDisableDialog(account)}
           disabled={account.status === "DISABLED"}
+          className="flex flex-row gap-2"
         >
           <ShieldOff className="size-4" />
           Disable account

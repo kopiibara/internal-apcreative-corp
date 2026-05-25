@@ -55,6 +55,12 @@ type RoleRow = {
   name: string;
 };
 
+type BrandRow = {
+  id: number;
+  slug: string;
+  name: string;
+};
+
 async function authorizeAction(
   permissionKey: string,
 ): Promise<ActionResult | null> {
@@ -119,6 +125,50 @@ async function getRolesByIds(roleIds: number[]) {
   );
 
   return result.rows;
+}
+
+async function getBrandsByIds(brandIds: number[]) {
+  if (brandIds.length === 0) {
+    return [] as BrandRow[];
+  }
+
+  const result = await query<BrandRow>(
+    `
+    SELECT id, slug, name
+    FROM brand
+    WHERE id = ANY($1::int[])
+    `,
+    [brandIds],
+  );
+
+  return result.rows;
+}
+
+async function getAllBrandAssignmentError(
+  assignments: z.infer<typeof brandAssignmentSchema>[],
+  roles: RoleRow[],
+) {
+  const brands = await getBrandsByIds(
+    assignments.map((assignment) => assignment.brandId),
+  );
+  const brandsById = new Map(brands.map((brand) => [brand.id, brand]));
+  const rolesById = new Map(roles.map((role) => [role.id, role]));
+
+  for (const assignment of assignments) {
+    const brand = brandsById.get(assignment.brandId);
+
+    if (brand?.slug !== "all-brand") {
+      continue;
+    }
+
+    const role = rolesById.get(assignment.roleId);
+
+    if (role?.slug !== "full-stack-developer") {
+      return "All Brand can only be assigned with the Full Stack Developer role.";
+    }
+  }
+
+  return null;
 }
 
 function hasClientViewerRole(roles: RoleRow[]) {
@@ -257,6 +307,17 @@ export async function createAccount(input: unknown): Promise<ActionResult> {
   const roleSlugs = roles.map((role) => role.slug);
   const accountType = deriveAccountTypeFromRoleSlugs(roleSlugs);
   const position = derivePositionFromRoles(roles);
+  const allBrandAssignmentError = await getAllBrandAssignmentError(
+    data.brandAssignments,
+    roles,
+  );
+
+  if (allBrandAssignmentError) {
+    return {
+      success: false,
+      message: allBrandAssignmentError,
+    };
+  }
 
   const brandAssignmentError = getBrandAssignmentValidationMessage(
     accountType,
@@ -607,6 +668,26 @@ export async function assignBrandAccess(input: unknown): Promise<ActionResult> {
   const data = parsed.data;
 
   try {
+    const roles = await getRolesByIds([data.roleId]);
+    const allBrandAssignmentError = await getAllBrandAssignmentError(
+      [
+        {
+          brandId: data.brandId,
+          roleId: data.roleId,
+          isPrimary: data.isPrimary,
+          isActive: data.isActive,
+        },
+      ],
+      roles,
+    );
+
+    if (allBrandAssignmentError) {
+      return {
+        success: false,
+        message: allBrandAssignmentError,
+      };
+    }
+
     await transaction(async (client) => {
       const profileResult = await client.query<{ account_type: AccountType }>(
         `

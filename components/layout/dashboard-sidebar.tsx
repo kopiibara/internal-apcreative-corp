@@ -63,6 +63,7 @@ type SidebarUser = {
     email: string
     accountType?: string
     roleSlugs?: string[]
+    canAccessAdsCampaigns?: boolean
     avatarUrl?: string
 }
 
@@ -115,6 +116,7 @@ export function DashboardSidebar({
             user?.roleSlugs?.includes("supervisor") ||
             user?.roleSlugs?.includes("full-stack-developer"))
     const taskBadge = formatSidebarBadge(employeeActionableTaskCount)
+    const canSeeAdsCampaigns = user?.canAccessAdsCampaigns === true
     const groups =
         mode === "admin"
             ? adminGroups
@@ -127,22 +129,30 @@ export function DashboardSidebar({
                     ),
                 }))
                 .filter((group) => group.items.length > 0)
-            : employeeGroups.map((group) => ({
-                ...group,
-                items: group.items.map((item) =>
-                    item.title === "To-Do"
-                        ? {
-                            ...item,
-                            badge: taskBadge,
-                            subItems: item.subItems?.map((subItem) =>
-                                subItem.href === "/employee/to-do/tasks"
-                                    ? { ...subItem, badge: taskBadge }
-                                    : subItem
-                            ),
-                        }
-                        : item
-                ),
-            }))
+            : employeeGroups
+                .map((group) => ({
+                    ...group,
+                    items: group.items
+                        .filter(
+                            (item) =>
+                                item.href !== "/employee/ads-campaigns" ||
+                                canSeeAdsCampaigns
+                        )
+                        .map((item) =>
+                            item.title === "To-Do"
+                                ? {
+                                    ...item,
+                                    badge: taskBadge,
+                                    subItems: item.subItems?.map((subItem) =>
+                                        subItem.href === "/employee/to-do/tasks"
+                                            ? { ...subItem, badge: taskBadge }
+                                            : subItem
+                                    ),
+                                }
+                                : item
+                        ),
+                }))
+                .filter((group) => group.items.length > 0)
 
     const displayUser = user ?? {
         name: mode === "admin" ? "Executive Manager" : "Brand Officer",
@@ -297,7 +307,7 @@ export function DashboardSidebar({
                                                                                     ? "page"
                                                                                     : undefined
                                                                             }
-                                                                            className="flex w-full items-center gap-2"
+                                                                            className="flex w-full items-center gap-2 p-1"
                                                                         >
                                                                             <span>{subItem.title}</span>
                                                                             {subItem.badge ? (
@@ -546,14 +556,17 @@ export function DashboardSidebar({
 
                                 <DropdownMenuSeparator />
 
-                                <DropdownMenuGroup>
-                                    <DropdownMenuItem className="flex flex-row">
-                                        <User className="h-4 w-4" />
-                                        Account
-                                    </DropdownMenuItem>
-                                </DropdownMenuGroup>
+                                {/*
+                                    <DropdownMenuGroup>
+                                        <DropdownMenuItem className="flex flex-row">
+                                            <User className="h-4 w-4" />
+                                            Account
+                                        </DropdownMenuItem>
+                                        </DropdownMenuGroup>
 
-                                <DropdownMenuSeparator />
+                                    <DropdownMenuSeparator />
+                                */}
+
 
                                 <DropdownMenuItem onClick={handleLogout} className="flex flex-row">
                                     <LogOut className="h-4 w-4" />
