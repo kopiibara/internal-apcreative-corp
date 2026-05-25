@@ -24,7 +24,9 @@ type DashboardFilterBarProps = {
   dateKey: string
   month: string
   weekStart: string
-  brandId: string
+  brandId?: string
+  showBrandFilter?: boolean
+  assignedBrandLabel?: string
 }
 
 const periodOptions: { value: DashboardPeriod; label: string }[] = [
@@ -99,12 +101,14 @@ function firstWeekStartForMonth(month: string) {
 }
 
 export function DashboardFilterBar({
-  brands,
+  brands = [],
   period,
   dateKey,
   month,
   weekStart,
-  brandId,
+  brandId = "all",
+  showBrandFilter = true,
+  assignedBrandLabel,
 }: DashboardFilterBarProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -129,24 +133,32 @@ export function DashboardFilterBar({
   return (
     <div className="relative z-20 flex min-w-0 flex-col gap-3 pr-1 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center">
-        <FilterBadgeGroup label="" className="min-w-0">
-          <FilterBadge
-            active={brandId === "all"}
-            onClick={() => updateFilters({ brandId: "all" })}
-          >
-            All Brands
-          </FilterBadge>
-          {brands.map((brand) => (
+        {showBrandFilter ? (
+          <FilterBadgeGroup label="" className="min-w-0">
             <FilterBadge
-              key={brand.id}
-              active={brandId === String(brand.id)}
-              onClick={() => updateFilters({ brandId: String(brand.id) })}
+              active={brandId === "all"}
+              onClick={() => updateFilters({ brandId: "all" })}
             >
-              {brand.name}
+              All Brands
             </FilterBadge>
-          ))}
-        </FilterBadgeGroup>
 
+            {brands.map((brand) => (
+              <FilterBadge
+                key={brand.id}
+                active={brandId === String(brand.id)}
+                onClick={() => updateFilters({ brandId: String(brand.id) })}
+              >
+                {brand.name}
+              </FilterBadge>
+            ))}
+          </FilterBadgeGroup>
+        ) : assignedBrandLabel ? (
+          <FilterBadgeGroup label="" className="min-w-0" scrollable={false}>
+            <FilterBadge active onClick={() => { }}>
+              {assignedBrandLabel}
+            </FilterBadge>
+          </FilterBadgeGroup>
+        ) : null}
 
         <FilterBadgeGroup label="" className="min-w-0" scrollable={false}>
           {periodOptions.map((option) => (

@@ -1,12 +1,14 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { authClient } from "@/lib/auth/auth-client"
 import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { useTheme } from "@/components/ui/theme-provider"
+import GradientText from "@/components/GradientText"
 
 import {
     ChevronDown,
@@ -205,17 +207,20 @@ export function DashboardSidebar({
                 }
             >
                 {isCollapsed ? (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border-2 border-border bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground shadow-hard-sm">
-                        AP
+                    <div >
+                        <Image src="/icons/icon-no-bg.png" alt="AP Creative" width={32} height={32} />
                     </div>
                 ) : (
-                    <div>
-                        <h1 className="text-xl font-bold tracking-tight text-sidebar-foreground">
-                            AP Creative
-                        </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            Marketing Operations Command Center
-                        </p>
+                    <div className="flex items-center gap-4">
+                        <Image src="/icons/icon-circle.png" alt="AP Creative" width={48} height={48} />
+                        <div className="flex flex-col">
+                            <span className="bg-linear-to-r font-bold from-[#14327d] via-[#209cbb] to-[#a72a6f] bg-clip-text text-transparent">
+                                AP Creative
+                            </span>
+                            <span className="bg-linear-to-r font-bold from-[#14327d] via-[#209cbb] to-[#a72a6f] bg-clip-text text-transparent">
+                                Dashboard
+                            </span>
+                        </div>
                     </div>
                 )}
             </SidebarHeader>
