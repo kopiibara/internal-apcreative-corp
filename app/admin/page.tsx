@@ -1,80 +1,119 @@
+import { DashboardFilterBar } from "@/components/admin/dashboard/dashboard-filter-bar"
+import { BrandSummaryChart } from "@/components/admin/daily-reports/brand-summary-chart"
+import { DailySummaryCards } from "@/components/admin/daily-reports/daily-summary-cards"
+import { EmployeeSummaryChart } from "@/components/admin/daily-reports/employee-summary-chart"
+import { TopSummaryCards } from "@/components/admin/staff-accountability/staff-accountability-dashboard"
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
+  getDailyReportData,
+  getDailyReportFilterOptions,
+} from "@/lib/daily-reports/daily-reports"
+import {
+  getDashboardPeriodBounds,
+  getDefaultDashboardWeekStart,
+  parseDashboardDateKey,
+  parseDashboardMonth,
+  parseDashboardPeriod,
+} from "@/lib/dashboard/dashboard-period"
+import { getTodayDateKeyInPhilippines } from "@/lib/daily-reports/daily-report-filters"
+import { getStaffAccountabilityData } from "@/lib/tasks/tasks"
 
-const stats = [
-    {
-        title: "Total Brands",
-        value: "8",
-        description: "Active brands monitored",
-    },
-    {
-        title: "Pending Approvals",
-        value: "7",
-        description: "Waiting for manager review",
-    },
-    {
-        title: "Monthly Ad Spend",
-        value: "₱248,500",
-        description: "Across all platforms",
-    },
-    {
-        title: "Total Leads",
-        value: "1,284",
-        description: "This month",
-    },
-]
+type AdminDashboardPageProps = {
+  searchParams: Promise<{
+    period?: string
+    date?: string
+    month?: string
+    weekStart?: string
+    brandId?: string
+  }>
+}
 
-export default function AdminDashboardPage() {
-    return (
-        <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">
-                    Executive Dashboard
-                </h2>
-                <p className="text-muted-foreground">
-                    Overview of all brands, employees, reports, and platform performance.
-                </p>
-            </div>
+function parseOptionalId(value: string | undefined) {
+  if (!value || value === "all") {
+    return null
+  }
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {stats.map((stat) => (
-                    <Card key={stat.title}>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-slate-500">
-                                {stat.title}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stat.value}</div>
-                            <p className="text-xs text-slate-500">{stat.description}</p>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
+  const parsed = Number(value)
 
-            <div className="grid gap-4 lg:grid-cols-2">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Brand Performance</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-sm text-slate-500">
-                        This section will show performance across all brands.
-                    </CardContent>
-                </Card>
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Approval Queue</CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-sm text-slate-500">
-                        This section will show reports waiting for approval.
-                    </CardContent>
-                </Card>
-            </div>
+export default async function AdminDashboardPage({
+  searchParams,
+}: AdminDashboardPageProps) {
+  const params = await searchParams
+  const todayKey = getTodayDateKeyInPhilippines()
+  const currentMonth = todayKey.slice(0, 7)
+  const period = parseDashboardPeriod(params.period)
+  const dateKey = parseDashboardDateKey(params.date, todayKey)
+  const month = parseDashboardMonth(params.month, currentMonth)
+  const weekStart = parseDashboardDateKey(
+    params.weekStart,
+    getDefaultDashboardWeekStart(todayKey)
+  )
+  const brandId = parseOptionalId(params.brandId)
+  const bounds = getDashboardPeriodBounds({
+    period,
+    dateKey,
+    month,
+    weekStartKey: weekStart,
+  })
+  const [{ brands }, dailyReportData, staffAccountabilityData] =
+    await Promise.all([
+      getDailyReportFilterOptions(),
+      getDailyReportData({
+        dateKey,
+        start: bounds.dailyStart,
+        end: bounds.dailyEnd,
+        brandId,
+        employeeId: null,
+      }),
+      getStaffAccountabilityData({
+        startDate: bounds.staffStart,
+        endDate: bounds.staffEnd,
+        brandId,
+      }),
+    ])
+
+  return (
+    <div className="min-w-0 space-y-4 overflow-hidden">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">
+            Dashboard
+          </h2>
         </div>
-    )
+        <p className="rounded-lg border-2 border-border bg-background px-3 py-2 text-xs font-black uppercase tracking-[0.16em]">
+          {bounds.label}
+        </p>
+      </div>
+
+      <DashboardFilterBar
+        brands={brands}
+        period={period}
+        dateKey={dateKey}
+        month={month}
+        weekStart={weekStart}
+        brandId={brandId ? String(brandId) : "all"}
+      />
+
+      <section className="space-y-3 pr-1">
+        <div>
+          <h3 className="text-lg font-bold">Staff Accountability</h3>
+        </div>
+        <TopSummaryCards data={staffAccountabilityData} />
+      </section>
+
+      <section className="space-y-3 pr-1">
+        <div>
+          <h3 className="text-lg font-bold">Daily Reports</h3>
+        </div>
+        <DailySummaryCards summary={dailyReportData.summary} />
+      </section>
+
+      <section className="grid min-w-0 grid-cols-1 gap-3 md:gap-4 xl:grid-cols-2 p-1">
+        <BrandSummaryChart summaries={dailyReportData.brandSummaries} />
+        <EmployeeSummaryChart summaries={dailyReportData.employeeSummaries} />
+      </section>
+    </div>
+  )
 }

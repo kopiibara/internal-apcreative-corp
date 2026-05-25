@@ -33,13 +33,13 @@ export function EmployeeApprovalKanbanCard({
   return (
     <Card
       size="sm"
-      className="cursor-pointer rounded-md border px-1.5 py-1 transition-colors hover:bg-muted"
+      className="cursor-pointer rounded-lg  p-4 transition-colors hover:bg-muted"
       onClick={() => onOpenDetails(report)}
     >
       <CardContent className="space-y-3 p-1">
-        <p className="truncate text-md font-bold">
+        <h2 className="truncate  font-bold">
           {report.brandName ?? "No brand"}
-        </p>
+        </h2>
 
         <div className="flex flex-row gap-2">
 

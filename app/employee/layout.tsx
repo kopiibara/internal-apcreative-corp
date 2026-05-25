@@ -1,6 +1,6 @@
-import { requireEmployee } from "@/lib/auth-session"
+import { requireEmployee } from "@/lib/auth/auth-session"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
-import { getEmployeeActionableTaskCount } from "@/lib/tasks"
+import { getEmployeeActionableTaskCount } from "@/lib/tasks/tasks"
 
 export default async function EmployeeLayout({
     children,

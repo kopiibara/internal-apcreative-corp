@@ -1,6 +1,6 @@
 "use client"
 
-import { APPROVAL_STATUSES } from "@/lib/approval-statuses"
+import { APPROVAL_STATUSES } from "@/lib/approvals/approval-statuses"
 import {
   Select,
   SelectContent,

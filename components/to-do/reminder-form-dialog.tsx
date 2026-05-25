@@ -31,8 +31,8 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   REMINDER_PRIORITIES,
   type ReminderPriority,
-} from "@/lib/reminder-statuses"
-import type { ReminderRecord } from "@/lib/reminders"
+} from "@/lib/reminders/reminder-statuses"
+import type { ReminderRecord } from "@/lib/reminders/reminders"
 
 type ReminderFormDialogProps = {
   reminder?: ReminderRecord | null

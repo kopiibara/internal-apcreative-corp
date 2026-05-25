@@ -20,8 +20,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   toBrandChartItems,
   type BrandChartItem,
-} from "@/lib/daily-report-chart-data"
-import type { DailyBrandSummary } from "@/lib/daily-report-types"
+} from "@/lib/daily-reports/daily-report-chart-data"
+import type { DailyBrandSummary } from "@/lib/daily-reports/daily-report-types"
 
 const brandChartConfig = {
   graded: {
@@ -90,7 +90,7 @@ function BrandCompactSummary({ items }: { items: BrandChartItem[] }) {
       {items.map((item) => (
         <li
           key={item.brandName}
-          className="flex items-center justify-between gap-2 rounded-md bg-muted/20 px-2 py-1.5"
+          className="flex items-center justify-between gap-2 rounded-lg bg-muted/20 px-2 py-1.5"
         >
           <span className="truncate font-medium">{item.brandName}</span>
           <span className="shrink-0 text-muted-foreground">
@@ -108,17 +108,17 @@ type BrandSummaryChartProps = {
 
 export function BrandSummaryChart({ summaries }: BrandSummaryChartProps) {
   const chartData = toBrandChartItems(summaries)
-  const chartMinWidth = Math.max(360, chartData.length * 88)
+  const chartMinWidth = Math.max(320, chartData.length * 72)
 
   return (
-    <Card className="flex h-full min-w-0 flex-col">
-      <CardHeader>
+    <Card className="flex h-full min-w-0 flex-col gap-3 py-4 md:gap-6 md:py-6">
+      <CardHeader className="px-3 md:px-6">
         <CardTitle>Brand Summary</CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs sm:text-sm">
           Graded tasks and approvals by brand for the selected day.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col">
+      <CardContent className="flex min-h-0 flex-1 flex-col px-3 md:px-6">
         {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No brand activity found for this date.
@@ -129,7 +129,7 @@ export function BrandSummaryChart({ summaries }: BrandSummaryChartProps) {
               <div style={{ minWidth: chartMinWidth }}>
                 <ChartContainer
                   config={brandChartConfig}
-                  className="aspect-auto h-[280px] w-full"
+                  className="aspect-auto h-[220px] w-full md:h-[280px]"
                 >
                   <BarChart
                     data={chartData}

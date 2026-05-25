@@ -1,42 +1,42 @@
-"use client"
+"use client";
 
-import { create } from "zustand"
+import { create } from "zustand";
 
-import type { BrandStatusFilter } from "@/app/admin/brands/schema"
-import type { Brand } from "@/lib/brands"
+import type { BrandStatusFilter } from "@/app/admin/brands/schema";
+import type { Brand } from "@/lib/brands/brands";
 
 type BrandStore = {
-  selectedBrandId: number | null
-  selectedBrand: Brand | null
-  isCreateDialogOpen: boolean
-  isEditDialogOpen: boolean
-  isDeactivateDialogOpen: boolean
-  isDeleteDialogOpen: boolean
-  isAnalyticsSheetOpen: boolean
-  searchQuery: string
-  selectedStatusFilter: BrandStatusFilter
-  selectedBrandFilter: string
-  openCreateDialog: () => void
-  closeCreateDialog: () => void
-  openEditDialog: (brand: Brand) => void
-  closeEditDialog: () => void
-  openDeactivateDialog: (brand: Brand) => void
-  closeDeactivateDialog: () => void
-  openDeleteDialog: (brand: Brand) => void
-  closeDeleteDialog: () => void
-  openAnalyticsSheet: (brand: Brand) => void
-  closeAnalyticsSheet: () => void
-  setSelectedBrand: (brand: Brand | null) => void
-  setSearchQuery: (query: string) => void
-  setSelectedStatusFilter: (status: BrandStatusFilter) => void
-  setSelectedBrandFilter: (brandId: string) => void
-  resetBrandFilters: () => void
-}
+  selectedBrandId: number | null;
+  selectedBrand: Brand | null;
+  isCreateDialogOpen: boolean;
+  isEditDialogOpen: boolean;
+  isDeactivateDialogOpen: boolean;
+  isDeleteDialogOpen: boolean;
+  isAnalyticsSheetOpen: boolean;
+  searchQuery: string;
+  selectedStatusFilter: BrandStatusFilter;
+  selectedBrandFilter: string;
+  openCreateDialog: () => void;
+  closeCreateDialog: () => void;
+  openEditDialog: (brand: Brand) => void;
+  closeEditDialog: () => void;
+  openDeactivateDialog: (brand: Brand) => void;
+  closeDeactivateDialog: () => void;
+  openDeleteDialog: (brand: Brand) => void;
+  closeDeleteDialog: () => void;
+  openAnalyticsSheet: (brand: Brand) => void;
+  closeAnalyticsSheet: () => void;
+  setSelectedBrand: (brand: Brand | null) => void;
+  setSearchQuery: (query: string) => void;
+  setSelectedStatusFilter: (status: BrandStatusFilter) => void;
+  setSelectedBrandFilter: (brandId: string) => void;
+  resetBrandFilters: () => void;
+};
 
 const clearSelection = {
   selectedBrandId: null,
   selectedBrand: null,
-}
+};
 
 export const useBrandStore = create<BrandStore>((set) => ({
   selectedBrandId: null,
@@ -110,4 +110,4 @@ export const useBrandStore = create<BrandStore>((set) => ({
       selectedStatusFilter: "all",
       selectedBrandFilter: "all",
     }),
-}))
+}));

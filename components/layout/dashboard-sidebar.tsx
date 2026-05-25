@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
-import { authClient } from "@/lib/auth-client"
+import { authClient } from "@/lib/auth/auth-client"
 import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { useTheme } from "@/components/ui/theme-provider"
 
@@ -105,7 +105,7 @@ export function DashboardSidebar({
     const [mounted, setMounted] = useState(false)
     const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({})
 
-    const isCollapsed = state === "collapsed"
+    const isCollapsed = !isMobile && state === "collapsed"
     const canSeeAccountControl =
         mode === "admin" &&
         (user?.accountType === "FULL_STACK_DEVELOPER" ||
@@ -512,7 +512,7 @@ export function DashboardSidebar({
 
                             <DropdownMenuContent
                                 className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-                                side={isMobile ? "bottom" : "right"}
+                                side={isMobile ? "top" : "right"}
                                 align="end"
                                 sideOffset={8}
                             >
@@ -547,20 +547,6 @@ export function DashboardSidebar({
                                         Account
                                     </DropdownMenuItem>
                                 </DropdownMenuGroup>
-
-                                <DropdownMenuSeparator />
-
-                                <DropdownMenuItem onClick={handleToggleTheme} className="flex flex-row">
-                                    {mounted && resolvedTheme === "dark" ? (
-                                        <Sun className="h-4 w-4" />
-                                    ) : (
-                                        <Moon className="h-4 w-4" />
-                                    )}
-
-                                    {mounted && resolvedTheme === "dark"
-                                        ? "Light mode"
-                                        : "Dark mode"}
-                                </DropdownMenuItem>
 
                                 <DropdownMenuSeparator />
 

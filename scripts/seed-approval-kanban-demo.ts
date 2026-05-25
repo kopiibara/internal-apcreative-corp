@@ -1,8 +1,8 @@
 import "dotenv/config";
 
 import { pool, query, transaction } from "@/lib/db";
-import { APPROVAL_KANBAN_DEMO_MARKER } from "@/lib/approval-kanban";
-import type { ApprovalKanbanColumnId } from "@/lib/approval-statuses";
+import { APPROVAL_KANBAN_DEMO_MARKER } from "@/lib/approvals/approval-kanban";
+import type { ApprovalKanbanColumnId } from "@/lib/approvals/approval-statuses";
 
 type SeedContext = {
   brandId: number;
@@ -141,11 +141,15 @@ async function getSeedContext(): Promise<SeedContext> {
   const actorProfileId = actorResult.rows[0]?.id ?? submitterProfileId;
 
   if (!brandId) {
-    throw new Error("No active brand found. Create a brand before seeding demo approvals.");
+    throw new Error(
+      "No active brand found. Create a brand before seeding demo approvals.",
+    );
   }
 
   if (!submitterProfileId || !actorProfileId) {
-    throw new Error("No active profile found. Create an active profile before seeding demo approvals.");
+    throw new Error(
+      "No active profile found. Create an active profile before seeding demo approvals.",
+    );
   }
 
   return {
@@ -173,7 +177,9 @@ async function upsertDemoReport(report: DemoReport, context: SeedContext) {
   const caption = `${marker} ${report.title}`;
   const employeeComments = marker;
   const contentInspo = `${marker} Visual reference for ${report.title.toLowerCase()}.`;
-  const scheduledPublishedDate = getScheduledDateToken(report.scheduledPublishedDate);
+  const scheduledPublishedDate = getScheduledDateToken(
+    report.scheduledPublishedDate,
+  );
   const stageMarkerPattern = `%${APPROVAL_KANBAN_DEMO_MARKER} [stage=${report.stage}]%`;
   const legacyStageMarkerPattern =
     report.stage === "ready-to-publish"
@@ -396,7 +402,9 @@ async function main() {
   }
 
   if (!context.hasActivityLog) {
-    console.log("approval_activity_log table was not found; skipped timeline demo logs.");
+    console.log(
+      "approval_activity_log table was not found; skipped timeline demo logs.",
+    );
   }
 
   console.log("Approval Kanban demo seed complete.");

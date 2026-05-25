@@ -2,7 +2,7 @@
 
 import { MoreHorizontal, Pencil, ShieldOff } from "lucide-react"
 
-import type { AccountListItem } from "@/lib/accounts"
+import type { AccountListItem } from "@/lib/auth/accounts"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,

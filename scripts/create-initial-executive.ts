@@ -1,6 +1,6 @@
 import "dotenv/config";
 
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/auth";
 import { query, transaction } from "@/lib/db";
 
 type AuthUserRow = {

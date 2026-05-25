@@ -36,9 +36,9 @@ import {
 import {
   CLIENT_VIEWER_DEPARTMENT,
   DEFAULT_DEPARTMENT,
-} from "@/lib/account-defaults"
-import { getRoleDashboardHint, getSystemAccessLabel } from "@/lib/account-type"
-import type { AccountListItem, BrandOption, RoleOption } from "@/lib/accounts"
+} from "@/lib/auth/account-defaults"
+import { getRoleDashboardHint, getSystemAccessLabel } from "@/lib/auth/account-type"
+import type { AccountListItem, BrandOption, RoleOption } from "@/lib/auth/accounts"
 
 const clientViewerSlugs = new Set(["client-viewer", "client_viewer"])
 

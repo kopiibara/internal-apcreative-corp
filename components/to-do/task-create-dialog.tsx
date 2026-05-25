@@ -35,9 +35,9 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import type { AccountType } from "@/lib/account-type"
-import { determineTaskType, TASK_PRIORITIES } from "@/lib/task-type"
-import type { AssignableProfile } from "@/lib/tasks"
+import type { AccountType } from "@/lib/auth/account-type"
+import { determineTaskType, TASK_PRIORITIES } from "@/lib/tasks/task-type"
+import type { AssignableProfile } from "@/lib/tasks/tasks"
 
 type TaskCreateDialogProps = {
   open: boolean
@@ -222,7 +222,7 @@ export function TaskCreateDialog({
                           type="button"
                           variant="ghost"
                           className={cn(
-                            "h-auto w-full items-start justify-start gap-2 rounded-md px-2 py-2 text-left text-sm font-normal",
+                            "h-auto w-full items-start justify-start gap-2 rounded-lg px-2 py-2 text-left text-sm font-normal",
                             isSelected && "bg-accent"
                           )}
                           onClick={() => toggleAssignee(assignee.id)}
@@ -258,7 +258,7 @@ export function TaskCreateDialog({
                 {selectedAssignees.map((assignee) => (
                   <div
                     key={assignee.id}
-                    className="rounded-md border bg-muted/20 px-4 py-2 pb-4"
+                    className="rounded-lg border bg-muted/20 px-4 py-2 pb-4"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-medium flex flex-row gap-4 justify-center items-center">

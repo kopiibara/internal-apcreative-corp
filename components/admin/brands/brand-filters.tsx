@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
-import { neoInputClass } from "@/lib/neo-ui"
+import { neoInputClass } from "@/lib/ui/neo-ui"
 import { useBrandStore } from "@/stores/use-brand-store"
 
 type BrandFiltersProps = {

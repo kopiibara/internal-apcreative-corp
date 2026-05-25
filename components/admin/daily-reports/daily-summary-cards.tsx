@@ -7,7 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import type { DailyReportSummary } from "@/lib/daily-report-types"
+import type { DailyReportSummary } from "@/lib/daily-reports/daily-report-types"
+import { cn } from "@/lib/utils"
 
 type DailySummaryCardsProps = {
   summary: DailyReportSummary
@@ -16,67 +17,81 @@ type DailySummaryCardsProps = {
 const cards: {
   key: keyof DailyReportSummary
   title: string
-  description: string
   format: (summary: DailyReportSummary) => string
   detail?: (summary: DailyReportSummary) => string | null
+  tone: string
+  label: string
 }[] = [
     {
       key: "dailyCompletionRate",
       title: "Daily Completion",
-      description: "Graded assignments completed for the selected day.",
       format: (summary) => `${summary.dailyCompletionRate}%`,
       detail: (summary) =>
         `Graded completion ${summary.gradedTaskCompletionRate}%`,
+      tone: "bg-background text-foreground",
+      label: "01 / OVERVIEW",
     },
     {
       key: "approvalRate",
       title: "Approval Rate",
-      description: "Fully approved content reports for the selected day.",
       format: (summary) => `${summary.approvalRate}%`,
       detail: (summary) =>
         `Approved ${summary.approvedCount} / ${summary.approvalTotal}`,
+      tone: "bg-blue text-white",
+      label: "02 / APPROVALS",
     },
     {
       key: "completedGradedTasks",
       title: "Completed Graded Tasks",
-      description: "Graded assignments marked done.",
       format: (summary) =>
         `${summary.completedGradedTasks} / ${summary.totalGradedTasks}`,
+      tone: "bg-cyan text-white",
+      label: "03 / TASKS",
     },
     {
       key: "pendingMissingCount",
       title: "Pending / Missing",
-      description: "Open graded tasks and pending approvals.",
       format: (summary) => String(summary.pendingMissingCount),
+      tone: "bg-magenta text-white",
+      label: "04 / ATTENTION",
     },
     {
       key: "blockerCount",
       title: "Blockers",
-      description: "Graded assignments currently blocked.",
       format: (summary) => String(summary.blockerCount),
+      tone: "bg-red text-white",
+      label: "05 / BLOCKERS",
     },
   ]
 
 export function DailySummaryCards({ summary }: DailySummaryCardsProps) {
   return (
-    <div className="grid grid-cols-1 gap-3 min-w-0 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
+    <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
       {cards.map((card) => {
         const detail = card.detail?.(summary)
 
         return (
-          <Card key={card.key} size="sm" className="min-w-0">
-            <CardHeader className="gap-1">
-              <CardTitle className="text-sm">{card.title}</CardTitle>
-              <CardDescription className="text-xs">
-                {card.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold tracking-tight">
-                {card.format(summary)}
+          <Card
+            key={card.key}
+            className={cn(
+              "min-h-[150px] min-w-0 justify-between overflow-hidden px-4 py-4 md:min-h-[190px] md:px-6 md:py-6",
+              card.tone
+            )}
+          >
+            <CardHeader className="gap-0 px-0">
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] opacity-80">
+                {card.label}
               </p>
+            </CardHeader>
+            <CardContent className="space-y-3 px-0">
+              <CardTitle className="text-3xl font-black uppercase leading-[0.9] tracking-normal md:text-4xl">
+                {card.format(summary)}
+              </CardTitle>
+              <CardDescription className="text-xs font-semibold leading-snug opacity-90">
+                {card.title}
+              </CardDescription>
               {detail ? (
-                <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+                <p className="text-xs font-semibold opacity-80">{detail}</p>
               ) : null}
             </CardContent>
           </Card>

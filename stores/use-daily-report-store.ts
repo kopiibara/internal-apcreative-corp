@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import { create } from "zustand"
+import { create } from "zustand";
 
 import {
   ALL_BRANDS_FILTER,
   ALL_EMPLOYEES_FILTER,
   getTodayDateKeyInPhilippines,
-} from "@/lib/daily-report-filters"
+} from "@/lib/daily-reports/daily-report-filters";
 
 type DailyReportStore = {
-  selectedDate: string
-  selectedBrandId: string
-  selectedEmployeeId: string
-  searchQuery: string
-  setSelectedDate: (date: string) => void
-  setSelectedBrandId: (brandId: string) => void
-  setSelectedEmployeeId: (employeeId: string) => void
-  setSearchQuery: (query: string) => void
-  resetDailyReportFilters: () => void
-}
+  selectedDate: string;
+  selectedBrandId: string;
+  selectedEmployeeId: string;
+  searchQuery: string;
+  setSelectedDate: (date: string) => void;
+  setSelectedBrandId: (brandId: string) => void;
+  setSelectedEmployeeId: (employeeId: string) => void;
+  setSearchQuery: (query: string) => void;
+  resetDailyReportFilters: () => void;
+};
 
 export const useDailyReportStore = create<DailyReportStore>((set) => ({
   selectedDate: getTodayDateKeyInPhilippines(),
@@ -36,4 +36,4 @@ export const useDailyReportStore = create<DailyReportStore>((set) => ({
       selectedEmployeeId: ALL_EMPLOYEES_FILTER,
       searchQuery: "",
     }),
-}))
+}));

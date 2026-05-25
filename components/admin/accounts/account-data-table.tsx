@@ -61,7 +61,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { AccountListItem, BrandOption, RoleOption } from "@/lib/accounts"
+import type { AccountListItem, BrandOption, RoleOption } from "@/lib/auth/accounts"
 import { useAccountStore } from "@/stores/use-account-store"
 
 type AccountDataTableProps = {
@@ -416,7 +416,7 @@ export function AccountDataTable({
         </CardHeader>
 
         <CardContent className="min-w-0 space-y-4">
-          <div className="w-full min-w-0 rounded-md border">
+          <div className="w-full min-w-0 rounded-lg border">
             <Table>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (

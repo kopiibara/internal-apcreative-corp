@@ -31,13 +31,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { getApprovalKanbanStage } from "@/lib/approval-kanban"
+import { getApprovalKanbanStage } from "@/lib/approvals/approval-kanban"
 import {
   filterApprovalReports,
   mergeApprovalReports,
-} from "@/lib/approval-filters"
-import { getVisibleApprovalKanbanColumns } from "@/lib/approval-statuses"
-import type { AccountType } from "@/lib/auth-session"
+} from "@/lib/approvals/approval-filters"
+import { getVisibleApprovalKanbanColumns } from "@/lib/approvals/approval-statuses"
+import type { AccountType } from "@/lib/auth/auth-session"
 import { cn } from "@/lib/utils"
 import { useApprovalStore } from "@/stores/use-approval-store"
 import {

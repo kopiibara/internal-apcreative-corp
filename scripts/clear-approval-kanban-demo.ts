@@ -1,7 +1,7 @@
 import "dotenv/config";
 
 import { pool, transaction } from "@/lib/db";
-import { APPROVAL_KANBAN_DEMO_MARKER } from "@/lib/approval-kanban";
+import { APPROVAL_KANBAN_DEMO_MARKER } from "@/lib/approvals/approval-kanban";
 
 async function main() {
   if (!process.env.DATABASE_URL) {

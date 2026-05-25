@@ -51,7 +51,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { AccountListItem, BrandOption, RoleOption } from "@/lib/accounts"
+import type { AccountListItem, BrandOption, RoleOption } from "@/lib/auth/accounts"
 import { useAccountStore } from "@/stores/use-account-store"
 
 type AccountTableProps = {

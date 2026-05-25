@@ -20,12 +20,12 @@ import {
   getApprovalWorkflowStageLabel,
   getEmployeeApprovalKanbanStage,
   getEmployeeApprovalWorkflowStageLabel,
-} from "@/lib/approval-kanban"
+} from "@/lib/approvals/approval-kanban"
 import {
   getEmployeeKanbanStageConfig,
   getKanbanStageConfig,
-} from "@/lib/approval-kanban-status"
-import type { AccountType } from "@/lib/account-type"
+} from "@/lib/approvals/approval-kanban-status"
+import type { AccountType } from "@/lib/auth/account-type"
 import { cn, getInitialsFromName } from "@/lib/utils"
 import type { ApprovalActivityLog, ContentReport } from "@/types/content-report"
 

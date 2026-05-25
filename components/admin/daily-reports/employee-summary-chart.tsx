@@ -20,8 +20,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   toEmployeeChartItems,
   type EmployeeChartItem,
-} from "@/lib/daily-report-chart-data"
-import type { DailyEmployeeSummary } from "@/lib/daily-report-types"
+} from "@/lib/daily-reports/daily-report-chart-data"
+import type { DailyEmployeeSummary } from "@/lib/daily-reports/daily-report-types"
 
 const employeeChartConfig = {
   completionRate: {
@@ -74,7 +74,7 @@ function EmployeeCompactSummary({ items }: { items: EmployeeChartItem[] }) {
       {items.map((item) => (
         <li
           key={`${item.employeeName}-${item.email}`}
-          className="flex items-center justify-between gap-2 rounded-md bg-muted/20 px-2 py-1.5"
+          className="flex items-center justify-between gap-2 rounded-lg bg-muted/20 px-2 py-1.5"
         >
           <div className="min-w-0">
             <p className="truncate font-medium">{item.employeeName}</p>
@@ -99,17 +99,17 @@ export function EmployeeSummaryChart({
   summaries,
 }: EmployeeSummaryChartProps) {
   const chartData = toEmployeeChartItems(summaries)
-  const chartHeight = Math.min(420, Math.max(240, chartData.length * 44 + 48))
+  const chartHeight = Math.min(360, Math.max(220, chartData.length * 36 + 48))
 
   return (
-    <Card className="flex h-full min-w-0 flex-col">
-      <CardHeader>
+    <Card className="flex h-full min-w-0 flex-col gap-3 py-4 md:gap-6 md:py-6">
+      <CardHeader className="px-3 md:px-6">
         <CardTitle>Employee Summary</CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs sm:text-sm">
           Graded completion and accountability by employee.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col">
+      <CardContent className="flex min-h-0 flex-1 flex-col px-3 md:px-6">
         {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No employee activity found for this date.

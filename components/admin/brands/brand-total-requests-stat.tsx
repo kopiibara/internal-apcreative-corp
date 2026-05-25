@@ -1,4 +1,4 @@
-import { getBrandAnalyticsCardConfig } from "@/lib/brand-analytics-status"
+import { getBrandAnalyticsCardConfig } from "@/lib/brands/brand-analytics-status"
 import { cn } from "@/lib/utils"
 
 type BrandTotalRequestsStatProps = {

@@ -1,6 +1,6 @@
 "use client"
 
-import type { RoleOption } from "@/lib/accounts"
+import type { RoleOption } from "@/lib/auth/accounts"
 import {
   Select,
   SelectContent,

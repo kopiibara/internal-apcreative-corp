@@ -1,12 +1,16 @@
 import { KanbanColumnHeader } from "@/components/shared/kanban-column-header"
-import { KANBAN_COLUMN_WIDTH_CLASS } from "@/components/shared/kanban-board-scroll"
+import {
+  KANBAN_COLUMN_BODY_CLASS,
+  KANBAN_COLUMN_CARD_CLASS,
+  KANBAN_COLUMN_LIST_CLASS,
+  KANBAN_COLUMN_VIEWPORT_CLASS,
+  KANBAN_COLUMN_WIDTH_CLASS,
+} from "@/components/shared/kanban-board-scroll"
 import { Card } from "@/components/ui/card"
-import type { EmployeeApprovalKanbanColumnId } from "@/lib/approval-kanban"
-import { getEmployeeKanbanStageConfig } from "@/lib/approval-kanban-status"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import type { EmployeeApprovalKanbanColumnId } from "@/lib/approvals/approval-kanban"
+import { getEmployeeKanbanStageConfig } from "@/lib/approvals/approval-kanban-status"
 import { cn } from "@/lib/utils"
-
-const KANBAN_COLUMN_CARD_CLASS =
-  "flex w-full flex-col gap-0 overflow-hidden rounded-md py-0 shadow-none"
 
 type EmployeeApprovalKanbanColumnProps = {
   id: EmployeeApprovalKanbanColumnId
@@ -31,11 +35,15 @@ export function EmployeeApprovalKanbanColumn({
           count={count}
           countClassName={config.badgeClassName}
         />
-        <div className="p-4 ">
+        <ScrollArea
+          className={KANBAN_COLUMN_BODY_CLASS}
+          viewportClassName={KANBAN_COLUMN_VIEWPORT_CLASS}
+          scrollbars="vertical"
+        >
           <div
             className={cn(
-              "flex flex-col gap-3 rounded-lg border border-dashed p-4",
-              count === 0 && "min-h-[100px] items-center justify-center"
+              KANBAN_COLUMN_LIST_CLASS,
+              count === 0 && "items-center justify-center"
             )}
           >
             {count === 0 ? (
@@ -46,7 +54,7 @@ export function EmployeeApprovalKanbanColumn({
               children
             )}
           </div>
-        </div>
+        </ScrollArea>
       </Card>
     </div>
   )

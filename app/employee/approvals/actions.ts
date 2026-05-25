@@ -12,12 +12,12 @@ import { canEmployeeEditReport } from "@/types/content-report";
 import {
   getCurrentProfileContext,
   isEmployeeAccountType,
-} from "@/lib/auth-session";
+} from "@/lib/auth/auth-session";
 import { query, transaction } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
-import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard-revalidate-paths";
+import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
 
 export type ActionResult<T = unknown> = {
   success: boolean;

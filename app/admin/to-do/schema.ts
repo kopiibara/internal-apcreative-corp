@@ -1,20 +1,20 @@
-import { z } from "zod"
+import { z } from "zod";
 
-import { TASK_PRIORITIES, TASK_PROOF_TYPES } from "@/lib/task-type"
-import { TASK_STATUSES } from "@/lib/task-statuses"
+import { TASK_PRIORITIES, TASK_PROOF_TYPES } from "@/lib/tasks/task-type";
+import { TASK_STATUSES } from "@/lib/tasks/task-statuses";
 
 const optionalText = z
   .string()
   .trim()
   .max(5000)
   .optional()
-  .transform((value) => (value && value.length > 0 ? value : null))
+  .transform((value) => (value && value.length > 0 ? value : null));
 
 const proofText = (maxLength: number) =>
   z.preprocess(
     (value) => (value === null || value === undefined ? "" : value),
-    z.string().trim().max(maxLength)
-  )
+    z.string().trim().max(maxLength),
+  );
 
 export const createTaskSchema = z
   .object({
@@ -27,16 +27,16 @@ export const createTaskSchema = z
     priority: z.enum(TASK_PRIORITIES).nullable().optional(),
   })
   .superRefine((value, context) => {
-    const uniqueAssignees = [...new Set(value.assignedToProfileIds)]
+    const uniqueAssignees = [...new Set(value.assignedToProfileIds)];
 
     if (uniqueAssignees.length !== value.assignedToProfileIds.length) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Duplicate assignees are not allowed.",
         path: ["assignedToProfileIds"],
-      })
+      });
     }
-  })
+  });
 
 export const updateTaskSchema = z.object({
   taskId: z.coerce.number().int().positive(),
@@ -44,11 +44,11 @@ export const updateTaskSchema = z.object({
   description: optionalText,
   dueDate: z.string().nullable().optional(),
   priority: z.enum(TASK_PRIORITIES).nullable().optional(),
-})
+});
 
 export const deleteTaskSchema = z.object({
   taskId: z.coerce.number().int().positive(),
-})
+});
 
 export const submitTaskProofSchema = z
   .object({
@@ -64,20 +64,20 @@ export const submitTaskProofSchema = z
           code: z.ZodIssueCode.custom,
           message: "Please add a valid proof link.",
           path: ["proofUrl"],
-        })
-        return
+        });
+        return;
       }
 
       try {
-        new URL(value.proofUrl)
+        new URL(value.proofUrl);
       } catch {
         context.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Please add a valid proof link.",
           path: ["proofUrl"],
-        })
+        });
       }
-      return
+      return;
     }
 
     if (value.proofType === "NOTE" && !value.proofNote) {
@@ -85,8 +85,8 @@ export const submitTaskProofSchema = z
         code: z.ZodIssueCode.custom,
         message: "Please add proof notes before submitting.",
         path: ["proofNote"],
-      })
-      return
+      });
+      return;
     }
 
     if (value.proofType === "IMAGE" || value.proofType === "VIDEO") {
@@ -94,19 +94,19 @@ export const submitTaskProofSchema = z
         code: z.ZodIssueCode.custom,
         message: "File upload is not available yet. Please use a link or note.",
         path: ["proofUrl"],
-      })
+      });
     }
-  })
+  });
 
 const requiredTaskNote = z
   .string()
   .trim()
   .min(1, "Please add a note before updating this task.")
-  .max(5000)
+  .max(5000);
 
 const confirmationAcceptedSchema = z.literal(true, {
   error: "Verification failed. Please try again.",
-})
+});
 
 export const reportTaskBlockerSchema = z.object({
   assignmentId: z.coerce.number().int().positive(),
@@ -115,7 +115,7 @@ export const reportTaskBlockerSchema = z.object({
     .trim()
     .min(1, "Please add blocker notes before reporting.")
     .max(5000),
-})
+});
 
 export const confirmTaskBlockerSchema = z.object({
   assignmentId: z.coerce.number().int().positive(),
@@ -123,7 +123,7 @@ export const confirmTaskBlockerSchema = z.object({
   dueDate: z.string().nullable().optional(),
   nextStatus: z.enum(["BLOCKER", "ASSIGNED", "PENDING"]).default("BLOCKER"),
   confirmationAccepted: confirmationAcceptedSchema,
-})
+});
 
 export const changeTaskAssignmentStatusSchema = z.object({
   assignmentId: z.coerce.number().int().positive(),
@@ -131,20 +131,24 @@ export const changeTaskAssignmentStatusSchema = z.object({
   toStatus: z.enum(TASK_STATUSES),
   notes: requiredTaskNote,
   confirmationAccepted: confirmationAcceptedSchema,
-})
+});
 
 export const confirmTaskDoneSchema = z.object({
   assignmentId: z.coerce.number().int().positive(),
-})
+});
 
 export const requestTaskRevisionSchema = z.object({
   assignmentId: z.coerce.number().int().positive(),
-  revisionNote: z.string().trim().min(1, "Revision note is required.").max(2000),
-})
+  revisionNote: z
+    .string()
+    .trim()
+    .min(1, "Revision note is required.")
+    .max(2000),
+});
 
 export const deleteAssignmentSchema = z.object({
   assignmentId: z.coerce.number().int().positive(),
-})
+});
 
-export type CreateTaskInput = z.infer<typeof createTaskSchema>
-export type UpdateTaskInput = z.infer<typeof updateTaskSchema>
+export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;

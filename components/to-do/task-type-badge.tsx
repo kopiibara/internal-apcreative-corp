@@ -1,5 +1,5 @@
 import { StatusBadge } from "@/components/shared/status-badge"
-import type { TaskType } from "@/lib/task-type"
+import type { TaskType } from "@/lib/tasks/task-type"
 
 type TaskTypeBadgeProps = {
   taskType: TaskType

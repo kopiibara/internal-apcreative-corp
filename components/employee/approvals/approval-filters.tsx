@@ -16,8 +16,8 @@ import {
 import {
   APPROVAL_STATUSES,
   PUBLISH_STATUSES,
-} from "@/lib/approval-statuses"
-import { getUniqueApprovalBrands } from "@/lib/approval-filters"
+} from "@/lib/approvals/approval-statuses"
+import { getUniqueApprovalBrands } from "@/lib/approvals/approval-filters"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 import type { ContentReport } from "@/types/content-report"
 

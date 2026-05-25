@@ -1,6 +1,6 @@
 import { StatusBadge } from "@/components/shared/status-badge"
 import type { ProfileStatus } from "@/app/admin/account-control/schema"
-import type { AccountType } from "@/lib/account-type"
+import type { AccountType } from "@/lib/auth/account-type"
 
 type AccountStatusBadgeProps = {
   status: ProfileStatus

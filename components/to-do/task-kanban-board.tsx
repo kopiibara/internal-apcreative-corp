@@ -15,13 +15,14 @@ import {
 } from "@/components/reui/kanban"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import {
+  KanbanBoardShell,
   KANBAN_BOARD_FIT_ROW_CLASS,
   KANBAN_OVERLAY_CLASS,
 } from "@/components/shared/kanban-board-scroll"
-import { filterTaskAssignments } from "@/lib/task-filters"
-import { TASK_KANBAN_COLUMNS } from "@/lib/task-type"
-import type { TaskAssignmentStatus } from "@/lib/task-statuses"
-import type { TaskAssignmentRecord } from "@/lib/tasks"
+import { filterTaskAssignments } from "@/lib/tasks/task-filters"
+import { TASK_KANBAN_COLUMNS } from "@/lib/tasks/task-type"
+import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses"
+import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
 import { cn } from "@/lib/utils"
 
@@ -35,7 +36,7 @@ type TaskKanbanBoardProps = {
   onAssignmentUpdated?: (assignment: TaskAssignmentRecord) => void
 }
 
-const TASK_BOARD_ROW_CLASS = cn(KANBAN_BOARD_FIT_ROW_CLASS, "px-6 pb-1")
+const TASK_BOARD_ROW_CLASS = cn(KANBAN_BOARD_FIT_ROW_CLASS, "px-3 pb-1 sm:px-6")
 
 function renderTaskColumns({
   columns,
@@ -171,17 +172,21 @@ export function TaskKanbanBoard({
   return (
     <>
       {canDragCards ? (
-        <Kanban
-          value={columns}
-          onValueChange={() => undefined}
-          getItemValue={(assignment) => String(assignment.assignmentId)}
-          onMove={handleMove}
-        >
-          <KanbanBoard className={TASK_BOARD_ROW_CLASS}>{columnNodes}</KanbanBoard>
-          <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
-        </Kanban>
+        <KanbanBoardShell>
+          <Kanban
+            value={columns}
+            onValueChange={() => undefined}
+            getItemValue={(assignment) => String(assignment.assignmentId)}
+            onMove={handleMove}
+          >
+            <KanbanBoard className={TASK_BOARD_ROW_CLASS}>{columnNodes}</KanbanBoard>
+            <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
+          </Kanban>
+        </KanbanBoardShell>
       ) : (
-        <div className={TASK_BOARD_ROW_CLASS}>{columnNodes}</div>
+        <KanbanBoardShell>
+          <div className={TASK_BOARD_ROW_CLASS}>{columnNodes}</div>
+        </KanbanBoardShell>
       )}
 
       <TaskStatusChangeDialog

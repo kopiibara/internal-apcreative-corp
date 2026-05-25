@@ -4,7 +4,7 @@ import {
   APPROVAL_KANBAN_COLUMN_IDS,
   APPROVAL_STATUSES,
   PUBLISH_STATUSES,
-} from "@/lib/approval-statuses";
+} from "@/lib/approvals/approval-statuses";
 
 const optionalDateSchema = z.preprocess((value) => {
   if (typeof value === "string") {

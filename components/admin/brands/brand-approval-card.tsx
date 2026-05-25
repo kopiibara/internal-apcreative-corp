@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import type { RecentBrandApproval } from "@/lib/brand-analytics"
+import type { RecentBrandApproval } from "@/lib/brands/brand-analytics"
 import { cn } from "@/lib/utils"
 
 type BrandApprovalCardProps = {
@@ -39,7 +39,7 @@ export function BrandApprovalCard({ approval }: BrandApprovalCardProps) {
         }
       }}
       className={cn(
-        "cursor-pointer rounded-md border-2 border-border bg-card py-2 shadow-none transition-colors",
+        "cursor-pointer rounded-lg border-2 border-border bg-card py-2 shadow-none transition-colors",
         "hover:bg-muted/40"
       )}
     >

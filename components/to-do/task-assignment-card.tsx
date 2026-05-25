@@ -17,8 +17,8 @@ import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { isAssignmentCompletedOnTime } from "@/lib/task-type"
-import type { TaskAssignmentRecord } from "@/lib/tasks"
+import { isAssignmentCompletedOnTime } from "@/lib/tasks/task-type"
+import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
 
 type TaskAssignmentCardProps = {
@@ -83,27 +83,19 @@ export function TaskAssignmentCard({
   return (
     <>
       <Card
-        size="sm"
-        className="cursor-pointer rounded-md py-2 transition-colors hover:bg-muted/40"
+        className="cursor-pointer rounded-lg py-2 transition-colors hover:bg-muted bg-white"
         onClick={() => onOpenDetails?.(assignment)}
       >
         <CardContent className="space-y-3 px-4 py-1">
           <div className="flex items-start justify-between gap-2">
-            <p className="line-clamp-2 text-sm font-medium leading-snug">
+            <h2 className="line-clamp-2  font-bold leading-snug">
               {assignment.title}
-            </p>
+            </h2>
             <div className="flex shrink-0 flex-col items-end gap-1 flex-row">
               <TaskTypeBadge taskType={assignment.taskType} />
               <TaskStatusBadge status={assignment.status} />
             </div>
-
           </div>
-
-          {assignment.description ? (
-            <p className="line-clamp-2 text-xs text-muted-foreground">
-              {assignment.description}
-            </p>
-          ) : null}
 
           {showAssignee ? (
             <p className="text-xs">
@@ -116,13 +108,14 @@ export function TaskAssignmentCard({
 
           <p className="text-xs">
             <span className="text-muted-foreground">Created by:</span>{" "}
-            {assignment.createdByName}
+            <span className="font-medium"> {assignment.createdByName}</span>
           </p>
           <p className="text-xs">
             <span className="text-muted-foreground">Due:</span>{" "}
-            {assignment.dueDate
+            <span className="font-medium">  {assignment.dueDate
               ? dateFormatter.format(new Date(assignment.dueDate))
               : "â€”"}
+            </span>
           </p>
           {assignment.priority ? (
             <StatusBadge
@@ -144,7 +137,7 @@ export function TaskAssignmentCard({
           ) : null}
 
           {assignment.revisionNote ? (
-            <p className="rounded-md border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
               {assignment.revisionNote}
             </p>
           ) : null}

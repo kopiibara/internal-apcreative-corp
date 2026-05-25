@@ -49,7 +49,7 @@ function LongText({ children }: { children: React.ReactNode }) {
 
 export function ApprovalDetailsSummary({ report }: ApprovalDetailsSummaryProps) {
   return (
-    <Card size="sm">
+    <Card >
       <CardHeader>
         <CardTitle>Content Details</CardTitle>
       </CardHeader>

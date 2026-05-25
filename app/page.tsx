@@ -4,7 +4,7 @@ import {
   getCurrentProfileContext,
   isAdminAccountType,
   isEmployeeAccountType,
-} from "@/lib/auth-session"
+} from "@/lib/auth/auth-session"
 
 export default async function HomePage() {
   const context = await getCurrentProfileContext()

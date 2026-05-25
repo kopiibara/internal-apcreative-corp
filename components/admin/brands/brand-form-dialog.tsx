@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import type { Brand } from "@/lib/brands"
+import type { Brand } from "@/lib/brands/brands"
 
 type BrandFormDialogProps = {
   mode: "create" | "edit"

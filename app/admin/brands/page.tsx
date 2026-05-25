@@ -4,8 +4,8 @@ import {
   getBrandApprovalMetrics,
   getRecentBrandApprovals,
   type BrandApprovalMetrics,
-} from "@/lib/brand-analytics"
-import { getBrands } from "@/lib/brands"
+} from "@/lib/brands/brand-analytics"
+import { getBrands } from "@/lib/brands/brands"
 import { can, requirePermission } from "@/lib/permissions"
 
 const emptyMetrics: BrandApprovalMetrics = {

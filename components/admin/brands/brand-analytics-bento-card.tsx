@@ -1,7 +1,7 @@
 import {
   getBrandAnalyticsCardConfig,
   type BrandAnalyticsBentoItem,
-} from "@/lib/brand-analytics-status"
+} from "@/lib/brands/brand-analytics-status"
 import { cn } from "@/lib/utils"
 
 type BrandAnalyticsBentoCardProps = {

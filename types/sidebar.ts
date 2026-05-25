@@ -37,7 +37,7 @@ export const adminGroups: SidebarGroupItem[] = [
     label: "Overview",
     items: [
       {
-        title: "Executive Dashboard",
+        title: "Dashboard",
         href: "/admin",
         icon: Home,
       },
@@ -120,7 +120,7 @@ export const employeeGroups: SidebarGroupItem[] = [
     items: [
       {
         title: "My Brand Dashboard",
-        href: "/employee",
+        href: "/employee/dashboard",
         icon: Home,
       },
 

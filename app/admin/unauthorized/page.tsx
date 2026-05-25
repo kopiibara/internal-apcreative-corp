@@ -1,5 +1,5 @@
 import { UnauthorizedState } from "@/components/shared/unauthorized-state"
-import { requireAdmin } from "@/lib/auth-session"
+import { requireAdmin } from "@/lib/auth/auth-session"
 
 type AdminUnauthorizedPageProps = {
   searchParams: Promise<{

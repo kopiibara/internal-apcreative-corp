@@ -30,7 +30,7 @@ export function UnauthorizedState({
       <Card className="w-full max-w-lg border-2 shadow-none">
         <CardHeader className="gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-md border-2 border-border bg-muted/30">
+            <div className="flex size-10 items-center justify-center rounded-lg border-2 border-border bg-muted/30">
               <ShieldAlert className="size-5 text-foreground" />
             </div>
             <div className="min-w-0">
@@ -41,7 +41,7 @@ export function UnauthorizedState({
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {permissionKey ? (
-            <p className="rounded-md border-2 border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+            <p className="rounded-lg border-2 border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
               Required permission:{" "}
               <span className="font-mono text-foreground">{permissionKey}</span>
             </p>

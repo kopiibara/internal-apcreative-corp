@@ -1,6 +1,7 @@
 "use client"
 
 import { type CSSProperties, useSyncExternalStore } from "react"
+import { usePathname } from "next/navigation"
 
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
 import { PageTransition } from "@/components/layout/page-transition"
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
+import { adminGroups, employeeGroups, type SidebarGroupItem } from "@/types/sidebar"
 
 function formatDateTime(date: Date) {
     return new Intl.DateTimeFormat("en-US", {
@@ -60,6 +62,45 @@ function getServerDateTimeSnapshot() {
     return SERVER_DATE_TIME_LABEL
 }
 
+function normalizePath(path: string) {
+    const cleanPath = path.split("?")[0]?.replace(/\/$/, "") ?? path
+
+    return cleanPath || "/"
+}
+
+function getTitleFromGroups(pathname: string, groups: SidebarGroupItem[]) {
+    const cleanPathname = normalizePath(pathname)
+    const matches: { href: string; title: string }[] = []
+
+    for (const group of groups) {
+        for (const item of group.items) {
+            if (item.href) {
+                matches.push({ href: item.href, title: item.title })
+            }
+
+            for (const subItem of item.subItems ?? []) {
+                matches.push({ href: subItem.href, title: subItem.title })
+            }
+        }
+    }
+
+    const activeMatch = matches
+        .map((match) => ({ ...match, href: normalizePath(match.href) }))
+        .filter((match) => {
+            if (match.href === "/admin" || match.href === "/employee") {
+                return cleanPathname === match.href
+            }
+
+            return (
+                cleanPathname === match.href ||
+                cleanPathname.startsWith(`${match.href}/`)
+            )
+        })
+        .sort((left, right) => right.href.length - left.href.length)[0]
+
+    return activeMatch?.title
+}
+
 type DashboardUser = {
     name: string
     email: string
@@ -83,17 +124,21 @@ export function DashboardShell({
     employeeActionableTaskCount = 0,
     children,
 }: DashboardShellProps) {
+    const pathname = usePathname()
     const dateTimeLabel = useSyncExternalStore(
         subscribeToDateTime,
         getDateTimeSnapshot,
         getServerDateTimeSnapshot
     )
+    const headerTitle =
+        getTitleFromGroups(pathname, role === "admin" ? adminGroups : employeeGroups) ??
+        title
 
     return (
         <TooltipProvider delayDuration={0}>
             <SidebarProvider
                 defaultOpen={true}
-                className="min-w-0 overflow-hidden"
+                className="h-svh min-w-0 overflow-hidden"
                 style={
                     {
                         "--sidebar-width": "17rem",
@@ -112,13 +157,13 @@ export function DashboardShell({
                     }}
                 />
 
-                <SidebarInset className="min-w-0">
-                    <header className="sticky top-0 z-30 flex h-14 min-w-0 items-center justify-between gap-2 border-b-2 border-border bg-background/95 px-4 backdrop-blur-sm">
+                <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
+                    <header className="sticky top-0 z-30 flex h-14 shrink-0 min-w-0 items-center justify-between gap-2 border-b-2 border-border bg-background px-4">
                         <div className="flex min-w-0 items-center gap-3">
-                            <SidebarTrigger />
+                            <SidebarTrigger className="cursor-pointer" />
 
                             <div className="hidden lg:block">
-                                <p className="text-sm font-medium">{title}</p>
+                                <h1 >{headerTitle}</h1>
                             </div>
                         </div>
 
@@ -161,8 +206,19 @@ export function DashboardShell({
                         </div>
                     </header>
 
-                    <main className="relative z-0 min-h-[calc(100vh-3.5rem)] min-w-0 overflow-x-hidden overflow-y-auto p-4 md:p-6">
-                        <PageTransition>{children}</PageTransition>
+                    <main className="relative z-0 min-h-0 flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 md:p-6">
+                        <div
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 opacity-[0.04] dark:opacity-[0.06]"
+                            style={{
+                                backgroundImage:
+                                    "radial-gradient(#111 1px, transparent 1px)",
+                                backgroundSize: "6px 6px",
+                            }}
+                        />
+                        <div className="relative z-1">
+                            <PageTransition>{children}</PageTransition>
+                        </div>
                     </main>
                 </SidebarInset>
 
@@ -170,6 +226,6 @@ export function DashboardShell({
                     mustChangePassword={user.mustChangePassword === true}
                 />
             </SidebarProvider>
-        </TooltipProvider>
+        </TooltipProvider >
     )
 }

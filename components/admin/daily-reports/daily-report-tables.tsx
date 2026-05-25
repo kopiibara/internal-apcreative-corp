@@ -16,7 +16,7 @@ import type {
   DailyBlockerEntry,
   DailyMissingEntry,
   DailyTaskLogEntry,
-} from "@/lib/daily-report-types"
+} from "@/lib/daily-reports/daily-report-types"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -40,12 +40,12 @@ function SummaryTable({
   rows: ReactNode[][]
 }) {
   return (
-    <Card>
-      <CardHeader>
+    <Card className="min-w-0 gap-3 py-4 md:gap-6 md:py-6">
+      <CardHeader className="px-3 md:px-6">
         <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+        <CardDescription className="text-xs sm:text-sm">{description}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-3 md:px-6">
         <ScrollArea className="w-full" scrollbars="horizontal">
           <div className="min-w-[720px]">
             <table className="w-full border-collapse text-sm">
@@ -96,7 +96,7 @@ export function DailyReportTaskLogTable({
   return (
     <SummaryTable
       title="To-Do Task Daily Log"
-      description="Read-only task assignments for the selected day."
+      description=" "
       emptyMessage="No task assignments found for the selected filters."
       headers={[
         "Task",
@@ -166,7 +166,7 @@ export function DailyReportApprovalLogTable({
   return (
     <SummaryTable
       title="Content Approval Daily Log"
-      description="Read-only content reports for the selected day."
+      description=""
       emptyMessage="No content approvals found for the selected filters."
       headers={[
         "Submitted",
@@ -220,13 +220,13 @@ export function DailyReportBlockersSection({
   alertSummary: string
 }) {
   return (
-    <Card className="flex h-full min-h-0 flex-col">
-      <CardHeader>
+    <Card className="flex h-full min-h-0 flex-col gap-3 py-4 md:gap-6 md:py-6">
+      <CardHeader className="px-3 md:px-6">
         <CardTitle>Blockers / Missing</CardTitle>
         <CardDescription>{alertSummary}</CardDescription>
       </CardHeader>
-      <CardContent className="min-h-0 flex-1 pt-0">
-        <ScrollArea className="h-[420px] max-h-[420px] pr-3" scrollbars="vertical">
+      <CardContent className="min-h-0 flex-1 px-3 pt-0 md:px-6">
+        <ScrollArea className="h-[320px] max-h-[320px] pr-3 md:h-[420px] md:max-h-[420px]" scrollbars="vertical">
           <div className="space-y-6 pb-1">
             <div>
               <h3 className="mb-2 text-sm font-medium">Blockers</h3>
@@ -239,7 +239,7 @@ export function DailyReportBlockersSection({
                   {blockers.map((blocker) => (
                     <div
                       key={blocker.assignmentId}
-                      className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm"
+                      className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"
                     >
                       <div className="font-medium">{blocker.taskTitle}</div>
                       <p className="mt-1 text-muted-foreground">
@@ -278,7 +278,7 @@ export function DailyReportBlockersSection({
                   {missingItems.map((item, index) => (
                     <li
                       key={`${item.kind}-${index}`}
-                      className="rounded-md border bg-muted/20 px-3 py-2"
+                      className="rounded-lg border bg-muted/20 px-3 py-2"
                     >
                       <span className="font-medium">{item.label}</span>
                       <span className="text-muted-foreground">

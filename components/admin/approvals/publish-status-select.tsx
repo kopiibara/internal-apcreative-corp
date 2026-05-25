@@ -1,6 +1,6 @@
 "use client"
 
-import { PUBLISH_STATUSES } from "@/lib/approval-statuses"
+import { PUBLISH_STATUSES } from "@/lib/approvals/approval-statuses"
 import {
   Select,
   SelectContent,

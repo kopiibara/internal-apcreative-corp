@@ -1,6 +1,6 @@
 import { ReminderBoard } from "@/components/to-do/reminder-board"
-import { getCurrentProfileContext } from "@/lib/auth-session"
-import { getRemindersForProfile } from "@/lib/reminders"
+import { getCurrentProfileContext } from "@/lib/auth/auth-session"
+import { getRemindersForProfile } from "@/lib/reminders/reminders"
 import { requirePermission } from "@/lib/permissions"
 
 export default async function AdminToDoRemindersPage() {

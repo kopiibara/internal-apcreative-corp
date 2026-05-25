@@ -1,19 +1,19 @@
-"use server"
+"use server";
 
-import { headers } from "next/headers"
-import { revalidatePath } from "next/cache"
-import { z } from "zod"
+import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
-import { auth } from "@/lib/auth"
-import { getCurrentProfileContext } from "@/lib/auth-session"
-import { query } from "@/lib/db"
-import { enforceRateLimit } from "@/lib/rate-limit"
-import { getDefaultTemporaryPassword } from "@/lib/server/account-secrets"
+import { auth } from "@/lib/auth/auth";
+import { getCurrentProfileContext } from "@/lib/auth/auth-session";
+import { query } from "@/lib/db";
+import { enforceRateLimit } from "@/lib/rate-limit";
+import { getDefaultTemporaryPassword } from "@/lib/server/account-secrets";
 
 export type ChangePasswordResult = {
-  success: boolean
-  message: string
-}
+  success: boolean;
+  message: string;
+};
 
 const changeOwnPasswordSchema = z
   .object({
@@ -29,64 +29,64 @@ const changeOwnPasswordSchema = z
         code: "custom",
         path: ["confirmPassword"],
         message: "New password and confirmation must match.",
-      })
+      });
     }
-  })
+  });
 
 export async function changeOwnPassword(
-  input: unknown
+  input: unknown,
 ): Promise<ChangePasswordResult> {
-  const context = await getCurrentProfileContext()
+  const context = await getCurrentProfileContext();
 
   if (!context) {
     return {
       success: false,
       message: "You must be signed in to change your password.",
-    }
+    };
   }
 
   if (context.profile.status !== "ACTIVE") {
     return {
       success: false,
       message: "Your account is not active.",
-    }
+    };
   }
 
   const rateLimit = await enforceRateLimit({
     bucket: "auth:change-password",
     limit: 10,
     windowMs: 10 * 60 * 1000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
-  const parsed = changeOwnPasswordSchema.safeParse(input)
+  const parsed = changeOwnPasswordSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid password details.",
-    }
+    };
   }
 
-  let defaultTemporaryPassword: string
+  let defaultTemporaryPassword: string;
 
   try {
-    defaultTemporaryPassword = getDefaultTemporaryPassword()
+    defaultTemporaryPassword = getDefaultTemporaryPassword();
   } catch {
     return {
       success: false,
       message: "Default temporary password is not configured.",
-    }
+    };
   }
 
   if (parsed.data.newPassword === defaultTemporaryPassword) {
     return {
       success: false,
       message: "Choose a password different from the temporary password.",
-    }
+    };
   }
 
   try {
@@ -97,7 +97,7 @@ export async function changeOwnPassword(
         revokeOtherSessions: true,
       },
       headers: await headers(),
-    })
+    });
 
     await query(
       `
@@ -109,18 +109,18 @@ export async function changeOwnPassword(
         updated_at = now()
       WHERE id = $1
       `,
-      [context.profile.id]
-    )
+      [context.profile.id],
+    );
 
-    revalidatePath("/admin", "layout")
-    revalidatePath("/employee", "layout")
+    revalidatePath("/admin", "layout");
+    revalidatePath("/employee", "layout");
 
     return {
       success: true,
       message: "Password changed successfully.",
-    }
+    };
   } catch (error) {
-    console.error("changeOwnPassword failed:", error)
+    console.error("changeOwnPassword failed:", error);
 
     return {
       success: false,
@@ -128,6 +128,6 @@ export async function changeOwnPassword(
         error instanceof Error
           ? error.message
           : "Unable to change password. Check your current password and try again.",
-    }
+    };
   }
 }

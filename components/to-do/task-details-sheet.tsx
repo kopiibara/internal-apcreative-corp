@@ -27,8 +27,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import type { TaskAssignmentStatus } from "@/lib/task-statuses"
-import type { TaskAssignmentRecord } from "@/lib/tasks"
+import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses"
+import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",

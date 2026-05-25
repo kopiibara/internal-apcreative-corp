@@ -1,7 +1,7 @@
 "use client"
 
 import { StatusBadge } from "@/components/shared/status-badge"
-import type { ApprovalStatus, PublishStatus } from "@/lib/approval-statuses"
+import type { ApprovalStatus, PublishStatus } from "@/lib/approvals/approval-statuses"
 
 type ApprovalRole = "supervisor" | "director" | "publish"
 

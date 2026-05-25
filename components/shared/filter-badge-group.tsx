@@ -25,12 +25,14 @@ function FilterBadgeGroup({
   )
 
   return (
-    <section className={cn("min-w-0 space-y-2", className)}>
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {label}
-      </p>
+    <section className={cn("min-w-0", label && "space-y-2", className)}>
+      {label ? (
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          {label}
+        </p>
+      ) : null}
       {scrollable ? (
-        <ScrollArea className="w-full pb-2" scrollbars="horizontal">
+        <ScrollArea className={cn("w-full", label && "pb-2")} scrollbars="horizontal">
           {content}
         </ScrollArea>
       ) : (

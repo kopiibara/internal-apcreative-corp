@@ -25,7 +25,7 @@ import type {
   AccountBrandAccess,
   BrandOption,
   RoleOption,
-} from "@/lib/accounts"
+} from "@/lib/auth/accounts"
 
 export type EditableBrandAssignment = {
   id: string
@@ -148,7 +148,7 @@ function AssignmentRow({
         Active
       </label>
 
-      <Button type="button" variant="destructive" size="sm" onClick={onRemove}>
+      <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
         <Trash2 className="size-4" />
         {removeLabel}
       </Button>
@@ -173,7 +173,6 @@ function CreateBrandAccess({
         <Label>Brand access</Label>
         <Button
           type="button"
-          variant="outline"
           size="sm"
           onClick={() =>
             onAssignmentsChange([...assignments, createEmptyAssignment()])
@@ -313,7 +312,7 @@ function EditAccessRow({
 
       <Button
         type="button"
-        variant="destructive"
+        variant="ghost"
         size="sm"
         disabled={isPending || !access.isActive}
         onClick={handleRemove}

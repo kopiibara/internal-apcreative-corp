@@ -1,5 +1,5 @@
 import { UnauthorizedState } from "@/components/shared/unauthorized-state"
-import { requireEmployee } from "@/lib/auth-session"
+import { requireEmployee } from "@/lib/auth/auth-session"
 
 type EmployeeUnauthorizedPageProps = {
   searchParams: Promise<{
