@@ -19,7 +19,7 @@ import type { DailyReportBrandOption } from "@/lib/daily-reports/daily-report-ty
 type DashboardPeriod = "daily" | "weekly" | "monthly"
 
 type DashboardFilterBarProps = {
-  brands: DailyReportBrandOption[]
+  brands?: DailyReportBrandOption[]
   period: DashboardPeriod
   dateKey: string
   month: string
