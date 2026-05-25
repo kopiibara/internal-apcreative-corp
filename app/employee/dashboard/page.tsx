@@ -121,8 +121,6 @@ export default async function EmployeeDashboardPage({
         dateKey={dateKey}
         month={month}
         weekStart={weekStart}
-        showBrandFilter={false}
-        assignedBrandLabel={assignedBrand.brand_name}
       />
 
       <section className="space-y-3 pr-1">
