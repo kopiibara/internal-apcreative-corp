@@ -19,8 +19,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { resolveApprovalReport } from "@/lib/approval-filters"
-import type { AccountType } from "@/lib/account-type"
+import { resolveApprovalReport } from "@/lib/approvals/approval-filters"
+import type { AccountType } from "@/lib/auth/account-type"
 import { useApprovalStore } from "@/stores/use-approval-store"
 import type { ContentReport } from "@/types/content-report"
 

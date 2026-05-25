@@ -12,8 +12,8 @@ import { BoardSection } from "@/components/shared/board-section"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { AccountType } from "@/lib/account-type"
-import type { AssignableProfile, TaskAssignmentRecord } from "@/lib/tasks"
+import type { AccountType } from "@/lib/auth/account-type"
+import type { AssignableProfile, TaskAssignmentRecord } from "@/lib/tasks/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
 
 type TaskBoardProps = {
@@ -97,7 +97,7 @@ export function TaskBoard({
       </div>
 
       {hasNoTasks ? (
-        <p className="shrink-0 rounded-md border border-dashed bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        <p className="shrink-0 rounded-lg border border-dashed bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
           No tasks assigned yet. Create a personal task to get started.
         </p>
       ) : null}

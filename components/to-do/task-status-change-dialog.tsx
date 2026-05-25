@@ -32,8 +32,8 @@ import {
   getTaskStatusLabel,
   TASK_STATUSES,
   type TaskAssignmentStatus,
-} from "@/lib/task-statuses"
-import type { TaskAssignmentRecord } from "@/lib/tasks"
+} from "@/lib/tasks/task-statuses"
+import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
 
 type TaskStatusChangeDialogProps = {
@@ -199,7 +199,7 @@ export function TaskStatusChangeDialog({
             />
           </div>
 
-          <div className="flex items-start gap-3 rounded-md border p-3">
+          <div className="flex items-start gap-3 rounded-lg border p-3">
             <Checkbox
               id="task-status-change-confirmation"
               checked={confirmationAccepted}

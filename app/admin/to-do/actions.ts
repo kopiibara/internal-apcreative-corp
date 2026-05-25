@@ -1,7 +1,7 @@
-"use server"
+"use server";
 
-import { revalidatePath } from "next/cache"
-import type { PoolClient } from "pg"
+import { revalidatePath } from "next/cache";
+import type { PoolClient } from "pg";
 
 import {
   changeTaskAssignmentStatusSchema,
@@ -13,45 +13,47 @@ import {
   requestTaskRevisionSchema,
   submitTaskProofSchema,
   updateTaskSchema,
-} from "@/app/admin/to-do/schema"
-import { getCurrentProfileContext } from "@/lib/auth-session"
-import { isAdminAccountType, isEmployeeAccountType } from "@/lib/account-type"
-import { can } from "@/lib/permissions"
-import { query, transaction } from "@/lib/db"
-import { enforceRateLimit } from "@/lib/rate-limit"
+} from "@/app/admin/to-do/schema";
+import { getCurrentProfileContext } from "@/lib/auth/auth-session";
+import {
+  isAdminAccountType,
+  isEmployeeAccountType,
+} from "@/lib/auth/account-type";
+import { can } from "@/lib/permissions";
+import { query, transaction } from "@/lib/db";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   canAssignGradedTasks,
   canReviewTaskAssignments,
   determineTaskType,
-} from "@/lib/task-type"
-import type { TaskAssignmentStatus } from "@/lib/task-statuses"
-import {
-  TASK_REVALIDATE_PATHS,
-} from "@/lib/dashboard-revalidate-paths"
+} from "@/lib/tasks/task-type";
+import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses";
+import { TASK_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
 import {
   getTaskAssignmentById,
   type TaskAssignmentRecord,
-} from "@/lib/tasks"
-const ADMIN_TRANSITIONS: Record<TaskAssignmentStatus, TaskAssignmentStatus[]> = {
-  ASSIGNED: ["BLOCKER", "PENDING"],
-  BLOCKER: ["ASSIGNED", "PENDING"],
-  PENDING: ["DONE", "REVISION"],
-  REVISION: ["ASSIGNED", "BLOCKER"],
-  DONE: ["ASSIGNED", "BLOCKER", "PENDING", "REVISION"],
-}
+} from "@/lib/tasks/tasks";
+const ADMIN_TRANSITIONS: Record<TaskAssignmentStatus, TaskAssignmentStatus[]> =
+  {
+    ASSIGNED: ["BLOCKER", "PENDING"],
+    BLOCKER: ["ASSIGNED", "PENDING"],
+    PENDING: ["DONE", "REVISION"],
+    REVISION: ["ASSIGNED", "BLOCKER"],
+    DONE: ["ASSIGNED", "BLOCKER", "PENDING", "REVISION"],
+  };
 
 export type ActionResult<T = unknown> = {
-  success: boolean
-  message: string
-  data?: T
-}
+  success: boolean;
+  message: string;
+  data?: T;
+};
 
 type TaskAssignmentUpdateData = {
-  updatedAssignment: TaskAssignmentRecord
-}
+  updatedAssignment: TaskAssignmentRecord;
+};
 
 async function authorizeTaskAction(permissionKeys: string[]) {
-  const context = await getCurrentProfileContext()
+  const context = await getCurrentProfileContext();
 
   if (!context) {
     return {
@@ -59,7 +61,7 @@ async function authorizeTaskAction(permissionKeys: string[]) {
         success: false,
         message: "You must be signed in to perform this action.",
       } satisfies ActionResult,
-    }
+    };
   }
 
   if (context.profile.status !== "ACTIVE") {
@@ -68,14 +70,14 @@ async function authorizeTaskAction(permissionKeys: string[]) {
         success: false,
         message: "Your account is not active.",
       } satisfies ActionResult,
-    }
+    };
   }
 
   const allowedChecks = await Promise.all(
     permissionKeys.map((permissionKey) =>
-      can(context.profile.auth_user_id, permissionKey)
-    )
-  )
+      can(context.profile.auth_user_id, permissionKey),
+    ),
+  );
 
   if (!allowedChecks.some(Boolean)) {
     return {
@@ -83,81 +85,81 @@ async function authorizeTaskAction(permissionKeys: string[]) {
         success: false,
         message: "You do not have permission to perform this action.",
       } satisfies ActionResult,
-    }
+    };
   }
 
-  return { context }
+  return { context };
 }
 
 function revalidateTaskRoutes() {
   for (const route of TASK_REVALIDATE_PATHS) {
-    revalidatePath(route)
+    revalidatePath(route);
   }
 }
 
 async function buildTaskAssignmentUpdateResult(
   assignmentId: number,
-  message: string
+  message: string,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  revalidateTaskRoutes()
-  const updatedAssignment = await getTaskAssignmentById(assignmentId)
+  revalidateTaskRoutes();
+  const updatedAssignment = await getTaskAssignmentById(assignmentId);
 
   if (!updatedAssignment) {
     return {
       success: false,
       message: "Task assignment was not found after update.",
-    }
+    };
   }
 
   return {
     success: true,
     message,
     data: { updatedAssignment },
-  }
+  };
 }
 
 function parseDueDate(value: string | null | undefined) {
   if (!value) {
-    return null
+    return null;
   }
 
-  const date = new Date(value)
+  const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    throw new Error("Due date is invalid.")
+    throw new Error("Due date is invalid.");
   }
 
-  return date.toISOString()
+  return date.toISOString();
 }
 
 function normalizeSubmitTaskProofInput(input: unknown) {
   if (!input || typeof input !== "object") {
-    return input
+    return input;
   }
 
-  const record = input as Record<string, unknown>
+  const record = input as Record<string, unknown>;
   const normalizeText = (value: unknown) =>
-    typeof value === "string" ? value.trim() : ""
+    typeof value === "string" ? value.trim() : "";
 
   return {
     ...record,
     proofUrl: normalizeText(record.proofUrl),
     proofNote: normalizeText(record.proofNote),
-  }
+  };
 }
 
 async function insertTaskActivityLog(
   client: PoolClient,
   input: {
-    taskId: number
-    assignmentId?: number | null
-    actorProfileId: number
-    action: string
-    fromStatus?: TaskAssignmentStatus | null
-    toStatus?: TaskAssignmentStatus | null
-    notes?: string | null
-    metadata?: Record<string, unknown> | null
-  }
+    taskId: number;
+    assignmentId?: number | null;
+    actorProfileId: number;
+    action: string;
+    fromStatus?: TaskAssignmentStatus | null;
+    toStatus?: TaskAssignmentStatus | null;
+    notes?: string | null;
+    metadata?: Record<string, unknown> | null;
+  },
 ) {
   await client.query(
     `
@@ -182,8 +184,8 @@ async function insertTaskActivityLog(
       input.toStatus ?? null,
       input.notes ?? null,
       input.metadata ? JSON.stringify(input.metadata) : null,
-    ]
-  )
+    ],
+  );
 }
 
 function canAdminManageAssignment({
@@ -191,49 +193,51 @@ function canAdminManageAssignment({
   creatorProfileId,
   actorProfileId,
 }: {
-  canManageAll: boolean
-  creatorProfileId: number
-  actorProfileId: number
+  canManageAll: boolean;
+  creatorProfileId: number;
+  actorProfileId: number;
 }) {
-  return canManageAll || creatorProfileId === actorProfileId
+  return canManageAll || creatorProfileId === actorProfileId;
 }
 
 function assertAdminTransitionAllowed(
   fromStatus: TaskAssignmentStatus,
-  toStatus: TaskAssignmentStatus
+  toStatus: TaskAssignmentStatus,
 ) {
-  return ADMIN_TRANSITIONS[fromStatus]?.includes(toStatus) === true
+  return ADMIN_TRANSITIONS[fromStatus]?.includes(toStatus) === true;
 }
 
 export async function createTask(input: unknown): Promise<ActionResult> {
-  const authorization = await authorizeTaskAction(["tasks.create", "tasks.assign"])
+  const authorization = await authorizeTaskAction([
+    "tasks.create",
+    "tasks.assign",
+  ]);
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = createTaskSchema.safeParse(input)
+  const parsed = createTaskSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid task details.",
-    }
+    };
   }
 
-  const { context } = authorization
-  const uniqueAssignees = [...new Set(parsed.data.assignedToProfileIds)]
+  const { context } = authorization;
+  const uniqueAssignees = [...new Set(parsed.data.assignedToProfileIds)];
 
   if (isEmployeeAccountType(context.profile.account_type)) {
     const isPersonalSelfTask =
-      uniqueAssignees.length === 1 &&
-      uniqueAssignees[0] === context.profile.id
+      uniqueAssignees.length === 1 && uniqueAssignees[0] === context.profile.id;
 
     if (!isPersonalSelfTask) {
       return {
         success: false,
         message: "You can only create personal tasks assigned to yourself.",
-      }
+      };
     }
   }
 
@@ -241,23 +245,23 @@ export async function createTask(input: unknown): Promise<ActionResult> {
     creatorAccountType: context.profile.account_type,
     creatorProfileId: context.profile.id,
     assignedToProfileIds: uniqueAssignees,
-  })
+  });
 
   if (taskType === "GRADED") {
-    const canAssign = await can(context.profile.auth_user_id, "tasks.assign")
+    const canAssign = await can(context.profile.auth_user_id, "tasks.assign");
 
     if (!canAssign || !canAssignGradedTasks(context.profile.account_type)) {
       return {
         success: false,
         message: "You do not have permission to assign graded tasks.",
-      }
+      };
     }
 
     if (!parsed.data.dueDate) {
       return {
         success: false,
         message: "Due date is required for graded tasks.",
-      }
+      };
     }
   }
 
@@ -265,14 +269,14 @@ export async function createTask(input: unknown): Promise<ActionResult> {
     bucket: "task:create",
     limit: 40,
     windowMs: 60_000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
   try {
-    const dueDate = parseDueDate(parsed.data.dueDate)
+    const dueDate = parseDueDate(parsed.data.dueDate);
 
     await transaction(async (client) => {
       const taskResult = await client.query<{ id: number }>(
@@ -295,13 +299,13 @@ export async function createTask(input: unknown): Promise<ActionResult> {
           parsed.data.priority ?? null,
           context.profile.id,
           dueDate,
-        ]
-      )
+        ],
+      );
 
-      const taskId = taskResult.rows[0]?.id
+      const taskId = taskResult.rows[0]?.id;
 
       if (!taskId) {
-        throw new Error("Task could not be created.")
+        throw new Error("Task could not be created.");
       }
 
       for (const assigneeId of uniqueAssignees) {
@@ -315,10 +319,10 @@ export async function createTask(input: unknown): Promise<ActionResult> {
           VALUES ($1, $2, 'ASSIGNED')
           RETURNING id
           `,
-          [taskId, assigneeId]
-        )
+          [taskId, assigneeId],
+        );
 
-        const assignmentId = assignmentResult.rows[0]?.id
+        const assignmentId = assignmentResult.rows[0]?.id;
 
         if (assignmentId) {
           await insertTaskActivityLog(client, {
@@ -328,7 +332,7 @@ export async function createTask(input: unknown): Promise<ActionResult> {
             action: "ASSIGNMENT_CREATED",
             toStatus: "ASSIGNED",
             notes: "Task assignment created.",
-          })
+          });
         }
       }
 
@@ -337,10 +341,10 @@ export async function createTask(input: unknown): Promise<ActionResult> {
         actorProfileId: context.profile.id,
         action: "TASK_CREATED",
         notes: parsed.data.title,
-      })
-    })
+      });
+    });
 
-    revalidateTaskRoutes()
+    revalidateTaskRoutes();
 
     return {
       success: true,
@@ -348,9 +352,9 @@ export async function createTask(input: unknown): Promise<ActionResult> {
         taskType === "GRADED"
           ? "Graded task assigned successfully."
           : "Personal task created successfully.",
-    }
+    };
   } catch (error) {
-    console.error("createTask failed:", error)
+    console.error("createTask failed:", error);
 
     return {
       success: false,
@@ -358,24 +362,27 @@ export async function createTask(input: unknown): Promise<ActionResult> {
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function updateTask(input: unknown): Promise<ActionResult> {
-  const authorization = await authorizeTaskAction(["tasks.update", "tasks.manage_all"])
+  const authorization = await authorizeTaskAction([
+    "tasks.update",
+    "tasks.manage_all",
+  ]);
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = updateTaskSchema.safeParse(input)
+  const parsed = updateTaskSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid task update.",
-    }
+    };
   }
 
   const existingAssignments = await query<{ created_by_profile_id: number }>(
@@ -385,36 +392,42 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
     WHERE id = $1
     LIMIT 1
     `,
-    [parsed.data.taskId]
-  )
+    [parsed.data.taskId],
+  );
 
-  const parentTask = existingAssignments.rows[0]
+  const parentTask = existingAssignments.rows[0];
 
   if (!parentTask) {
-    return { success: false, message: "Task was not found." }
+    return { success: false, message: "Task was not found." };
   }
 
-  const { context } = authorization
-  const canManageAll = await can(context.profile.auth_user_id, "tasks.manage_all")
+  const { context } = authorization;
+  const canManageAll = await can(
+    context.profile.auth_user_id,
+    "tasks.manage_all",
+  );
 
-  if (!canManageAll && parentTask.created_by_profile_id !== context.profile.id) {
+  if (
+    !canManageAll &&
+    parentTask.created_by_profile_id !== context.profile.id
+  ) {
     return {
       success: false,
       message: "You do not have permission to update this task.",
-    }
+    };
   }
 
   const taskRow = await query<{
-    task_type: string
-    title: string
-    description: string | null
-    due_date: Date | null
-    priority: string | null
+    task_type: string;
+    title: string;
+    description: string | null;
+    due_date: Date | null;
+    priority: string | null;
   }>(
     `SELECT task_type, title, description, due_date, priority FROM task WHERE id = $1`,
-    [parsed.data.taskId]
-  )
-  const current = taskRow.rows[0]
+    [parsed.data.taskId],
+  );
+  const current = taskRow.rows[0];
 
   const doneAssignment = await query<{ id: number }>(
     `
@@ -424,27 +437,27 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
       AND status = 'DONE'
     LIMIT 1
     `,
-    [parsed.data.taskId]
-  )
+    [parsed.data.taskId],
+  );
 
   if (doneAssignment.rows[0]) {
     return {
       success: false,
       message:
         "This task is already done. Only the status can be changed with confirmation.",
-    }
+    };
   }
 
   const nextDueDate =
     parsed.data.dueDate !== undefined
       ? parseDueDate(parsed.data.dueDate)
-      : current?.due_date?.toISOString() ?? null
+      : (current?.due_date?.toISOString() ?? null);
 
   if (current?.task_type === "GRADED" && !nextDueDate) {
     return {
       success: false,
       message: "Due date is required for graded tasks.",
-    }
+    };
   }
 
   try {
@@ -466,8 +479,8 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
           parsed.data.description ?? null,
           nextDueDate,
           parsed.data.priority ?? null,
-        ]
-      )
+        ],
+      );
 
       await insertTaskActivityLog(client, {
         taskId: parsed.data.taskId,
@@ -491,14 +504,14 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
             priority: parsed.data.priority ?? current?.priority,
           },
         },
-      })
-    })
+      });
+    });
 
-    revalidateTaskRoutes()
+    revalidateTaskRoutes();
 
-    return { success: true, message: "Task updated successfully." }
+    return { success: true, message: "Task updated successfully." };
   } catch (error) {
-    console.error("updateTask failed:", error)
+    console.error("updateTask failed:", error);
 
     return {
       success: false,
@@ -506,37 +519,44 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function deleteTask(input: unknown): Promise<ActionResult> {
-  const authorization = await authorizeTaskAction(["tasks.delete", "tasks.manage_all"])
+  const authorization = await authorizeTaskAction([
+    "tasks.delete",
+    "tasks.manage_all",
+  ]);
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = deleteTaskSchema.safeParse(input)
+  const parsed = deleteTaskSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
-      message: parsed.error.issues[0]?.message ?? "Invalid task delete request.",
-    }
+      message:
+        parsed.error.issues[0]?.message ?? "Invalid task delete request.",
+    };
   }
 
   const parentTask = await query<{ created_by_profile_id: number }>(
     `SELECT created_by_profile_id FROM task WHERE id = $1`,
-    [parsed.data.taskId]
-  )
+    [parsed.data.taskId],
+  );
 
   if (!parentTask.rows[0]) {
-    return { success: false, message: "Task was not found." }
+    return { success: false, message: "Task was not found." };
   }
 
-  const { context } = authorization
-  const canManageAll = await can(context.profile.auth_user_id, "tasks.manage_all")
+  const { context } = authorization;
+  const canManageAll = await can(
+    context.profile.auth_user_id,
+    "tasks.manage_all",
+  );
 
   if (
     !canManageAll &&
@@ -545,16 +565,16 @@ export async function deleteTask(input: unknown): Promise<ActionResult> {
     return {
       success: false,
       message: "You do not have permission to delete this task.",
-    }
+    };
   }
 
   try {
-    await query(`DELETE FROM task WHERE id = $1`, [parsed.data.taskId])
-    revalidateTaskRoutes()
+    await query(`DELETE FROM task WHERE id = $1`, [parsed.data.taskId]);
+    revalidateTaskRoutes();
 
-    return { success: true, message: "Task deleted successfully." }
+    return { success: true, message: "Task deleted successfully." };
   } catch (error) {
-    console.error("deleteTask failed:", error)
+    console.error("deleteTask failed:", error);
 
     return {
       success: false,
@@ -562,57 +582,57 @@ export async function deleteTask(input: unknown): Promise<ActionResult> {
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function submitTaskProof(
-  input: unknown
+  input: unknown,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  const authorization = await authorizeTaskAction(["tasks.submit_proof"])
+  const authorization = await authorizeTaskAction(["tasks.submit_proof"]);
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
   const parsed = submitTaskProofSchema.safeParse(
-    normalizeSubmitTaskProofInput(input)
-  )
+    normalizeSubmitTaskProofInput(input),
+  );
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid proof submission.",
-    }
+    };
   }
 
-  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId);
 
   if (!assignment) {
-    return { success: false, message: "Task assignment was not found." }
+    return { success: false, message: "Task assignment was not found." };
   }
 
-  const { context } = authorization
+  const { context } = authorization;
 
   if (assignment.assignedToProfileId !== context.profile.id) {
     return {
       success: false,
       message: "You can only submit proof for your own assigned tasks.",
-    }
+    };
   }
 
   if (!["ASSIGNED", "REVISION"].includes(assignment.status)) {
     return {
       success: false,
       message: "Proof can only be submitted from Assigned or Revision.",
-    }
+    };
   }
 
   try {
     const proofUrl =
-      parsed.data.proofType === "LINK" ? parsed.data.proofUrl : null
+      parsed.data.proofType === "LINK" ? parsed.data.proofUrl : null;
     const proofNote =
-      parsed.data.proofType === "NOTE" ? parsed.data.proofNote : null
+      parsed.data.proofType === "NOTE" ? parsed.data.proofNote : null;
 
     await transaction(async (client) => {
       await client.query(
@@ -627,13 +647,8 @@ export async function submitTaskProof(
           updated_at = now()
         WHERE id = $1
         `,
-        [
-          parsed.data.assignmentId,
-          parsed.data.proofType,
-          proofUrl,
-          proofNote,
-        ]
-      )
+        [parsed.data.assignmentId, parsed.data.proofType, proofUrl, proofNote],
+      );
 
       await insertTaskActivityLog(client, {
         taskId: assignment.taskId,
@@ -651,15 +666,15 @@ export async function submitTaskProof(
           proofUrl,
           hasProofNote: Boolean(proofNote),
         },
-      })
-    })
+      });
+    });
 
     return buildTaskAssignmentUpdateResult(
       parsed.data.assignmentId,
-      "Proof submitted for review."
-    )
+      "Proof submitted for review.",
+    );
   } catch (error) {
-    console.error("submitTaskProof failed:", error)
+    console.error("submitTaskProof failed:", error);
 
     return {
       success: false,
@@ -667,48 +682,48 @@ export async function submitTaskProof(
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function reportTaskBlocker(
-  input: unknown
+  input: unknown,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  const authorization = await authorizeTaskAction(["tasks.submit_proof"])
+  const authorization = await authorizeTaskAction(["tasks.submit_proof"]);
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = reportTaskBlockerSchema.safeParse(input)
+  const parsed = reportTaskBlockerSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid blocker report.",
-    }
+    };
   }
 
-  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId);
 
   if (!assignment) {
-    return { success: false, message: "Task assignment was not found." }
+    return { success: false, message: "Task assignment was not found." };
   }
 
-  const { context } = authorization
+  const { context } = authorization;
 
   if (assignment.assignedToProfileId !== context.profile.id) {
     return {
       success: false,
       message: "You can only report blockers for your own assigned tasks.",
-    }
+    };
   }
 
   if (!["ASSIGNED", "REVISION"].includes(assignment.status)) {
     return {
       success: false,
       message: "Blockers can only be reported from Assigned or Revision.",
-    }
+    };
   }
 
   try {
@@ -727,8 +742,8 @@ export async function reportTaskBlocker(
           updated_at = now()
         WHERE id = $1
         `,
-        [parsed.data.assignmentId, parsed.data.blockerNote, context.profile.id]
-      )
+        [parsed.data.assignmentId, parsed.data.blockerNote, context.profile.id],
+      );
 
       await insertTaskActivityLog(client, {
         taskId: assignment.taskId,
@@ -738,15 +753,15 @@ export async function reportTaskBlocker(
         fromStatus: assignment.status,
         toStatus: "BLOCKER",
         notes: parsed.data.blockerNote,
-      })
-    })
+      });
+    });
 
     return buildTaskAssignmentUpdateResult(
       parsed.data.assignmentId,
-      "Blocker reported for review."
-    )
+      "Blocker reported for review.",
+    );
   } catch (error) {
-    console.error("reportTaskBlocker failed:", error)
+    console.error("reportTaskBlocker failed:", error);
 
     return {
       success: false,
@@ -754,36 +769,42 @@ export async function reportTaskBlocker(
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function confirmTaskBlocker(
-  input: unknown
+  input: unknown,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
+  const authorization = await authorizeTaskAction([
+    "tasks.review",
+    "tasks.manage_all",
+  ]);
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = confirmTaskBlockerSchema.safeParse(input)
+  const parsed = confirmTaskBlockerSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid blocker update.",
-    }
+    };
   }
 
-  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId);
 
   if (!assignment) {
-    return { success: false, message: "Task assignment was not found." }
+    return { success: false, message: "Task assignment was not found." };
   }
 
-  const { context } = authorization
-  const canManageAll = await can(context.profile.auth_user_id, "tasks.manage_all")
+  const { context } = authorization;
+  const canManageAll = await can(
+    context.profile.auth_user_id,
+    "tasks.manage_all",
+  );
 
   if (
     !canAdminManageAssignment({
@@ -795,36 +816,40 @@ export async function confirmTaskBlocker(
     return {
       success: false,
       message: "You do not have permission to resolve this blocker.",
-    }
+    };
   }
 
   if (assignment.assignedToProfileId === context.profile.id) {
     return {
       success: false,
       message: "You cannot review your own task.",
-    }
+    };
   }
 
   if (assignment.status !== "BLOCKER") {
     return {
       success: false,
       message: "Only blocker tasks can be confirmed or resolved.",
-    }
+    };
   }
 
-  if (parsed.data.nextStatus === "PENDING" && !assignment.proofUrl && !assignment.proofNote) {
+  if (
+    parsed.data.nextStatus === "PENDING" &&
+    !assignment.proofUrl &&
+    !assignment.proofNote
+  ) {
     return {
       success: false,
       message: "Blocker can only move to Pending when proof already exists.",
-    }
+    };
   }
 
   try {
     const nextDueDate =
       parsed.data.dueDate !== undefined
         ? parseDueDate(parsed.data.dueDate)
-        : assignment.dueDate
-    const deadlineChanged = nextDueDate !== assignment.dueDate
+        : assignment.dueDate;
+    const deadlineChanged = nextDueDate !== assignment.dueDate;
 
     await transaction(async (client) => {
       if (deadlineChanged) {
@@ -835,8 +860,8 @@ export async function confirmTaskBlocker(
               updated_at = now()
           WHERE id = $1
           `,
-          [assignment.taskId, nextDueDate]
-        )
+          [assignment.taskId, nextDueDate],
+        );
       }
 
       await client.query(
@@ -855,8 +880,8 @@ export async function confirmTaskBlocker(
           parsed.data.nextStatus,
           context.profile.id,
           parsed.data.resolutionNote,
-        ]
-      )
+        ],
+      );
 
       await insertTaskActivityLog(client, {
         taskId: assignment.taskId,
@@ -875,7 +900,7 @@ export async function confirmTaskBlocker(
               deadline_changed_to: nextDueDate,
             }
           : null,
-      })
+      });
 
       if (deadlineChanged) {
         await insertTaskActivityLog(client, {
@@ -888,16 +913,16 @@ export async function confirmTaskBlocker(
             deadline_changed_from: assignment.dueDate,
             deadline_changed_to: nextDueDate,
           },
-        })
+        });
       }
-    })
+    });
 
     return buildTaskAssignmentUpdateResult(
       parsed.data.assignmentId,
-      "Blocker updated successfully."
-    )
+      "Blocker updated successfully.",
+    );
   } catch (error) {
-    console.error("confirmTaskBlocker failed:", error)
+    console.error("confirmTaskBlocker failed:", error);
 
     return {
       success: false,
@@ -905,36 +930,42 @@ export async function confirmTaskBlocker(
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function changeTaskAssignmentStatus(
-  input: unknown
+  input: unknown,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
+  const authorization = await authorizeTaskAction([
+    "tasks.review",
+    "tasks.manage_all",
+  ]);
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = changeTaskAssignmentStatusSchema.safeParse(input)
+  const parsed = changeTaskAssignmentStatusSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid status change.",
-    }
+    };
   }
 
-  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId);
 
   if (!assignment) {
-    return { success: false, message: "Task assignment was not found." }
+    return { success: false, message: "Task assignment was not found." };
   }
 
-  const { context } = authorization
-  const canManageAll = await can(context.profile.auth_user_id, "tasks.manage_all")
+  const { context } = authorization;
+  const canManageAll = await can(
+    context.profile.auth_user_id,
+    "tasks.manage_all",
+  );
 
   if (
     !canAdminManageAssignment({
@@ -946,21 +977,21 @@ export async function changeTaskAssignmentStatus(
     return {
       success: false,
       message: "You do not have permission to change this task status.",
-    }
+    };
   }
 
   if (assignment.assignedToProfileId === context.profile.id) {
     return {
       success: false,
       message: "You cannot approve or review your own task.",
-    }
+    };
   }
 
   if (parsed.data.fromStatus !== assignment.status) {
     return {
       success: false,
       message: "This task status changed. Please refresh and try again.",
-    }
+    };
   }
 
   if (parsed.data.toStatus === assignment.status) {
@@ -968,14 +999,14 @@ export async function changeTaskAssignmentStatus(
       success: true,
       message: "No status change was needed.",
       data: { updatedAssignment: assignment },
-    }
+    };
   }
 
   if (!assertAdminTransitionAllowed(assignment.status, parsed.data.toStatus)) {
     return {
       success: false,
       message: "This status change is not allowed.",
-    }
+    };
   }
 
   if (
@@ -987,7 +1018,7 @@ export async function changeTaskAssignmentStatus(
     return {
       success: false,
       message: "Blocker can only move to Pending when proof already exists.",
-    }
+    };
   }
 
   try {
@@ -1003,8 +1034,8 @@ export async function changeTaskAssignmentStatus(
           updated_at = now()
         WHERE id = $1
         `,
-        [parsed.data.assignmentId, parsed.data.toStatus, context.profile.id]
-      )
+        [parsed.data.assignmentId, parsed.data.toStatus, context.profile.id],
+      );
 
       await insertTaskActivityLog(client, {
         taskId: assignment.taskId,
@@ -1019,15 +1050,15 @@ export async function changeTaskAssignmentStatus(
         fromStatus: assignment.status,
         toStatus: parsed.data.toStatus,
         notes: parsed.data.notes,
-      })
-    })
+      });
+    });
 
     return buildTaskAssignmentUpdateResult(
       parsed.data.assignmentId,
-      "Task status updated successfully."
-    )
+      "Task status updated successfully.",
+    );
   } catch (error) {
-    console.error("changeTaskAssignmentStatus failed:", error)
+    console.error("changeTaskAssignmentStatus failed:", error);
 
     return {
       success: false,
@@ -1035,41 +1066,45 @@ export async function changeTaskAssignmentStatus(
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function confirmTaskDone(
-  input: unknown
+  input: unknown,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
+  const authorization = await authorizeTaskAction([
+    "tasks.review",
+    "tasks.manage_all",
+  ]);
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = confirmTaskDoneSchema.safeParse(input)
+  const parsed = confirmTaskDoneSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
-      message: parsed.error.issues[0]?.message ?? "Invalid confirmation request.",
-    }
+      message:
+        parsed.error.issues[0]?.message ?? "Invalid confirmation request.",
+    };
   }
 
-  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId);
 
   if (!assignment) {
-    return { success: false, message: "Task assignment was not found." }
+    return { success: false, message: "Task assignment was not found." };
   }
 
-  const { context } = authorization
+  const { context } = authorization;
 
   if (assignment.assignedToProfileId === context.profile.id) {
     return {
       success: false,
       message: "You cannot approve or review your own task.",
-    }
+    };
   }
 
   if (
@@ -1079,14 +1114,14 @@ export async function confirmTaskDone(
     return {
       success: false,
       message: "You do not have permission to review tasks.",
-    }
+    };
   }
 
   if (assignment.status !== "PENDING") {
     return {
       success: false,
       message: "Only pending tasks can be confirmed as done.",
-    }
+    };
   }
 
   try {
@@ -1102,8 +1137,8 @@ export async function confirmTaskDone(
           updated_at = now()
         WHERE id = $1
         `,
-        [parsed.data.assignmentId, context.profile.id]
-      )
+        [parsed.data.assignmentId, context.profile.id],
+      );
 
       await insertTaskActivityLog(client, {
         taskId: assignment.taskId,
@@ -1113,15 +1148,15 @@ export async function confirmTaskDone(
         fromStatus: assignment.status,
         toStatus: "DONE",
         notes: "Task confirmed as done.",
-      })
-    })
+      });
+    });
 
     return buildTaskAssignmentUpdateResult(
       parsed.data.assignmentId,
-      "Task confirmed as done."
-    )
+      "Task confirmed as done.",
+    );
   } catch (error) {
-    console.error("confirmTaskDone failed:", error)
+    console.error("confirmTaskDone failed:", error);
 
     return {
       success: false,
@@ -1129,41 +1164,44 @@ export async function confirmTaskDone(
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function requestTaskRevision(
-  input: unknown
+  input: unknown,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  const authorization = await authorizeTaskAction(["tasks.review", "tasks.manage_all"])
+  const authorization = await authorizeTaskAction([
+    "tasks.review",
+    "tasks.manage_all",
+  ]);
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = requestTaskRevisionSchema.safeParse(input)
+  const parsed = requestTaskRevisionSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid revision request.",
-    }
+    };
   }
 
-  const assignment = await getTaskAssignmentById(parsed.data.assignmentId)
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId);
 
   if (!assignment) {
-    return { success: false, message: "Task assignment was not found." }
+    return { success: false, message: "Task assignment was not found." };
   }
 
-  const { context } = authorization
+  const { context } = authorization;
 
   if (assignment.assignedToProfileId === context.profile.id) {
     return {
       success: false,
       message: "You cannot approve or review your own task.",
-    }
+    };
   }
 
   if (
@@ -1173,14 +1211,14 @@ export async function requestTaskRevision(
     return {
       success: false,
       message: "You do not have permission to request revisions.",
-    }
+    };
   }
 
   if (assignment.status !== "PENDING") {
     return {
       success: false,
       message: "Only pending tasks can be sent back for revision.",
-    }
+    };
   }
 
   try {
@@ -1196,8 +1234,12 @@ export async function requestTaskRevision(
           updated_at = now()
         WHERE id = $1
         `,
-        [parsed.data.assignmentId, parsed.data.revisionNote, context.profile.id]
-      )
+        [
+          parsed.data.assignmentId,
+          parsed.data.revisionNote,
+          context.profile.id,
+        ],
+      );
 
       await insertTaskActivityLog(client, {
         taskId: assignment.taskId,
@@ -1207,15 +1249,15 @@ export async function requestTaskRevision(
         fromStatus: assignment.status,
         toStatus: "REVISION",
         notes: parsed.data.revisionNote,
-      })
-    })
+      });
+    });
 
     return buildTaskAssignmentUpdateResult(
       parsed.data.assignmentId,
-      "Revision requested."
-    )
+      "Revision requested.",
+    );
   } catch (error) {
-    console.error("requestTaskRevision failed:", error)
+    console.error("requestTaskRevision failed:", error);
 
     return {
       success: false,
@@ -1223,26 +1265,24 @@ export async function requestTaskRevision(
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function getCanReviewTasks(): Promise<boolean> {
-  const context = await getCurrentProfileContext()
+  const context = await getCurrentProfileContext();
 
   if (!context || context.profile.status !== "ACTIVE") {
-    return false
+    return false;
   }
 
   return (
     canReviewTaskAssignments(context.profile.account_type) ||
     (await can(context.profile.auth_user_id, "tasks.review"))
-  )
+  );
 }
 
 export async function getIsEmployeeAccount(): Promise<boolean> {
-  const context = await getCurrentProfileContext()
-  return context
-    ? !isAdminAccountType(context.profile.account_type)
-    : false
+  const context = await getCurrentProfileContext();
+  return context ? !isAdminAccountType(context.profile.account_type) : false;
 }

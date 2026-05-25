@@ -300,7 +300,7 @@ export function EmployeeApprovalTableView({
 
   return (
     <div className="min-w-0 space-y-4">
-      <div className="w-full min-w-0 rounded-md border">
+      <div className="w-full min-w-0 rounded-lg border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

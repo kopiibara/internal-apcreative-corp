@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth-session"
+import { requireAdmin } from "@/lib/auth/auth-session"
 import { query } from "@/lib/db"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
 

@@ -3,7 +3,7 @@ import { ExternalLink } from "lucide-react"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { TaskAssignmentRecord } from "@/lib/tasks"
+import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",

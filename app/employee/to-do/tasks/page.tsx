@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation"
 
 import { TaskBoard } from "@/components/to-do/task-board"
-import { getCurrentProfileContext } from "@/lib/auth-session"
-import { canAccessEmployeeTaskPage } from "@/lib/employee-task-access"
-import { loadEmployeeTaskBoardPageData } from "@/lib/task-board-page"
+import { getCurrentProfileContext } from "@/lib/auth/auth-session"
+import { canAccessEmployeeTaskPage } from "@/lib/tasks/employee-task-access"
+import { loadEmployeeTaskBoardPageData } from "@/lib/tasks/task-board-page"
 
 export default async function EmployeeToDoTasksPage() {
   const context = await getCurrentProfileContext()

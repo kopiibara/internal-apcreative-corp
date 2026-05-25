@@ -1,76 +1,106 @@
-"use server"
+"use server";
 
-import { revalidatePath } from "next/cache"
-import type { PoolClient } from "pg"
+import { revalidatePath } from "next/cache";
+import type { PoolClient } from "pg";
 
 import {
   approvalKanbanColumnSchema,
   updateDirectorReviewSchema,
   updatePublishingInfoSchema,
   updateSupervisorReviewSchema,
-} from "@/app/admin/approvals/schema"
+} from "@/app/admin/approvals/schema";
 import {
   canEditPublishingFields,
   type ContentReport,
-} from "@/types/content-report"
-import { getCurrentProfileContext } from "@/lib/auth-session"
-import { getApprovalContentReportById } from "@/lib/content-reports"
-import { canApprovalAction, canDirectorReview } from "@/lib/permissions"
-import { query, transaction } from "@/lib/db"
-import { enforceRateLimit } from "@/lib/rate-limit"
+} from "@/types/content-report";
+import { getCurrentProfileContext } from "@/lib/auth/auth-session";
+import { getApprovalContentReportById } from "@/lib/content-reports";
+import { canApprovalAction, canDirectorReview } from "@/lib/permissions";
+import { query, transaction } from "@/lib/db";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
-import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard-revalidate-paths"
+import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
 
 export type ActionResult<T = unknown> = {
-  success: boolean
-  message: string
-  data?: T
-}
+  success: boolean;
+  message: string;
+  data?: T;
+};
 
 type ReviewGateRow = {
-  id: number
-  supervisor_status: "Pending" | "Approved" | "Rejected" | "Revision"
-  supervisor_notes: string | null
-  director_status: "Pending" | "Approved" | "Rejected" | "Revision"
-  director_notes: string | null
-  publish_status: "Pending" | "Scheduled" | "Published" | "Cancelled"
-  scheduled_published_date: Date | null
-  remarks_revision_summary: string | null
-}
+  id: number;
+  supervisor_status: "Pending" | "Approved" | "Rejected" | "Revision";
+  supervisor_notes: string | null;
+  director_status: "Pending" | "Approved" | "Rejected" | "Revision";
+  director_notes: string | null;
+  publish_status: "Pending" | "Scheduled" | "Published" | "Cancelled";
+  scheduled_published_date: Date | null;
+  remarks_revision_summary: string | null;
+};
 
 type ApprovalUpdateData = {
-  updatedApproval: ContentReport
-}
+  updatedApproval: ContentReport;
+};
 
 function getSupervisorReviewPermissionKey(
-  supervisorStatus: "Pending" | "Approved" | "Rejected" | "Revision"
+  supervisorStatus: "Pending" | "Approved" | "Rejected" | "Revision",
 ) {
   return supervisorStatus === "Revision"
     ? "approvals.request_revision"
-    : "approvals.supervisor_review"
+    : "approvals.supervisor_review";
 }
 
 function getPermissionDeniedMessage(permissionKey: string) {
   if (permissionKey === "approvals.director_review") {
-    return "You do not have permission to update Director Review."
+    return "You do not have permission to update Director Review.";
   }
 
   if (permissionKey === "approvals.publish_update") {
-    return "You do not have permission to update Publishing."
+    return "You do not have permission to update Publishing.";
   }
 
   if (
     permissionKey === "approvals.supervisor_review" ||
     permissionKey === "approvals.request_revision"
   ) {
-    return "You do not have permission to update Supervisor Review."
+    return "You do not have permission to update Supervisor Review.";
   }
 
-  return "You do not have permission to perform this action."
+  return "You do not have permission to perform this action.";
+}
+
+function getKanbanReviewLane({
+  accountType,
+  canSupervisorReview,
+  hasDirectorAccess,
+  supervisorStatus,
+}: {
+  accountType: string;
+  canSupervisorReview: boolean;
+  hasDirectorAccess: boolean;
+  supervisorStatus: ReviewGateRow["supervisor_status"];
+}) {
+  if (accountType === "SUPERVISOR") {
+    return "supervisor";
+  }
+
+  if (accountType === "DIRECTOR") {
+    return "director";
+  }
+
+  if (canSupervisorReview && !hasDirectorAccess) {
+    return "supervisor";
+  }
+
+  if (hasDirectorAccess && !canSupervisorReview) {
+    return "director";
+  }
+
+  return supervisorStatus === "Approved" ? "director" : "supervisor";
 }
 
 async function authorizeApprovalAction(permissionKey: string) {
-  const context = await getCurrentProfileContext()
+  const context = await getCurrentProfileContext();
 
   if (!context) {
     return {
@@ -78,7 +108,7 @@ async function authorizeApprovalAction(permissionKey: string) {
         success: false,
         message: "You must be signed in to perform this action.",
       } satisfies ActionResult,
-    }
+    };
   }
 
   if (context.profile.status !== "ACTIVE") {
@@ -87,14 +117,14 @@ async function authorizeApprovalAction(permissionKey: string) {
         success: false,
         message: "Your account is not active.",
       } satisfies ActionResult,
-    }
+    };
   }
 
   const allowed = await canApprovalAction(
     context.profile.auth_user_id,
     context.profile.id,
-    permissionKey
-  )
+    permissionKey,
+  );
 
   if (!allowed) {
     return {
@@ -102,12 +132,12 @@ async function authorizeApprovalAction(permissionKey: string) {
         success: false,
         message: getPermissionDeniedMessage(permissionKey),
       } satisfies ActionResult,
-    }
+    };
   }
 
   return {
     context,
-  }
+  };
 }
 
 async function getReviewGate(reportId: number) {
@@ -126,34 +156,34 @@ async function getReviewGate(reportId: number) {
     WHERE id = $1
     LIMIT 1
     `,
-    [reportId]
-  )
+    [reportId],
+  );
 
-  return result.rows[0]
+  return result.rows[0];
 }
 
 function revalidateApprovalRoutes() {
   for (const route of APPROVAL_REVALIDATE_PATHS) {
-    revalidatePath(route)
+    revalidatePath(route);
   }
 }
 
 function serializeStatus(value: unknown) {
   if (value instanceof Date) {
-    return value.toISOString()
+    return value.toISOString();
   }
 
-  return value == null ? null : String(value)
+  return value == null ? null : String(value);
 }
 
 async function getUpdatedApprovalOrThrow(reportId: number) {
-  const updatedApproval = await getApprovalContentReportById(reportId)
+  const updatedApproval = await getApprovalContentReportById(reportId);
 
   if (!updatedApproval) {
-    throw new Error("Content report was not found after update.")
+    throw new Error("Content report was not found after update.");
   }
 
-  return updatedApproval
+  return updatedApproval;
 }
 
 async function insertApprovalActivityLog({
@@ -166,14 +196,14 @@ async function insertApprovalActivityLog({
   notes,
   metadata,
 }: {
-  client: PoolClient
-  reportId: number
-  actorProfileId: number
-  action: string
-  fromStatus: string | null
-  toStatus: string | null
-  notes: string
-  metadata?: Record<string, unknown>
+  client: PoolClient;
+  reportId: number;
+  actorProfileId: number;
+  action: string;
+  fromStatus: string | null;
+  toStatus: string | null;
+  notes: string;
+  metadata?: Record<string, unknown>;
 }) {
   await client.query(
     `
@@ -196,45 +226,45 @@ async function insertApprovalActivityLog({
       toStatus,
       notes,
       metadata ? JSON.stringify(metadata) : null,
-    ]
-  )
+    ],
+  );
 }
 
 export async function updateSupervisorReview(
-  input: unknown
+  input: unknown,
 ): Promise<ActionResult<ApprovalUpdateData>> {
-  const parsed = updateSupervisorReviewSchema.safeParse(input)
+  const parsed = updateSupervisorReviewSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid supervisor review.",
-    }
+    };
   }
 
   const authorization = await authorizeApprovalAction(
-    getSupervisorReviewPermissionKey(parsed.data.supervisorStatus)
-  )
+    getSupervisorReviewPermissionKey(parsed.data.supervisorStatus),
+  );
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
   if (authorization.context.profile.account_type === "DIRECTOR") {
     return {
       success: false,
       message: "You do not have permission to update Supervisor Review.",
-    }
+    };
   }
 
   const rateLimit = await enforceRateLimit({
     bucket: "approval:update",
     limit: 60,
     windowMs: 10 * 60 * 1000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
   try {
@@ -254,12 +284,12 @@ export async function updateSupervisorReview(
         WHERE id = $1
         FOR UPDATE
         `,
-        [parsed.data.reportId]
-      )
-      const current = currentResult.rows[0]
+        [parsed.data.reportId],
+      );
+      const current = currentResult.rows[0];
 
       if (!current) {
-        throw new Error("Content report was not found.")
+        throw new Error("Content report was not found.");
       }
 
       await client.query(
@@ -288,8 +318,8 @@ export async function updateSupervisorReview(
           parsed.data.supervisorStatus,
           parsed.data.supervisorNotes,
           authorization.context.profile.id,
-        ]
-      )
+        ],
+      );
 
       await insertApprovalActivityLog({
         client,
@@ -304,19 +334,21 @@ export async function updateSupervisorReview(
           confirmationAccepted: parsed.data.confirmationAccepted,
           source: "approval_form",
         },
-      })
-    })
+      });
+    });
 
-    revalidateApprovalRoutes()
-    const updatedApproval = await getUpdatedApprovalOrThrow(parsed.data.reportId)
+    revalidateApprovalRoutes();
+    const updatedApproval = await getUpdatedApprovalOrThrow(
+      parsed.data.reportId,
+    );
 
     return {
       success: true,
       message: "Supervisor review updated successfully.",
       data: { updatedApproval },
-    }
+    };
   } catch (error) {
-    console.error("updateSupervisorReview failed:", error)
+    console.error("updateSupervisorReview failed:", error);
 
     return {
       success: false,
@@ -324,58 +356,58 @@ export async function updateSupervisorReview(
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function updateDirectorReview(
-  input: unknown
+  input: unknown,
 ): Promise<ActionResult<ApprovalUpdateData>> {
-  const context = await getCurrentProfileContext()
+  const context = await getCurrentProfileContext();
 
   if (!context) {
     return {
       success: false,
       message: "You must be signed in to perform this action.",
-    }
+    };
   }
 
   if (context.profile.status !== "ACTIVE") {
     return {
       success: false,
       message: "Your account is not active.",
-    }
+    };
   }
 
-  const parsed = updateDirectorReviewSchema.safeParse(input)
+  const parsed = updateDirectorReviewSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid director review.",
-    }
+    };
   }
 
   const hasDirectorAccess = await canDirectorReview(
     context.profile.auth_user_id,
-    context.profile.id
-  )
+    context.profile.id,
+  );
 
   if (!hasDirectorAccess) {
     return {
       success: false,
       message: "You do not have permission to update Director Review.",
-    }
+    };
   }
 
   const rateLimit = await enforceRateLimit({
     bucket: "approval:update",
     limit: 60,
     windowMs: 10 * 60 * 1000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
   try {
@@ -395,19 +427,21 @@ export async function updateDirectorReview(
         WHERE id = $1
         FOR UPDATE
         `,
-        [parsed.data.reportId]
-      )
-      const current = currentResult.rows[0]
+        [parsed.data.reportId],
+      );
+      const current = currentResult.rows[0];
 
       if (!current) {
-        throw new Error("Content report was not found.")
+        throw new Error("Content report was not found.");
       }
 
       if (
         parsed.data.directorStatus === "Approved" &&
         current.supervisor_status !== "Approved"
       ) {
-        throw new Error("Supervisor approval is required before Director approval.")
+        throw new Error(
+          "Supervisor approval is required before Director approval.",
+        );
       }
 
       await client.query(
@@ -436,8 +470,8 @@ export async function updateDirectorReview(
           parsed.data.directorStatus,
           parsed.data.directorNotes,
           context.profile.id,
-        ]
-      )
+        ],
+      );
 
       await insertApprovalActivityLog({
         client,
@@ -452,19 +486,21 @@ export async function updateDirectorReview(
           confirmationAccepted: parsed.data.confirmationAccepted,
           source: "approval_form",
         },
-      })
-    })
+      });
+    });
 
-    revalidateApprovalRoutes()
-    const updatedApproval = await getUpdatedApprovalOrThrow(parsed.data.reportId)
+    revalidateApprovalRoutes();
+    const updatedApproval = await getUpdatedApprovalOrThrow(
+      parsed.data.reportId,
+    );
 
     return {
       success: true,
       message: "Director review updated successfully.",
       data: { updatedApproval },
-    }
+    };
   } catch (error) {
-    console.error("updateDirectorReview failed:", error)
+    console.error("updateDirectorReview failed:", error);
 
     return {
       success: false,
@@ -472,47 +508,47 @@ export async function updateDirectorReview(
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function updatePublishingInfo(
-  input: unknown
+  input: unknown,
 ): Promise<ActionResult<ApprovalUpdateData>> {
   const authorization = await authorizeApprovalAction(
-    "approvals.publish_update"
-  )
+    "approvals.publish_update",
+  );
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
   const rateLimit = await enforceRateLimit({
     bucket: "approval:update",
     limit: 60,
     windowMs: 10 * 60 * 1000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
-  const parsed = updatePublishingInfoSchema.safeParse(input)
+  const parsed = updatePublishingInfoSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid publishing details.",
-    }
+    };
   }
 
-  const reviewGate = await getReviewGate(parsed.data.reportId)
+  const reviewGate = await getReviewGate(parsed.data.reportId);
 
   if (!reviewGate) {
     return {
       success: false,
       message: "Content report was not found.",
-    }
+    };
   }
 
   if (
@@ -525,7 +561,7 @@ export async function updatePublishingInfo(
       success: false,
       message:
         "Publishing fields are locked until supervisor and director are approved.",
-    }
+    };
   }
 
   try {
@@ -545,21 +581,23 @@ export async function updatePublishingInfo(
         WHERE id = $1
         FOR UPDATE
         `,
-        [parsed.data.reportId]
-      )
-      const current = currentResult.rows[0]
+        [parsed.data.reportId],
+      );
+      const current = currentResult.rows[0];
 
       if (!current) {
-        throw new Error("Content report was not found.")
+        throw new Error("Content report was not found.");
       }
 
-      if (!canEditPublishingFields({
-        supervisorStatus: current.supervisor_status,
-        directorStatus: current.director_status,
-      })) {
+      if (
+        !canEditPublishingFields({
+          supervisorStatus: current.supervisor_status,
+          directorStatus: current.director_status,
+        })
+      ) {
         throw new Error(
-          "Publishing fields are locked until supervisor and director are approved."
-        )
+          "Publishing fields are locked until supervisor and director are approved.",
+        );
       }
 
       await client.query(
@@ -577,8 +615,8 @@ export async function updatePublishingInfo(
           parsed.data.publishStatus,
           parsed.data.scheduledPublishedDate,
           parsed.data.remarksRevisionSummary,
-        ]
-      )
+        ],
+      );
 
       await insertApprovalActivityLog({
         client,
@@ -590,28 +628,30 @@ export async function updatePublishingInfo(
         notes: parsed.data.remarksRevisionSummary,
         metadata: {
           previousScheduledPublishedDate: serializeStatus(
-            current.scheduled_published_date
+            current.scheduled_published_date,
           ),
           scheduledPublishedDate: serializeStatus(
-            parsed.data.scheduledPublishedDate
+            parsed.data.scheduledPublishedDate,
           ),
           previousRemarksRevisionSummary: current.remarks_revision_summary,
           confirmationAccepted: parsed.data.confirmationAccepted,
           source: "approval_form",
         },
-      })
-    })
+      });
+    });
 
-    revalidateApprovalRoutes()
-    const updatedApproval = await getUpdatedApprovalOrThrow(parsed.data.reportId)
+    revalidateApprovalRoutes();
+    const updatedApproval = await getUpdatedApprovalOrThrow(
+      parsed.data.reportId,
+    );
 
     return {
       success: true,
       message: "Publishing details updated successfully.",
       data: { updatedApproval },
-    }
+    };
   } catch (error) {
-    console.error("updatePublishingInfo failed:", error)
+    console.error("updatePublishingInfo failed:", error);
 
     return {
       success: false,
@@ -619,68 +659,68 @@ export async function updatePublishingInfo(
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function updateApprovalKanbanColumn(
-  input: unknown
+  input: unknown,
 ): Promise<ActionResult<ApprovalUpdateData>> {
-  const context = await getCurrentProfileContext()
+  const context = await getCurrentProfileContext();
 
   if (!context) {
     return {
       success: false,
       message: "You must be signed in to perform this action.",
-    }
+    };
   }
 
   if (context.profile.status !== "ACTIVE") {
     return {
       success: false,
       message: "Your account is not active.",
-    }
+    };
   }
 
   const rateLimit = await enforceRateLimit({
     bucket: "approval:update",
     limit: 60,
     windowMs: 10 * 60 * 1000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
-  const parsed = approvalKanbanColumnSchema.safeParse(input)
+  const parsed = approvalKanbanColumnSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message:
         parsed.error.issues[0]?.message ?? "Invalid approval workflow update.",
-    }
+    };
   }
 
   const canSupervisorReview = await canApprovalAction(
     context.profile.auth_user_id,
     context.profile.id,
-    "approvals.supervisor_review"
-  )
+    "approvals.supervisor_review",
+  );
   const canRequestRevision = await canApprovalAction(
     context.profile.auth_user_id,
     context.profile.id,
-    "approvals.request_revision"
-  )
+    "approvals.request_revision",
+  );
   const canPublishUpdate = await canApprovalAction(
     context.profile.auth_user_id,
     context.profile.id,
-    "approvals.publish_update"
-  )
+    "approvals.publish_update",
+  );
   const hasDirectorAccess = await canDirectorReview(
     context.profile.auth_user_id,
-    context.profile.id
-  )
+    context.profile.id,
+  );
 
   try {
     await transaction(async (client) => {
@@ -699,15 +739,15 @@ export async function updateApprovalKanbanColumn(
         WHERE id = $1
         FOR UPDATE
         `,
-        [parsed.data.reportId]
-      )
-      const current = currentResult.rows[0]
+        [parsed.data.reportId],
+      );
+      const current = currentResult.rows[0];
 
       if (!current) {
-        throw new Error("Content report was not found.")
+        throw new Error("Content report was not found.");
       }
 
-      const notes = parsed.data.notes
+      const notes = parsed.data.notes;
       const baseLog = {
         client,
         reportId: parsed.data.reportId,
@@ -719,11 +759,13 @@ export async function updateApprovalKanbanColumn(
           confirmationAccepted: parsed.data.confirmationAccepted,
           source: "kanban_drag",
         },
-      }
+      };
 
       if (parsed.data.toColumn === "pending") {
         if (!canSupervisorReview) {
-          throw new Error("You do not have permission to update Supervisor Review.")
+          throw new Error(
+            "You do not have permission to update Supervisor Review.",
+          );
         }
 
         await client.query(
@@ -739,15 +781,15 @@ export async function updateApprovalKanbanColumn(
             updated_at = now()
           WHERE id = $1
           `,
-          [parsed.data.reportId, notes, context.profile.id]
-        )
+          [parsed.data.reportId, notes, context.profile.id],
+        );
         await insertApprovalActivityLog({
           ...baseLog,
           action: "kanban_supervisor_status_update",
           fromStatus: current.supervisor_status,
           toStatus: "Pending",
-        })
-        return
+        });
+        return;
       }
 
       if (parsed.data.toColumn === "supervisor-approved") {
@@ -769,8 +811,8 @@ export async function updateApprovalKanbanColumn(
               updated_at = now()
             WHERE id = $1
             `,
-            [parsed.data.reportId, notes, context.profile.id]
-          )
+            [parsed.data.reportId, notes, context.profile.id],
+          );
           await insertApprovalActivityLog({
             ...baseLog,
             action: "kanban_director_status_update",
@@ -780,12 +822,14 @@ export async function updateApprovalKanbanColumn(
               ...baseLog.metadata,
               resolvedFromRevision: true,
             },
-          })
-          return
+          });
+          return;
         }
 
         if (!canSupervisorReview) {
-          throw new Error("You do not have permission to update Supervisor Review.")
+          throw new Error(
+            "You do not have permission to update Supervisor Review.",
+          );
         }
 
         await client.query(
@@ -805,15 +849,15 @@ export async function updateApprovalKanbanColumn(
             updated_at = now()
           WHERE id = $1
           `,
-          [parsed.data.reportId, notes, context.profile.id]
-        )
+          [parsed.data.reportId, notes, context.profile.id],
+        );
         await insertApprovalActivityLog({
           ...baseLog,
           action: "kanban_supervisor_status_update",
           fromStatus: current.supervisor_status,
           toStatus: "Approved",
-        })
-        return
+        });
+        return;
       }
 
       if (
@@ -821,12 +865,19 @@ export async function updateApprovalKanbanColumn(
         parsed.data.toColumn === "rejected"
       ) {
         const nextStatus =
-          parsed.data.toColumn === "revision" ? "Revision" : "Rejected"
-        const shouldUpdateDirector = current.supervisor_status === "Approved"
+          parsed.data.toColumn === "revision" ? "Revision" : "Rejected";
+        const reviewLane = getKanbanReviewLane({
+          accountType: context.profile.account_type,
+          canSupervisorReview,
+          hasDirectorAccess,
+          supervisorStatus: current.supervisor_status,
+        });
 
-        if (shouldUpdateDirector) {
+        if (reviewLane === "director") {
           if (!hasDirectorAccess) {
-            throw new Error("You do not have permission to update Director Review.")
+            throw new Error(
+              "You do not have permission to update Director Review.",
+            );
           }
 
           await client.query(
@@ -842,22 +893,24 @@ export async function updateApprovalKanbanColumn(
               updated_at = now()
             WHERE id = $1
             `,
-            [parsed.data.reportId, nextStatus, notes, context.profile.id]
-          )
+            [parsed.data.reportId, nextStatus, notes, context.profile.id],
+          );
           await insertApprovalActivityLog({
             ...baseLog,
             action: "kanban_director_status_update",
             fromStatus: current.director_status,
             toStatus: nextStatus,
-          })
-          return
+          });
+          return;
         }
 
         const canApplySupervisorDecision =
-          nextStatus === "Revision" ? canRequestRevision : canSupervisorReview
+          nextStatus === "Revision" ? canRequestRevision : canSupervisorReview;
 
         if (!canApplySupervisorDecision) {
-          throw new Error("You do not have permission to update Supervisor Review.")
+          throw new Error(
+            "You do not have permission to update Supervisor Review.",
+          );
         }
 
         await client.query(
@@ -873,24 +926,26 @@ export async function updateApprovalKanbanColumn(
             updated_at = now()
           WHERE id = $1
           `,
-          [parsed.data.reportId, nextStatus, notes, context.profile.id]
-        )
+          [parsed.data.reportId, nextStatus, notes, context.profile.id],
+        );
         await insertApprovalActivityLog({
           ...baseLog,
           action: "kanban_supervisor_status_update",
           fromStatus: current.supervisor_status,
           toStatus: nextStatus,
-        })
-        return
+        });
+        return;
       }
 
       if (parsed.data.toColumn === "ready-to-publish") {
         if (!hasDirectorAccess) {
-          throw new Error("You do not have permission to update Director Review.")
+          throw new Error(
+            "You do not have permission to update Director Review.",
+          );
         }
 
         if (current.supervisor_status !== "Approved") {
-          throw new Error("Supervisor approval is required first.")
+          throw new Error("Supervisor approval is required first.");
         }
 
         await client.query(
@@ -906,15 +961,15 @@ export async function updateApprovalKanbanColumn(
             updated_at = now()
           WHERE id = $1
           `,
-          [parsed.data.reportId, notes, context.profile.id]
-        )
+          [parsed.data.reportId, notes, context.profile.id],
+        );
         await insertApprovalActivityLog({
           ...baseLog,
           action: "kanban_director_status_update",
           fromStatus: current.director_status,
           toStatus: "Approved",
-        })
-        return
+        });
+        return;
       }
 
       if (
@@ -922,20 +977,22 @@ export async function updateApprovalKanbanColumn(
         parsed.data.toColumn === "published"
       ) {
         if (!canPublishUpdate) {
-          throw new Error("You do not have permission to update Publishing.")
+          throw new Error("You do not have permission to update Publishing.");
         }
 
-        if (!canEditPublishingFields({
-          supervisorStatus: current.supervisor_status,
-          directorStatus: current.director_status,
-        })) {
+        if (
+          !canEditPublishingFields({
+            supervisorStatus: current.supervisor_status,
+            directorStatus: current.director_status,
+          })
+        ) {
           throw new Error(
-            "Publishing fields are locked until supervisor and director are approved."
-          )
+            "Publishing fields are locked until supervisor and director are approved.",
+          );
         }
 
         const nextStatus =
-          parsed.data.toColumn === "scheduled" ? "Scheduled" : "Published"
+          parsed.data.toColumn === "scheduled" ? "Scheduled" : "Published";
 
         await client.query(
           `
@@ -947,27 +1004,29 @@ export async function updateApprovalKanbanColumn(
             updated_at = now()
           WHERE id = $1
           `,
-          [parsed.data.reportId, nextStatus, notes]
-        )
+          [parsed.data.reportId, nextStatus, notes],
+        );
         await insertApprovalActivityLog({
           ...baseLog,
           action: "kanban_publishing_update",
           fromStatus: current.publish_status,
           toStatus: nextStatus,
-        })
+        });
       }
-    })
+    });
 
-    revalidateApprovalRoutes()
-    const updatedApproval = await getUpdatedApprovalOrThrow(parsed.data.reportId)
+    revalidateApprovalRoutes();
+    const updatedApproval = await getUpdatedApprovalOrThrow(
+      parsed.data.reportId,
+    );
 
     return {
       success: true,
       message: "Approval workflow updated successfully.",
       data: { updatedApproval },
-    }
+    };
   } catch (error) {
-    console.error("updateApprovalKanbanColumn failed:", error)
+    console.error("updateApprovalKanbanColumn failed:", error);
 
     return {
       success: false,
@@ -975,6 +1034,6 @@ export async function updateApprovalKanbanColumn(
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }

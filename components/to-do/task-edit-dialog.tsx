@@ -25,8 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { TASK_PRIORITIES } from "@/lib/task-type"
-import type { TaskAssignmentRecord } from "@/lib/tasks"
+import { TASK_PRIORITIES } from "@/lib/tasks/task-type"
+import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
 type TaskEditDialogProps = {
   assignment: TaskAssignmentRecord | null

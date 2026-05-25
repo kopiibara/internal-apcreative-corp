@@ -9,11 +9,11 @@ import { DatePicker } from "@/components/ui/date-picker"
 import {
   ALL_BRANDS_FILTER,
   ALL_EMPLOYEES_FILTER,
-} from "@/lib/daily-report-filters"
+} from "@/lib/daily-reports/daily-report-filters"
 import type {
   DailyReportBrandOption,
   DailyReportEmployeeOption,
-} from "@/lib/daily-report-types"
+} from "@/lib/daily-reports/daily-report-types"
 import { useDailyReportStore } from "@/stores/use-daily-report-store"
 
 type DailyReportFiltersProps = {
@@ -39,14 +39,15 @@ export function DailyReportFilters({
 
   return (
     <div className="relative z-20 min-w-0 space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <DatePicker
-          value={selectedDate}
-          onChange={setSelectedDate}
-          disabled={disabled}
-        />
-        <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-2">
-          <FilterBadgeGroup label="Brands" className="min-w-0">
+      <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between pr-2">
+        <div className="flex gap-4 items-center">
+          <DatePicker
+            value={selectedDate}
+            onChange={setSelectedDate}
+            disabled={disabled}
+            className="h-9 w-fit max-w-full min-w-[160px] shrink-0"
+          />
+          <FilterBadgeGroup label="" className="min-w-0">
             <FilterBadge
               active={selectedBrandId === ALL_BRANDS_FILTER}
               disabled={disabled}
@@ -65,31 +66,35 @@ export function DailyReportFilters({
               </FilterBadge>
             ))}
           </FilterBadgeGroup>
-
-          <FilterBadgeGroup label="Employees" className="min-w-0">
-            <FilterBadge
-              active={selectedEmployeeId === ALL_EMPLOYEES_FILTER}
-              disabled={disabled}
-              onClick={() => setSelectedEmployeeId(ALL_EMPLOYEES_FILTER)}
-            >
-              All Employees
-            </FilterBadge>
-            {employees.map((employee) => (
-              <FilterBadge
-                key={employee.id}
-                active={selectedEmployeeId === String(employee.id)}
-                disabled={disabled}
-                onClick={() => setSelectedEmployeeId(String(employee.id))}
-              >
-                {employee.fullName}
-              </FilterBadge>
-            ))}
-          </FilterBadgeGroup>
         </div>
+
+
+        {/* 
+            <FilterBadgeGroup label="Employees" className="min-w-0">
+              <FilterBadge
+                active={selectedEmployeeId === ALL_EMPLOYEES_FILTER}
+                disabled={disabled}
+                onClick={() => setSelectedEmployeeId(ALL_EMPLOYEES_FILTER)}
+              >
+                All Employees
+              </FilterBadge>
+              {employees.map((employee) => (
+                <FilterBadge
+                  key={employee.id}
+                  active={selectedEmployeeId === String(employee.id)}
+                  disabled={disabled}
+                  onClick={() => setSelectedEmployeeId(String(employee.id))}
+                >
+                  {employee.fullName}
+                </FilterBadge>
+              ))}
+           </FilterBadgeGroup>
+        */}
+
         <Button
           type="button"
           size="sm"
-          className="h-9"
+          className="h-9 w-fit shrink-0"
           onClick={resetDailyReportFilters}
           disabled={disabled}
         >

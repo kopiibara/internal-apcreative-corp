@@ -1,28 +1,28 @@
-"use server"
+"use server";
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath } from "next/cache";
 
 import {
   reminderFormSchema,
   reminderIdSchema,
   updateReminderSchema,
   updateReminderStatusSchema,
-} from "@/app/admin/to-do/reminders/schema"
-import { getCurrentProfileContext } from "@/lib/auth-session"
-import { query, transaction } from "@/lib/db"
-import type { ReminderStatus } from "@/lib/reminder-statuses"
-import { getReminderById } from "@/lib/reminders"
+} from "@/app/admin/to-do/reminders/schema";
+import { getCurrentProfileContext } from "@/lib/auth/auth-session";
+import { query, transaction } from "@/lib/db";
+import type { ReminderStatus } from "@/lib/reminders/reminder-statuses";
+import { getReminderById } from "@/lib/reminders/reminders";
 
-const REMINDER_ROUTES = ["/admin/to-do/reminders", "/employee/to-do/reminders"]
+const REMINDER_ROUTES = ["/admin/to-do/reminders", "/employee/to-do/reminders"];
 
 type ActionResult<T = unknown> = {
-  success: boolean
-  message: string
-  data?: T
-}
+  success: boolean;
+  message: string;
+  data?: T;
+};
 
 async function authorizeReminderAction() {
-  const context = await getCurrentProfileContext()
+  const context = await getCurrentProfileContext();
 
   if (!context) {
     return {
@@ -30,7 +30,7 @@ async function authorizeReminderAction() {
         success: false,
         message: "You must be signed in to perform this action.",
       } satisfies ActionResult,
-    }
+    };
   }
 
   if (context.profile.status !== "ACTIVE") {
@@ -39,40 +39,40 @@ async function authorizeReminderAction() {
         success: false,
         message: "Your account is not active.",
       } satisfies ActionResult,
-    }
+    };
   }
 
-  return { context }
+  return { context };
 }
 
 function revalidateReminderRoutes() {
   for (const route of REMINDER_ROUTES) {
-    revalidatePath(route)
+    revalidatePath(route);
   }
 }
 
 function parseReminderDate(value: string | null | undefined) {
   if (!value) {
-    return null
+    return null;
   }
 
-  const date = new Date(value)
+  const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    throw new Error("Reminder date is invalid.")
+    throw new Error("Reminder date is invalid.");
   }
 
-  return date.toISOString()
+  return date.toISOString();
 }
 
 function getInitialReminderStatus(remindAt: string | null): ReminderStatus {
   return remindAt && new Date(remindAt).getTime() <= Date.now()
     ? "DUE"
-    : "PENDING"
+    : "PENDING";
 }
 
 async function requireOwnedReminder(reminderId: number, profileId: number) {
-  const reminder = await getReminderById(reminderId)
+  const reminder = await getReminderById(reminderId);
 
   if (!reminder) {
     return {
@@ -80,7 +80,7 @@ async function requireOwnedReminder(reminderId: number, profileId: number) {
         success: false,
         message: "Reminder was not found.",
       } satisfies ActionResult,
-    }
+    };
   }
 
   if (reminder.creatorProfileId !== profileId) {
@@ -89,31 +89,31 @@ async function requireOwnedReminder(reminderId: number, profileId: number) {
         success: false,
         message: "You can only update your own reminders.",
       } satisfies ActionResult,
-    }
+    };
   }
 
-  return { reminder }
+  return { reminder };
 }
 
 export async function createReminder(input: unknown): Promise<ActionResult> {
-  const authorization = await authorizeReminderAction()
+  const authorization = await authorizeReminderAction();
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = reminderFormSchema.safeParse(input)
+  const parsed = reminderFormSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid reminder details.",
-    }
+    };
   }
 
   try {
-    const remindAt = parseReminderDate(parsed.data.remindAt)
-    const status = getInitialReminderStatus(remindAt)
+    const remindAt = parseReminderDate(parsed.data.remindAt);
+    const status = getInitialReminderStatus(remindAt);
 
     await query(
       `
@@ -134,57 +134,59 @@ export async function createReminder(input: unknown): Promise<ActionResult> {
         remindAt,
         status,
         parsed.data.priority,
-      ]
-    )
+      ],
+    );
 
-    revalidateReminderRoutes()
+    revalidateReminderRoutes();
 
-    return { success: true, message: "Reminder created successfully." }
+    return { success: true, message: "Reminder created successfully." };
   } catch (error) {
-    console.error("createReminder failed:", error)
+    console.error("createReminder failed:", error);
     return {
       success: false,
       message:
-        error instanceof Error ? error.message : "Unexpected server action error.",
-    }
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    };
   }
 }
 
 export async function updateReminder(input: unknown): Promise<ActionResult> {
-  const authorization = await authorizeReminderAction()
+  const authorization = await authorizeReminderAction();
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = updateReminderSchema.safeParse(input)
+  const parsed = updateReminderSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid reminder update.",
-    }
+    };
   }
 
   const ownership = await requireOwnedReminder(
     parsed.data.reminderId,
-    authorization.context.profile.id
-  )
+    authorization.context.profile.id,
+  );
 
   if (ownership.error) {
-    return ownership.error
+    return ownership.error;
   }
 
   if (ownership.reminder.status === "ARCHIVED") {
-    return { success: false, message: "Archived reminders cannot be edited." }
+    return { success: false, message: "Archived reminders cannot be edited." };
   }
 
   try {
-    const remindAt = parseReminderDate(parsed.data.remindAt)
+    const remindAt = parseReminderDate(parsed.data.remindAt);
     const nextStatus =
       ownership.reminder.status === "DONE"
         ? "DONE"
-        : getInitialReminderStatus(remindAt)
+        : getInitialReminderStatus(remindAt);
 
     await query(
       `
@@ -205,56 +207,60 @@ export async function updateReminder(input: unknown): Promise<ActionResult> {
         remindAt,
         nextStatus,
         parsed.data.priority,
-      ]
-    )
+      ],
+    );
 
-    revalidateReminderRoutes()
+    revalidateReminderRoutes();
 
-    return { success: true, message: "Reminder updated successfully." }
+    return { success: true, message: "Reminder updated successfully." };
   } catch (error) {
-    console.error("updateReminder failed:", error)
+    console.error("updateReminder failed:", error);
     return {
       success: false,
       message:
-        error instanceof Error ? error.message : "Unexpected server action error.",
-    }
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    };
   }
 }
 
 export async function markReminderDone(input: unknown): Promise<ActionResult> {
-  return updateReminderStatus({ ...((input ?? {}) as object), status: "DONE" })
+  return updateReminderStatus({ ...((input ?? {}) as object), status: "DONE" });
 }
 
 export async function archiveReminder(input: unknown): Promise<ActionResult> {
   return updateReminderStatus({
     ...((input ?? {}) as object),
     status: "ARCHIVED",
-  })
+  });
 }
 
-export async function updateReminderStatus(input: unknown): Promise<ActionResult> {
-  const authorization = await authorizeReminderAction()
+export async function updateReminderStatus(
+  input: unknown,
+): Promise<ActionResult> {
+  const authorization = await authorizeReminderAction();
 
   if (authorization.error) {
-    return authorization.error
+    return authorization.error;
   }
 
-  const parsed = updateReminderStatusSchema.safeParse(input)
+  const parsed = updateReminderStatusSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid reminder status.",
-    }
+    };
   }
 
   const ownership = await requireOwnedReminder(
     parsed.data.reminderId,
-    authorization.context.profile.id
-  )
+    authorization.context.profile.id,
+  );
 
   if (ownership.error) {
-    return ownership.error
+    return ownership.error;
   }
 
   try {
@@ -269,29 +275,31 @@ export async function updateReminderStatus(input: unknown): Promise<ActionResult
           updated_at = now()
         WHERE id = $1
         `,
-        [parsed.data.reminderId, parsed.data.status]
-      )
-    })
+        [parsed.data.reminderId, parsed.data.status],
+      );
+    });
 
-    revalidateReminderRoutes()
+    revalidateReminderRoutes();
 
-    return { success: true, message: "Reminder status updated." }
+    return { success: true, message: "Reminder status updated." };
   } catch (error) {
-    console.error("updateReminderStatus failed:", error)
+    console.error("updateReminderStatus failed:", error);
     return {
       success: false,
       message:
-        error instanceof Error ? error.message : "Unexpected server action error.",
-    }
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    };
   }
 }
 
 export async function deleteReminder(input: unknown): Promise<ActionResult> {
-  const parsed = reminderIdSchema.safeParse(input)
+  const parsed = reminderIdSchema.safeParse(input);
 
   if (!parsed.success) {
-    return { success: false, message: "Invalid reminder delete request." }
+    return { success: false, message: "Invalid reminder delete request." };
   }
 
-  return archiveReminder({ reminderId: parsed.data.reminderId })
+  return archiveReminder({ reminderId: parsed.data.reminderId });
 }

@@ -1,5 +1,5 @@
 import { BrandAnalyticsCard } from "@/components/admin/brands/brand-analytics-card"
-import type { BrandApprovalMetrics } from "@/lib/brand-analytics"
+import type { BrandApprovalMetrics } from "@/lib/brands/brand-analytics"
 
 type BrandApprovalSummaryProps = {
   metrics: BrandApprovalMetrics

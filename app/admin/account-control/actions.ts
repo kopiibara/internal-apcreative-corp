@@ -1,26 +1,26 @@
-"use server"
+"use server";
 
-import { headers } from "next/headers"
-import { revalidatePath } from "next/cache"
-import type { PoolClient } from "pg"
-import { z } from "zod"
+import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
+import type { PoolClient } from "pg";
+import { z } from "zod";
 
-import { auth } from "@/lib/auth"
+import { auth } from "@/lib/auth/auth";
 import {
   DEFAULT_DEPARTMENT,
   CLIENT_VIEWER_DEPARTMENT,
-} from "@/lib/account-defaults"
+} from "@/lib/auth/account-defaults";
 import {
   deriveAccountTypeFromRoleSlugs,
   derivePositionFromRoles,
   type AccountType,
   isEmployeeAccountType,
-} from "@/lib/account-type"
-import { getCurrentProfileContext } from "@/lib/auth-session"
-import { can } from "@/lib/permissions"
-import { getDefaultTemporaryPassword } from "@/lib/server/account-secrets"
-import { query, transaction } from "@/lib/db"
-import { enforceRateLimit } from "@/lib/rate-limit"
+} from "@/lib/auth/account-type";
+import { getCurrentProfileContext } from "@/lib/auth/auth-session";
+import { can } from "@/lib/permissions";
+import { getDefaultTemporaryPassword } from "@/lib/server/account-secrets";
+import { query, transaction } from "@/lib/db";
+import { enforceRateLimit } from "@/lib/rate-limit";
 import {
   assignBrandAccessSchema,
   brandAssignmentSchema,
@@ -29,63 +29,65 @@ import {
   removeBrandAccessSchema,
   updateAccountSchema,
   validateBrandAssignments,
-} from "@/app/admin/account-control/schema"
+} from "@/app/admin/account-control/schema";
 
-const ACCOUNT_CONTROL_PATH = "/admin/account-control"
+const ACCOUNT_CONTROL_PATH = "/admin/account-control";
 
 export type ActionResult<T = unknown> = {
-  success: boolean
-  message: string
-  data?: T
-}
+  success: boolean;
+  message: string;
+  data?: T;
+};
 
 type ProfileAccessSummary = {
-  account_type: AccountType
-  active_count: number
-  active_primary_count: number
-}
+  account_type: AccountType;
+  active_count: number;
+  active_primary_count: number;
+};
 
 type AuthUserLookupRow = {
-  id: string
-}
+  id: string;
+};
 
 type RoleRow = {
-  id: number
-  slug: string
-  name: string
-}
+  id: number;
+  slug: string;
+  name: string;
+};
 
-async function authorizeAction(permissionKey: string): Promise<ActionResult | null> {
-  const context = await getCurrentProfileContext()
+async function authorizeAction(
+  permissionKey: string,
+): Promise<ActionResult | null> {
+  const context = await getCurrentProfileContext();
 
   if (!context) {
     return {
       success: false,
       message: "You must be signed in to perform this action.",
-    }
+    };
   }
 
   if (context.profile.status !== "ACTIVE") {
     return {
       success: false,
       message: "Your account is not active.",
-    }
+    };
   }
 
-  const allowed = await can(context.profile.auth_user_id, permissionKey)
+  const allowed = await can(context.profile.auth_user_id, permissionKey);
 
   if (!allowed) {
     return {
       success: false,
       message: "You do not have permission to perform this action.",
-    }
+    };
   }
 
-  return null
+  return null;
 }
 
 function getAuthRole(accountType: AccountType) {
-  return isEmployeeAccountType(accountType) ? "user" : "admin"
+  return isEmployeeAccountType(accountType) ? "user" : "admin";
 }
 
 async function getAuthUserIdByEmail(email: string) {
@@ -96,15 +98,15 @@ async function getAuthUserIdByEmail(email: string) {
     WHERE email = $1
     LIMIT 1
     `,
-    [email]
-  )
+    [email],
+  );
 
-  return result.rows[0]?.id
+  return result.rows[0]?.id;
 }
 
 async function getRolesByIds(roleIds: number[]) {
   if (roleIds.length === 0) {
-    return [] as RoleRow[]
+    return [] as RoleRow[];
   }
 
   const result = await query<RoleRow>(
@@ -113,20 +115,17 @@ async function getRolesByIds(roleIds: number[]) {
     FROM "role"
     WHERE id = ANY($1::int[])
     `,
-    [roleIds]
-  )
+    [roleIds],
+  );
 
-  return result.rows
+  return result.rows;
 }
 
 function hasClientViewerRole(roles: RoleRow[]) {
-  return roles.some((role) => role.slug === "client-viewer")
+  return roles.some((role) => role.slug === "client-viewer");
 }
 
-async function getActiveRolesForProfile(
-  client: PoolClient,
-  profileId: number
-) {
+async function getActiveRolesForProfile(client: PoolClient, profileId: number) {
   const result = await client.query<RoleRow>(
     `
     SELECT DISTINCT r.id, r.slug, r.name
@@ -135,17 +134,17 @@ async function getActiveRolesForProfile(
     WHERE uba.profile_id = $1
       AND uba.is_active = true
     `,
-    [profileId]
-  )
+    [profileId],
+  );
 
-  return result.rows
+  return result.rows;
 }
 
 async function recomputeProfileAccess(client: PoolClient, profileId: number) {
-  const roles = await getActiveRolesForProfile(client, profileId)
-  const roleSlugs = roles.map((role) => role.slug)
-  const accountType = deriveAccountTypeFromRoleSlugs(roleSlugs)
-  const position = derivePositionFromRoles(roles)
+  const roles = await getActiveRolesForProfile(client, profileId);
+  const roleSlugs = roles.map((role) => role.slug);
+  const accountType = deriveAccountTypeFromRoleSlugs(roleSlugs);
+  const position = derivePositionFromRoles(roles);
 
   await client.query(
     `
@@ -156,10 +155,10 @@ async function recomputeProfileAccess(client: PoolClient, profileId: number) {
       updated_at = now()
     WHERE id = $1
     `,
-    [profileId, accountType, position]
-  )
+    [profileId, accountType, position],
+  );
 
-  return accountType
+  return accountType;
 }
 
 async function removeAuthUserIfPossible(userId: string) {
@@ -167,9 +166,9 @@ async function removeAuthUserIfPossible(userId: string) {
     await auth.api.removeUser({
       body: { userId },
       headers: await headers(),
-    })
+    });
   } catch (error) {
-    console.error("Failed to remove orphaned Better Auth user:", error)
+    console.error("Failed to remove orphaned Better Auth user:", error);
   }
 }
 
@@ -178,114 +177,116 @@ async function revokeAuthSessionsIfPossible(userId: string) {
     await auth.api.revokeUserSessions({
       body: { userId },
       headers: await headers(),
-    })
+    });
   } catch (error) {
-    console.error("Failed to revoke Better Auth sessions:", error)
+    console.error("Failed to revoke Better Auth sessions:", error);
   }
 }
 
 function getBrandAssignmentValidationMessage(
   accountType: AccountType,
-  assignments: z.infer<typeof brandAssignmentSchema>[]
+  assignments: z.infer<typeof brandAssignmentSchema>[],
 ) {
-  const issues: { message: string }[] = []
+  const issues: { message: string }[] = [];
   const context = {
     addIssue: (issue: { message: string }) => {
-      issues.push(issue)
+      issues.push(issue);
     },
-  }
+  };
 
   validateBrandAssignments(
     accountType,
     assignments,
-    context as unknown as z.RefinementCtx
-  )
+    context as unknown as z.RefinementCtx,
+  );
 
-  return issues[0]?.message ?? null
+  return issues[0]?.message ?? null;
 }
 
-function validateEmployeeAccessSummary(summary: ProfileAccessSummary | undefined) {
+function validateEmployeeAccessSummary(
+  summary: ProfileAccessSummary | undefined,
+) {
   if (!summary) {
-    return "Account profile was not found."
+    return "Account profile was not found.";
   }
 
   if (!isEmployeeAccountType(summary.account_type)) {
-    return null
+    return null;
   }
 
   if (summary.active_count < 1) {
-    return "CLIENT and EMPLOYEE accounts need at least one active brand."
+    return "CLIENT and EMPLOYEE accounts need at least one active brand.";
   }
 
   if (summary.active_primary_count !== 1) {
-    return "CLIENT and EMPLOYEE accounts need exactly one primary active brand."
+    return "CLIENT and EMPLOYEE accounts need exactly one primary active brand.";
   }
 
-  return null
+  return null;
 }
 
 export async function createAccount(input: unknown): Promise<ActionResult> {
-  const authError = await authorizeAction("accounts.create")
+  const authError = await authorizeAction("accounts.create");
 
   if (authError) {
-    return authError
+    return authError;
   }
 
   const rateLimit = await enforceRateLimit({
     bucket: "account:create",
     limit: 10,
     windowMs: 10 * 60 * 1000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
-  const parsed = createAccountSchema.safeParse(input)
+  const parsed = createAccountSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid account details.",
-    }
+    };
   }
 
-  const data = parsed.data
-  const roleIds = data.brandAssignments.map((assignment) => assignment.roleId)
-  const roles = await getRolesByIds(roleIds)
-  const roleSlugs = roles.map((role) => role.slug)
-  const accountType = deriveAccountTypeFromRoleSlugs(roleSlugs)
-  const position = derivePositionFromRoles(roles)
+  const data = parsed.data;
+  const roleIds = data.brandAssignments.map((assignment) => assignment.roleId);
+  const roles = await getRolesByIds(roleIds);
+  const roleSlugs = roles.map((role) => role.slug);
+  const accountType = deriveAccountTypeFromRoleSlugs(roleSlugs);
+  const position = derivePositionFromRoles(roles);
 
   const brandAssignmentError = getBrandAssignmentValidationMessage(
     accountType,
-    data.brandAssignments
-  )
+    data.brandAssignments,
+  );
 
   if (brandAssignmentError) {
     return {
       success: false,
       message: brandAssignmentError,
-    }
+    };
   }
 
-  let temporaryPassword: string
+  let temporaryPassword: string;
 
   try {
-    temporaryPassword = getDefaultTemporaryPassword()
+    temporaryPassword = getDefaultTemporaryPassword();
   } catch {
     return {
       success: false,
       message: "Default temporary password is not configured.",
-    }
+    };
   }
 
-  const shouldUseClientDepartment = hasClientViewerRole(roles)
+  const shouldUseClientDepartment = hasClientViewerRole(roles);
   const department = shouldUseClientDepartment
-    ? data.department ?? CLIENT_VIEWER_DEPARTMENT
-    : DEFAULT_DEPARTMENT
+    ? (data.department ?? CLIENT_VIEWER_DEPARTMENT)
+    : DEFAULT_DEPARTMENT;
 
-  let authUserId: string | undefined
+  let authUserId: string | undefined;
 
   try {
     const createdUser = await auth.api.createUser({
@@ -295,9 +296,9 @@ export async function createAccount(input: unknown): Promise<ActionResult> {
         name: data.fullName,
         role: getAuthRole(accountType),
       },
-    })
+    });
 
-    authUserId = createdUser.user.id
+    authUserId = createdUser.user.id;
 
     await transaction(async (client) => {
       const profileResult = await client.query<{ id: number }>(
@@ -326,12 +327,12 @@ export async function createAccount(input: unknown): Promise<ActionResult> {
           data.phoneNumber,
           data.status,
           true,
-        ]
-      )
-      const profileId = profileResult.rows[0]?.id
+        ],
+      );
+      const profileId = profileResult.rows[0]?.id;
 
       if (!profileId) {
-        throw new Error("Profile was not created.")
+        throw new Error("Profile was not created.");
       }
 
       for (const assignment of data.brandAssignments) {
@@ -353,11 +354,11 @@ export async function createAccount(input: unknown): Promise<ActionResult> {
             assignment.roleId,
             assignment.isPrimary,
             assignment.isActive,
-          ]
-        )
+          ],
+        );
       }
 
-      await recomputeProfileAccess(client, profileId)
+      await recomputeProfileAccess(client, profileId);
 
       const summaryResult = await client.query<ProfileAccessSummary>(
         `
@@ -373,35 +374,35 @@ export async function createAccount(input: unknown): Promise<ActionResult> {
         GROUP BY p.id
         LIMIT 1
         `,
-        [profileId]
-      )
+        [profileId],
+      );
       const validationError = validateEmployeeAccessSummary(
-        summaryResult.rows[0]
-      )
+        summaryResult.rows[0],
+      );
 
       if (validationError) {
-        throw new Error(validationError)
+        throw new Error(validationError);
       }
-    })
+    });
 
-    revalidatePath(ACCOUNT_CONTROL_PATH)
+    revalidatePath(ACCOUNT_CONTROL_PATH);
 
     return {
       success: true,
       message: "Account created successfully.",
-    }
+    };
   } catch (error) {
     if (authUserId) {
-      await removeAuthUserIfPossible(authUserId)
+      await removeAuthUserIfPossible(authUserId);
     } else {
-      const existingAuthUserId = await getAuthUserIdByEmail(data.email)
+      const existingAuthUserId = await getAuthUserIdByEmail(data.email);
 
       if (existingAuthUserId) {
-        authUserId = existingAuthUserId
+        authUserId = existingAuthUserId;
       }
     }
 
-    console.error("createAccount failed:", error)
+    console.error("createAccount failed:", error);
 
     return {
       success: false,
@@ -409,45 +410,45 @@ export async function createAccount(input: unknown): Promise<ActionResult> {
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function updateAccount(input: unknown): Promise<ActionResult> {
-  const authError = await authorizeAction("accounts.update")
+  const authError = await authorizeAction("accounts.update");
 
   if (authError) {
-    return authError
+    return authError;
   }
 
   const rateLimit = await enforceRateLimit({
     bucket: "account:update",
     limit: 30,
     windowMs: 10 * 60 * 1000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
-  const parsed = updateAccountSchema.safeParse(input)
+  const parsed = updateAccountSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid account details.",
-    }
+    };
   }
 
-  const data = parsed.data
+  const data = parsed.data;
 
   try {
     await transaction(async (client) => {
-      const roles = await getActiveRolesForProfile(client, data.profileId)
-      const shouldUseClientDepartment = hasClientViewerRole(roles)
+      const roles = await getActiveRolesForProfile(client, data.profileId);
+      const shouldUseClientDepartment = hasClientViewerRole(roles);
       const department = shouldUseClientDepartment
         ? data.department
-        : DEFAULT_DEPARTMENT
+        : DEFAULT_DEPARTMENT;
 
       await client.query(
         `
@@ -466,10 +467,10 @@ export async function updateAccount(input: unknown): Promise<ActionResult> {
           department,
           data.phoneNumber,
           data.status,
-        ]
-      )
+        ],
+      );
 
-      await recomputeProfileAccess(client, data.profileId)
+      await recomputeProfileAccess(client, data.profileId);
 
       const summaryResult = await client.query<ProfileAccessSummary>(
         `
@@ -485,25 +486,25 @@ export async function updateAccount(input: unknown): Promise<ActionResult> {
         GROUP BY p.id
         LIMIT 1
         `,
-        [data.profileId]
-      )
+        [data.profileId],
+      );
       const validationError = validateEmployeeAccessSummary(
-        summaryResult.rows[0]
-      )
+        summaryResult.rows[0],
+      );
 
       if (validationError) {
-        throw new Error(validationError)
+        throw new Error(validationError);
       }
-    })
+    });
 
-    revalidatePath(ACCOUNT_CONTROL_PATH)
+    revalidatePath(ACCOUNT_CONTROL_PATH);
 
     return {
       success: true,
       message: "Account updated successfully.",
-    }
+    };
   } catch (error) {
-    console.error("updateAccount failed:", error)
+    console.error("updateAccount failed:", error);
 
     return {
       success: false,
@@ -511,34 +512,34 @@ export async function updateAccount(input: unknown): Promise<ActionResult> {
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function disableAccount(input: unknown): Promise<ActionResult> {
-  const authError = await authorizeAction("accounts.disable")
+  const authError = await authorizeAction("accounts.disable");
 
   if (authError) {
-    return authError
+    return authError;
   }
 
   const rateLimit = await enforceRateLimit({
     bucket: "account:disable",
     limit: 30,
     windowMs: 10 * 60 * 1000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
-  const parsed = disableAccountSchema.safeParse(input)
+  const parsed = disableAccountSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid account.",
-    }
+    };
   }
 
   try {
@@ -550,22 +551,22 @@ export async function disableAccount(input: unknown): Promise<ActionResult> {
       WHERE id = $1
       RETURNING auth_user_id
       `,
-      [parsed.data.profileId]
-    )
-    const authUserId = result.rows[0]?.auth_user_id
+      [parsed.data.profileId],
+    );
+    const authUserId = result.rows[0]?.auth_user_id;
 
     if (authUserId) {
-      await revokeAuthSessionsIfPossible(authUserId)
+      await revokeAuthSessionsIfPossible(authUserId);
     }
 
-    revalidatePath(ACCOUNT_CONTROL_PATH)
+    revalidatePath(ACCOUNT_CONTROL_PATH);
 
     return {
       success: true,
       message: "Account disabled successfully.",
-    }
+    };
   } catch (error) {
-    console.error("disableAccount failed:", error)
+    console.error("disableAccount failed:", error);
 
     return {
       success: false,
@@ -573,37 +574,37 @@ export async function disableAccount(input: unknown): Promise<ActionResult> {
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function assignBrandAccess(input: unknown): Promise<ActionResult> {
-  const authError = await authorizeAction("accounts.update")
+  const authError = await authorizeAction("accounts.update");
 
   if (authError) {
-    return authError
+    return authError;
   }
 
   const rateLimit = await enforceRateLimit({
     bucket: "account:update",
     limit: 30,
     windowMs: 10 * 60 * 1000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
-  const parsed = assignBrandAccessSchema.safeParse(input)
+  const parsed = assignBrandAccessSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid brand access.",
-    }
+    };
   }
 
-  const data = parsed.data
+  const data = parsed.data;
 
   try {
     await transaction(async (client) => {
@@ -614,12 +615,12 @@ export async function assignBrandAccess(input: unknown): Promise<ActionResult> {
         WHERE id = $1
         LIMIT 1
         `,
-        [data.profileId]
-      )
-      const currentAccountType = profileResult.rows[0]?.account_type
+        [data.profileId],
+      );
+      const currentAccountType = profileResult.rows[0]?.account_type;
 
       if (!currentAccountType) {
-        throw new Error("Account profile was not found.")
+        throw new Error("Account profile was not found.");
       }
 
       if (
@@ -634,8 +635,8 @@ export async function assignBrandAccess(input: unknown): Promise<ActionResult> {
               updated_at = now()
           WHERE profile_id = $1
           `,
-          [data.profileId]
-        )
+          [data.profileId],
+        );
       }
 
       await client.query(
@@ -681,10 +682,10 @@ export async function assignBrandAccess(input: unknown): Promise<ActionResult> {
           data.roleId,
           data.isPrimary,
           data.isActive,
-        ]
-      )
+        ],
+      );
 
-      await recomputeProfileAccess(client, data.profileId)
+      await recomputeProfileAccess(client, data.profileId);
 
       const summaryResult = await client.query<ProfileAccessSummary>(
         `
@@ -700,25 +701,25 @@ export async function assignBrandAccess(input: unknown): Promise<ActionResult> {
         GROUP BY p.id
         LIMIT 1
         `,
-        [data.profileId]
-      )
+        [data.profileId],
+      );
       const validationError = validateEmployeeAccessSummary(
-        summaryResult.rows[0]
-      )
+        summaryResult.rows[0],
+      );
 
       if (validationError) {
-        throw new Error(validationError)
+        throw new Error(validationError);
       }
-    })
+    });
 
-    revalidatePath(ACCOUNT_CONTROL_PATH)
+    revalidatePath(ACCOUNT_CONTROL_PATH);
 
     return {
       success: true,
       message: "Brand access assigned successfully.",
-    }
+    };
   } catch (error) {
-    console.error("assignBrandAccess failed:", error)
+    console.error("assignBrandAccess failed:", error);
 
     return {
       success: false,
@@ -726,43 +727,43 @@ export async function assignBrandAccess(input: unknown): Promise<ActionResult> {
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }
 
 export async function removeBrandAccess(input: unknown): Promise<ActionResult> {
-  const authError = await authorizeAction("accounts.update")
+  const authError = await authorizeAction("accounts.update");
 
   if (authError) {
-    return authError
+    return authError;
   }
 
   const rateLimit = await enforceRateLimit({
     bucket: "account:update",
     limit: 30,
     windowMs: 10 * 60 * 1000,
-  })
+  });
 
   if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message }
+    return { success: false, message: rateLimit.message };
   }
 
-  const parsed = removeBrandAccessSchema.safeParse(input)
+  const parsed = removeBrandAccessSchema.safeParse(input);
 
   if (!parsed.success) {
     return {
       success: false,
       message: parsed.error.issues[0]?.message ?? "Invalid brand access.",
-    }
+    };
   }
 
-  const data = parsed.data
+  const data = parsed.data;
 
   try {
     await transaction(async (client) => {
       const accessResult = await client.query<{
-        account_type: AccountType
-        is_primary: boolean
+        account_type: AccountType;
+        is_primary: boolean;
       }>(
         `
         SELECT p.account_type, uba.is_primary
@@ -773,12 +774,12 @@ export async function removeBrandAccess(input: unknown): Promise<ActionResult> {
           AND uba.is_active = true
         LIMIT 1
         `,
-        [data.profileId, data.brandId]
-      )
-      const access = accessResult.rows[0]
+        [data.profileId, data.brandId],
+      );
+      const access = accessResult.rows[0];
 
       if (!access) {
-        throw new Error("Active brand access was not found.")
+        throw new Error("Active brand access was not found.");
       }
 
       if (isEmployeeAccountType(access.account_type)) {
@@ -790,14 +791,14 @@ export async function removeBrandAccess(input: unknown): Promise<ActionResult> {
             AND brand_id <> $2
             AND is_active = true
           `,
-          [data.profileId, data.brandId]
-        )
-        const remainingCount = remainingResult.rows[0]?.remaining_count ?? 0
+          [data.profileId, data.brandId],
+        );
+        const remainingCount = remainingResult.rows[0]?.remaining_count ?? 0;
 
         if (remainingCount < 1) {
           throw new Error(
-            "CLIENT and EMPLOYEE accounts need at least one active brand."
-          )
+            "CLIENT and EMPLOYEE accounts need at least one active brand.",
+          );
         }
       }
 
@@ -811,10 +812,13 @@ export async function removeBrandAccess(input: unknown): Promise<ActionResult> {
         WHERE profile_id = $1
           AND brand_id = $2
         `,
-        [data.profileId, data.brandId]
-      )
+        [data.profileId, data.brandId],
+      );
 
-      const updatedAccountType = await recomputeProfileAccess(client, data.profileId)
+      const updatedAccountType = await recomputeProfileAccess(
+        client,
+        data.profileId,
+      );
 
       if (isEmployeeAccountType(updatedAccountType) && access.is_primary) {
         await client.query(
@@ -831,8 +835,8 @@ export async function removeBrandAccess(input: unknown): Promise<ActionResult> {
             LIMIT 1
           )
           `,
-          [data.profileId]
-        )
+          [data.profileId],
+        );
       }
 
       const summaryResult = await client.query<ProfileAccessSummary>(
@@ -849,25 +853,25 @@ export async function removeBrandAccess(input: unknown): Promise<ActionResult> {
         GROUP BY p.id
         LIMIT 1
         `,
-        [data.profileId]
-      )
+        [data.profileId],
+      );
       const validationError = validateEmployeeAccessSummary(
-        summaryResult.rows[0]
-      )
+        summaryResult.rows[0],
+      );
 
       if (validationError) {
-        throw new Error(validationError)
+        throw new Error(validationError);
       }
-    })
+    });
 
-    revalidatePath(ACCOUNT_CONTROL_PATH)
+    revalidatePath(ACCOUNT_CONTROL_PATH);
 
     return {
       success: true,
       message: "Brand access removed successfully.",
-    }
+    };
   } catch (error) {
-    console.error("removeBrandAccess failed:", error)
+    console.error("removeBrandAccess failed:", error);
 
     return {
       success: false,
@@ -875,6 +879,6 @@ export async function removeBrandAccess(input: unknown): Promise<ActionResult> {
         error instanceof Error
           ? error.message
           : "Unexpected server action error.",
-    }
+    };
   }
 }

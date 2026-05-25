@@ -1,31 +1,31 @@
-"use client"
+"use client";
 
-import { create } from "zustand"
+import { create } from "zustand";
 
 import type {
   ReminderPriority,
   ReminderStatus,
-} from "@/lib/reminder-statuses"
-import type { ReminderRecord } from "@/lib/reminders"
+} from "@/lib/reminders/reminder-statuses";
+import type { ReminderRecord } from "@/lib/reminders/reminders";
 
 type ReminderStore = {
-  searchQuery: string
-  selectedStatusFilter: ReminderStatus | "all"
-  selectedPriorityFilter: ReminderPriority | "all"
-  selectedDateRange: "all" | "today" | "upcoming" | "past"
-  selectedReminder: ReminderRecord | null
-  isCreateDialogOpen: boolean
-  isEditDialogOpen: boolean
-  setSearchQuery: (query: string) => void
-  setSelectedStatusFilter: (status: ReminderStatus | "all") => void
-  setSelectedPriorityFilter: (priority: ReminderPriority | "all") => void
-  setSelectedDateRange: (dateRange: ReminderStore["selectedDateRange"]) => void
-  openCreateDialog: () => void
-  closeCreateDialog: () => void
-  openEditDialog: (reminder: ReminderRecord) => void
-  closeEditDialog: () => void
-  resetReminderFilters: () => void
-}
+  searchQuery: string;
+  selectedStatusFilter: ReminderStatus | "all";
+  selectedPriorityFilter: ReminderPriority | "all";
+  selectedDateRange: "all" | "today" | "upcoming" | "past";
+  selectedReminder: ReminderRecord | null;
+  isCreateDialogOpen: boolean;
+  isEditDialogOpen: boolean;
+  setSearchQuery: (query: string) => void;
+  setSelectedStatusFilter: (status: ReminderStatus | "all") => void;
+  setSelectedPriorityFilter: (priority: ReminderPriority | "all") => void;
+  setSelectedDateRange: (dateRange: ReminderStore["selectedDateRange"]) => void;
+  openCreateDialog: () => void;
+  closeCreateDialog: () => void;
+  openEditDialog: (reminder: ReminderRecord) => void;
+  closeEditDialog: () => void;
+  resetReminderFilters: () => void;
+};
 
 export const useReminderStore = create<ReminderStore>((set) => ({
   searchQuery: "",
@@ -54,4 +54,4 @@ export const useReminderStore = create<ReminderStore>((set) => ({
       selectedPriorityFilter: "all",
       selectedDateRange: "all",
     }),
-}))
+}));

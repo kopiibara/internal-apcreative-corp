@@ -1,10 +1,10 @@
 import { BrandApprovalCard } from "@/components/admin/brands/brand-approval-card"
 import { KanbanColumnHeader } from "@/components/shared/kanban-column-header"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { getApprovalKanbanStage } from "@/lib/approval-kanban"
-import type { RecentBrandApproval } from "@/lib/brand-analytics"
-import { getKanbanStageConfig } from "@/lib/approval-kanban-status"
-import type { ApprovalKanbanColumnId } from "@/lib/approval-statuses"
+import { getApprovalKanbanStage } from "@/lib/approvals/approval-kanban"
+import type { RecentBrandApproval } from "@/lib/brands/brand-analytics"
+import { getKanbanStageConfig } from "@/lib/approvals/approval-kanban-status"
+import type { ApprovalKanbanColumnId } from "@/lib/approvals/approval-statuses"
 
 type RecentBrandApprovalsProps = {
   approvals: RecentBrandApproval[]

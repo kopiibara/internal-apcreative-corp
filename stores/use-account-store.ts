@@ -1,34 +1,34 @@
-"use client"
+"use client";
 
-import { create } from "zustand"
+import { create } from "zustand";
 
-import type { AccountListItem } from "@/lib/accounts"
+import type { AccountListItem } from "@/lib/auth/accounts";
 
 type AccountStore = {
-  selectedAccountId: number | null
-  selectedAccount: AccountListItem | null
-  isCreateDialogOpen: boolean
-  isEditDialogOpen: boolean
-  isDisableDialogOpen: boolean
-  searchQuery: string
-  selectedRoleFilter: string
-  selectedBrandFilter: string
-  selectedStatusFilter: string
-  selectedAccountTypeFilter: string
-  openCreateDialog: () => void
-  closeCreateDialog: () => void
-  openEditDialog: (account: AccountListItem) => void
-  closeEditDialog: () => void
-  openDisableDialog: (account: AccountListItem) => void
-  closeDisableDialog: () => void
-  setSelectedAccount: (account: AccountListItem | null) => void
-  setSearchQuery: (query: string) => void
-  setSelectedRoleFilter: (roleId: string) => void
-  setSelectedBrandFilter: (brandId: string) => void
-  setSelectedStatusFilter: (status: string) => void
-  setSelectedAccountTypeFilter: (accountType: string) => void
-  resetAccountFilters: () => void
-}
+  selectedAccountId: number | null;
+  selectedAccount: AccountListItem | null;
+  isCreateDialogOpen: boolean;
+  isEditDialogOpen: boolean;
+  isDisableDialogOpen: boolean;
+  searchQuery: string;
+  selectedRoleFilter: string;
+  selectedBrandFilter: string;
+  selectedStatusFilter: string;
+  selectedAccountTypeFilter: string;
+  openCreateDialog: () => void;
+  closeCreateDialog: () => void;
+  openEditDialog: (account: AccountListItem) => void;
+  closeEditDialog: () => void;
+  openDisableDialog: (account: AccountListItem) => void;
+  closeDisableDialog: () => void;
+  setSelectedAccount: (account: AccountListItem | null) => void;
+  setSearchQuery: (query: string) => void;
+  setSelectedRoleFilter: (roleId: string) => void;
+  setSelectedBrandFilter: (brandId: string) => void;
+  setSelectedStatusFilter: (status: string) => void;
+  setSelectedAccountTypeFilter: (accountType: string) => void;
+  resetAccountFilters: () => void;
+};
 
 export const useAccountStore = create<AccountStore>((set) => ({
   selectedAccountId: null,
@@ -87,4 +87,4 @@ export const useAccountStore = create<AccountStore>((set) => ({
       selectedStatusFilter: "all",
       selectedAccountTypeFilter: "all",
     }),
-}))
+}));

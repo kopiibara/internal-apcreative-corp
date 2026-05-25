@@ -208,7 +208,7 @@ function ApprovalVerificationDialogContent({
             />
           </div>
 
-          <div className="flex items-start gap-3 rounded-md border p-3">
+          <div className="flex items-start gap-3 rounded-lg border p-3">
             <Checkbox
               id="approval-confirmation-accepted"
               checked={confirmationAccepted}

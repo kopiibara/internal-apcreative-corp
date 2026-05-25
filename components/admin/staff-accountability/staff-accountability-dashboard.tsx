@@ -2,14 +2,10 @@
 
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import {
-  Award,
-  Ban,
-  CheckCircle2,
-  Trophy,
-} from "lucide-react"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
+import { FilterBadge } from "@/components/shared/filter-badge"
+import { FilterBadgeGroup } from "@/components/shared/filter-badge-group"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -45,12 +41,12 @@ import {
 import type {
   DailyReportBrandOption,
   DailyReportEmployeeOption,
-} from "@/lib/daily-reports"
+} from "@/lib/daily-reports/daily-reports"
 import type {
   StaffAccountabilityData,
   StaffAccountabilityBrandSummary,
   StaffAccountabilitySummary,
-} from "@/lib/tasks"
+} from "@/lib/tasks/tasks"
 import { cn } from "@/lib/utils"
 
 type CompletionChartItem = {
@@ -74,12 +70,11 @@ type StaffAccountabilityDashboardProps = {
 }
 
 type SummaryCardProps = {
+  label: string
   title: string
   value: string
   detail: string
-  icon: React.ComponentType<{ className?: string }>
-  className: string
-  iconClassName: string
+  tone: string
 }
 
 type BrandSummaryChartItem = StaffAccountabilityBrandSummary & {
@@ -188,32 +183,32 @@ function getBrandLabel(brands: StaffAccountabilitySummary["brands"]) {
 }
 
 function SummaryCard({
+  label,
   title,
   value,
   detail,
-  icon: Icon,
-  className,
-  iconClassName,
+  tone,
 }: SummaryCardProps) {
   return (
-    <Card className={cn("min-w-0 overflow-hidden shadow-none", className)}>
-      <div className={cn("h-2 border-b-2 border-border", iconClassName)} />
-      <CardContent className="flex items-start justify-between gap-3 p-4">
-        <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-foreground/70">
-            {title}
-          </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p>
-          <p className="mt-1 text-xs text-foreground/70">{detail}</p>
-        </div>
-        <div
-          className={cn(
-            "rounded-md border-2 border-border p-2 text-foreground",
-            iconClassName
-          )}
-        >
-          <Icon className="size-4" />
-        </div>
+    <Card
+      className={cn(
+        "min-h-[150px] min-w-0 justify-between overflow-hidden px-4 py-4 md:min-h-[190px] md:px-6 md:py-6",
+        tone
+      )}
+    >
+      <CardHeader className="gap-0 px-0">
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] opacity-80">
+          {label}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3 px-0">
+        <CardTitle className="text-3xl font-black uppercase leading-[0.9] tracking-normal md:text-4xl">
+          {value}
+        </CardTitle>
+        <CardDescription className="text-xs font-semibold leading-snug opacity-90">
+          {title}
+        </CardDescription>
+        <p className="text-xs font-semibold opacity-80">{detail}</p>
       </CardContent>
     </Card>
   )
@@ -244,13 +239,16 @@ function StaffAccountabilityFilters({
   }
 
   return (
-    <Card className="shadow-none">
-      <CardContent className="grid gap-3 p-4 md:grid-cols-[1fr_1fr_1fr_auto]">
+    <div className="relative z-20 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center">
         <Select
           value={filters.month}
           onValueChange={(value) => updateFilter("month", value)}
         >
-          <SelectTrigger aria-label="Filter by month">
+          <SelectTrigger
+            aria-label="Filter by month"
+            className="h-9 w-fit min-w-[150px] rounded-full"
+          >
             <SelectValue placeholder="All months" />
           </SelectTrigger>
           <SelectContent>
@@ -263,28 +261,32 @@ function StaffAccountabilityFilters({
           </SelectContent>
         </Select>
 
-        <Select
-          value={filters.brandId}
-          onValueChange={(value) => updateFilter("brandId", value)}
-        >
-          <SelectTrigger aria-label="Filter by brand">
-            <SelectValue placeholder="All brands" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All brands</SelectItem>
-            {brands.map((brand) => (
-              <SelectItem key={brand.id} value={String(brand.id)}>
-                {brand.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FilterBadgeGroup label="" className="min-w-0">
+          <FilterBadge
+            active={filters.brandId === "all"}
+            onClick={() => updateFilter("brandId", "all")}
+          >
+            All Brands
+          </FilterBadge>
+          {brands.map((brand) => (
+            <FilterBadge
+              key={brand.id}
+              active={filters.brandId === String(brand.id)}
+              onClick={() => updateFilter("brandId", String(brand.id))}
+            >
+              {brand.name}
+            </FilterBadge>
+          ))}
+        </FilterBadgeGroup>
 
         <Select
           value={filters.employeeId}
           onValueChange={(value) => updateFilter("employeeId", value)}
         >
-          <SelectTrigger aria-label="Filter by employee">
+          <SelectTrigger
+            aria-label="Filter by employee"
+            className="h-9 w-fit min-w-[170px] rounded-full"
+          >
             <SelectValue placeholder="All employees" />
           </SelectTrigger>
           <SelectContent>
@@ -296,72 +298,52 @@ function StaffAccountabilityFilters({
             ))}
           </SelectContent>
         </Select>
+      </div>
 
-        <Button asChild variant="outline">
-          <Link href="/admin/staff-accountability">Reset filters</Link>
-        </Button>
-      </CardContent>
-    </Card>
+      <Button asChild size="sm" className="h-9 w-fit shrink-0">
+        <Link href="/admin/staff-accountability">Reset filters</Link>
+      </Button>
+    </div>
   )
 }
 
-function TopSummaryCards({ data }: { data: StaffAccountabilityData }) {
+export function TopSummaryCards({ data }: { data: StaffAccountabilityData }) {
   const { teamSummary } = data
 
   return (
     <section className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-2 md:gap-3 lg:grid-cols-4">
         <SummaryCard
+          label="01 / COMPLETION"
           title="Average Team Completion"
           value={formatPercent(teamSummary.averageTeamCompletion)}
           detail="Average across included employees"
-          icon={Trophy}
-          className="border-emerald-600 bg-emerald-100 text-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-100"
-          iconClassName="bg-emerald-500"
+          tone="bg-background text-foreground"
         />
         <SummaryCard
+          label="02 / POINTS"
           title="Total Team Points"
           value={`${teamSummary.totalTeamPoints}`}
           detail="Sum of employee task points"
-          icon={Award}
-          className="border-violet-600 bg-violet-100 text-violet-950 dark:bg-violet-950/40 dark:text-violet-100"
-          iconClassName="bg-violet-400"
+          tone="bg-blue text-white"
         />
         <SummaryCard
+          label="03 / TASKS"
           title="Total Completed Tasks"
           value={`${teamSummary.totalCompletedTasks}/${teamSummary.totalAssignedTasks}`}
           detail={`${formatPercent(teamSummary.teamCompletionRate)} completed`}
-          icon={CheckCircle2}
-          className="border-lime-600 bg-lime-100 text-lime-950 dark:bg-lime-950/40 dark:text-lime-100"
-          iconClassName="bg-lime-400"
+          tone="bg-cyan text-white"
         />
         <SummaryCard
+          label="04 / ATTENTION"
           title="Needs Attention"
           value={String(teamSummary.needsAttentionCount)}
           detail="Pending, revision, and blocker tasks"
-          icon={Ban}
-          className="border-orange-600 bg-orange-100 text-orange-950 dark:bg-orange-950/40 dark:text-orange-100"
-          iconClassName="bg-orange-400"
+          tone="bg-magenta text-white"
         />
       </div>
     </section>
   )
-}
-
-function getLeaderboardRowClass(rank: number) {
-  if (rank === 1) {
-    return "border-yellow-500 bg-yellow-100 text-yellow-950 dark:bg-yellow-950/40 dark:text-yellow-100"
-  }
-
-  if (rank === 2) {
-    return "border-slate-400 bg-slate-100 text-slate-950 dark:bg-slate-900/70 dark:text-slate-100"
-  }
-
-  if (rank === 3) {
-    return "border-orange-500 bg-orange-100 text-orange-950 dark:bg-orange-950/40 dark:text-orange-100"
-  }
-
-  return "border-border bg-background"
 }
 
 function getLeaderboardRankClass(rank: number) {
@@ -388,63 +370,83 @@ function EmployeeLeaderboard({
   const topFive = summaries.slice(0, 5)
 
   return (
-    <Card className="h-full shadow-none">
+    <Card className="h-full min-w-0 shadow-none">
       <CardHeader>
         <CardTitle>Employee Leaderboard</CardTitle>
         <CardDescription>
           Ranked by total points, completion rate, then completed tasks.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent>
         {topFive.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No graded task data found for the active filters.
           </p>
         ) : (
-          topFive.map((employee) => (
-            <div
-              key={employee.profileId}
-              className={cn(
-                "grid gap-3 rounded-md border-2 p-3 sm:grid-cols-[auto_auto_1fr_auto]",
-                getLeaderboardRowClass(employee.rank)
-              )}
-            >
-              <div
-                className={cn(
-                  "flex size-9 items-center justify-center rounded-md border-2 border-border text-lg font-semibold tabular-nums text-foreground",
-                  getLeaderboardRankClass(employee.rank)
-                )}
-              >
-                {employee.rank}
-              </div>
-              <div className="flex size-10 items-center justify-center rounded-md border-2 border-border bg-background/70 text-xs font-semibold">
-                {getInitials(employee.fullName)}
-              </div>
-              <div className="min-w-0">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <p className="truncate font-semibold">{employee.fullName}</p>
-                  <StatusBadge
-                    status={employee.performanceLabel}
-                    type="performance"
-                    size="sm"
-                  />
-                </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  {employee.email}
-                </p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  Brands: {getBrandLabel(employee.brands)}
-                </p>
-              </div>
-              <div className="grid gap-1 rounded-md border-2 border-border bg-background/70 px-3 py-2 text-right text-xs sm:min-w-32">
-                <p className="text-lg font-semibold tabular-nums">
-                  {formatPercent(employee.completionRate)} (
-                  {employee.completedTasks}/{employee.totalAssignedTasks}) -{" "}
-                  {employee.taskPoints} pts
-                </p>
-              </div>
-            </div>
-          ))
+          <div className="overflow-hidden rounded-lg border-2 border-border bg-card">
+            <ScrollArea className="w-full" scrollbars="horizontal">
+              <Table className="min-w-[760px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-20">Rank</TableHead>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Brand</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Completion</TableHead>
+                    <TableHead className="text-right">Points</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {topFive.map((employee) => (
+                    <TableRow key={employee.profileId}>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "inline-flex size-9 items-center justify-center rounded-lg border-2 border-border text-sm font-black tabular-nums text-foreground",
+                            getLeaderboardRankClass(employee.rank)
+                          )}
+                        >
+                          {employee.rank}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border-2 border-border bg-background text-xs font-bold">
+                            {getInitials(employee.fullName)}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-bold">
+                              {employee.fullName}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {employee.email}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-48 truncate text-xs text-muted-foreground">
+                        {getBrandLabel(employee.brands)}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge
+                          status={employee.performanceLabel}
+                          type="performance"
+                          size="sm"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right font-bold tabular-nums">
+                        {formatPercent(employee.completionRate)} (
+                        {employee.completedTasks}/{employee.totalAssignedTasks})
+                      </TableCell>
+                      <TableCell className="text-right font-bold tabular-nums">
+                        {employee.taskPoints} pts
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -469,7 +471,7 @@ function CompletionChartTooltip({
   }
 
   return (
-    <div className="grid min-w-[220px] gap-1.5 rounded-md border-2 border-border bg-background px-3 py-2 text-xs shadow-none">
+    <div className="grid min-w-[220px] gap-1.5 rounded-lg border-2 border-border bg-background px-3 py-2 text-xs shadow-none">
       <div>
         <p className="font-semibold">{item.fullName}</p>
         <p className="text-muted-foreground">
@@ -586,7 +588,7 @@ function BrandSummaryTooltip({
   }
 
   return (
-    <div className="grid min-w-[260px] gap-2 rounded-md border-2 border-border bg-background px-3 py-2 text-xs shadow-none">
+    <div className="grid min-w-[260px] gap-2 rounded-lg border-2 border-border bg-background px-3 py-2 text-xs shadow-none">
       <p className="font-semibold">{item.brandName}</p>
       <div className="grid gap-1 text-muted-foreground">
         <p>Total tasks: {item.totalAssignedTasks}</p>
@@ -745,14 +747,6 @@ function BrandTaskApprovalSummary({ data }: { data: StaffAccountabilityData }) {
 
   return (
     <section className="space-y-3">
-      <div>
-        <h2 className="text-lg font-semibold tracking-normal">
-          Brand Task & Approval Summary
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Visual comparison of task completion and approval status by brand.
-        </p>
-      </div>
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <BrandTaskChart data={chartData} />
@@ -883,7 +877,7 @@ export function StaffAccountabilityDashboard({
 
       <TopSummaryCards data={data} />
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <EmployeeLeaderboard summaries={data.summaries} />
         <CompletionRateChart summaries={data.summaries} />
       </div>

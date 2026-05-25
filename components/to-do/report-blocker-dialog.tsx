@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import type { TaskAssignmentRecord } from "@/lib/tasks"
+import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
 
 type ReportBlockerDialogProps = {

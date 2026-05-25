@@ -1,42 +1,42 @@
-import { headers } from "next/headers"
+import { headers } from "next/headers";
 
-import { getCurrentProfileContext } from "@/lib/auth-session"
-import { query } from "@/lib/db"
+import { getCurrentProfileContext } from "@/lib/auth/auth-session";
+import { query } from "@/lib/db";
 
 export const RATE_LIMIT_MESSAGE =
-  "Too many requests. Please wait a moment and try again."
+  "Too many requests. Please wait a moment and try again.";
 
 type EnforceRateLimitInput = {
-  bucket: string
-  limit: number
-  windowMs: number
-}
+  bucket: string;
+  limit: number;
+  windowMs: number;
+};
 
 type RateLimitRow = {
-  request_count: number
-  expires_at: Date
-}
+  request_count: number;
+  expires_at: Date;
+};
 
 function getRetryAfterSeconds(expiresAt: Date) {
-  return Math.max(1, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
+  return Math.max(1, Math.ceil((expiresAt.getTime() - Date.now()) / 1000));
 }
 
 async function getRateKey() {
   try {
-    const context = await getCurrentProfileContext()
+    const context = await getCurrentProfileContext();
 
     if (context) {
-      return `profile:${context.profile.id}`
+      return `profile:${context.profile.id}`;
     }
   } catch {
     // Fall back to IP when no authenticated profile can be loaded.
   }
 
-  const headerList = await headers()
-  const forwardedFor = headerList.get("x-forwarded-for")?.split(",")[0]?.trim()
-  const realIp = headerList.get("x-real-ip")?.trim()
+  const headerList = await headers();
+  const forwardedFor = headerList.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const realIp = headerList.get("x-real-ip")?.trim();
 
-  return `ip:${forwardedFor || realIp || "unknown"}`
+  return `ip:${forwardedFor || realIp || "unknown"}`;
 }
 
 export async function enforceRateLimit({
@@ -44,11 +44,11 @@ export async function enforceRateLimit({
   limit,
   windowMs,
 }: EnforceRateLimitInput) {
-  const rateKey = await getRateKey()
-  const windowInterval = `${Math.ceil(windowMs / 1000)} seconds`
+  const rateKey = await getRateKey();
+  const windowInterval = `${Math.ceil(windowMs / 1000)} seconds`;
 
   try {
-    await query("DELETE FROM rate_limit_bucket WHERE expires_at < now()")
+    await query("DELETE FROM rate_limit_bucket WHERE expires_at < now()");
 
     const result = await query<RateLimitRow>(
       `
@@ -77,26 +77,26 @@ export async function enforceRateLimit({
         updated_at = now()
       RETURNING request_count, expires_at
       `,
-      [rateKey, bucket, windowInterval]
-    )
-    const row = result.rows[0]
+      [rateKey, bucket, windowInterval],
+    );
+    const row = result.rows[0];
 
     if (!row || row.request_count <= limit) {
-      return { success: true as const }
+      return { success: true as const };
     }
 
     return {
       success: false as const,
       message: RATE_LIMIT_MESSAGE,
       retryAfter: getRetryAfterSeconds(row.expires_at),
-    }
+    };
   } catch (error) {
-    console.error("enforceRateLimit failed:", error)
+    console.error("enforceRateLimit failed:", error);
 
     return {
       success: false as const,
       message: RATE_LIMIT_MESSAGE,
       retryAfter: 60,
-    }
+    };
   }
 }

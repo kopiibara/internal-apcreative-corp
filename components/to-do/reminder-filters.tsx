@@ -16,7 +16,7 @@ import {
   getReminderStatusLabel,
   REMINDER_PRIORITIES,
   REMINDER_STATUSES,
-} from "@/lib/reminder-statuses"
+} from "@/lib/reminders/reminder-statuses"
 import { useReminderStore } from "@/stores/use-reminder-store"
 
 export function ReminderFilters() {

@@ -1,6 +1,6 @@
 import { EmployeeApprovalKanbanBoard } from "@/components/employee/approvals/approval-kanban-board"
 import { getMyContentReports } from "@/lib/content-reports"
-import { getCurrentProfileContext } from "@/lib/auth-session"
+import { getCurrentProfileContext } from "@/lib/auth/auth-session"
 import { can } from "@/lib/permissions"
 import { redirect } from "next/navigation"
 

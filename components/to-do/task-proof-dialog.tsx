@@ -24,8 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { TASK_PROOF_TYPES } from "@/lib/task-type"
-import type { TaskAssignmentRecord } from "@/lib/tasks"
+import { TASK_PROOF_TYPES } from "@/lib/tasks/task-type"
+import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
 
 type TaskProofDialogProps = {

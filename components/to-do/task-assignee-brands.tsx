@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge"
-import type { AssigneeBrandAccess } from "@/lib/tasks"
+import type { AssigneeBrandAccess } from "@/lib/tasks/tasks"
 
 type TaskAssigneeBrandsProps = {
   brands: AssigneeBrandAccess[]

@@ -34,7 +34,7 @@ export function SupervisorReviewReadonly({ report }: SupervisorReviewReadonlyPro
         {report.supervisorNotes ? (
           <div className="space-y-2">
             <Label>Marketing Supervisor Notes</Label>
-            <p className="whitespace-pre-wrap rounded-md border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
+            <p className="whitespace-pre-wrap rounded-lg border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
               {report.supervisorNotes}
             </p>
           </div>

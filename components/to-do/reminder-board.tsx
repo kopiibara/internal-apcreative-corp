@@ -9,7 +9,7 @@ import { ReminderKanbanBoard } from "@/components/to-do/reminder-kanban-board"
 import { BoardSection } from "@/components/shared/board-section"
 import { Button } from "@/components/ui/button"
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { ReminderRecord } from "@/lib/reminders"
+import type { ReminderRecord } from "@/lib/reminders/reminders"
 import { useReminderStore } from "@/stores/use-reminder-store"
 
 type ReminderBoardProps = {

@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import {
   getBrandAnalyticsCardConfig,
   type BrandAnalyticsMetricKey,
-} from "@/lib/brand-analytics-status"
+} from "@/lib/brands/brand-analytics-status"
 import { cn } from "@/lib/utils"
 
 type BrandAnalyticsCardProps = {

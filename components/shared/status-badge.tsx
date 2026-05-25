@@ -7,7 +7,7 @@ import {
   formatStatusLabel,
   getStatusBadgeClassName,
   type StatusBadgeType,
-} from "@/lib/status-badge"
+} from "@/lib/ui/status-badge"
 import { cn } from "@/lib/utils"
 
 export type StatusBadgeProps = {

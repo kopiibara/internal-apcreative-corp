@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { getInitialsFromName } from "@/lib/utils"
-import type { TaskActivityLogRecord } from "@/lib/tasks"
+import type { TaskActivityLogRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",

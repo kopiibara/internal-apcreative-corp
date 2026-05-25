@@ -2,11 +2,11 @@ import { DailyReportsDashboard } from "@/components/admin/daily-reports/daily-re
 import {
   getTodayDateKeyInPhilippines,
   parseDailyReportFilters,
-} from "@/lib/daily-report-filters"
+} from "@/lib/daily-reports/daily-report-filters"
 import {
   getDailyReportData,
   getDailyReportFilterOptions,
-} from "@/lib/daily-reports"
+} from "@/lib/daily-reports/daily-reports"
 import { requirePermission } from "@/lib/permissions"
 
 export default async function AdminDailyReportsPage() {

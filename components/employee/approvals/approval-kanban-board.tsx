@@ -35,11 +35,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { filterApprovalReports } from "@/lib/approval-filters"
+import { filterApprovalReports } from "@/lib/approvals/approval-filters"
 import {
   EMPLOYEE_APPROVAL_KANBAN_COLUMNS,
   getEmployeeApprovalKanbanStage,
-} from "@/lib/approval-kanban"
+} from "@/lib/approvals/approval-kanban"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 import type { ContentReport } from "@/types/content-report"
 
@@ -184,7 +184,7 @@ export function EmployeeApprovalKanbanBoard({
             </CardHeader>
             <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
               <KanbanBoardScroll>
-                <KanbanColumnsRow className="px-6 pb-1">
+                <KanbanColumnsRow className="px-3 pb-1 sm:px-6">
                   {EMPLOYEE_APPROVAL_KANBAN_COLUMNS.map((column) => (
                     <EmployeeApprovalKanbanColumn
                       key={column.id}

@@ -2,8 +2,8 @@ import { BrandAnalyticsBentoCard } from "@/components/admin/brands/brand-analyti
 import {
   getBrandAnalyticsBentoLayout,
   type BrandAnalyticsMetricKey,
-} from "@/lib/brand-analytics-status"
-import type { BrandApprovalMetrics } from "@/lib/brand-analytics"
+} from "@/lib/brands/brand-analytics-status"
+import type { BrandApprovalMetrics } from "@/lib/brands/brand-analytics"
 import { cn } from "@/lib/utils"
 
 type BrandAnalyticsBentoGridProps = {

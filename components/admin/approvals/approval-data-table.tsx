@@ -61,7 +61,7 @@ import {
 import {
   filterApprovalReports,
   mergeApprovalReports,
-} from "@/lib/approval-filters"
+} from "@/lib/approvals/approval-filters"
 import { useApprovalStore } from "@/stores/use-approval-store"
 
 type ApprovalDataTableProps = {
@@ -507,7 +507,7 @@ export function ApprovalDataTable({
 
   const tableSection = (
     <>
-      <div className="w-full min-w-0 rounded-md border">
+      <div className="w-full min-w-0 rounded-lg border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

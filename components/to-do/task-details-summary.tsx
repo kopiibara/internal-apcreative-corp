@@ -4,7 +4,7 @@ import { Separator } from "@/components/ui/separator"
 import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
 import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
-import type { TaskAssignmentRecord } from "@/lib/tasks"
+import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",

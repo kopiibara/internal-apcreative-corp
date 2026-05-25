@@ -1,11 +1,11 @@
-import { z } from "zod"
+import { z } from "zod";
 
 import {
   APPROVAL_STATUSES,
   PUBLISH_STATUSES,
   type ApprovalStatus,
   type PublishStatus as ApprovalPublishStatus,
-} from "@/lib/approval-statuses"
+} from "@/lib/approvals/approval-statuses";
 
 export const contentTypes = [
   "Graphic",
@@ -20,42 +20,42 @@ export const contentTypes = [
   "Promo Announcement",
   "Testimonial",
   "Menu/Product Feature",
-] as const
+] as const;
 
-export const reviewStatuses = APPROVAL_STATUSES
-export const publishStatuses = PUBLISH_STATUSES
+export const reviewStatuses = APPROVAL_STATUSES;
+export const publishStatuses = PUBLISH_STATUSES;
 
 export const platformOptions = [
   "Meta (Instagram and Facebook)",
   "TikTok",
   "YouTube",
   "All Platforms",
-] as const
+] as const;
 
-export type ContentType = (typeof contentTypes)[number]
-export type ReviewStatus = ApprovalStatus
-export type PublishStatus = ApprovalPublishStatus
-export type Platform = (typeof platformOptions)[number]
+export type ContentType = (typeof contentTypes)[number];
+export type ReviewStatus = ApprovalStatus;
+export type PublishStatus = ApprovalPublishStatus;
+export type Platform = (typeof platformOptions)[number];
 
 const optionalTextSchema = z.preprocess((value) => {
   if (typeof value === "string") {
-    const trimmed = value.trim()
+    const trimmed = value.trim();
 
-    return trimmed.length > 0 ? trimmed : null
+    return trimmed.length > 0 ? trimmed : null;
   }
 
-  return value ?? null
-}, z.string().nullable())
+  return value ?? null;
+}, z.string().nullable());
 
 const optionalUrlSchema = z.preprocess((value) => {
   if (typeof value === "string") {
-    const trimmed = value.trim()
+    const trimmed = value.trim();
 
-    return trimmed.length > 0 ? trimmed : null
+    return trimmed.length > 0 ? trimmed : null;
   }
 
-  return value ?? null
-}, z.string().url("Asset link must be a valid URL.").nullable())
+  return value ?? null;
+}, z.string().url("Asset link must be a valid URL.").nullable());
 
 export const createContentReportSchema = z.object({
   contentType: z.enum(contentTypes),
@@ -65,21 +65,21 @@ export const createContentReportSchema = z.object({
   assetLink: optionalUrlSchema,
   employeeComments: optionalTextSchema.refine(
     (value) => !value || value.length <= 2000,
-    "Employee notes must be 2,000 characters or less."
+    "Employee notes must be 2,000 characters or less.",
   ),
-})
+});
 
 export const updateContentReportSchema = createContentReportSchema.extend({
   reportId: z.coerce.number().int().positive(),
-})
+});
 
 export const deleteContentReportSchema = z.object({
   reportId: z.coerce.number().int().positive(),
-})
+});
 
 export type CreateContentReportInput = z.infer<
   typeof createContentReportSchema
->
+>;
 export type UpdateContentReportInput = z.infer<
   typeof updateContentReportSchema
->
+>;

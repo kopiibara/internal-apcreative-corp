@@ -16,21 +16,22 @@ import {
   type KanbanMoveEvent,
 } from "@/components/reui/kanban"
 import {
+  KanbanBoardShell,
   KANBAN_BOARD_FIT_ROW_4_CLASS,
   KANBAN_OVERLAY_CLASS,
 } from "@/components/shared/kanban-board-scroll"
 import {
   REMINDER_KANBAN_COLUMNS,
   type ReminderStatus,
-} from "@/lib/reminder-statuses"
-import type { ReminderRecord } from "@/lib/reminders"
+} from "@/lib/reminders/reminder-statuses"
+import type { ReminderRecord } from "@/lib/reminders/reminders"
 import { cn } from "@/lib/utils"
 
 type ReminderKanbanBoardProps = {
   reminders: ReminderRecord[]
 }
 
-const REMINDER_BOARD_ROW_CLASS = cn(KANBAN_BOARD_FIT_ROW_4_CLASS, "px-6 pb-1")
+const REMINDER_BOARD_ROW_CLASS = cn(KANBAN_BOARD_FIT_ROW_4_CLASS, "px-3 pb-1 sm:px-6")
 
 export function ReminderKanbanBoard({ reminders }: ReminderKanbanBoardProps) {
   const router = useRouter()
@@ -87,35 +88,37 @@ export function ReminderKanbanBoard({ reminders }: ReminderKanbanBoardProps) {
   }
 
   return (
-    <Kanban
-      value={columns}
-      onValueChange={() => undefined}
-      getItemValue={(reminder) => String(reminder.id)}
-      onMove={handleMove}
-    >
-      <KanbanBoard className={REMINDER_BOARD_ROW_CLASS}>
-        {REMINDER_KANBAN_COLUMNS.map((column) => {
-          const items = columns[column.id] ?? []
+    <KanbanBoardShell>
+      <Kanban
+        value={columns}
+        onValueChange={() => undefined}
+        getItemValue={(reminder) => String(reminder.id)}
+        onMove={handleMove}
+      >
+        <KanbanBoard className={REMINDER_BOARD_ROW_CLASS}>
+          {REMINDER_KANBAN_COLUMNS.map((column) => {
+            const items = columns[column.id] ?? []
 
-          return (
-            <ReminderKanbanColumn
-              key={column.id}
-              id={column.id}
-              title={column.title}
-              count={items.length}
-            >
-              {items.map((reminder) => (
-                <KanbanItem key={reminder.id} value={String(reminder.id)}>
-                  <KanbanItemHandle>
-                    <ReminderCard reminder={reminder} />
-                  </KanbanItemHandle>
-                </KanbanItem>
-              ))}
-            </ReminderKanbanColumn>
-          )
-        })}
-      </KanbanBoard>
-      <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
-    </Kanban>
+            return (
+              <ReminderKanbanColumn
+                key={column.id}
+                id={column.id}
+                title={column.title}
+                count={items.length}
+              >
+                {items.map((reminder) => (
+                  <KanbanItem key={reminder.id} value={String(reminder.id)}>
+                    <KanbanItemHandle>
+                      <ReminderCard reminder={reminder} />
+                    </KanbanItemHandle>
+                  </KanbanItem>
+                ))}
+              </ReminderKanbanColumn>
+            )
+          })}
+        </KanbanBoard>
+        <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
+      </Kanban>
+    </KanbanBoardShell>
   )
 }

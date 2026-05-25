@@ -1,4 +1,4 @@
-import type { TaskPriority } from "@/lib/task-type";
+import type { TaskPriority } from "@/lib/tasks/task-type";
 
 export type TaskPerformanceCounts = {
   totalAssignedTasks: number;

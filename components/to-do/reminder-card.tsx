@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import type { ReminderRecord } from "@/lib/reminders"
+import type { ReminderRecord } from "@/lib/reminders/reminders"
 import { useReminderStore } from "@/stores/use-reminder-store"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -53,7 +53,7 @@ export function ReminderCard({ reminder }: { reminder: ReminderRecord }) {
   return (
     <Card
       size="sm"
-      className="cursor-pointer rounded-md py-2 transition-colors hover:bg-muted/40"
+      className="cursor-pointer rounded-lg py-2 transition-colors hover:bg-muted/40"
       onClick={() => openEditDialog(reminder)}
     >
       <CardContent className="space-y-3 p-3">

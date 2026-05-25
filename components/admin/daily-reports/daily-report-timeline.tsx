@@ -13,7 +13,7 @@ import {
 import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { DailyTimelineEntry } from "@/lib/daily-report-types"
+import type { DailyTimelineEntry } from "@/lib/daily-reports/daily-report-types"
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
@@ -30,12 +30,12 @@ type DailyReportTimelineProps = {
 
 export function DailyReportTimeline({ entries }: DailyReportTimelineProps) {
   return (
-    <Card className="flex h-full min-h-0 flex-col">
-      <CardHeader>
+    <Card className="flex h-full min-h-0 flex-col gap-3 py-4 md:gap-6 md:py-6">
+      <CardHeader className="px-3 md:px-6">
         <CardTitle>Activity Timeline</CardTitle>
       </CardHeader>
-      <CardContent className="min-h-0 flex-1 pt-0">
-        <ScrollArea className="h-[420px] max-h-[420px] pr-3" scrollbars="vertical">
+      <CardContent className="min-h-0 flex-1 px-3 pt-0 md:px-6">
+        <ScrollArea className="h-[320px] max-h-[320px] pr-3 md:h-[420px] md:max-h-[420px]" scrollbars="vertical">
           {entries.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No activity found for this date.
