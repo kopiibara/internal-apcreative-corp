@@ -52,14 +52,32 @@ export type GoogleAdsMetric = {
   avgTargetCpa: number | null
   conversions: number
   cost: number
+  conversionValue: number | null
+  conversionValuePerClick: number | null
+  importTemplate: string | null
+  rawMetrics: Record<string, string | number | null>
   sourceFileName: string | null
+}
+
+export type GoogleAdsMetricAvailability = {
+  hasImpressions: boolean
+  hasAvgTargetCpa: boolean
+  hasConversions: boolean
+  hasCost: boolean
+  hasConversionValue: boolean
+  hasConversionValuePerClick: boolean
 }
 
 export type GoogleAdsSummary = {
   totalCost: number
-  totalImpressions: number
+  totalImpressions: number | null
   totalConversions: number
+  totalConversionValue: number | null
   avgCpa: number | null
+  avgTargetCpa: number | null
+  avgConversionValuePerClick: number | null
   lastImportedAt: string | null
   lastSourceFileName: string | null
+  lastImportTemplate: string | null
+  availability: GoogleAdsMetricAvailability
 }

@@ -1,21 +1,13 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { BarChart3 } from "lucide-react"
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 
 import { FilterBadge } from "@/components/shared/filter-badge"
 import { FilterBadgeGroup } from "@/components/shared/filter-badge-group"
+import { GoogleAdsKpiCards } from "@/components/shared/google-ads-kpi-cards"
+import { GoogleAdsPerformanceChart } from "@/components/shared/google-ads-performance-chart"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Table,
@@ -33,6 +25,7 @@ import {
   type GoogleAdsMetric,
   type GoogleAdsSummary,
 } from "@/lib/ads-campaigns-types"
+import { summarizeGoogleAdsMetrics } from "@/lib/ads-campaigns/google-ads-metrics-display"
 
 type AdminAdsCampaignsDashboardProps = {
   brands: AssignedAdsBrand[]
@@ -46,13 +39,6 @@ const platformLabels: Record<AdsPlatform, string> = {
   META: "Meta",
   TIKTOK: "TikTok",
 }
-
-const chartConfig = {
-  impressions: { label: "Impressions", color: "var(--chart-1)" },
-  cost: { label: "Cost", color: "var(--chart-2)" },
-  conversions: { label: "Conversions", color: "var(--chart-3)" },
-  avgTargetCpa: { label: "Avg. Target CPA", color: "var(--chart-4)" },
-} satisfies ChartConfig
 
 const pesoFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -73,7 +59,7 @@ function formatDate(value: string | null) {
   return value ? new Date(`${value}T00:00:00`).toLocaleDateString() : "-"
 }
 
-function KpiCard({
+function CampaignKpiCard({
   label,
   value,
   detail,
@@ -142,32 +128,13 @@ export function AdminAdsCampaignsDashboard({
           : null,
     }
   }, [visibleCampaigns])
-  const metricSummary = useMemo(() => {
-    if (selectedBrandId === "all") return summary
-
-    const totalCost = visibleMetrics.reduce((total, metric) => total + metric.cost, 0)
-    const totalConversions = visibleMetrics.reduce(
-      (total, metric) => total + metric.conversions,
-      0
-    )
-
-    return {
-      totalCost,
-      totalImpressions: visibleMetrics.reduce(
-        (total, metric) => total + metric.impressions,
-        0
-      ),
-      totalConversions,
-      avgCpa: totalConversions > 0 ? totalCost / totalConversions : null,
-    }
-  }, [selectedBrandId, summary, visibleMetrics])
-  const chartData = visibleMetrics.map((metric) => ({
-    date: metric.metricDate,
-    impressions: metric.impressions,
-    cost: metric.cost,
-    conversions: metric.conversions,
-    avgTargetCpa: metric.avgTargetCpa ?? 0,
-  }))
+  const metricSummary = useMemo(
+    () =>
+      selectedBrandId === "all"
+        ? summary
+        : summarizeGoogleAdsMetrics(visibleMetrics),
+    [selectedBrandId, summary, visibleMetrics]
+  )
 
   return (
     <div className="min-w-0 space-y-6 overflow-hidden">
@@ -206,49 +173,66 @@ export function AdminAdsCampaignsDashboard({
         </FilterBadgeGroup>
       </div>
 
-      <section className="grid min-w-0 grid-cols-2 gap-2 md:gap-3 xl:grid-cols-7">
-        <KpiCard label="01 / Spend" value={formatPeso(metricSummary.totalCost)} detail="Total spend" tone="bg-background text-foreground" />
-        <KpiCard label="02 / Impr." value={numberFormatter.format(metricSummary.totalImpressions)} detail="Total impressions" tone="bg-blue text-white" />
-        <KpiCard label="03 / Conv." value={numberFormatter.format(metricSummary.totalConversions)} detail="Total conversions" tone="bg-cyan text-white" />
-        <KpiCard label="04 / CPA" value={metricSummary.avgCpa == null ? "-" : formatPeso(metricSummary.avgCpa)} detail="Average CPA" tone="bg-magenta text-white" />
-        <KpiCard label="05 / Leads" value={numberFormatter.format(campaignSummary.totalLeads)} detail="Campaign leads" tone="bg-background text-foreground" />
-        <KpiCard label="06 / CTR" value={formatPercent(campaignSummary.avgCtr)} detail="Average CTR" tone="bg-blue text-white" />
-        <KpiCard label="07 / ROAS" value={campaignSummary.avgRoas == null ? "-" : String(campaignSummary.avgRoas.toFixed(2))} detail="Average ROAS" tone="bg-cyan text-white" />
-      </section>
+      {selectedPlatform === "GOOGLE" ? (
+        <>
+          <GoogleAdsKpiCards summary={metricSummary} compact />
 
-      <Card className="min-w-0 shadow-none">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="size-5" />
-            Google Ads Performance
-          </CardTitle>
-          <CardDescription>Read-only imported Google Ads metrics.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {chartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No imported Google Ads metrics match the active filters.
-            </p>
-          ) : (
-            <ChartContainer
-              config={chartConfig}
-              className="aspect-auto h-[240px] w-full md:h-[320px]"
-            >
-              <LineChart data={chartData} margin={{ left: 0, right: 12 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
-                <YAxis tickLine={false} axisLine={false} width={44} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <ChartLegend content={<ChartLegendContent />} />
-                <Line type="monotone" dataKey="impressions" stroke="var(--color-impressions)" dot={false} />
-                <Line type="monotone" dataKey="cost" stroke="var(--color-cost)" dot={false} />
-                <Line type="monotone" dataKey="conversions" stroke="var(--color-conversions)" dot={false} />
-                <Line type="monotone" dataKey="avgTargetCpa" stroke="var(--color-avgTargetCpa)" dot={false} />
-              </LineChart>
-            </ChartContainer>
-          )}
-        </CardContent>
-      </Card>
+          <section className="grid min-w-0 grid-cols-2 gap-2 md:gap-3 xl:grid-cols-3">
+            <CampaignKpiCard
+              label="Leads"
+              value={numberFormatter.format(campaignSummary.totalLeads)}
+              detail="Campaign leads"
+              tone="bg-background text-foreground"
+            />
+            <CampaignKpiCard
+              label="CTR"
+              value={formatPercent(campaignSummary.avgCtr)}
+              detail="Average CTR"
+              tone="bg-blue text-white"
+            />
+            <CampaignKpiCard
+              label="ROAS"
+              value={
+                campaignSummary.avgRoas == null
+                  ? "-"
+                  : String(campaignSummary.avgRoas.toFixed(2))
+              }
+              detail="Average ROAS"
+              tone="bg-cyan text-white"
+            />
+          </section>
+
+          <GoogleAdsPerformanceChart
+            metrics={visibleMetrics}
+            description="Read-only imported Google Ads metrics."
+          />
+        </>
+      ) : (
+        <section className="grid min-w-0 grid-cols-2 gap-2 md:gap-3 xl:grid-cols-3">
+          <CampaignKpiCard
+            label="Leads"
+            value={numberFormatter.format(campaignSummary.totalLeads)}
+            detail="Campaign leads"
+            tone="bg-background text-foreground"
+          />
+          <CampaignKpiCard
+            label="CTR"
+            value={formatPercent(campaignSummary.avgCtr)}
+            detail="Average CTR"
+            tone="bg-blue text-white"
+          />
+          <CampaignKpiCard
+            label="ROAS"
+            value={
+              campaignSummary.avgRoas == null
+                ? "-"
+                : String(campaignSummary.avgRoas.toFixed(2))
+            }
+            detail="Average ROAS"
+            tone="bg-cyan text-white"
+          />
+        </section>
+      )}
 
       <Card className="min-w-0 shadow-none">
         <CardHeader>
