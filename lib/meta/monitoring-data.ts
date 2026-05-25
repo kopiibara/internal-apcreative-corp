@@ -1,6 +1,7 @@
 import "server-only"
 
 import { query } from "@/lib/db"
+import { getMetaIntegrationStatus } from "@/lib/meta/connection-status"
 import type {
   MetaFacebookPageRow,
   MetaPageDailySnapshotRow,
@@ -8,9 +9,30 @@ import type {
   MetaWebhookEventRow,
 } from "@/lib/meta/types"
 
+export type MetaPageInsightSummary = {
+  pageImpressions: number | null
+  pageImpressionsUnique: number | null
+  pageEngagedUsers: number | null
+  pagePostEngagements: number | null
+  pageViewsTotal: number | null
+  pageFanAdds: number | null
+}
+
+export type MetaSyncRunSummary = {
+  id: number
+  sync_type: string
+  facebook_page_id: string | null
+  status: string
+  started_at: Date
+  finished_at: Date | null
+  records_affected: number
+  error_log: string | null
+}
+
 export type MetaMonitoringDashboardData = {
   pages: MetaFacebookPageRow[]
   recentEvents: MetaWebhookEventRow[]
+  integrationStatus: Awaited<ReturnType<typeof getMetaIntegrationStatus>>
   socialMonitoring: {
     newComments: number
     newReactions: number
@@ -20,13 +42,42 @@ export type MetaMonitoringDashboardData = {
   }
   pageAnalytics: {
     totalFollowers: number | null
+    pageLikes: number | null
     newFollowers: number | null
     totalReactions: number
     totalComments: number
     totalShares: number
+    pageInsights: MetaPageInsightSummary
     growthSnapshots: MetaPageDailySnapshotRow[]
   }
   topPosts: MetaPostMetricsRow[]
+  recentSyncRuns: MetaSyncRunSummary[]
+}
+
+function parsePageInsightsFromSnapshot(
+  metrics: Record<string, unknown> | null | undefined
+): MetaPageInsightSummary {
+  const parsed = metrics?.parsed as Record<string, number> | undefined
+
+  if (!parsed || typeof parsed !== "object") {
+    return {
+      pageImpressions: null,
+      pageImpressionsUnique: null,
+      pageEngagedUsers: null,
+      pagePostEngagements: null,
+      pageViewsTotal: null,
+      pageFanAdds: null,
+    }
+  }
+
+  return {
+    pageImpressions: parsed.page_impressions ?? null,
+    pageImpressionsUnique: parsed.page_impressions_unique ?? null,
+    pageEngagedUsers: parsed.page_engaged_users ?? null,
+    pagePostEngagements: parsed.page_post_engagements ?? null,
+    pageViewsTotal: parsed.page_views_total ?? null,
+    pageFanAdds: parsed.page_fan_adds ?? null,
+  }
 }
 
 function countEventsSince(hours: number, pattern: string, pageId?: string | null) {
@@ -56,6 +107,8 @@ function countEventsSince(hours: number, pattern: string, pageId?: string | null
 export async function getMetaMonitoringDashboardData(
   selectedPageId?: string | null
 ): Promise<MetaMonitoringDashboardData> {
+  const integrationStatus = await getMetaIntegrationStatus()
+
   const pagesResult = await query<MetaFacebookPageRow>(
     `
     SELECT
@@ -88,6 +141,7 @@ export async function getMetaMonitoringDashboardData(
     snapshots,
     postTotals,
     topPosts,
+    recentSyncRuns,
   ] = await Promise.all([
     countEventsSince(24, "%comment%", pageId),
     countEventsSince(24, "%reaction%", pageId),
@@ -168,7 +222,25 @@ export async function getMetaMonitoringDashboardData(
       FROM meta_post_metrics
       ${pageId ? "WHERE facebook_page_id = $1" : ""}
       ORDER BY performance_rank ASC NULLS LAST, published_at DESC NULLS LAST
-      LIMIT 20
+      LIMIT 25
+      `,
+      pageId ? [pageId] : []
+    ),
+    query<MetaSyncRunSummary>(
+      `
+      SELECT
+        id,
+        sync_type,
+        facebook_page_id,
+        status,
+        started_at,
+        finished_at,
+        records_affected,
+        error_log
+      FROM meta_sync_run
+      ${pageId ? "WHERE facebook_page_id = $1" : ""}
+      ORDER BY started_at DESC
+      LIMIT 10
       `,
       pageId ? [pageId] : []
     ),
@@ -182,6 +254,7 @@ export async function getMetaMonitoringDashboardData(
   return {
     pages: pagesResult.rows,
     recentEvents: recentEvents.rows,
+    integrationStatus,
     socialMonitoring: {
       newComments: Number(comments.rows[0]?.count ?? 0),
       newReactions: Number(reactions.rows[0]?.count ?? 0),
@@ -191,6 +264,7 @@ export async function getMetaMonitoringDashboardData(
     },
     pageAnalytics: {
       totalFollowers: latestFollowers,
+      pageLikes: latestSnapshot?.page_likes ?? null,
       newFollowers:
         latestFollowers !== null && previousFollowers !== null
           ? latestFollowers - previousFollowers
@@ -198,8 +272,12 @@ export async function getMetaMonitoringDashboardData(
       totalReactions: Number(postTotals.rows[0]?.reactions ?? 0),
       totalComments: Number(postTotals.rows[0]?.comments ?? 0),
       totalShares: Number(postTotals.rows[0]?.shares ?? 0),
+      pageInsights: parsePageInsightsFromSnapshot(
+        latestSnapshot?.metrics as Record<string, unknown> | undefined
+      ),
       growthSnapshots: snapshots.rows,
     },
     topPosts: topPosts.rows,
+    recentSyncRuns: recentSyncRuns.rows,
   }
 }

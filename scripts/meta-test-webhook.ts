@@ -5,6 +5,7 @@
  *   npx tsx scripts/meta-test-webhook.ts
  *   npx tsx scripts/meta-test-webhook.ts --url https://internal.apcreativecorp.com
  *   npx tsx scripts/meta-test-webhook.ts --url http://localhost:3000 --post-only
+ *   npx tsx scripts/meta-test-webhook.ts --verify-only
  */
 import "dotenv/config"
 
@@ -25,7 +26,7 @@ const webhookUrl = `${baseUrl.replace(/\/$/, "")}/api/meta/webhook`
 async function testGetVerification() {
   if (!verifyToken) {
     console.error("Missing META_WEBHOOK_VERIFY_TOKEN in .env")
-    process.exit(1)
+    return false
   }
 
   const params = new URLSearchParams({
@@ -53,8 +54,15 @@ async function testGetVerification() {
 
 async function testSignedPost() {
   if (!appSecret) {
-    console.error("Missing META_APP_SECRET in .env (required for POST signature test).")
-    process.exit(1)
+    console.log("\n--- POST signed payload ---")
+    console.log("SKIP: META_APP_SECRET is not set in .env.")
+    console.log(
+      "Add META_APP_SECRET from Meta App → Settings → Basic → App secret to test POST locally."
+    )
+    console.log(
+      "Production POST still works if Vercel has META_APP_SECRET configured."
+    )
+    return null
   }
 
   const payload = {
@@ -103,7 +111,7 @@ async function testSignedPost() {
   if (response.status === 200) {
     console.log("PASS: Webhook accepted signed payload.")
     console.log(
-      "Next: open Admin → Facebook Monitoring → Activity Logs, or run npm run meta:verify-schema"
+      "Next: open Admin → Platform Analytics → Activity Logs, or run npm run meta:verify-schema"
     )
     return true
   }
@@ -121,20 +129,29 @@ async function main() {
   console.log("Meta webhook test")
   console.log("Base URL:", baseUrl)
 
-  let ok = true
+  let verifyOk = true
+  let postOk: boolean | null = null
 
   if (!postOnly) {
-    ok = (await testGetVerification()) && ok
+    verifyOk = await testGetVerification()
   }
 
   if (!verifyOnly) {
-    ok = (await testSignedPost()) && ok
+    postOk = await testSignedPost()
   }
 
-  process.exit(ok ? 0 : 1)
+  const failed =
+    !verifyOk || (postOk !== null && postOk === false)
+
+  if (failed) {
+    process.exitCode = 1
+    return
+  }
+
+  process.exitCode = 0
 }
 
 main().catch((error) => {
   console.error(error)
-  process.exit(1)
+  process.exitCode = 1
 })
