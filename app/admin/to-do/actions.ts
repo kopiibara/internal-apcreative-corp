@@ -21,7 +21,11 @@ import {
 } from "@/lib/auth/account-type";
 import { can } from "@/lib/permissions";
 import { query, transaction } from "@/lib/db";
-import { enforceRateLimit } from "@/lib/rate-limit";
+import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
+import {
+  sanitizeOptionalText,
+  sanitizeRequiredText,
+} from "@/lib/security/sanitize-text";
 import {
   canAssignGradedTasks,
   canReviewTaskAssignments,
@@ -148,6 +152,16 @@ function normalizeSubmitTaskProofInput(input: unknown) {
   };
 }
 
+async function guardTaskMutationRateLimit(
+  bucket: string,
+): Promise<{ success: false; message: string } | null> {
+  return rejectIfRateLimited({
+    bucket,
+    limit: 60,
+    windowMs: 60_000,
+  });
+}
+
 async function insertTaskActivityLog(
   client: PoolClient,
   input: {
@@ -265,14 +279,10 @@ export async function createTask(input: unknown): Promise<ActionResult> {
     }
   }
 
-  const rateLimit = await enforceRateLimit({
-    bucket: "task:create",
-    limit: 40,
-    windowMs: 60_000,
-  });
+  const rateLimitError = await guardTaskMutationRateLimit("task:create");
 
-  if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message };
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   try {
@@ -293,8 +303,8 @@ export async function createTask(input: unknown): Promise<ActionResult> {
         RETURNING id
         `,
         [
-          parsed.data.title,
-          parsed.data.description ?? null,
+          sanitizeRequiredText(parsed.data.title, 200),
+          sanitizeOptionalText(parsed.data.description ?? null, 4000),
           taskType,
           parsed.data.priority ?? null,
           context.profile.id,
@@ -374,6 +384,12 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
 
   if (authorization.error) {
     return authorization.error;
+  }
+
+  const rateLimitError = await guardTaskMutationRateLimit("task:update");
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const parsed = updateTaskSchema.safeParse(input);
@@ -533,6 +549,12 @@ export async function deleteTask(input: unknown): Promise<ActionResult> {
     return authorization.error;
   }
 
+  const rateLimitError = await guardTaskMutationRateLimit("task:delete");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const parsed = deleteTaskSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -593,6 +615,12 @@ export async function submitTaskProof(
 
   if (authorization.error) {
     return authorization.error;
+  }
+
+  const rateLimitError = await guardTaskMutationRateLimit("task:submit-proof");
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const parsed = submitTaskProofSchema.safeParse(
@@ -695,6 +723,12 @@ export async function reportTaskBlocker(
     return authorization.error;
   }
 
+  const rateLimitError = await guardTaskMutationRateLimit("task:blocker");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const parsed = reportTaskBlockerSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -783,6 +817,12 @@ export async function confirmTaskBlocker(
 
   if (authorization.error) {
     return authorization.error;
+  }
+
+  const rateLimitError = await guardTaskMutationRateLimit("task:blocker-confirm");
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const parsed = confirmTaskBlockerSchema.safeParse(input);
@@ -946,6 +986,12 @@ export async function changeTaskAssignmentStatus(
     return authorization.error;
   }
 
+  const rateLimitError = await guardTaskMutationRateLimit("task:status-change");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const parsed = changeTaskAssignmentStatusSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -1082,6 +1128,12 @@ export async function confirmTaskDone(
     return authorization.error;
   }
 
+  const rateLimitError = await guardTaskMutationRateLimit("task:confirm-done");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const parsed = confirmTaskDoneSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -1178,6 +1230,12 @@ export async function requestTaskRevision(
 
   if (authorization.error) {
     return authorization.error;
+  }
+
+  const rateLimitError = await guardTaskMutationRateLimit("task:revision");
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const parsed = requestTaskRevisionSchema.safeParse(input);

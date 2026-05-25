@@ -78,3 +78,17 @@ lib/
   auth-session.ts
   permissions.ts
 ```
+
+## Long File Guideline
+
+- **250+ lines**: review for split (filters, tables, charts, dialogs, helpers).
+- **400+ lines**: likely should move UI blocks into `components/<feature>/`.
+- **600+ lines**: split unless there is a strong reason not to.
+
+Page files should fetch data, check access, and compose components — not hold all markup and helpers.
+
+## Server / Client Boundary
+
+- Server actions and `lib/**` services own auth, permissions, SQL, validation, sanitization, and rate limits.
+- Client components own UI state and interaction only.
+- Never place SQL, env secrets, or permission enforcement only in client code.

@@ -9,6 +9,7 @@ import {
   TimelineTitle,
 } from "@/components/reui/timeline"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
@@ -92,8 +93,18 @@ export function ApprovalActivityTimeline({
             <TimelineIndicator />
             <TimelineSeparator />
             <TimelineContent className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-
+              <div className="flex min-w-0 gap-3">
+                <UserAvatar
+                  profileId={log.actorProfileId}
+                  name={log.actorName}
+                  size="sm"
+                />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="text-sm font-semibold">{log.actorName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {log.actorPosition || log.actorAccountType}
+                  </p>
+                </div>
               </div>
 
               {log.notes ? (

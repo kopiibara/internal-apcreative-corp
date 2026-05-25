@@ -102,11 +102,13 @@ function getTitleFromGroups(pathname: string, groups: SidebarGroupItem[]) {
 }
 
 type DashboardUser = {
+    profileId: number
     name: string
     email: string
     accountType: string
     roleSlugs?: string[]
     canAccessAdsCampaigns?: boolean
+    imageUrl?: string | null
     mustChangePassword?: boolean
 }
 
@@ -151,11 +153,13 @@ export function DashboardShell({
                     mode={role}
                     employeeActionableTaskCount={employeeActionableTaskCount}
                     user={{
+                        profileId: user.profileId,
                         name: user.name,
                         email: user.email,
                         accountType: user.accountType,
                         roleSlugs: user.roleSlugs,
                         canAccessAdsCampaigns: user.canAccessAdsCampaigns,
+                        imageUrl: user.imageUrl,
                     }}
                 />
 

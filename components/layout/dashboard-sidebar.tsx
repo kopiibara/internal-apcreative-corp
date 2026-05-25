@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils"
 import { authClient } from "@/lib/auth/auth-client"
 import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { useTheme } from "@/components/ui/theme-provider"
-import GradientText from "@/components/GradientText"
+import type { AccountType } from "@/app/admin/account-control/schema"
+import { AccountTypeBadge } from "@/components/admin/accounts/account-status-badge"
+import { UserAvatar } from "@/components/shared/user-avatar"
 
 import {
     ChevronDown,
@@ -16,7 +18,6 @@ import {
     LogOut,
     Moon,
     Sun,
-    User,
 } from "lucide-react"
 
 import {
@@ -38,14 +39,8 @@ import {
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
 import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-} from "@/components/ui/avatar"
-import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuGroup,
     DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
@@ -59,12 +54,13 @@ import {
 } from "@/types/sidebar"
 
 type SidebarUser = {
+    profileId: number
     name: string
     email: string
     accountType?: string
     roleSlugs?: string[]
     canAccessAdsCampaigns?: boolean
-    avatarUrl?: string
+    imageUrl?: string | null
 }
 
 type DashboardSidebarProps = {
@@ -79,17 +75,6 @@ function formatSidebarBadge(count: number) {
     }
 
     return count > 99 ? "99+" : String(count)
-}
-
-function getInitials(name?: string) {
-    if (!name) return "AP"
-
-    return name
-        .split(" ")
-        .map((part) => part[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
 }
 
 const sidebarNavActiveClass =
@@ -155,6 +140,7 @@ export function DashboardSidebar({
                 .filter((group) => group.items.length > 0)
 
     const displayUser = user ?? {
+        profileId: 0,
         name: mode === "admin" ? "Executive Manager" : "Brand Officer",
         email:
             mode === "admin"
@@ -191,6 +177,8 @@ export function DashboardSidebar({
     function handleToggleTheme() {
         setTheme(resolvedTheme === "dark" ? "light" : "dark")
     }
+
+    const isDarkMode = mounted && resolvedTheme === "dark"
 
     async function handleLogout() {
         try {
@@ -498,15 +486,13 @@ export function DashboardSidebar({
                                             : "h-12 rounded-xl"
                                     }
                                 >
-                                    <Avatar className="h-8 w-8 rounded-lg">
-                                        <AvatarImage
-                                            src={displayUser.avatarUrl}
-                                            alt={displayUser.name}
-                                        />
-                                        <AvatarFallback className="rounded-lg">
-                                            {getInitials(displayUser.name)}
-                                        </AvatarFallback>
-                                    </Avatar>
+                                    <UserAvatar
+                                        profileId={displayUser.profileId}
+                                        name={displayUser.name}
+                                        email={displayUser.email}
+                                        imageUrl={displayUser.imageUrl}
+                                        size="sm"
+                                    />
 
                                     {!isCollapsed ? (
                                         <>
@@ -526,47 +512,56 @@ export function DashboardSidebar({
                             </DropdownMenuTrigger>
 
                             <DropdownMenuContent
-                                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg border-2 border-black bg-background p-1 shadow-none"
                                 side={isMobile ? "top" : "right"}
                                 align="end"
                                 sideOffset={8}
                             >
                                 <DropdownMenuLabel className="p-0 font-normal">
-                                    <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                                        <Avatar className="h-8 w-8 rounded-lg">
-                                            <AvatarImage
-                                                src={displayUser.avatarUrl}
-                                                alt={displayUser.name}
-                                            />
-                                            <AvatarFallback className="rounded-lg">
-                                                {getInitials(displayUser.name)}
-                                            </AvatarFallback>
-                                        </Avatar>
+                                    <div className="flex items-start gap-3 rounded-lg p-2 text-left">
+                                        <UserAvatar
+                                            profileId={displayUser.profileId}
+                                            name={displayUser.name}
+                                            email={displayUser.email}
+                                            imageUrl={displayUser.imageUrl}
+                                            size="md"
+                                        />
 
-                                        <div className="grid flex-1 text-left text-sm leading-tight">
-                                            <span className="truncate font-medium">
+                                        <div className="grid min-w-0 flex-1 gap-1 text-sm leading-tight">
+                                            <span className="truncate font-semibold">
                                                 {displayUser.name}
                                             </span>
                                             <span className="truncate text-xs text-muted-foreground">
                                                 {displayUser.email}
                                             </span>
+
                                         </div>
                                     </div>
                                 </DropdownMenuLabel>
 
                                 <DropdownMenuSeparator />
 
-                                {/*
-                                    <DropdownMenuGroup>
-                                        <DropdownMenuItem className="flex flex-row">
-                                            <User className="h-4 w-4" />
-                                            Account
-                                        </DropdownMenuItem>
-                                    </DropdownMenuGroup>
-                                    <DropdownMenuSeparator />
-                                */}
+                                <DropdownMenuItem
+                                    onClick={handleToggleTheme}
+                                    className="flex cursor-pointer flex-row items-center gap-2"
+                                >
+                                    {isDarkMode ? (
+                                        <Sun className="h-4 w-4" />
+                                    ) : (
+                                        <Moon className="h-4 w-4" />
+                                    )}
+                                    {mounted
+                                        ? isDarkMode
+                                            ? "Switch to light mode"
+                                            : "Switch to dark mode"
+                                        : "Switch theme"}
+                                </DropdownMenuItem>
 
-                                <DropdownMenuItem onClick={handleLogout} className="flex flex-row">
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    onClick={handleLogout}
+                                    className="flex cursor-pointer flex-row items-center gap-2 "
+                                >
                                     <LogOut className="h-4 w-4" />
                                     Log out
                                 </DropdownMenuItem>

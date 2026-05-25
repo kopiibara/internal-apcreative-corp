@@ -16,6 +16,7 @@ export type BrandChartItem = {
 };
 
 export type EmployeeChartItem = {
+  profileId: number;
   employeeName: string;
   email: string;
   graded: number;
@@ -58,6 +59,7 @@ export function toEmployeeChartItems(
   summaries: DailyEmployeeSummary[],
 ): EmployeeChartItem[] {
   return summaries.map((summary) => ({
+    profileId: summary.profileId,
     employeeName: summary.fullName,
     email: summary.email,
     graded: summary.assignedGradedTasks,

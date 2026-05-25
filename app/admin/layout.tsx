@@ -26,7 +26,7 @@ export default async function AdminLayout({
 }: {
     children: React.ReactNode
 }) {
-    const { profile } = await requireAdmin()
+    const { profile, user } = await requireAdmin()
     const roleSlugs = await getActiveRoleSlugs(profile.id)
 
     return (
@@ -34,10 +34,12 @@ export default async function AdminLayout({
             role="admin"
             title="Admin Dashboard"
             user={{
+                profileId: profile.id,
                 name: profile.full_name,
                 email: profile.email,
                 accountType: profile.account_type,
                 roleSlugs,
+                imageUrl: user.image ?? null,
                 mustChangePassword: profile.must_change_password,
             }}
         >

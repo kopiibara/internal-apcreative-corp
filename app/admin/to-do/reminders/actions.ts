@@ -12,6 +12,7 @@ import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import { query, transaction } from "@/lib/db";
 import type { ReminderStatus } from "@/lib/reminders/reminder-statuses";
 import { getReminderById } from "@/lib/reminders/reminders";
+import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
 
 const REMINDER_ROUTES = ["/admin/to-do/reminders", "/employee/to-do/reminders"];
 
@@ -95,11 +96,27 @@ async function requireOwnedReminder(reminderId: number, profileId: number) {
   return { reminder };
 }
 
+async function guardReminderMutationRateLimit(
+  bucket: string,
+): Promise<ActionResult | null> {
+  return rejectIfRateLimited({
+    bucket,
+    limit: 60,
+    windowMs: 60_000,
+  });
+}
+
 export async function createReminder(input: unknown): Promise<ActionResult> {
   const authorization = await authorizeReminderAction();
 
   if (authorization.error) {
     return authorization.error;
+  }
+
+  const rateLimitError = await guardReminderMutationRateLimit("reminder:create");
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const parsed = reminderFormSchema.safeParse(input);
@@ -157,6 +174,12 @@ export async function updateReminder(input: unknown): Promise<ActionResult> {
 
   if (authorization.error) {
     return authorization.error;
+  }
+
+  const rateLimitError = await guardReminderMutationRateLimit("reminder:update");
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const parsed = updateReminderSchema.safeParse(input);
@@ -243,6 +266,12 @@ export async function updateReminderStatus(
 
   if (authorization.error) {
     return authorization.error;
+  }
+
+  const rateLimitError = await guardReminderMutationRateLimit("reminder:status");
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const parsed = updateReminderStatusSchema.safeParse(input);

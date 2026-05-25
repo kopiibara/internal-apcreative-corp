@@ -9,10 +9,9 @@ import {
   TimelineTitle,
 } from "@/components/reui/timeline"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { getInitialsFromName } from "@/lib/utils"
 import type { TaskActivityLogRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -95,11 +94,11 @@ export function TaskActivityTimeline({
                     <TimelineSeparator />
                     <TimelineContent className="min-w-0 space-y-2">
                       <div className="flex min-w-0 gap-3">
-                        <Avatar className="h-9 w-9 shrink-0 rounded-lg border-2 border-border">
-                          <AvatarFallback className="rounded-lg text-[10px] font-semibold">
-                            {getInitialsFromName(log.actorName)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                          profileId={log.actorProfileId}
+                          name={log.actorName}
+                          size="sm"
+                        />
                         <div className="min-w-0 flex-1 space-y-2">
                           <div>
                             <p className="text-sm font-semibold">

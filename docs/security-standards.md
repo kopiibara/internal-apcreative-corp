@@ -96,3 +96,51 @@ If Better Auth user creation succeeds but custom SQL writes fail:
 - delete the Better Auth user if supported, or
 - disable the auth user
 - do not leave a usable auth user without a profile
+
+## Server Action / API Route Checklist
+
+Every mutation server action and sensitive API route must:
+
+1. Require authentication (Better Auth session) unless intentionally public.
+2. Load profile server-side and reject non-`ACTIVE` users.
+3. Enforce permission keys and brand access for scoped data.
+4. Validate input with Zod (IDs as positive integers, enums, lengths, dates).
+5. Sanitize user-generated text before persistence when stored or rendered (`lib/security/sanitize-text.ts`).
+6. Apply rate limiting via `enforceRateLimit` / `rejectIfRateLimited` (`lib/rate-limit.ts`, `lib/security/rate-limit-guards.ts`).
+7. Use parameterized SQL only (`lib/db.ts`).
+8. Return generic user-friendly errors; do not leak secrets, stack traces, or password values.
+9. Write audit logs for sensitive account/task/approval actions without passwords, hashes, tokens, or API keys.
+
+## Rate Limiting
+
+Use PostgreSQL-backed buckets keyed by profile ID (fallback: IP).
+
+Recommended bucket groups:
+
+- `auth:*` — sign-in and password change
+- `account:*` — account control mutations
+- `task:*` / `reminder:*` — task and reminder mutations
+- `brand-management` — brand CRUD
+- `ads-campaign:*` — campaign CRUD and CSV import
+- `daily-reports:fetch` — report data refresh
+
+## Input Sanitization
+
+Sanitize optional/required text fields (titles, notes, reasons, captions) server-side.
+
+Never log or return:
+
+- `DEFAULT_ACCOUNT_PASSWORD` / `DEFAULT_TEMPORARY_PASSWORD`
+- password hashes
+- session or auth tokens
+- VAPID private keys or webhook secrets
+
+## Public Routes
+
+Intentionally public API routes must validate signatures or secrets and reject malformed input early.
+
+## Component / File Organization
+
+- Page files compose feature components; avoid monolithic UI + logic files.
+- Review files at 250+ lines; split at 400+ when responsibilities are mixed.
+- Keep SQL, permissions, and mutations server-side only.
