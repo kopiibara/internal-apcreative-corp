@@ -134,6 +134,9 @@ export type PlatformConnectionStatus = {
   statusRows: StatusRow[];
 };
 
+export type MetaSourceSyncStatus =
+  import("@/lib/meta/page-analytics").MetaSourceSyncStatus;
+
 export type MetaBusinessPageDashboard =
   import("@/lib/meta/page-analytics").MetaBusinessPageDashboard;
 

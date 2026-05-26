@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import Link from "next/link"
 
 import {
@@ -21,14 +22,13 @@ import {
   formatMetaMetricDisplay,
   liveText,
 } from "@/lib/platform-analytics/format"
+import { ClientDateTime } from "@/components/shared/client-date-time"
 import type { MetaMetricDisplayState } from "@/lib/platform-analytics/format"
-import type { MetaBusinessPageDashboard } from "@/lib/platform-analytics/types"
+import type {
+  MetaBusinessPageDashboard,
+  MetaSourceSyncStatus,
+} from "@/lib/platform-analytics/types"
 import { cn } from "@/lib/utils"
-
-const dateFormatter = new Intl.DateTimeFormat("en-PH", {
-  dateStyle: "medium",
-  timeStyle: "short",
-})
 
 type MetaBusinessPageCardProps = {
   page: MetaBusinessPageDashboard
@@ -40,7 +40,7 @@ function StatusPill({
   tone = "neutral",
 }: {
   label: string
-  value: string
+  value: ReactNode
   tone?: "ok" | "warn" | "neutral"
 }) {
   return (
@@ -83,6 +83,9 @@ function metricNote(state: MetaMetricDisplayState): string | null {
   if (state === "permission") {
     return "Unavailable from current permission"
   }
+  if (state === "unavailable") {
+    return "Unavailable"
+  }
   if (state === "sync_failed") {
     return "Sync failed for this metric"
   }
@@ -118,9 +121,26 @@ function MetricCard({
   )
 }
 
-function syncStatusTone(status: string): "ok" | "warn" | "neutral" {
-  if (status === "Success") return "ok"
-  if (status === "Failed") return "warn"
+function formatSourceSyncStatus(status: MetaSourceSyncStatus) {
+  switch (status) {
+    case "success":
+      return "Success"
+    case "partial":
+      return "Partial"
+    case "failed":
+      return "Failed"
+    case "missing_token":
+      return "Missing token"
+    case "no_data":
+    default:
+      return "No data"
+  }
+}
+
+function syncStatusTone(status: MetaSourceSyncStatus): "ok" | "warn" | "neutral" {
+  if (status === "success") return "ok"
+  if (status === "partial") return "neutral"
+  if (status === "failed" || status === "missing_token") return "warn"
   return "neutral"
 }
 
@@ -213,19 +233,26 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
           <StatusPill
             label="Last sync"
             value={
-              page.lastSyncAt
-                ? dateFormatter.format(new Date(page.lastSyncAt))
-                : "Never"
+              page.lastSyncAt ? (
+                <ClientDateTime value={page.lastSyncAt} placeholder="Never" />
+              ) : (
+                "Never"
+              )
             }
           />
           <StatusPill
+            label="Page summary sync"
+            value={formatSourceSyncStatus(page.pageSummarySyncStatus)}
+            tone={syncStatusTone(page.pageSummarySyncStatus)}
+          />
+          <StatusPill
             label="Posts sync"
-            value={page.postsSyncStatus}
+            value={formatSourceSyncStatus(page.postsSyncStatus)}
             tone={syncStatusTone(page.postsSyncStatus)}
           />
           <StatusPill
             label="Insights sync"
-            value={page.insightsSyncStatus}
+            value={formatSourceSyncStatus(page.insightsSyncStatus)}
             tone={syncStatusTone(page.insightsSyncStatus)}
           />
         </div>
@@ -379,9 +406,12 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
               <h3 className="text-base font-semibold">Post performance preview</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {preview.totalSynced.toLocaleString("en-PH")} posts synced
-                {preview.lastPostsSyncAt
-                  ? ` · Last posts sync ${dateFormatter.format(new Date(preview.lastPostsSyncAt))}`
-                  : ""}
+                {preview.lastPostsSyncAt ? (
+                  <>
+                    {" · Last posts sync "}
+                    <ClientDateTime value={preview.lastPostsSyncAt} />
+                  </>
+                ) : null}
               </p>
             </div>
             <MetaViewAllPostsButton pageKey={page.key} />

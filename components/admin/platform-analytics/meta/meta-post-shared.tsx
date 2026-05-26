@@ -1,12 +1,8 @@
 import Link from "next/link"
 
+import { ClientDateTime } from "@/components/shared/client-date-time"
 import { Button } from "@/components/ui/button"
 import type { MetaBusinessPagePostRow } from "@/lib/meta/page-analytics"
-
-const dateFormatter = new Intl.DateTimeFormat("en-PH", {
-  dateStyle: "medium",
-  timeStyle: "short",
-})
 
 export function MetaPostThumbnail({
   post,
@@ -57,9 +53,10 @@ export function MetaPostDate({
   }
 
   return (
-    <span className="whitespace-nowrap">
-      {dateFormatter.format(new Date(publishedAt))}
-    </span>
+    <ClientDateTime
+      value={publishedAt}
+      className="whitespace-nowrap"
+    />
   )
 }
 
