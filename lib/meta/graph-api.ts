@@ -42,10 +42,21 @@ type GraphPost = {
   permalink_url?: string
   created_time?: string
   full_picture?: string
+  type?: string
   likes?: { summary?: { total_count?: number } }
   reactions?: { summary?: { total_count?: number } }
   comments?: { summary?: { total_count?: number } }
   shares?: { count?: number }
+}
+
+export type GraphPostComment = {
+  id: string
+  message?: string
+  created_time?: string
+  like_count?: number
+  comment_count?: number
+  permalink_url?: string
+  from?: { id?: string; name?: string }
 }
 
 async function getPageToken(
@@ -98,10 +109,13 @@ function readPostReactionCount(post: GraphPost) {
 }
 
 const POST_FIELDS_ENGAGEMENT =
-  "id,message,created_time,permalink_url,full_picture,shares,likes.summary(true),comments.summary(true)"
+  "id,message,created_time,permalink_url,full_picture,type,shares,likes.summary(true),comments.summary(true)"
 
 const POST_FIELDS_BASIC =
-  "id,message,created_time,permalink_url,full_picture,shares"
+  "id,message,created_time,permalink_url,full_picture,type,shares"
+
+const POST_COMMENT_FIELDS =
+  "id,message,created_time,like_count,comment_count,permalink_url,from{name}"
 
 async function fetchPostsWithFields(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
@@ -233,6 +247,23 @@ export function calculateEngagementRate(input: {
   const denominator =
     input.followers && input.followers > 0 ? input.followers : 1
   return Number((interactions / denominator).toFixed(4))
+}
+
+export async function fetchPostCommentsSafe(
+  postId: string,
+  page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
+  limit = 50
+) {
+  const token = await getPageToken(page)
+  return metaGraphFetchSafe<{ data: GraphPostComment[] }>(
+    `/${postId}/comments`,
+    token,
+    {
+      fields: POST_COMMENT_FIELDS,
+      limit: String(limit),
+      order: "reverse_chronological",
+    }
+  )
 }
 
 export const POSTS_PERMISSION_MESSAGE =

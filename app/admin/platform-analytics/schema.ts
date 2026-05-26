@@ -22,6 +22,33 @@ export const metaMonitoringFiltersSchema = z.object({
   pageId: z.string().trim().optional().nullable(),
 });
 
+export const metaPostsSortOptions = [
+  "latest",
+  "highest_engagement",
+  "most_comments",
+  "most_shares",
+  "most_reactions",
+] as const;
+
+export const metaPostsPageSizes = [10, 25, 50] as const;
+
+export const metaPostsFiltersSchema = z.object({
+  pageKey: z.enum(["neon-nights", "pro-group", "al-qaysar"]).default("neon-nights"),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z
+    .union([z.literal(10), z.literal(25), z.literal(50)])
+    .default(10),
+  sort: z.enum(metaPostsSortOptions).default("latest"),
+  search: z.string().trim().optional(),
+  dateFrom: z.string().trim().optional().nullable(),
+  dateTo: z.string().trim().optional().nullable(),
+});
+
+export const metaPostCommentsSchema = z.object({
+  pageKey: z.enum(["neon-nights", "pro-group", "al-qaysar"]),
+  postId: z.string().trim().min(1),
+});
+
 export const registerMetaPageSchema = z.object({
   facebookPageId: z.string().trim().min(1, "Facebook Page ID is required."),
   pageName: z.string().trim().min(1, "Page name is required."),

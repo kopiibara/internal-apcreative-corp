@@ -4,13 +4,22 @@ import { revalidatePath } from "next/cache";
 
 import {
   metaMonitoringFiltersSchema,
+  metaPostCommentsSchema,
+  metaPostsFiltersSchema,
   platformAnalyticsFiltersSchema,
   registerMetaPageSchema,
 } from "@/app/admin/platform-analytics/schema";
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import { query } from "@/lib/db";
 import { bootstrapMetaMonitoring } from "@/lib/meta/bootstrap";
+import { fetchPostCommentsSafe } from "@/lib/meta/graph-api";
 import { getMetaMonitoringDashboardData } from "@/lib/meta/monitoring-data";
+import {
+  getMetaPostsPageData,
+  type MetaPostsListFilters,
+} from "@/lib/meta/posts-analytics";
+import { getMetaPageByKey } from "@/lib/meta/pages-config";
+import { listActiveMetaFacebookPages } from "@/lib/meta/sync";
 import { getPlatformAnalyticsDashboardData } from "@/lib/platform-analytics/get-dashboard-data";
 import type {
   AnalyticsDateRange,
@@ -214,6 +223,7 @@ export async function bootstrapMetaMonitoringAction(): Promise<
   try {
     const result = await bootstrapMetaMonitoring();
     revalidatePath("/admin/platform-analytics");
+    revalidatePath("/admin/platform-analytics/meta/posts");
 
     const hasData = result.dailySnapshots > 0 || result.postMetrics > 0;
 
@@ -259,6 +269,7 @@ export async function syncAllMetaMonitoringAction(): Promise<
   try {
     const result = await runAllMetaSyncJobs();
     revalidatePath("/admin/platform-analytics");
+    revalidatePath("/admin/platform-analytics/meta/posts");
 
     return {
       success: true,
@@ -285,6 +296,7 @@ export async function triggerMetaSyncAction(
   try {
     const recordsAffected = await runMetaSyncJob(syncType);
     revalidatePath("/admin/platform-analytics");
+    revalidatePath("/admin/platform-analytics/meta/posts");
     return {
       success: true,
       message: `${syncType} sync completed.`,
@@ -313,6 +325,7 @@ export async function syncYouTubeAction(input?: {
       dateRange: input?.dateRange,
     });
     revalidatePath("/admin/platform-analytics");
+    revalidatePath("/admin/platform-analytics/meta/posts");
 
     return {
       success: true,
@@ -353,6 +366,7 @@ export async function disconnectYouTubeAction(input?: {
     );
 
     revalidatePath("/admin/platform-analytics");
+    revalidatePath("/admin/platform-analytics/meta/posts");
 
     return {
       success: true,
@@ -367,6 +381,132 @@ export async function disconnectYouTubeAction(input?: {
         error instanceof Error ? error.message : "YouTube disconnect failed.",
     };
   }
+}
+
+export async function fetchMetaPostsAction(
+  input: MetaPostsListFilters,
+): Promise<
+  MetaMonitoringActionResult<
+    NonNullable<Awaited<ReturnType<typeof getMetaPostsPageData>>>
+  >
+> {
+  const authError = await authorizeMetaView();
+  if (authError) {
+    return authError;
+  }
+
+  const parsed = metaPostsFiltersSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: "Invalid posts filters.",
+    };
+  }
+
+  const data = await getMetaPostsPageData(parsed.data);
+  if (!data) {
+    return {
+      success: false,
+      message: "Meta posts page is not available for this account.",
+    };
+  }
+
+  return { success: true, message: "Posts loaded.", data };
+}
+
+export type MetaPostCommentView = {
+  id: string;
+  authorName: string;
+  message: string;
+  createdAt: string | null;
+  likeCount: number;
+  replyCount: number;
+  permalink: string | null;
+  permissionDenied: boolean;
+  syncFailed: boolean;
+};
+
+export async function fetchMetaPostCommentsAction(input: {
+  pageKey: "neon-nights" | "pro-group" | "al-qaysar";
+  postId: string;
+}): Promise<
+  MetaMonitoringActionResult<{
+    comments: MetaPostCommentView[];
+    unavailableMessage: string | null;
+  }>
+> {
+  const authError = await authorizeMetaView();
+  if (authError) {
+    return authError;
+  }
+
+  const parsed = metaPostCommentsSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: "Invalid comment request.",
+    };
+  }
+
+  const config = getMetaPageByKey(parsed.data.pageKey);
+  if (!config?.pageId) {
+    return {
+      success: false,
+      message: "Meta page is not configured.",
+    };
+  }
+
+  const pages = await listActiveMetaFacebookPages();
+  const fbPage = pages.find(
+    (page) => page.facebook_page_id === config.pageId,
+  );
+
+  if (!fbPage) {
+    return {
+      success: false,
+      message: "Facebook page is not connected.",
+    };
+  }
+
+  const result = await fetchPostCommentsSafe(parsed.data.postId, fbPage, 100);
+
+  if (!result.ok) {
+    return {
+      success: true,
+      message: result.permissionDenied
+        ? "Comments unavailable from current permission."
+        : "Failed to load comments.",
+      data: {
+        comments: [],
+        unavailableMessage: result.permissionDenied
+          ? "Unavailable from current permission"
+          : "Sync failed",
+      },
+    };
+  }
+
+  const comments: MetaPostCommentView[] = (result.data.data ?? []).map(
+    (comment) => ({
+      id: comment.id,
+      authorName: comment.from?.name?.trim() || "Name unavailable",
+      message: comment.message?.trim() || "—",
+      createdAt: comment.created_time ?? null,
+      likeCount: comment.like_count ?? 0,
+      replyCount: comment.comment_count ?? 0,
+      permalink: comment.permalink_url ?? null,
+      permissionDenied: false,
+      syncFailed: false,
+    }),
+  );
+
+  return {
+    success: true,
+    message: "Comments loaded.",
+    data: {
+      comments,
+      unavailableMessage: null,
+    },
+  };
 }
 
 export async function getYouTubeOAuthUrlAction(): Promise<

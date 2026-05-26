@@ -42,10 +42,20 @@ export type MetaBusinessPagePostRow = {
   publishedAt: string | null
   permalink: string | null
   imageUrl: string | null
+  postType: string | null
   reactions: number
   comments: number
   shares: number
   engagementTotal: number
+}
+
+export type MetaPostPreviewSection = {
+  totalSynced: number
+  lastPostsSyncAt: string | null
+  topPerforming: MetaBusinessPagePostRow | null
+  topPerformingState: MetaMetricDisplayState
+  topPosts: MetaBusinessPagePostRow[]
+  latestPosts: MetaBusinessPagePostRow[]
 }
 
 export type MetaCapabilityStatus =
@@ -97,6 +107,7 @@ export type MetaBusinessPageDashboard = {
     profileVisits: number | null
     linkClicks: number | null
     topPerformingPost: string | null
+    topPerformingPostId: string | null
     states: {
       totalFollowers: MetaMetricDisplayState
       pageLikes: MetaMetricDisplayState
@@ -114,7 +125,7 @@ export type MetaBusinessPageDashboard = {
     }
   }
   insights: MetaBusinessPageInsightSummary
-  allPosts: MetaBusinessPagePostRow[]
+  postPreview: MetaPostPreviewSection
   growthSnapshots: Array<{
     id: number
     date: string
@@ -162,10 +173,12 @@ function parsePageInsightsFromSnapshot(
   }
 }
 
-function mapPostRow(post: MetaPostMetricsRow): MetaBusinessPagePostRow {
+export function mapPostMetricsRow(post: MetaPostMetricsRow): MetaBusinessPagePostRow {
   const insights = post.insights as Record<string, unknown> | undefined
   const imageUrl =
     typeof insights?.picture_url === "string" ? insights.picture_url : null
+  const postType =
+    typeof insights?.post_type === "string" ? insights.post_type : null
 
   const reactions = post.reactions_count
   const comments = post.comments_count
@@ -180,6 +193,7 @@ function mapPostRow(post: MetaPostMetricsRow): MetaBusinessPagePostRow {
       : null,
     permalink: post.permalink,
     imageUrl,
+    postType,
     reactions,
     comments,
     shares,
@@ -261,8 +275,15 @@ async function loadPageAnalytics(
 ) {
   const pageId = config.pageId
 
-  const [dbPage, snapshots, postTotals, allPosts, recentSyncRuns] =
-    await Promise.all([
+  const [
+    dbPage,
+    snapshots,
+    postTotals,
+    postCount,
+    topPostsRows,
+    latestPostsRows,
+    recentSyncRuns,
+  ] = await Promise.all([
       query<{ page_name: string; last_synced_at: Date | null }>(
         `
         SELECT page_name, last_synced_at
@@ -299,6 +320,39 @@ async function loadPageAnalytics(
         `,
         [pageId]
       ),
+      query<{ count: string }>(
+        `
+        SELECT COUNT(*)::text AS count
+        FROM meta_post_metrics
+        WHERE facebook_page_id = $1
+        `,
+        [pageId]
+      ),
+      query<MetaPostMetricsRow>(
+        `
+        SELECT
+          id,
+          facebook_page_id,
+          post_id,
+          message,
+          permalink,
+          published_at,
+          reactions_count,
+          comments_count,
+          shares_count,
+          engagement_rate::text,
+          performance_rank,
+          insights,
+          last_synced_at
+        FROM meta_post_metrics
+        WHERE facebook_page_id = $1
+        ORDER BY
+          reactions_count + comments_count + shares_count DESC,
+          published_at DESC NULLS LAST
+        LIMIT 3
+        `,
+        [pageId]
+      ),
       query<MetaPostMetricsRow>(
         `
         SELECT
@@ -318,6 +372,7 @@ async function loadPageAnalytics(
         FROM meta_post_metrics
         WHERE facebook_page_id = $1
         ORDER BY published_at DESC NULLS LAST, id DESC
+        LIMIT 3
         `,
         [pageId]
       ),
@@ -355,16 +410,10 @@ async function loadPageAnalytics(
   const reactions = Number(postTotals.rows[0]?.reactions ?? 0)
   const comments = Number(postTotals.rows[0]?.comments ?? 0)
   const shares = Number(postTotals.rows[0]?.shares ?? 0)
-  const mappedPosts = allPosts.rows.map(mapPostRow)
-  const topPost = mappedPosts.reduce<MetaBusinessPagePostRow | null>(
-    (best, post) => {
-      if (!best || post.engagementTotal > best.engagementTotal) {
-        return post
-      }
-      return best
-    },
-    null
-  )
+  const totalSynced = Number(postCount.rows[0]?.count ?? 0)
+  const topPosts = topPostsRows.rows.map(mapPostMetricsRow)
+  const latestPosts = latestPostsRows.rows.map(mapPostMetricsRow)
+  const topPost = topPosts[0] ?? null
 
   const runs = recentSyncRuns.rows
   const dailyPageRun = getLastSyncRun(runs, "daily_page")
@@ -392,7 +441,7 @@ async function loadPageAnalytics(
   const permissions: MetaPermissionCapabilities = {
     pageAccessToken: pageAccessTokenStatus,
     pageSummary: capabilityFromSyncRun(dailyPageRun, hasSummaryData),
-    posts: capabilityFromSyncRun(hourlyPostsRun, mappedPosts.length > 0),
+    posts: capabilityFromSyncRun(hourlyPostsRun, totalSynced > 0),
     insights: insights.insightsPermissionDenied
       ? "Permission required"
       : capabilityFromSyncRun(
@@ -440,7 +489,7 @@ async function loadPageAnalytics(
       ? latestLikes - previousLikes
       : null
 
-  const postEngagements = mappedPosts.length > 0 ? reactions + comments + shares : null
+  const postEngagements = totalSynced > 0 ? reactions + comments + shares : null
 
   return {
     key: config.key,
@@ -477,6 +526,7 @@ async function loadPageAnalytics(
       topPerformingPost: topPost?.message
         ? topPost.message.slice(0, 80)
         : null,
+      topPerformingPostId: topPost?.postId ?? null,
       states: {
         totalFollowers: metricState({
           value: latestFollowers,
@@ -498,24 +548,24 @@ async function loadPageAnalytics(
         }),
         postEngagements: metricState({
           value: postEngagements,
-          hasData: mappedPosts.length > 0,
+          hasData: totalSynced > 0,
           permissionDenied: postsPermissionDenied,
           syncFailed:
             postsSyncStatus === "Failed" && !postsPermissionDenied,
         }),
         reactions: metricState({
           value: reactions,
-          hasData: mappedPosts.length > 0,
+          hasData: totalSynced > 0,
           permissionDenied: postsPermissionDenied,
         }),
         comments: metricState({
           value: comments,
-          hasData: mappedPosts.length > 0,
+          hasData: totalSynced > 0,
           permissionDenied: postsPermissionDenied,
         }),
         shares: metricState({
           value: shares,
-          hasData: mappedPosts.length > 0,
+          hasData: totalSynced > 0,
           permissionDenied: postsPermissionDenied,
         }),
         reach: metricState({
@@ -550,7 +600,22 @@ async function loadPageAnalytics(
       },
     },
     insights,
-    allPosts: mappedPosts,
+    postPreview: {
+      totalSynced,
+      lastPostsSyncAt: hourlyPostsRun?.finished_at
+        ? new Date(hourlyPostsRun.finished_at).toISOString()
+        : lastSyncRow
+          ? new Date(lastSyncRow).toISOString()
+          : null,
+      topPerforming: topPost,
+      topPerformingState: metricState({
+        value: topPost ? 1 : null,
+        hasData: Boolean(topPost),
+        permissionDenied: postsPermissionDenied,
+      }),
+      topPosts,
+      latestPosts,
+    },
     growthSnapshots: snapshots.rows.map((row) => ({
       id: row.id,
       date: row.snapshot_date,
@@ -621,6 +686,7 @@ function buildUnconfiguredPageDashboard(
       profileVisits: null,
       linkClicks: null,
       topPerformingPost: null,
+      topPerformingPostId: null,
       states: emptyStates,
     },
     insights: {
@@ -636,7 +702,14 @@ function buildUnconfiguredPageDashboard(
       insightsPermissionDenied: false,
       insightsSyncFailed: false,
     },
-    allPosts: [],
+    postPreview: {
+      totalSynced: 0,
+      lastPostsSyncAt: null,
+      topPerforming: null,
+      topPerformingState: "no_data",
+      topPosts: [],
+      latestPosts: [],
+    },
     growthSnapshots: [],
     recentSyncRuns: [],
   }
