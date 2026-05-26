@@ -12,11 +12,7 @@ export const accountTypes = [
 
 export type AccountType = (typeof accountTypes)[number];
 
-const employeeAccountTypes: AccountType[] = [
-  "CLIENT",
-  "EMPLOYEE",
-  "FULL_STACK_DEVELOPER",
-];
+const employeeAccountTypes: AccountType[] = ["CLIENT", "EMPLOYEE"];
 
 /** Admin-side account types that use the admin dashboard and permission bypass. */
 export const ADMIN_ACCOUNT_TYPES = [
@@ -24,11 +20,27 @@ export const ADMIN_ACCOUNT_TYPES = [
   "SUPERVISOR",
   "MANAGER",
   "EXECUTIVE",
+  "FULL_STACK_DEVELOPER",
 ] as const satisfies readonly AccountType[];
 
 export type AdminAccountType = (typeof ADMIN_ACCOUNT_TYPES)[number];
 
 const adminAccountTypes: AccountType[] = [...ADMIN_ACCOUNT_TYPES];
+
+/** Admin-tier accounts share organization-wide brand access (All Brand semantics). */
+export const ORGANIZATION_WIDE_BRAND_ACCOUNT_TYPES = [
+  "SUPERVISOR",
+  "MANAGER",
+  "EXECUTIVE",
+  "DIRECTOR",
+  "FULL_STACK_DEVELOPER",
+] as const satisfies readonly AccountType[];
+
+export function hasOrganizationWideBrandAccess(accountType: AccountType) {
+  return (ORGANIZATION_WIDE_BRAND_ACCOUNT_TYPES as readonly AccountType[]).includes(
+    accountType,
+  );
+}
 
 type RoleRecord = {
   slug: string;

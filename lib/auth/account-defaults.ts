@@ -19,7 +19,7 @@ export const ALL_BRAND_ALLOWED_ROLE_SLUGS = [
 ] as const
 
 export const ALL_BRAND_ASSIGNMENT_ERROR_MESSAGE =
-  "All Brand can only be assigned with director, executive, manager, supervisor, multimedia, or full stack developer roles."
+  "All Brand grants access to every brand in the system and can only be assigned with director, executive, manager, supervisor, multimedia, or full stack developer roles."
 
 export function isAllBrandAllowedRoleSlug(slug: string) {
   return (ALL_BRAND_ALLOWED_ROLE_SLUGS as readonly string[]).includes(slug)

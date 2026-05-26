@@ -19,20 +19,16 @@ The internal dashboard receives real-time Facebook Page activity through Meta we
 
 ## Environment Variables
 
-Add to production (never expose in client code):
+See `docs/meta-environment-variables.md` for the full multi-page structure.
 
-```env
-META_WEBHOOK_VERIFY_TOKEN=apcreative_meta_webhook_2026
-META_APP_SECRET=<meta_app_secret>
-META_PAGE_ACCESS_TOKEN=<page_access_token>
-META_CRON_SECRET=<long_random_secret>
+- One Meta Developer App (`META_APP_ID`, `META_APP_SECRET`)
+- Per-page Page ID + Page access token with `*_META_ENABLED` flags
+- **Active now**: Neon Nights (`NEON_NIGHTS_META_ENABLED=true`)
+- **Reserved**: Pro Group, Al Qaysar (`*_META_ENABLED=false` until enabled)
 
-# Optional
-META_GRAPH_API_VERSION=v22.0
-META_PAGE_ACCESS_TOKEN_<PAGE_ALIAS>=<token for specific page>
-```
+Sync and bootstrap only loop enabled pages. Tokens are server-only (never `NEXT_PUBLIC_`).
 
-Per-page tokens: register the page with `access_token_env_key` set to the env variable name (for example `META_PAGE_ACCESS_TOKEN_PRO_GROUP`).
+Config code: `lib/meta/pages-config.ts`
 
 ## Meta Developer Dashboard
 

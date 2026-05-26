@@ -1,24 +1,24 @@
 import "server-only"
 
 import { query } from "@/lib/db"
-import { getDefaultMetaPageAccessToken } from "@/lib/meta/config"
 import {
-  discoverFacebookPagesFromToken,
-  type DiscoveredFacebookPage,
-} from "@/lib/meta/graph-api"
+  getActiveMetaPages,
+  getActiveMetaPagesForSync,
+  validateEnabledMetaPages,
+} from "@/lib/meta/pages-config"
+import { fetchPageSummary } from "@/lib/meta/graph-api"
 import { syncDailyPageSnapshots, syncHourlyPostMetrics } from "@/lib/meta/sync"
 
 export type MetaBootstrapResult = {
-  discoveredPages: DiscoveredFacebookPage[]
+  registeredPages: Array<{ id: string; name: string }>
   registeredCount: number
   dailySnapshots: number
   postMetrics: number
   errors: string[]
 }
 
-export async function registerDiscoveredMetaPages(
-  pages: DiscoveredFacebookPage[]
-) {
+export async function registerConfiguredMetaPages() {
+  const pages = getActiveMetaPagesForSync()
   let registeredCount = 0
 
   for (const page of pages) {
@@ -27,16 +27,18 @@ export async function registerDiscoveredMetaPages(
       INSERT INTO meta_facebook_page (
         facebook_page_id,
         page_name,
+        access_token_env_key,
         webhook_subscribed_fields
       )
-      VALUES ($1, $2, ARRAY['feed']::TEXT[])
+      VALUES ($1, $2, $3, ARRAY['feed']::TEXT[])
       ON CONFLICT (facebook_page_id)
       DO UPDATE SET
         page_name = EXCLUDED.page_name,
+        access_token_env_key = EXCLUDED.access_token_env_key,
         is_active = true,
         updated_at = now()
       `,
-      [page.id, page.name]
+      [page.facebook_page_id, page.page_name, page.access_token_env_key]
     )
     registeredCount += 1
   }
@@ -45,32 +47,51 @@ export async function registerDiscoveredMetaPages(
 }
 
 export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
-  const token = getDefaultMetaPageAccessToken()
+  const validation = validateEnabledMetaPages()
   const errors: string[] = []
 
-  if (!token) {
+  if (!validation.valid) {
     throw new Error(
-      "META_PAGE_ACCESS_TOKEN is not set. Add a long-lived Page access token to your environment."
+      validation.issues.map((issue) => issue.message).join(" ")
     )
   }
 
-  let discoveredPages: DiscoveredFacebookPage[] = []
-
-  try {
-    discoveredPages = await discoverFacebookPagesFromToken(token)
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to discover Facebook Pages."
-    throw new Error(message)
-  }
-
-  if (discoveredPages.length === 0) {
+  const activePages = getActiveMetaPages()
+  if (activePages.length === 0) {
     throw new Error(
-      "No Facebook Pages found for this token. Use a Page access token with pages_show_list and read_insights."
+      "No Meta pages are enabled. Set NEON_NIGHTS_META_ENABLED=true and configure its Page ID and access token."
     )
   }
 
-  const registeredCount = await registerDiscoveredMetaPages(discoveredPages)
+  const registeredPages: Array<{ id: string; name: string }> = []
+
+  for (const page of activePages) {
+    try {
+      const summary = await fetchPageSummary({
+        facebook_page_id: page.pageId,
+        access_token_env_key: page.accessTokenEnvKey,
+      })
+      registeredPages.push({
+        id: summary.id,
+        name: summary.name ?? page.name,
+      })
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : `Failed to verify Meta page for ${page.name}.`
+      errors.push(message)
+    }
+  }
+
+  if (registeredPages.length === 0) {
+    throw new Error(
+      errors.join(" ") ||
+        "No enabled Meta pages could be verified. Check Page ID and access token values."
+    )
+  }
+
+  const registeredCount = await registerConfiguredMetaPages()
 
   let dailySnapshots = 0
   let postMetrics = 0
@@ -98,7 +119,7 @@ export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
   }
 
   return {
-    discoveredPages,
+    registeredPages,
     registeredCount,
     dailySnapshots,
     postMetrics,

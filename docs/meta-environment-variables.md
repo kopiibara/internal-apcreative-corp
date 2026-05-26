@@ -1,12 +1,14 @@
 # Environment variables (local + production)
 
-Copy these into `.env` (local) and into your hosting provider (Vercel → **internal.apcreativecorp.com** → Environment Variables).
+Copy these into `.env.local` (local) and into your hosting provider (Vercel → **internal.apcreativecorp.com** → Environment Variables).
 
-**Never commit real secrets to git.** Use `.env` locally only.
+**Never commit real secrets to git.** Env files matching `.env*` are gitignored.
+
+Page access tokens are **server-only**. Never use `NEXT_PUBLIC_` for Meta tokens.
 
 ---
 
-## Local development (`.env`)
+## Local development (`.env.local`)
 
 ```env
 DATABASE_URL="<your-neon-connection-string>"
@@ -14,39 +16,69 @@ DATABASE_URL="<your-neon-connection-string>"
 BETTER_AUTH_SECRET="<your-existing-better-auth-secret>"
 BETTER_AUTH_URL="http://localhost:3000"
 
-META_WEBHOOK_VERIFY_TOKEN="apcreative_meta_webhook_2026"
-META_APP_SECRET="<from Meta App → Settings → Basic → App secret>"
-META_PAGE_ACCESS_TOKEN="<from Meta Graph API Explorer or Page token tool>"
-META_CRON_SECRET="<generate-a-long-random-string>"
-META_GRAPH_API_VERSION="v22.0"
+# ==========================================
+# META APP CONFIGURATION
+# ==========================================
 
-INITIAL_EXECUTIVE_EMAIL="admin@admin.com"
-INITIAL_EXECUTIVE_PASSWORD="admin123!"
-INITIAL_EXECUTIVE_NAME="WEBDEVELOPER"
-INITIAL_ROLE="FULL STACK DEVELOPER"
-DEFAULT_ACCOUNT_PASSWORD="apcreativemarketing123!"
-# Legacy alias still supported if DEFAULT_ACCOUNT_PASSWORD is unset:
-# DEFAULT_TEMPORARY_PASSWORD="apcreativemarketing123!"
+META_GRAPH_API_VERSION=v25.0
+META_APP_ID=
+META_APP_SECRET=
+
+META_CRON_SECRET="<generate-a-long-random-string>"
+
+# Optional — only if Meta Webhooks are enabled
+META_WEBHOOK_VERIFY_TOKEN="apcreative_meta_webhook_2026"
+
+
+# ==========================================
+# META FACEBOOK PAGES
+# ==========================================
+
+# Active: Neon Nights
+NEON_NIGHTS_META_ENABLED=true
+NEON_NIGHTS_META_PAGE_ID="<facebook-page-id>"
+NEON_NIGHTS_META_PAGE_ACCESS_TOKEN="<long-lived-page-access-token>"
+
+
+# Reserved: Pro Group (do not enable until ready)
+PRO_GROUP_META_ENABLED=false
+PRO_GROUP_META_PAGE_ID=
+PRO_GROUP_META_PAGE_ACCESS_TOKEN=
+
+
+# Reserved: Al Qaysar (do not enable until ready)
+AL_QAYSAR_META_ENABLED=false
+AL_QAYSAR_META_PAGE_ID=
+AL_QAYSAR_META_PAGE_ACCESS_TOKEN=
 ```
 
 ---
 
-## Production (Vercel / host for internal.apcreativecorp.com)
+## Production (Vercel / host)
 
-Use the **same** `DATABASE_URL` and `BETTER_AUTH_SECRET` as your live app (do not change unless rotating secrets).
+Use the same structure as local. Set `BETTER_AUTH_URL` to your production URL.
 
-```env
-DATABASE_URL="<same Neon URL as production already uses>"
+---
 
-BETTER_AUTH_SECRET="<same secret as production already uses>"
-BETTER_AUTH_URL="https://internal.apcreativecorp.com"
+## Validation rules
 
-META_WEBHOOK_VERIFY_TOKEN="apcreative_meta_webhook_2026"
-META_APP_SECRET="<from Meta App → Settings → Basic → App secret>"
-META_PAGE_ACCESS_TOKEN="<long-lived Page access token>"
-META_CRON_SECRET="<same random string you use for cron curl>"
-META_GRAPH_API_VERSION="v22.0"
-```
+| Page state | Page ID | Page access token |
+|------------|---------|-------------------|
+| `*_META_ENABLED=true` | Required | Required |
+| `*_META_ENABLED=false` | Optional (empty OK) | Optional (empty OK) |
+
+Only enabled pages are validated, registered, and synced. Disabled reserved pages never call the Meta API.
+
+---
+
+## Activating a reserved page later
+
+1. Set `PRO_GROUP_META_ENABLED=true` or `AL_QAYSAR_META_ENABLED=true`
+2. Add that page’s `*_META_PAGE_ID` and `*_META_PAGE_ACCESS_TOKEN`
+3. Redeploy / restart the app
+4. Run cron sync or use **Connect & sync** in Platform Analytics
+
+No code changes are required.
 
 ---
 
@@ -54,25 +86,34 @@ META_GRAPH_API_VERSION="v22.0"
 
 | Variable | Where to get it |
 |----------|-----------------|
-| `META_WEBHOOK_VERIFY_TOKEN` | You choose this. Must match Meta → Webhooks → Verify token. Use: `apcreative_meta_webhook_2026` |
-| `META_APP_SECRET` | [developers.facebook.com](https://developers.facebook.com) → **AP Creative Social Monitoring** → **App settings** → **Basic** → **App secret** → Show |
-| `META_PAGE_ACCESS_TOKEN` | Graph API Explorer, or token exchange from User token with Page permissions. Must include `pages_read_engagement`, `read_insights`, etc. |
-| `META_CRON_SECRET` | Generate yourself (32+ random characters). Used only by `/api/meta/cron` |
+| `META_GRAPH_API_VERSION` | Meta Graph API version (e.g. `v25.0`) |
+| `META_APP_ID` | Meta Developer App → Settings → Basic |
+| `META_APP_SECRET` | Meta Developer App → Settings → Basic → App secret |
+| `META_CRON_SECRET` | Generate yourself (32+ random characters). Used by `/api/meta/cron` |
+| `META_WEBHOOK_VERIFY_TOKEN` | You choose this; must match Meta → Webhooks → Verify token |
+| `NEON_NIGHTS_META_PAGE_ID` | Facebook Page → About → Page ID |
+| `NEON_NIGHTS_META_PAGE_ACCESS_TOKEN` | Graph API Explorer or long-lived Page token with `pages_read_engagement`, `read_insights`, etc. |
 
 ---
 
-## Optional: per-Page token env keys
+## Scheduled sync (cron)
 
-If you register a page with a custom env key in `meta_facebook_page.access_token_env_key`:
+Sync jobs only loop through pages where `*_META_ENABLED=true` and credentials are set.
 
-```env
-META_PAGE_ACCESS_TOKEN_PRO_GROUP="<page-specific-token>"
+```bash
+curl -H "x-meta-cron-secret: $META_CRON_SECRET" \
+  "https://internal.apcreativecorp.com/api/meta/cron?job=daily_page"
+
+curl -H "x-meta-cron-secret: $META_CRON_SECRET" \
+  "https://internal.apcreativecorp.com/api/meta/cron?job=hourly_posts"
 ```
 
+Data fetched per active page: page name, likes, followers, posts, post reactions/comments/shares, page insights, engagement metrics.
+
 ---
 
-## After setting variables
+## Code reference
 
-1. Redeploy production (so routes + env load).
-2. Test: `https://internal.apcreativecorp.com/api/meta/webhook?hub.mode=subscribe&hub.verify_token=apcreative_meta_webhook_2026&hub.challenge=test123` → body must be `test123`.
-3. Meta Dashboard → **Verify and save** on the same callback URL.
+Central page config: `lib/meta/pages-config.ts`
+
+Active pages: `getActiveMetaPages()` → for now only Neon Nights when `NEON_NIGHTS_META_ENABLED=true`.

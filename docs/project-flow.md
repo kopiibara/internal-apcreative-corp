@@ -27,7 +27,7 @@ Redirects:
 
 ```txt
 CLIENT, EMPLOYEE → /employee/dashboard
-SUPERVISOR, MANAGER, EXECUTIVE → /admin/dashboard
+SUPERVISOR, MANAGER, EXECUTIVE, FULL_STACK_DEVELOPER → /admin/dashboard
 ```
 
 ## Root Redirect Flow

@@ -192,7 +192,7 @@ export async function registerMetaFacebookPageAction(input: {
 
 export async function bootstrapMetaMonitoringAction(): Promise<
   MetaMonitoringActionResult<{
-    discoveredPages: Array<{ id: string; name: string }>;
+    registeredPages: Array<{ id: string; name: string }>;
     registeredCount: number;
     dailySnapshots: number;
     postMetrics: number;
@@ -216,7 +216,7 @@ export async function bootstrapMetaMonitoringAction(): Promise<
         ? `Connected ${result.registeredCount} page(s) and synced analytics.`
         : "Pages registered but analytics sync returned no records. See warnings.",
       data: {
-        discoveredPages: result.discoveredPages.map((p) => ({
+        registeredPages: result.registeredPages.map((p) => ({
           id: p.id,
           name: p.name,
         })),
