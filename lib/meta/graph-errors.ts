@@ -4,6 +4,7 @@ export type MetaGraphErrorInfo = {
   message: string
   permissionDenied: boolean
   tokenExpired: boolean
+  tokenInvalid: boolean
   code: number | null
 }
 
@@ -27,9 +28,15 @@ export function classifyMetaGraphError(error: unknown): MetaGraphErrorInfo {
   const tokenExpired =
     lower.includes("(#190)") ||
     lower.includes("expired") ||
-    lower.includes("invalid oauth") ||
-    lower.includes("invalid access token") ||
     lower.includes("session has expired")
+
+  const tokenInvalid =
+    !tokenExpired &&
+    (lower.includes("invalid oauth") ||
+      lower.includes("invalid access token") ||
+      lower.includes("malformed access token") ||
+      lower.includes("cannot parse access token") ||
+      lower.includes("(#100)"))
 
   const codeMatch = message.match(/\(#(\d+)\)/)
   const code = codeMatch ? Number(codeMatch[1]) : null
@@ -38,6 +45,7 @@ export function classifyMetaGraphError(error: unknown): MetaGraphErrorInfo {
     message,
     permissionDenied,
     tokenExpired,
+    tokenInvalid,
     code,
   }
 }

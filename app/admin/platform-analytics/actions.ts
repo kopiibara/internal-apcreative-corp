@@ -98,6 +98,8 @@ export async function fetchPlatformAnalyticsAction(input?: {
   accountId?: string | null;
   metaScope?: MetaScope;
   dateRange?: AnalyticsDateRange;
+  customDateFrom?: string | null;
+  customDateTo?: string | null;
 }): Promise<
   MetaMonitoringActionResult<
     Awaited<ReturnType<typeof getPlatformAnalyticsDashboardData>>
@@ -121,6 +123,8 @@ export async function fetchPlatformAnalyticsAction(input?: {
     accountId: parsed.data.accountId ?? null,
     metaScope: parsed.data.metaScope,
     dateRange: parsed.data.dateRange,
+    customDateFrom: parsed.data.customDateFrom,
+    customDateTo: parsed.data.customDateTo,
   });
 
   return { success: true, message: "Platform analytics loaded.", data };

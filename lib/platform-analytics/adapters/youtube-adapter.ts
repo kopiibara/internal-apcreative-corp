@@ -103,12 +103,18 @@ function normalizeTrendKey(value: string | number | Date) {
 
 function dateRangeLabel(dateRange?: AnalyticsDateRange) {
   switch (dateRange) {
+    case "today":
+      return "Today";
     case "7d":
       return "Last 7 days";
+    case "month":
+      return "This month";
     case "90d":
       return "Last 90 days";
     case "365d":
       return "Last 365 days";
+    case "custom":
+      return "Custom range";
     case "28d":
     default:
       return "Last 28 days";
@@ -121,12 +127,19 @@ function dateRangeLabelShort(dateRange?: AnalyticsDateRange) {
 
 function dateRangeToDays(dateRange?: AnalyticsDateRange) {
   switch (dateRange) {
+    case "today":
+      return 1;
     case "7d":
       return 7;
+    case "month": {
+      const today = new Date();
+      return today.getDate();
+    }
     case "90d":
       return 90;
     case "365d":
       return 365;
+    case "custom":
     case "28d":
     default:
       return 28;

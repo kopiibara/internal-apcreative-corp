@@ -6,8 +6,13 @@ import {
   getMetaEnvChecklist,
 } from "@/lib/meta/connection-status"
 import { isMetaWebhookConfigured } from "@/lib/meta/config"
+import { resolveMetaAnalyticsWindow } from "@/lib/meta/date-range"
 import { classifyMetaGraphError } from "@/lib/meta/graph-errors"
 import { POSTS_PERMISSION_MESSAGE } from "@/lib/meta/graph-api"
+import {
+  sumParsedMetricsInSnapshots,
+  sumReactionInsightMetrics,
+} from "@/lib/meta/insights-aggregate"
 import {
   resolveEffectivePageAccessToken,
   type ResolvedPageTokenSource,
@@ -20,6 +25,7 @@ import type {
   MetaPostMetricsRow,
 } from "@/lib/meta/types"
 import type { MetaMetricDisplayState } from "@/lib/platform-analytics/format"
+import type { AnalyticsDateRange } from "@/lib/platform-analytics/types"
 
 export type MetaBusinessPageInsightSummary = {
   pageImpressions: number | null
@@ -60,12 +66,14 @@ export type MetaPostPreviewSection = {
 
 export type MetaCapabilityStatus =
   | "Available"
+  | "Connected"
+  | "Not connected yet"
   | "Permission required"
   | "Sync failed"
-  | "No data yet"
+  | "No live data yet"
 
 export type MetaPermissionCapabilities = {
-  pageAccessToken: "OK" | "Missing" | "Expired"
+  pageAccessToken: "OK" | "Missing" | "Expired" | "Invalid"
   pageSummary: MetaCapabilityStatus
   posts: MetaCapabilityStatus
   insights: MetaCapabilityStatus
@@ -79,12 +87,13 @@ export type MetaBusinessPageDashboard = {
   key: MetaPageConfigKey
   displayName: string
   platformLabel: string
+  dateRangeLabel: string
   facebookPageId: string | null
   pageName: string | null
   connectionStatus: "Connected" | "Not connected" | "Needs configuration"
   facebookPageStatus: "Connected" | "Not connected"
   instagramStatus: "Not connected yet"
-  pageAccessTokenStatus: "OK" | "Missing" | "Expired"
+  pageAccessTokenStatus: "OK" | "Missing" | "Expired" | "Invalid"
   cronStatus: "OK" | "Missing"
   tokenSource: ResolvedPageTokenSource | null
   tokenResolutionHint: string | null
@@ -233,18 +242,29 @@ function runIndicatesTokenExpired(run: MetaSyncRunSummary | undefined) {
 
 function capabilityFromSyncRun(
   run: MetaSyncRunSummary | undefined,
-  hasData: boolean
+  hasData: boolean,
+  connected: boolean
 ): MetaCapabilityStatus {
+  if (!connected) {
+    return "Not connected yet"
+  }
   if (!run) {
-    return hasData ? "Available" : "No data yet"
+    return hasData ? "Available" : "No live data yet"
   }
   if (run.status === "SUCCESS") {
-    return "Available"
+    return hasData ? "Available" : "Connected"
   }
   if (runIndicatesPermissionDenied(run)) {
     return "Permission required"
   }
   return "Sync failed"
+}
+
+function runIndicatesTokenInvalid(run: MetaSyncRunSummary | undefined) {
+  if (!run?.error_log) {
+    return false
+  }
+  return classifyMetaGraphError(new Error(run.error_log)).tokenInvalid
 }
 
 function metricState(input: {
@@ -271,9 +291,12 @@ function metricState(input: {
 async function loadPageAnalytics(
   config: MetaPageConfig,
   integration: Awaited<ReturnType<typeof getMetaIntegrationStatus>>,
-  pageChecklist: ReturnType<typeof getMetaEnvChecklist>["pages"][number]
+  pageChecklist: ReturnType<typeof getMetaEnvChecklist>["pages"][number],
+  dateRange: AnalyticsDateRange = "28d",
+  customDates?: { from?: string | null; to?: string | null }
 ) {
   const pageId = config.pageId
+  const window = resolveMetaAnalyticsWindow(dateRange, customDates)
 
   const [
     dbPage,
@@ -304,10 +327,11 @@ async function loadPageAnalytics(
           metrics
         FROM meta_page_daily_snapshot
         WHERE facebook_page_id = $1
+          AND snapshot_date >= $2::date
+          AND snapshot_date <= $3::date
         ORDER BY snapshot_date DESC
-        LIMIT 30
         `,
-        [pageId]
+        [pageId, window.since, window.until]
       ),
       query<{ reactions: string; comments: string; shares: string }>(
         `
@@ -317,16 +341,20 @@ async function loadPageAnalytics(
           COALESCE(SUM(shares_count), 0)::text AS shares
         FROM meta_post_metrics
         WHERE facebook_page_id = $1
+          AND published_at >= $2::timestamptz
+          AND published_at < ($3::date + interval '1 day')
         `,
-        [pageId]
+        [pageId, window.since, window.until]
       ),
       query<{ count: string }>(
         `
         SELECT COUNT(*)::text AS count
         FROM meta_post_metrics
         WHERE facebook_page_id = $1
+          AND published_at >= $2::timestamptz
+          AND published_at < ($3::date + interval '1 day')
         `,
-        [pageId]
+        [pageId, window.since, window.until]
       ),
       query<MetaPostMetricsRow>(
         `
@@ -346,12 +374,14 @@ async function loadPageAnalytics(
           last_synced_at
         FROM meta_post_metrics
         WHERE facebook_page_id = $1
+          AND published_at >= $2::timestamptz
+          AND published_at < ($3::date + interval '1 day')
         ORDER BY
           reactions_count + comments_count + shares_count DESC,
           published_at DESC NULLS LAST
         LIMIT 3
         `,
-        [pageId]
+        [pageId, window.since, window.until]
       ),
       query<MetaPostMetricsRow>(
         `
@@ -397,19 +427,91 @@ async function loadPageAnalytics(
     ])
 
   const latestSnapshot = snapshots.rows[0]
-  const previousSnapshot = snapshots.rows[1]
+  const oldestSnapshot = snapshots.rows[snapshots.rows.length - 1]
   const latestFollowers = latestSnapshot?.followers_count ?? null
-  const previousFollowers = previousSnapshot?.followers_count ?? null
+  const previousFollowers = oldestSnapshot?.followers_count ?? null
   const latestLikes = latestSnapshot?.page_likes ?? null
-  const previousLikes = previousSnapshot?.page_likes ?? null
+  const previousLikes = oldestSnapshot?.page_likes ?? null
 
   const insights = parsePageInsightsFromSnapshot(
     latestSnapshot?.metrics as Record<string, unknown> | undefined
   )
 
-  const reactions = Number(postTotals.rows[0]?.reactions ?? 0)
+  const reachFromInsights = sumParsedMetricsInSnapshots(
+    snapshots.rows,
+    "page_impressions_unique",
+    window.since,
+    window.until
+  )
+  const impressionsFromInsights = sumParsedMetricsInSnapshots(
+    snapshots.rows,
+    "page_impressions",
+    window.since,
+    window.until
+  )
+  const postEngagementsFromInsights = sumParsedMetricsInSnapshots(
+    snapshots.rows,
+    "page_post_engagements",
+    window.since,
+    window.until
+  )
+  const profileVisitsFromInsights = sumParsedMetricsInSnapshots(
+    snapshots.rows,
+    "page_views_total",
+    window.since,
+    window.until
+  )
+  const newLikesFromInsights = sumParsedMetricsInSnapshots(
+    snapshots.rows,
+    "page_fan_adds",
+    window.since,
+    window.until
+  )
+  const newFollowersFromInsights = sumParsedMetricsInSnapshots(
+    snapshots.rows,
+    "page_daily_follows",
+    window.since,
+    window.until
+  )
+
+  let reactionsFromInsights: number | null = null
+  let reactionsInsightFound = false
+  for (const row of snapshots.rows) {
+    if (row.snapshot_date < window.since || row.snapshot_date > window.until) {
+      continue
+    }
+    const parsed = row.metrics?.parsed as Record<string, number> | undefined
+    if (!parsed) {
+      continue
+    }
+    const dayTotal = sumReactionInsightMetrics(parsed)
+    if (dayTotal !== null) {
+      reactionsFromInsights = (reactionsFromInsights ?? 0) + dayTotal
+      reactionsInsightFound = true
+    }
+  }
+  if (!reactionsInsightFound) {
+    reactionsFromInsights = null
+  }
+
+  const linkClicksMetric = snapshots.rows.find((row) => {
+    const metrics = row.metrics as Record<string, unknown> | undefined
+    return metrics?.link_clicks_available === true
+  })
+  const linkClicksFromSnapshot =
+    typeof (linkClicksMetric?.metrics as Record<string, unknown>)
+      ?.link_clicks_total === "number"
+      ? ((linkClicksMetric?.metrics as Record<string, unknown>)
+          .link_clicks_total as number)
+      : null
+
+  const reactionsFromPosts = Number(postTotals.rows[0]?.reactions ?? 0)
   const comments = Number(postTotals.rows[0]?.comments ?? 0)
   const shares = Number(postTotals.rows[0]?.shares ?? 0)
+  const reactions =
+    reactionsFromInsights !== null && reactionsFromInsights > 0
+      ? reactionsFromInsights
+      : reactionsFromPosts
   const totalSynced = Number(postCount.rows[0]?.count ?? 0)
   const topPosts = topPostsRows.rows.map(mapPostMetricsRow)
   const latestPosts = latestPostsRows.rows.map(mapPostMetricsRow)
@@ -428,25 +530,45 @@ async function loadPageAnalytics(
     runIndicatesTokenExpired(dailyPageRun) ||
     runIndicatesTokenExpired(hourlyPostsRun) ||
     runIndicatesTokenExpired(dailyInsightsRun)
+  const tokenInvalid =
+    runIndicatesTokenInvalid(dailyPageRun) ||
+    runIndicatesTokenInvalid(hourlyPostsRun) ||
+    runIndicatesTokenInvalid(dailyInsightsRun)
 
   const pageAccessTokenStatus = !pageChecklist.tokenConfigured
     ? "Missing"
     : tokenExpired
       ? "Expired"
-      : "OK"
+      : tokenInvalid
+        ? "Invalid"
+        : "OK"
+
+  const tokenReady = pageChecklist.ready
+  const hasDbPage = dbPage.rows.length > 0
+  const lastSyncRow = dbPage.rows[0]?.last_synced_at
 
   const hasSummaryData =
     latestFollowers !== null || latestLikes !== null || Boolean(dbPage.rows[0])
+  const pageConnected = tokenReady && hasDbPage
 
   const permissions: MetaPermissionCapabilities = {
     pageAccessToken: pageAccessTokenStatus,
-    pageSummary: capabilityFromSyncRun(dailyPageRun, hasSummaryData),
-    posts: capabilityFromSyncRun(hourlyPostsRun, totalSynced > 0),
+    pageSummary: capabilityFromSyncRun(
+      dailyPageRun,
+      hasSummaryData,
+      pageConnected
+    ),
+    posts: capabilityFromSyncRun(
+      hourlyPostsRun,
+      totalSynced > 0,
+      pageConnected
+    ),
     insights: insights.insightsPermissionDenied
       ? "Permission required"
       : capabilityFromSyncRun(
           dailyInsightsRun,
-          insights.pageImpressions !== null || insights.pagePostEngagements !== null
+          impressionsFromInsights !== null || reachFromInsights !== null,
+          pageConnected
         ),
     webhooks: isMetaWebhookConfigured() ? "Connected" : "Not connected",
     ads: "Not connected",
@@ -456,10 +578,6 @@ async function loadPageAnalytics(
     postsPermissionDenied || permissions.posts === "Permission required"
       ? POSTS_PERMISSION_MESSAGE
       : null
-
-  const tokenReady = pageChecklist.ready
-  const hasDbPage = dbPage.rows.length > 0
-  const lastSyncRow = dbPage.rows[0]?.last_synced_at
 
   let tokenSource: ResolvedPageTokenSource | null = null
   let tokenResolutionHint: string | null = null
@@ -481,20 +599,35 @@ async function loadPageAnalytics(
   }
 
   const newFollowers =
-    latestFollowers !== null && previousFollowers !== null
+    newFollowersFromInsights ??
+    (latestFollowers !== null &&
+    previousFollowers !== null &&
+    snapshots.rows.length >= 2
       ? latestFollowers - previousFollowers
-      : null
+      : null)
   const newLikes =
-    latestLikes !== null && previousLikes !== null
+    newLikesFromInsights ??
+    (latestLikes !== null &&
+    previousLikes !== null &&
+    snapshots.rows.length >= 2
       ? latestLikes - previousLikes
-      : null
+      : null)
 
-  const postEngagements = totalSynced > 0 ? reactions + comments + shares : null
+  const postEngagements =
+    postEngagementsFromInsights ??
+    (totalSynced > 0 ? reactions + comments + shares : null)
+
+  const reach = reachFromInsights ?? insights.pageImpressionsUnique
+  const impressions =
+    impressionsFromInsights ?? insights.pageImpressions
+  const profileVisits =
+    profileVisitsFromInsights ?? insights.pageViewsTotal
 
   return {
     key: config.key,
     displayName: config.displayName,
     platformLabel: "Facebook",
+    dateRangeLabel: window.label,
     facebookPageId: pageId,
     pageName: dbPage.rows[0]?.page_name ?? config.displayName,
     connectionStatus: tokenReady && hasDbPage ? "Connected" : "Not connected",
@@ -518,11 +651,10 @@ async function loadPageAnalytics(
       reactions,
       comments,
       shares,
-      reach: insights.pageImpressions,
-      impressions:
-        insights.pageImpressionsUnique ?? insights.pageImpressions,
-      profileVisits: insights.pageViewsTotal,
-      linkClicks: null,
+      reach,
+      impressions,
+      profileVisits,
+      linkClicks: linkClicksFromSnapshot,
       topPerformingPost: topPost?.message
         ? topPost.message.slice(0, 80)
         : null,
@@ -540,18 +672,27 @@ async function loadPageAnalytics(
         }),
         newFollowers: metricState({
           value: newFollowers,
-          hasData: snapshots.rows.length >= 2,
+          hasData:
+            newFollowersFromInsights !== null || snapshots.rows.length >= 2,
+          permissionDenied: insights.insightsPermissionDenied,
+          syncFailed: insights.insightsSyncFailed,
         }),
         newLikes: metricState({
           value: newLikes,
-          hasData: snapshots.rows.length >= 2,
+          hasData:
+            newLikesFromInsights !== null || snapshots.rows.length >= 2,
+          permissionDenied: insights.insightsPermissionDenied,
+          syncFailed: insights.insightsSyncFailed,
         }),
         postEngagements: metricState({
           value: postEngagements,
-          hasData: totalSynced > 0,
-          permissionDenied: postsPermissionDenied,
+          hasData:
+            postEngagementsFromInsights !== null || totalSynced > 0,
+          permissionDenied:
+            postsPermissionDenied || insights.insightsPermissionDenied,
           syncFailed:
-            postsSyncStatus === "Failed" && !postsPermissionDenied,
+            insights.insightsSyncFailed ||
+            (postsSyncStatus === "Failed" && !postsPermissionDenied),
         }),
         reactions: metricState({
           value: reactions,
@@ -569,28 +710,26 @@ async function loadPageAnalytics(
           permissionDenied: postsPermissionDenied,
         }),
         reach: metricState({
-          value: insights.pageImpressions,
-          hasData: insights.pageImpressions !== null,
+          value: reach,
+          hasData: reach !== null,
           permissionDenied: insights.insightsPermissionDenied,
           syncFailed: insights.insightsSyncFailed,
         }),
         impressions: metricState({
-          value: insights.pageImpressionsUnique ?? insights.pageImpressions,
-          hasData:
-            insights.pageImpressionsUnique !== null ||
-            insights.pageImpressions !== null,
+          value: impressions,
+          hasData: impressions !== null,
           permissionDenied: insights.insightsPermissionDenied,
           syncFailed: insights.insightsSyncFailed,
         }),
         profileVisits: metricState({
-          value: insights.pageViewsTotal,
-          hasData: insights.pageViewsTotal !== null,
+          value: profileVisits,
+          hasData: profileVisits !== null,
           permissionDenied: insights.insightsPermissionDenied,
           syncFailed: insights.insightsSyncFailed,
         }),
         linkClicks: metricState({
-          value: null,
-          hasData: false,
+          value: linkClicksFromSnapshot,
+          hasData: linkClicksFromSnapshot !== null,
         }),
         topPerformingPost: metricState({
           value: topPost ? 1 : null,
@@ -629,7 +768,8 @@ async function loadPageAnalytics(
 function buildUnconfiguredPageDashboard(
   config: MetaPageConfig,
   integration: Awaited<ReturnType<typeof getMetaIntegrationStatus>>,
-  pageChecklist: ReturnType<typeof getMetaEnvChecklist>["pages"][number]
+  pageChecklist: ReturnType<typeof getMetaEnvChecklist>["pages"][number],
+  dateRangeLabel: string
 ): MetaBusinessPageDashboard {
   const emptyStates = {
     totalFollowers: "no_data" as const,
@@ -651,6 +791,7 @@ function buildUnconfiguredPageDashboard(
     key: config.key,
     displayName: config.displayName,
     platformLabel: "Facebook",
+    dateRangeLabel,
     facebookPageId: config.pageId || null,
     pageName: config.displayName,
     connectionStatus: "Needs configuration",
@@ -666,9 +807,9 @@ function buildUnconfiguredPageDashboard(
     postsUnavailableMessage: null,
     permissions: {
       pageAccessToken: pageChecklist.tokenConfigured ? "OK" : "Missing",
-      pageSummary: "No data yet",
-      posts: "No data yet",
-      insights: "No data yet",
+      pageSummary: "Not connected yet",
+      posts: "Not connected yet",
+      insights: "Not connected yet",
       webhooks: isMetaWebhookConfigured() ? "Connected" : "Not connected",
       ads: "Not connected",
     },
@@ -715,13 +856,21 @@ function buildUnconfiguredPageDashboard(
   }
 }
 
-export async function getMetaBusinessPagesAnalytics(): Promise<
-  MetaBusinessPageDashboard[]
-> {
+export async function getMetaBusinessPagesAnalytics(input?: {
+  dateRange?: AnalyticsDateRange
+  customDateFrom?: string | null
+  customDateTo?: string | null
+}): Promise<MetaBusinessPageDashboard[]> {
   const activePages = getActiveMetaPages()
   if (activePages.length === 0) {
     return []
   }
+
+  const dateRange = input?.dateRange ?? "28d"
+  const window = resolveMetaAnalyticsWindow(dateRange, {
+    from: input?.customDateFrom,
+    to: input?.customDateTo,
+  })
 
   const integration = await getMetaIntegrationStatus()
   const checklist = getMetaEnvChecklist()
@@ -743,12 +892,25 @@ export async function getMetaBusinessPagesAnalytics(): Promise<
       }
 
     if (!config.pageId || !config.accessToken) {
-      results.push(buildUnconfiguredPageDashboard(config, integration, pageChecklist))
+      results.push(
+        buildUnconfiguredPageDashboard(
+          config,
+          integration,
+          pageChecklist,
+          window.label
+        )
+      )
       continue
     }
 
     results.push(
-      await loadPageAnalytics(config, integration, pageChecklist)
+      await loadPageAnalytics(
+        config,
+        integration,
+        pageChecklist,
+        dateRange,
+        { from: input?.customDateFrom, to: input?.customDateTo }
+      )
     )
   }
 

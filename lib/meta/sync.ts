@@ -1,14 +1,22 @@
 import "server-only"
 
 import { query } from "@/lib/db"
+import { resolveMetaAnalyticsWindow } from "@/lib/meta/date-range"
+import {
+  parseInsightTimeSeries,
+  sumReactionInsightMetrics,
+} from "@/lib/meta/insights-aggregate"
 import {
   calculateEngagementRate,
   DAILY_PAGE_INSIGHT_METRICS,
   EXTENDED_PAGE_INSIGHT_METRICS,
+  fetchPageInsightsRangeSafe,
   fetchPageInsightsSafe,
   fetchPageSummarySafe,
+  fetchPostLinkClicksSafe,
   fetchRecentPagePostsSafe,
-  parseInsightValues,
+  REACTION_PAGE_INSIGHT_FALLBACK_METRICS,
+  REACTION_PAGE_INSIGHT_METRICS,
   readPostReactionCount,
 } from "@/lib/meta/graph-api"
 import { isMetaPermissionError } from "@/lib/meta/graph-errors"
@@ -239,11 +247,11 @@ export async function syncHourlyPostMetrics() {
     const runId = await startSyncRun("hourly_posts", page.facebook_page_id)
 
     try {
-      let postsResult = await fetchRecentPagePostsSafe(page, 50)
+      let postsResult = await fetchRecentPagePostsSafe(page, 100)
 
       if (!postsResult.ok && postsResult.permissionDenied) {
         clearMetaPageTokenCache()
-        postsResult = await fetchRecentPagePostsSafe(page, 50)
+        postsResult = await fetchRecentPagePostsSafe(page, 100)
       }
 
       if (!postsResult.ok) {
@@ -366,11 +374,46 @@ export async function syncHourlyPostMetrics() {
   return affected
 }
 
+async function upsertDailyInsightSnapshots(
+  facebookPageId: string,
+  series: ReturnType<typeof parseInsightTimeSeries>,
+  extraPayload: Record<string, unknown>
+) {
+  let rows = 0
+
+  for (const [snapshotDate, dayMetrics] of Object.entries(series)) {
+    const metrics = await mergeSnapshotMetrics(facebookPageId, snapshotDate, {
+      ...extraPayload,
+      parsed: dayMetrics,
+      daily_insights_synced_at: new Date().toISOString(),
+    })
+
+    await query(
+      `
+      INSERT INTO meta_page_daily_snapshot (
+        facebook_page_id,
+        snapshot_date,
+        metrics
+      )
+      VALUES ($1, $2::date, $3::jsonb)
+      ON CONFLICT (facebook_page_id, snapshot_date)
+      DO UPDATE SET
+        metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
+      `,
+      [facebookPageId, snapshotDate, JSON.stringify(metrics)]
+    )
+    rows += 1
+  }
+
+  return rows
+}
+
 /** Page insights: reach, impressions, engagements — requires read_insights. */
 export async function syncDailyInsights() {
   clearMetaPageTokenCache()
   const pages = await listActiveMetaFacebookPages()
   let affected = 0
+  const window = resolveMetaAnalyticsWindow("90d")
 
   for (const page of pages) {
     const runId = await startSyncRun("daily_insights", page.facebook_page_id)
@@ -382,66 +425,195 @@ export async function syncDailyInsights() {
         insights_sync_failed: false,
       }
 
-      const primary = await fetchPageInsightsSafe(
+      const ranged = await fetchPageInsightsRangeSafe(
         page,
-        DAILY_PAGE_INSIGHT_METRICS
+        DAILY_PAGE_INSIGHT_METRICS,
+        window.sinceDate,
+        window.untilDate
       )
 
-      if (primary.ok) {
-        const parsed = parseInsightValues(primary.data.data ?? [])
+      if (ranged.ok) {
+        let series = ranged.series
+
+        const extended = await fetchPageInsightsRangeSafe(
+          page,
+          EXTENDED_PAGE_INSIGHT_METRICS,
+          window.sinceDate,
+          window.untilDate
+        )
+        if (extended.ok) {
+          for (const [date, metrics] of Object.entries(extended.series)) {
+            series[date] = { ...(series[date] ?? {}), ...metrics }
+          }
+        }
+
+        const reactions = await fetchPageInsightsRangeSafe(
+          page,
+          REACTION_PAGE_INSIGHT_METRICS,
+          window.sinceDate,
+          window.untilDate
+        )
+        if (reactions.ok) {
+          for (const [date, metrics] of Object.entries(reactions.series)) {
+            series[date] = { ...(series[date] ?? {}), ...metrics }
+          }
+        } else {
+          const fallback = await fetchPageInsightsRangeSafe(
+            page,
+            REACTION_PAGE_INSIGHT_FALLBACK_METRICS,
+            window.sinceDate,
+            window.untilDate
+          )
+          if (fallback.ok) {
+            for (const [date, metrics] of Object.entries(fallback.series)) {
+              series[date] = { ...(series[date] ?? {}), ...metrics }
+            }
+          }
+        }
+
+        const todayMetrics = series[snapshotDate] ?? {}
+        const reactionTotal = sumReactionInsightMetrics(todayMetrics)
+        if (reactionTotal !== null) {
+          todayMetrics.page_actions_post_reactions_total = reactionTotal
+          series[snapshotDate] = todayMetrics
+        }
+
         insightsPayload = {
           ...insightsPayload,
-          insights: primary.data.data,
-          parsed,
+          parsed: todayMetrics,
+          insight_series_days: Object.keys(series).length,
           daily_insights_synced_at: new Date().toISOString(),
         }
 
-        const extended = await fetchPageInsightsSafe(
-          page,
-          EXTENDED_PAGE_INSIGHT_METRICS
-        )
-        if (extended.ok) {
-          const extendedParsed = parseInsightValues(extended.data.data ?? [])
-          insightsPayload.parsed = {
-            ...parsed,
-            ...extendedParsed,
+        const rowsWritten = await upsertDailyInsightSnapshots(
+          page.facebook_page_id,
+          series,
+          {
+            insights_permission_denied: false,
+            insights_sync_failed: false,
           }
-          insightsPayload.extended_insights = extended.data.data
+        )
+
+        const primary = await fetchPageInsightsSafe(
+          page,
+          DAILY_PAGE_INSIGHT_METRICS
+        )
+        if (primary.ok) {
+          insightsPayload.insights = primary.data.data
+        }
+
+        const metrics = await mergeSnapshotMetrics(
+          page.facebook_page_id,
+          snapshotDate,
+          insightsPayload
+        )
+
+        await query(
+          `
+          INSERT INTO meta_page_daily_snapshot (
+            facebook_page_id,
+            snapshot_date,
+            metrics
+          )
+          VALUES ($1, $2::date, $3::jsonb)
+          ON CONFLICT (facebook_page_id, snapshot_date)
+          DO UPDATE SET
+            metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
+          `,
+          [page.facebook_page_id, snapshotDate, JSON.stringify(metrics)]
+        )
+
+        if (runId) {
+          await finishSyncRun(runId, "SUCCESS", rowsWritten)
+          affected += 1
         }
       } else {
-        insightsPayload.insights_permission_denied = primary.permissionDenied
-        insightsPayload.insights_sync_failed = !primary.permissionDenied
-        insightsPayload.insights_error = primary.error
+        insightsPayload.insights_permission_denied = ranged.permissionDenied
+        insightsPayload.insights_sync_failed = !ranged.permissionDenied
+        insightsPayload.insights_error = ranged.error
+
+        const metrics = await mergeSnapshotMetrics(
+          page.facebook_page_id,
+          snapshotDate,
+          insightsPayload
+        )
+
+        await query(
+          `
+          INSERT INTO meta_page_daily_snapshot (
+            facebook_page_id,
+            snapshot_date,
+            metrics
+          )
+          VALUES ($1, $2::date, $3::jsonb)
+          ON CONFLICT (facebook_page_id, snapshot_date)
+          DO UPDATE SET
+            metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
+          `,
+          [page.facebook_page_id, snapshotDate, JSON.stringify(metrics)]
+        )
+
+        if (runId) {
+          await finishSyncRun(runId, "FAILED", 0, ranged.error ?? "Insights sync failed")
+        }
       }
 
-      const metrics = await mergeSnapshotMetrics(
-        page.facebook_page_id,
-        snapshotDate,
-        insightsPayload
-      )
-
-      await query(
+      const topPosts = await query<{ post_id: string }>(
         `
-        INSERT INTO meta_page_daily_snapshot (
-          facebook_page_id,
-          snapshot_date,
-          metrics
-        )
-        VALUES ($1, $2::date, $3::jsonb)
-        ON CONFLICT (facebook_page_id, snapshot_date)
-        DO UPDATE SET
-          metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
+        SELECT post_id
+        FROM meta_post_metrics
+        WHERE facebook_page_id = $1
+        ORDER BY reactions_count + comments_count + shares_count DESC
+        LIMIT 5
         `,
-        [page.facebook_page_id, snapshotDate, JSON.stringify(metrics)]
+        [page.facebook_page_id]
       )
 
-      if (runId) {
-        if (primary.ok) {
-          await finishSyncRun(runId, "SUCCESS", primary.data.data?.length ?? 0)
-          affected += 1
-        } else {
-          await finishSyncRun(runId, "FAILED", 0, primary.error)
+      let linkClicksTotal = 0
+      let linkClicksFound = false
+
+      for (const row of topPosts.rows) {
+        const clicks = await fetchPostLinkClicksSafe(row.post_id, page)
+        if (!clicks.ok) {
+          continue
         }
+
+        for (const metric of clicks.data.data ?? []) {
+          if (metric.name !== "post_clicks") {
+            continue
+          }
+          const latest = metric.values[metric.values.length - 1]
+          if (typeof latest?.value === "number") {
+            linkClicksTotal += latest.value
+            linkClicksFound = true
+          }
+        }
+      }
+
+      if (linkClicksFound) {
+        const linkMetrics = await mergeSnapshotMetrics(
+          page.facebook_page_id,
+          snapshotDate,
+          {
+            link_clicks_total: linkClicksTotal,
+            link_clicks_available: true,
+          }
+        )
+
+        await query(
+          `
+          INSERT INTO meta_page_daily_snapshot (
+            facebook_page_id,
+            snapshot_date,
+            metrics
+          )
+          VALUES ($1, $2::date, $3::jsonb)
+          ON CONFLICT (facebook_page_id, snapshot_date)
+          DO UPDATE SET
+            metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
+          `,
+          [page.facebook_page_id, snapshotDate, JSON.stringify(linkMetrics)]
+        )
       }
     } catch (error) {
       const message =
