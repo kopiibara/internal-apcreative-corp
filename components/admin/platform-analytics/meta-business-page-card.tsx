@@ -110,6 +110,9 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
                 Facebook page name: <strong>{page.pageName}</strong>
               </p>
             ) : null}
+            {page.tokenResolutionHint ? (
+              <p className="text-sm text-muted-foreground">{page.tokenResolutionHint}</p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <Badge variant={connected ? "default" : "neutral"}>
                 Status: {page.connectionStatus}

@@ -118,7 +118,12 @@ curl -H "x-meta-cron-secret: $META_CRON_SECRET" \
   "https://internal.apcreativecorp.com/api/meta/cron?job=daily_insights"
 ```
 
-Use the **Page access token** from `/me/accounts?fields=id,name,access_token` in `NEON_NIGHTS_META_PAGE_ACCESS_TOKEN` — not a Graph API Explorer user token.
+You may set **either**:
+
+1. **Page access token** — from `/me/accounts?fields=id,name,access_token` for Neon Nights (recommended), or  
+2. **User access token** — from Graph API Explorer with `pages_show_list` + `pages_read_engagement` + `read_insights`; the server resolves the Page token via `/me/accounts` automatically.
+
+Do not use a User token without `pages_show_list` — posts and insights will fail with error #10.
 
 ---
 
