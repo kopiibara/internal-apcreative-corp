@@ -1,26 +1,55 @@
-import "server-only"
+import "server-only";
 
-import { loadMetaPlatformSlice } from "@/lib/platform-analytics/adapters/meta-adapter"
-import { buildDemoPlatformSlice } from "@/lib/platform-analytics/demo-data"
-import { getDemoCharts } from "@/lib/platform-analytics/platform-charts"
+import {
+  filterMetaKpisByScope,
+  loadMetaPlatformSlice,
+  metaAccountIdFromFilter,
+} from "@/lib/platform-analytics/adapters/meta-adapter";
+import {
+  loadYouTubePlatformSlice,
+  youtubeAccountIdFromFilter,
+} from "@/lib/platform-analytics/adapters/youtube-adapter";
+import { buildDemoPlatformSlice } from "@/lib/platform-analytics/demo-data";
+import { getDemoCharts } from "@/lib/platform-analytics/platform-charts";
 import type {
   AnalyticsPlatform,
+  AnalyticsDateRange,
   MetaScope,
   PlatformAnalyticsDashboardData,
   PlatformCode,
-} from "@/lib/platform-analytics/types"
+} from "@/lib/platform-analytics/types";
 
 export async function getPlatformAnalyticsDashboardData(input?: {
-  platform?: AnalyticsPlatform
-  accountId?: string | null
-  metaScope?: MetaScope
+  platform?: AnalyticsPlatform;
+  accountId?: string | null;
+  metaScope?: MetaScope;
+  dateRange?: AnalyticsDateRange;
 }): Promise<PlatformAnalyticsDashboardData> {
-  const platform: AnalyticsPlatform = input?.platform ?? "META"
-  const accountId = input?.accountId ?? null
-  const metaScope = input?.metaScope ?? "combined"
+  const platform: AnalyticsPlatform = input?.platform ?? "META";
+  const accountId = input?.accountId ?? null;
 
-  if (platform === "TIKTOK" || platform === "YOUTUBE" || platform === "GOOGLE") {
-    const demo = buildDemoPlatformSlice(platform)
+
+  if (
+    platform === "TIKTOK" ||
+    platform === "YOUTUBE" ||
+    platform === "GOOGLE"
+  ) {
+    // For non-Meta platforms, prefer live data where available (YouTube supported),
+    // otherwise fall back to demo data.
+    if (platform === "YOUTUBE") {
+      const youtube = await loadYouTubePlatformSlice(
+        youtubeAccountIdFromFilter(accountId),
+        input?.dateRange,
+      );
+      return {
+        platform,
+        accountId,
+        ...youtube,
+        metaBusinessPages: [],
+      };
+    }
+
+    const demo = buildDemoPlatformSlice(platform);
     return {
       platform,
       accountId,
@@ -38,10 +67,10 @@ export async function getPlatformAnalyticsDashboardData(input?: {
       charts: getDemoCharts(platform),
       metaNeedsBootstrap: false,
       metaBusinessPages: [],
-    }
+    };
   }
 
-  const meta = await loadMetaPlatformSlice(accountId)
+  const meta = await loadMetaPlatformSlice(metaAccountIdFromFilter(accountId));
 
   return {
     platform: "META",
@@ -49,7 +78,7 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     isDemo: false,
     accounts: meta.accounts,
     connection: meta.connection,
-    overviewKpis: meta.overviewKpis,
+    overviewKpis: filterMetaKpisByScope(meta.overviewKpis),
     engagementKpis: meta.engagementKpis,
     audienceInsightKpis: meta.audienceInsightKpis,
     growthSnapshots: meta.growthSnapshots,
@@ -60,9 +89,9 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     charts: meta.charts,
     metaNeedsBootstrap: meta.metaNeedsBootstrap,
     metaBusinessPages: meta.metaBusinessPages,
-  }
+  };
 }
 
 export function isDemoPlatform(platform: PlatformCode) {
-  return platform !== "META"
+  return platform !== "META";
 }

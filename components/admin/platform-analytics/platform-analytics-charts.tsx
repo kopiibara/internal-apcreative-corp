@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   Area,
@@ -10,7 +10,7 @@ import {
   LineChart,
   XAxis,
   YAxis,
-} from "recharts"
+} from "recharts";
 
 import {
   Card,
@@ -18,7 +18,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   type ChartConfig,
   ChartContainer,
@@ -26,14 +26,14 @@ import {
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
-} from "@/components/ui/chart"
-import type { PlatformChartConfig } from "@/lib/platform-analytics/types"
+} from "@/components/ui/chart";
+import type { PlatformChartConfig } from "@/lib/platform-analytics/types";
 
 type PlatformAnalyticsChartsProps = {
-  charts: PlatformChartConfig[]
-  isDemo: boolean
-  emptyMessage?: string
-}
+  charts: PlatformChartConfig[];
+  isDemo: boolean;
+  emptyMessage?: string;
+};
 
 export function PlatformAnalyticsCharts({
   charts,
@@ -47,7 +47,7 @@ export function PlatformAnalyticsCharts({
           {emptyMessage}
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -56,20 +56,20 @@ export function PlatformAnalyticsCharts({
         <ChartCard key={chart.id} chart={chart} isDemo={isDemo} />
       ))}
     </div>
-  )
+  );
 }
 
 function ChartCard({
   chart,
   isDemo,
 }: {
-  chart: PlatformChartConfig
-  isDemo: boolean
+  chart: PlatformChartConfig;
+  isDemo: boolean;
 }) {
   const config = chart.keys.reduce((acc, key) => {
-    acc[key.key] = { label: key.label, color: key.color }
-    return acc
-  }, {} as ChartConfig)
+    acc[key.key] = { label: key.label, color: key.color };
+    return acc;
+  }, {} as ChartConfig);
 
   return (
     <Card>
@@ -79,27 +79,57 @@ function ChartCard({
           <CardDescription>{chart.description}</CardDescription>
         ) : null}
         {isDemo ? (
-          <CardDescription className="text-amber-700">Sample Data</CardDescription>
+          <CardDescription className="text-amber-700">
+            Sample Data
+          </CardDescription>
         ) : null}
       </CardHeader>
       <CardContent>
-        <ChartContainer config={config} className="aspect-[16/9] min-h-[220px] w-full">
+        <ChartContainer
+          config={config}
+          className="aspect-video min-h-55 w-full"
+        >
           {chart.chartType === "bar" ? (
             <BarChart data={chart.data} margin={{ left: 8, right: 8, top: 8 }}>
               <CartesianGrid vertical={false} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
-              <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+                width={40}
+              />
               <ChartTooltip content={<ChartTooltipContent />} />
               <ChartLegend content={<ChartLegendContent />} />
               {chart.keys.map((key) => (
-                <Bar key={key.key} dataKey={key.key} fill={key.color} radius={4} />
+                <Bar
+                  key={key.key}
+                  dataKey={key.key}
+                  fill={key.color}
+                  radius={4}
+                />
               ))}
             </BarChart>
           ) : chart.chartType === "area" ? (
             <AreaChart data={chart.data} margin={{ left: 8, right: 8, top: 8 }}>
               <CartesianGrid vertical={false} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
-              <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+                width={40}
+              />
               <ChartTooltip content={<ChartTooltipContent />} />
               <ChartLegend content={<ChartLegendContent />} />
               {chart.keys.map((key) => (
@@ -116,8 +146,18 @@ function ChartCard({
           ) : (
             <LineChart data={chart.data} margin={{ left: 8, right: 8, top: 8 }}>
               <CartesianGrid vertical={false} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} />
-              <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+                width={40}
+              />
               <ChartTooltip content={<ChartTooltipContent />} />
               <ChartLegend content={<ChartLegendContent />} />
               {chart.keys.map((key) => (
@@ -135,5 +175,5 @@ function ChartCard({
         </ChartContainer>
       </CardContent>
     </Card>
-  )
+  );
 }
