@@ -1,8 +1,9 @@
 import { EmployeeApprovalKanbanBoard } from "@/components/employee/approvals/approval-kanban-board"
 import {
   getEmployeeContentReportBrandOptions,
-  getMyContentReports,
+  getEmployeeVisibleContentReports,
 } from "@/lib/content-reports"
+import { decorateApprovalPublishingPermissions } from "@/lib/approvals/approval-permissions"
 import { requireEmployee } from "@/lib/auth/auth-session"
 import { redirect } from "next/navigation"
 
@@ -13,10 +14,11 @@ export default async function ApprovalsPage() {
     redirect("/login")
   }
 
-  const [reports, brandOptions] = await Promise.all([
-    getMyContentReports(profile.id),
+  const [rawReports, brandOptions] = await Promise.all([
+    getEmployeeVisibleContentReports(profile.id),
     getEmployeeContentReportBrandOptions(profile.id),
   ])
+  const reports = await decorateApprovalPublishingPermissions(profile, rawReports)
 
   return (
     <EmployeeApprovalKanbanBoard

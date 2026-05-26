@@ -21,6 +21,7 @@ import {
 } from "@/lib/auth/account-type";
 import { can } from "@/lib/permissions";
 import { query, transaction } from "@/lib/db";
+import { assertSupervisorCanAssignTasksToUsers } from "@/lib/approvals/approval-permissions";
 import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
 import {
   sanitizeOptionalText,
@@ -285,6 +286,18 @@ export async function createTask(input: unknown): Promise<ActionResult> {
         message: assigneeCheck.message,
       };
     }
+  }
+
+  const supervisorAssigneeCheck = await assertSupervisorCanAssignTasksToUsers(
+    context.profile,
+    uniqueAssignees,
+  );
+
+  if (!supervisorAssigneeCheck.ok) {
+    return {
+      success: false,
+      message: supervisorAssigneeCheck.message,
+    };
   }
 
   const taskType = determineTaskType({

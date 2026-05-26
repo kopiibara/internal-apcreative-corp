@@ -32,7 +32,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   mergeContentReportBrandOptions,
   type ContentReportBrandOption,
-} from "@/lib/content-reports"
+} from "@/lib/content-report-brand-options"
 import type { ContentReport } from "@/types/content-report"
 
 type ContentReportFormDialogProps = {

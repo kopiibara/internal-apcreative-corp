@@ -3,10 +3,12 @@
 import {
   ApprovalDetailsGrid,
   ApprovalDiscussionSection,
+  ApprovalDetailSection,
   ApprovalMainDetails,
   ApprovalMetadataPanel,
   ApprovalSheetHeader,
 } from "@/components/shared/approval-details-display"
+import { ApprovalPublishingActions } from "@/components/employee/approvals/approval-publishing-actions"
 import {
   Sheet,
   SheetContent,
@@ -52,15 +54,25 @@ export function ContentReportDetailsSheet() {
 
         {selectedContentReport ? (
           <ScrollArea className="min-h-0 flex-1 pr-3" scrollbars="vertical">
-            <ApprovalDetailsGrid
-              main={
-                <>
-                  <ApprovalMainDetails report={selectedContentReport} />
-                  <ApprovalDiscussionSection report={selectedContentReport} />
-                </>
-              }
-              sidebar={<ApprovalMetadataPanel report={selectedContentReport} />}
-            />
+            <>
+              <ApprovalDetailsGrid
+                main={
+                  <>
+                    <ApprovalMainDetails report={selectedContentReport} />
+                    <ApprovalDiscussionSection report={selectedContentReport} />
+                  </>
+                }
+                sidebar={<ApprovalMetadataPanel report={selectedContentReport} />}
+              />
+              {selectedContentReport.approvalPublishingPermissions
+                ?.canPublishNow ||
+              selectedContentReport.approvalPublishingPermissions
+                ?.canSchedulePublish ? (
+                <ApprovalDetailSection title="Publishing actions">
+                  <ApprovalPublishingActions report={selectedContentReport} />
+                </ApprovalDetailSection>
+              ) : null}
+            </>
           </ScrollArea>
         ) : null}
       </SheetContent>

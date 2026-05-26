@@ -23,8 +23,18 @@ CREATE TABLE IF NOT EXISTS task (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_task_assigned_to_profile_id
-ON task(assigned_to_profile_id);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'task'
+      AND column_name = 'assigned_to_profile_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_task_assigned_to_profile_id
+    ON task(assigned_to_profile_id);
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_task_created_by_profile_id
 ON task(created_by_profile_id);
@@ -32,11 +42,31 @@ ON task(created_by_profile_id);
 CREATE INDEX IF NOT EXISTS idx_task_task_type
 ON task(task_type);
 
-CREATE INDEX IF NOT EXISTS idx_task_status
-ON task(status);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'task'
+      AND column_name = 'status'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_task_status
+    ON task(status);
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_task_brand_id
-ON task(brand_id);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'task'
+      AND column_name = 'brand_id'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS idx_task_brand_id
+    ON task(brand_id);
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_task_due_date
 ON task(due_date);

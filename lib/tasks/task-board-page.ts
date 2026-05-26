@@ -65,7 +65,10 @@ export async function loadAdminTaskBoardPage() {
       profileId: context.profile.id,
       canViewAll,
     }),
-    getAssignableProfilesWithBrands(),
+    getAssignableProfilesWithBrands({
+      viewerProfileId: context.profile.id,
+      viewerAccountType: context.profile.account_type,
+    }),
     loadTaskPermissions(authUserId, context.profile.account_type),
   ]);
 

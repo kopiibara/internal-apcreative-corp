@@ -44,10 +44,24 @@ export type ContentReport = {
   directorReviewedAt: string | null;
   publishStatus: PublishStatus;
   scheduledPublishedDate: string | null;
+  publishingProofUrl: string | null;
+  publishingProofNote: string | null;
+  publishingProofSubmittedByName: string | null;
+  publishingProofSubmittedAt: string | null;
+  publishedByName: string | null;
+  publishedAt: string | null;
+  scheduledByName: string | null;
+  scheduledAt: string | null;
   remarksRevisionSummary: string | null;
   activityLogs: ApprovalActivityLog[];
+  approvalPublishingPermissions?: ApprovalPublishingPermissions;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ApprovalPublishingPermissions = {
+  canPublishNow: boolean;
+  canSchedulePublish: boolean;
 };
 
 /**

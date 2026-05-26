@@ -42,7 +42,7 @@ import {
   getEmployeeApprovalKanbanStage,
 } from "@/lib/approvals/approval-kanban"
 import { useContentReportStore } from "@/stores/use-content-report-store"
-import type { ContentReportBrandOption } from "@/lib/content-reports"
+import type { ContentReportBrandOption } from "@/lib/content-report-brand-options"
 import type { ContentReport } from "@/types/content-report"
 import { cn } from "@/lib/utils"
 

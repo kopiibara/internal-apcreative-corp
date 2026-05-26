@@ -1,5 +1,8 @@
+import "server-only";
+
 import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import { query } from "@/lib/db";
+import type { ContentReportBrandOption } from "@/lib/content-report-brand-options";
 import type {
   ContentType,
   Platform,
@@ -32,6 +35,14 @@ type ContentReportRow = {
   director_reviewed_at: Date | null;
   publish_status: PublishStatus;
   scheduled_published_date: Date | null;
+  publishing_proof_url: string | null;
+  publishing_proof_note: string | null;
+  publishing_proof_submitted_by_name: string | null;
+  publishing_proof_submitted_at: Date | null;
+  published_by_name: string | null;
+  published_at: Date | null;
+  scheduled_by_name: string | null;
+  scheduled_at: Date | null;
   remarks_revision_summary: string | null;
   created_at: Date;
   updated_at: Date;
@@ -39,12 +50,6 @@ type ContentReportRow = {
 
 type BrandAssignmentRow = {
   brand_id: number;
-};
-
-export type ContentReportBrandOption = {
-  id: number;
-  name: string;
-  isPrimary: boolean;
 };
 
 type ApprovalActivityLogRow = {
@@ -87,6 +92,14 @@ const contentReportSelect = `
     cr.director_reviewed_at,
     cr.publish_status,
     cr.scheduled_published_date,
+    cr.publishing_proof_url,
+    cr.publishing_proof_note,
+    proof_submitter.full_name AS publishing_proof_submitted_by_name,
+    cr.publishing_proof_submitted_at,
+    publisher.full_name AS published_by_name,
+    cr.published_at,
+    scheduler.full_name AS scheduled_by_name,
+    cr.scheduled_at,
     cr.remarks_revision_summary,
     cr.created_at,
     cr.updated_at
@@ -97,6 +110,12 @@ const contentReportSelect = `
     ON supervisor.id = cr.supervisor_reviewed_by_profile_id
   LEFT JOIN profile director
     ON director.id = cr.director_reviewed_by_profile_id
+  LEFT JOIN profile proof_submitter
+    ON proof_submitter.id = cr.publishing_proof_submitted_by_profile_id
+  LEFT JOIN profile publisher
+    ON publisher.id = cr.published_by_profile_id
+  LEFT JOIN profile scheduler
+    ON scheduler.id = cr.scheduled_by_profile_id
 `;
 
 function mapContentReport(
@@ -127,6 +146,15 @@ function mapContentReport(
     directorReviewedAt: row.director_reviewed_at?.toISOString() ?? null,
     publishStatus: row.publish_status,
     scheduledPublishedDate: row.scheduled_published_date?.toISOString() ?? null,
+    publishingProofUrl: row.publishing_proof_url,
+    publishingProofNote: row.publishing_proof_note,
+    publishingProofSubmittedByName: row.publishing_proof_submitted_by_name,
+    publishingProofSubmittedAt:
+      row.publishing_proof_submitted_at?.toISOString() ?? null,
+    publishedByName: row.published_by_name,
+    publishedAt: row.published_at?.toISOString() ?? null,
+    scheduledByName: row.scheduled_by_name,
+    scheduledAt: row.scheduled_at?.toISOString() ?? null,
     remarksRevisionSummary: row.remarks_revision_summary,
     activityLogs,
     createdAt: row.created_at.toISOString(),
@@ -202,6 +230,60 @@ export async function getMyContentReports(profileId: number) {
   );
 
   return result.rows.map((row) => mapContentReport(row));
+}
+
+export async function getBrandOfficerPublishingContentReports(
+  profileId: number,
+) {
+  const result = await query<ContentReportRow>(
+    `
+    ${contentReportSelect}
+    WHERE cr.supervisor_status = 'Approved'
+      AND cr.director_status = 'Approved'
+      AND cr.publish_status IN ('Pending', 'Scheduled', 'Published')
+      AND cr.brand_id IN (
+        SELECT uba.brand_id
+        FROM user_brand_access uba
+        JOIN role r ON r.id = uba.role_id
+        JOIN brand assigned_brand ON assigned_brand.id = uba.brand_id
+        WHERE uba.profile_id = $1
+          AND uba.is_active = true
+          AND assigned_brand.is_active = true
+          AND assigned_brand.slug <> $2
+          AND r.slug = 'brand-officer'
+      )
+    ORDER BY cr.date_submitted DESC, cr.id DESC
+    `,
+    [profileId, ALL_BRAND_SLUG],
+  );
+
+  const activityLogsByReportId = await getApprovalActivityLogsByReportIds(
+    result.rows.map((row) => row.id),
+  );
+
+  return result.rows.map((row) =>
+    mapContentReport(row, activityLogsByReportId.get(row.id) ?? []),
+  );
+}
+
+export async function getEmployeeVisibleContentReports(profileId: number) {
+  const [ownReports, publishingReports] = await Promise.all([
+    getMyContentReports(profileId),
+    getBrandOfficerPublishingContentReports(profileId),
+  ]);
+  const reportsById = new Map<number, ContentReport>();
+
+  for (const report of [...ownReports, ...publishingReports]) {
+    reportsById.set(report.id, report);
+  }
+
+  return [...reportsById.values()].sort((left, right) => {
+    const dateDelta =
+      new Date(right.dateSubmitted).getTime() -
+      new Date(left.dateSubmitted).getTime();
+
+    return dateDelta || right.id - left.id;
+  });
 }
 
 export async function getApprovalContentReports() {
@@ -283,27 +365,6 @@ export async function getEmployeeContentReportBrandOptions(profileId: number) {
     name: row.name,
     isPrimary: row.is_primary,
   })) satisfies ContentReportBrandOption[];
-}
-
-export function mergeContentReportBrandOptions(
-  brandOptions: ContentReportBrandOption[],
-  report?: { brandId: number | null; brandName: string | null } | null,
-) {
-  if (
-    report?.brandId == null ||
-    brandOptions.some((brand) => brand.id === report.brandId)
-  ) {
-    return brandOptions;
-  }
-
-  return [
-    ...brandOptions,
-    {
-      id: report.brandId,
-      name: report.brandName ?? `Brand #${report.brandId}`,
-      isPrimary: false,
-    },
-  ];
 }
 
 export async function resolveContentReportBrandId(

@@ -3,6 +3,7 @@
 import { ExternalLink, PenLine } from "lucide-react"
 
 import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
+import { ApprovalPublishingActions } from "@/components/employee/approvals/approval-publishing-actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -100,6 +101,8 @@ export function EmployeeApprovalKanbanCard({
               Director Note
             </Button>
           ) : null}
+
+          <ApprovalPublishingActions report={report} compact />
         </div>
       </CardContent>
     </Card>

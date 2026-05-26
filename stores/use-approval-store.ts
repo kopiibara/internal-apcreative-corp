@@ -31,6 +31,7 @@ export type ApprovalVerificationPayload =
       report: ContentReport;
       publishStatus: PublishStatus;
       scheduledPublishedDate: string | null;
+      proofUrl?: string | null;
       notes: string;
       onSaved?: (updatedApproval?: ContentReport) => void;
       onCancelled?: () => void;

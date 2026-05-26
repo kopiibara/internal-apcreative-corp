@@ -434,7 +434,13 @@ export async function getTaskAssignmentsForEmployee(profileId: number) {
   return result.rows.map(mapAssignment);
 }
 
-export async function getAssignableProfilesWithBrands() {
+export async function getAssignableProfilesWithBrands(options?: {
+  viewerProfileId?: number;
+  viewerAccountType?: AccountType;
+}) {
+  const includeSupervisorFullStack =
+    options?.viewerAccountType === "SUPERVISOR" &&
+    options.viewerProfileId != null;
   const result = await query<{
     id: number;
     full_name: string;
@@ -467,10 +473,24 @@ export async function getAssignableProfilesWithBrands() {
       AND uba.is_active = true
     LEFT JOIN brand b ON b.id = uba.brand_id AND b.is_active = true
     WHERE p.status = 'ACTIVE'
-      AND p.account_type IN ('CLIENT', 'EMPLOYEE')
+      AND (
+        p.account_type IN ('CLIENT', 'EMPLOYEE')
+        OR (
+          $1::boolean = true
+          AND p.account_type = 'FULL_STACK_DEVELOPER'
+          AND EXISTS (
+            SELECT 1
+            FROM user_brand_access supervisor_access
+            WHERE supervisor_access.profile_id = $2
+              AND supervisor_access.is_active = true
+              AND supervisor_access.brand_id = uba.brand_id
+          )
+        )
+      )
     GROUP BY p.id
     ORDER BY p.full_name ASC, p.id ASC
     `,
+    [includeSupervisorFullStack, options?.viewerProfileId ?? null],
   );
 
   return result.rows.map((row) => ({
