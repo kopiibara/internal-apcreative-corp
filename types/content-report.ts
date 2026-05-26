@@ -10,6 +10,7 @@ export type ApprovalActivityLog = {
   contentReportId: number;
   actorProfileId: number;
   actorName: string;
+  actorImageUrl: string | null;
   actorAccountType: string;
   actorPosition: string | null;
   action: string;
@@ -30,6 +31,7 @@ export type ContentReport = {
   submittedByProfileId: number;
   submittedByName: string;
   submittedByEmail: string;
+  submittedByImageUrl: string | null;
   brandId: number | null;
   brandName: string | null;
   contentType: ContentType;

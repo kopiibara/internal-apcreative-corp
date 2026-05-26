@@ -30,6 +30,7 @@ export type AccountListItem = {
   authUserId: string
   fullName: string
   email: string
+  imageUrl: string | null
   accountType: AccountType
   position: string | null
   department: string | null
@@ -64,6 +65,7 @@ type AccountRow = {
   auth_user_id: string
   full_name: string
   email: string
+  image_url: string | null
   account_type: AccountType
   position: string | null
   department: string | null
@@ -101,6 +103,7 @@ export async function getAccounts() {
       p.auth_user_id,
       p.full_name,
       p.email,
+      u.image AS image_url,
       p.account_type,
       p.position,
       p.department,
@@ -152,10 +155,11 @@ export async function getAccounts() {
         '[]'::json
       ) AS account_logs
     FROM profile p
+    JOIN "user" u ON u.id = p.auth_user_id
     LEFT JOIN user_brand_access uba ON uba.profile_id = p.id
     LEFT JOIN brand b ON b.id = uba.brand_id
     LEFT JOIN "role" r ON r.id = uba.role_id
-    GROUP BY p.id
+    GROUP BY p.id, u.image
     ORDER BY p.created_at DESC, p.full_name ASC
     `
   )
@@ -165,6 +169,7 @@ export async function getAccounts() {
     authUserId: row.auth_user_id,
     fullName: row.full_name,
     email: row.email,
+    imageUrl: row.image_url,
     accountType: row.account_type,
     position: row.position,
     department: row.department,

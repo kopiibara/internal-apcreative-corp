@@ -52,6 +52,7 @@ export type DailyEmployeeSummary = {
   profileId: number;
   fullName: string;
   email: string;
+  imageUrl: string | null;
   assignedGradedTasks: number;
   doneGradedTasks: number;
   pendingTasks: number;

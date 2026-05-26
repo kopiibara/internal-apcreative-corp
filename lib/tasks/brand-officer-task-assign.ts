@@ -19,6 +19,7 @@ type AssignableProfileRow = {
   id: number;
   full_name: string;
   email: string;
+  image_url: string | null;
   account_type: AssignableProfile["accountType"];
   status: AssignableProfile["status"];
   brands: AssigneeBrandAccess[] | null;
@@ -53,6 +54,7 @@ export async function getBrandOfficerAssignableProfiles(
       p.id,
       p.full_name,
       p.email,
+      u.image AS image_url,
       p.account_type,
       p.status,
       COALESCE(
@@ -66,6 +68,7 @@ export async function getBrandOfficerAssignableProfiles(
         '[]'::json
       ) AS brands
     FROM profile p
+    JOIN "user" u ON u.id = p.auth_user_id
     JOIN user_brand_access assignee_uba
       ON assignee_uba.profile_id = p.id
       AND assignee_uba.is_active = true
@@ -114,7 +117,7 @@ export async function getBrandOfficerAssignableProfiles(
             AND officer_role.slug = $4
         )
       )
-    GROUP BY p.id, p.full_name, p.email, p.account_type, p.status
+    GROUP BY p.id, p.full_name, p.email, u.image, p.account_type, p.status
     ORDER BY p.full_name ASC, p.id ASC
     `,
     [
@@ -130,6 +133,7 @@ export async function getBrandOfficerAssignableProfiles(
       id: row.id,
       fullName: row.full_name,
       email: row.email,
+      imageUrl: row.image_url,
       accountType: row.account_type,
       status: row.status,
       hasAllBrandsAccess: await profileHasAllBrandsAccess(row.id),

@@ -20,6 +20,7 @@ type ContentReportRow = {
   submitted_by_profile_id: number;
   submitted_by_name: string;
   submitted_by_email: string;
+  submitted_by_image_url: string | null;
   brand_id: number | null;
   brand_name: string | null;
   content_type: ContentType;
@@ -61,6 +62,7 @@ type ApprovalActivityLogRow = {
   content_report_id: number;
   actor_profile_id: number;
   actor_name: string;
+  actor_image_url: string | null;
   actor_account_type: string;
   actor_position: string | null;
   action: string;
@@ -77,6 +79,7 @@ const contentReportSelect = `
     cr.submitted_by_profile_id,
     submitter.full_name AS submitted_by_name,
     submitter.email AS submitted_by_email,
+    submitter_user.image AS submitted_by_image_url,
     cr.brand_id,
     b.name AS brand_name,
     cr.content_type,
@@ -109,6 +112,7 @@ const contentReportSelect = `
     cr.updated_at
   FROM content_report cr
   JOIN profile submitter ON submitter.id = cr.submitted_by_profile_id
+  JOIN "user" submitter_user ON submitter_user.id = submitter.auth_user_id
   LEFT JOIN brand b ON b.id = cr.brand_id
   LEFT JOIN profile supervisor
     ON supervisor.id = cr.supervisor_reviewed_by_profile_id
@@ -131,6 +135,7 @@ function mapContentReport(
     submittedByProfileId: row.submitted_by_profile_id,
     submittedByName: row.submitted_by_name,
     submittedByEmail: row.submitted_by_email,
+    submittedByImageUrl: row.submitted_by_image_url,
     brandId: row.brand_id,
     brandName: row.brand_name,
     contentType: row.content_type,
@@ -174,6 +179,7 @@ function mapApprovalActivityLog(
     contentReportId: row.content_report_id,
     actorProfileId: row.actor_profile_id,
     actorName: row.actor_name,
+    actorImageUrl: row.actor_image_url,
     actorAccountType: row.actor_account_type,
     actorPosition: row.actor_position,
     action: row.action,
@@ -197,6 +203,7 @@ async function getApprovalActivityLogsByReportIds(reportIds: number[]) {
       aal.content_report_id,
       aal.actor_profile_id,
       actor.full_name AS actor_name,
+      actor_user.image AS actor_image_url,
       actor.account_type AS actor_account_type,
       actor.position AS actor_position,
       aal.action,
@@ -207,6 +214,7 @@ async function getApprovalActivityLogsByReportIds(reportIds: number[]) {
       aal.created_at
     FROM approval_activity_log aal
     JOIN profile actor ON actor.id = aal.actor_profile_id
+    JOIN "user" actor_user ON actor_user.id = actor.auth_user_id
     WHERE aal.content_report_id = ANY($1::integer[])
     ORDER BY aal.created_at DESC, aal.id DESC
     `,

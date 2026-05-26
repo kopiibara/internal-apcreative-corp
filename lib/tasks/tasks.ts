@@ -30,6 +30,7 @@ export type AssignableProfile = {
   id: number;
   fullName: string;
   email: string;
+  imageUrl: string | null;
   accountType: AccountType;
   status: ProfileStatus;
   brands: AssigneeBrandAccess[];
@@ -48,6 +49,7 @@ export type StaffAccountabilitySummary = {
   profileId: number;
   fullName: string;
   email: string;
+  imageUrl: string | null;
   accountType: AccountType;
   brands: AssigneeBrandAccess[];
   totalAssignedTasks: number;
@@ -117,8 +119,10 @@ export type TaskAssignmentRecord = {
   dueDate: string | null;
   createdByProfileId: number;
   createdByName: string;
+  createdByImageUrl: string | null;
   assignedToProfileId: number;
   assignedToName: string;
+  assignedToImageUrl: string | null;
   assigneeBrands: AssigneeBrandAccess[];
   status: TaskAssignmentStatus;
   proofType: TaskProofType | null;
@@ -149,6 +153,7 @@ export type TaskActivityLogRecord = {
   taskAssignmentId: number | null;
   actorProfileId: number;
   actorName: string;
+  actorImageUrl: string | null;
   action: string;
   fromStatus: TaskAssignmentStatus | null;
   toStatus: TaskAssignmentStatus | null;
@@ -167,8 +172,10 @@ type AssignmentRow = {
   due_date: Date | null;
   created_by_profile_id: number;
   created_by_name: string;
+  created_by_image_url: string | null;
   assigned_to_profile_id: number;
   assigned_to_name: string;
+  assigned_to_image_url: string | null;
   assignee_brands: AssigneeBrandAccess[] | null;
   status: TaskAssignmentStatus;
   proof_type: TaskProofType | null;
@@ -197,6 +204,7 @@ type StaffAccountabilityEmployeeRow = {
   id: number;
   full_name: string;
   email: string;
+  image_url: string | null;
   account_type: AccountType;
   brands: AssigneeBrandAccess[] | null;
 };
@@ -234,6 +242,7 @@ type ActivityLogJsonRow = {
   taskAssignmentId: number | null;
   actorProfileId: number;
   actorName: string;
+  actorImageUrl: string | null;
   action: string;
   fromStatus: TaskAssignmentStatus | null;
   toStatus: TaskAssignmentStatus | null;
@@ -241,6 +250,9 @@ type ActivityLogJsonRow = {
   metadata: Record<string, unknown> | null;
   createdAt: string;
 };
+
+const STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL =
+  "('CLIENT', 'EMPLOYEE', 'FULL_STACK_DEVELOPER')";
 
 const ASSIGNMENT_SELECT = `
   SELECT
@@ -253,8 +265,10 @@ const ASSIGNMENT_SELECT = `
     t.due_date,
     t.created_by_profile_id,
     creator.full_name AS created_by_name,
+    creator_user.image AS created_by_image_url,
     ta.assigned_to_profile_id,
     assignee.full_name AS assigned_to_name,
+    assignee_user.image AS assigned_to_image_url,
     COALESCE(
       (
         SELECT json_agg(
@@ -300,6 +314,7 @@ const ASSIGNMENT_SELECT = `
             'taskAssignmentId', log.task_assignment_id,
             'actorProfileId', log.actor_profile_id,
             'actorName', actor.full_name,
+            'actorImageUrl', actor_user.image,
             'action', log.action,
             'fromStatus', log.from_status,
             'toStatus', log.to_status,
@@ -311,6 +326,7 @@ const ASSIGNMENT_SELECT = `
         )
         FROM task_activity_log log
         JOIN profile actor ON actor.id = log.actor_profile_id
+        JOIN "user" actor_user ON actor_user.id = actor.auth_user_id
         WHERE log.task_assignment_id = ta.id
           OR (log.task_assignment_id IS NULL AND log.task_id = t.id)
       ),
@@ -321,7 +337,9 @@ const ASSIGNMENT_SELECT = `
   FROM task_assignment ta
   JOIN task t ON t.id = ta.task_id
   JOIN profile creator ON creator.id = t.created_by_profile_id
+  JOIN "user" creator_user ON creator_user.id = creator.auth_user_id
   JOIN profile assignee ON assignee.id = ta.assigned_to_profile_id
+  JOIN "user" assignee_user ON assignee_user.id = assignee.auth_user_id
   LEFT JOIN profile reviewer ON reviewer.id = ta.reviewed_by_profile_id
   LEFT JOIN profile blocker_reporter ON blocker_reporter.id = ta.blocker_reported_by_profile_id
   LEFT JOIN profile blocker_confirmer ON blocker_confirmer.id = ta.blocker_confirmed_by_profile_id
@@ -338,8 +356,10 @@ function mapAssignment(row: AssignmentRow): TaskAssignmentRecord {
     dueDate: row.due_date?.toISOString() ?? null,
     createdByProfileId: row.created_by_profile_id,
     createdByName: row.created_by_name,
+    createdByImageUrl: row.created_by_image_url,
     assignedToProfileId: row.assigned_to_profile_id,
     assignedToName: row.assigned_to_name,
+    assignedToImageUrl: row.assigned_to_image_url,
     assigneeBrands: row.assignee_brands ?? [],
     status: row.status,
     proofType: row.proof_type,
@@ -361,6 +381,7 @@ function mapAssignment(row: AssignmentRow): TaskAssignmentRecord {
     blockerResolutionNote: row.blocker_resolution_note,
     activityLogs: (row.activity_logs ?? []).map((log) => ({
       ...log,
+      actorImageUrl: log.actorImageUrl ?? null,
       createdAt: new Date(log.createdAt).toISOString(),
     })),
     createdAt: row.created_at.toISOString(),
@@ -421,6 +442,7 @@ export async function getTaskAssignmentsForEmployee(profileId: number) {
     `
     ${ASSIGNMENT_SELECT}
     WHERE ta.assigned_to_profile_id = $1
+       OR t.created_by_profile_id = $1
     ORDER BY
       CASE ta.status
         WHEN 'ASSIGNED' THEN 1
@@ -450,6 +472,7 @@ export async function getAssignableProfilesWithBrands(options?: {
     id: number;
     full_name: string;
     email: string;
+    image_url: string | null;
     account_type: AccountType;
     status: ProfileStatus;
     brands: AssigneeBrandAccess[] | null;
@@ -459,6 +482,7 @@ export async function getAssignableProfilesWithBrands(options?: {
       p.id,
       p.full_name,
       p.email,
+      u.image AS image_url,
       p.account_type,
       p.status,
       COALESCE(
@@ -473,6 +497,7 @@ export async function getAssignableProfilesWithBrands(options?: {
         '[]'::json
       ) AS brands
     FROM profile p
+    JOIN "user" u ON u.id = p.auth_user_id
     LEFT JOIN user_brand_access uba
       ON uba.profile_id = p.id
       AND uba.is_active = true
@@ -493,7 +518,7 @@ export async function getAssignableProfilesWithBrands(options?: {
           )
         )
       )
-    GROUP BY p.id
+    GROUP BY p.id, u.image
     ORDER BY p.full_name ASC, p.id ASC
     `,
     [includeSupervisorFullStack],
@@ -508,6 +533,7 @@ export async function getAssignableProfilesWithBrands(options?: {
         id: row.id,
         fullName: row.full_name,
         email: row.email,
+        imageUrl: row.image_url,
         accountType: row.account_type,
         status: row.status,
         hasAllBrandsAccess,
@@ -591,6 +617,37 @@ export async function getStaffAccountabilitySummaries() {
   return data.summaries;
 }
 
+export async function getStaffAccountabilityFilterOptions() {
+  const [brands, employees] = await Promise.all([
+    query<{ id: number; name: string }>(
+      `
+      SELECT id, name
+      FROM brand
+      WHERE is_active = true
+      ORDER BY name ASC, id ASC
+      `,
+    ),
+    query<{ id: number; full_name: string; email: string }>(
+      `
+      SELECT id, full_name, email
+      FROM profile
+      WHERE status = 'ACTIVE'
+        AND account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
+      ORDER BY full_name ASC, id ASC
+      `,
+    ),
+  ]);
+
+  return {
+    brands: brands.rows.map((row) => ({ id: row.id, name: row.name })),
+    employees: employees.rows.map((row) => ({
+      id: row.id,
+      fullName: row.full_name,
+      email: row.email,
+    })),
+  };
+}
+
 function getPerformanceLabel(completionRate: number) {
   if (completionRate >= 90) {
     return "Excellent";
@@ -655,6 +712,7 @@ export async function getStaffAccountabilityData({
         p.id,
         p.full_name,
         p.email,
+        u.image AS image_url,
         p.account_type,
         COALESCE(
           json_agg(
@@ -668,12 +726,13 @@ export async function getStaffAccountabilityData({
           '[]'::json
         ) AS brands
       FROM profile p
+      JOIN "user" u ON u.id = p.auth_user_id
       LEFT JOIN user_brand_access uba
         ON uba.profile_id = p.id
         AND uba.is_active = true
       LEFT JOIN brand b ON b.id = uba.brand_id AND b.is_active = true
       WHERE p.status = 'ACTIVE'
-        AND p.account_type IN ('CLIENT', 'EMPLOYEE')
+        AND p.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
         AND ($1::integer IS NULL OR EXISTS (
           SELECT 1
           FROM user_brand_access brand_filter
@@ -682,7 +741,7 @@ export async function getStaffAccountabilityData({
             AND brand_filter.is_active = true
         ))
         AND ($2::integer IS NULL OR p.id = $2::integer)
-      GROUP BY p.id
+      GROUP BY p.id, u.image
       ORDER BY p.full_name ASC, p.id ASC
       `,
         [...employeeParams],
@@ -700,7 +759,7 @@ export async function getStaffAccountabilityData({
       JOIN profile assignee ON assignee.id = ta.assigned_to_profile_id
       WHERE t.task_type = 'GRADED'
         AND assignee.status = 'ACTIVE'
-        AND assignee.account_type IN ('CLIENT', 'EMPLOYEE')
+        AND assignee.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
         AND (
           $1::timestamptz IS NULL
           OR (
@@ -745,7 +804,7 @@ export async function getStaffAccountabilityData({
         AND derived_brand.is_active = true
       WHERE t.task_type = 'GRADED'
         AND assignee.status = 'ACTIVE'
-        AND assignee.account_type IN ('CLIENT', 'EMPLOYEE')
+        AND assignee.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
         AND (
           $1::timestamptz IS NULL
           OR (
@@ -820,6 +879,7 @@ export async function getStaffAccountabilityData({
         profileId: employee.id,
         fullName: employee.full_name,
         email: employee.email,
+        imageUrl: employee.image_url,
         accountType: employee.account_type,
         brands: employee.brands ?? [],
         totalAssignedTasks: metrics.total,

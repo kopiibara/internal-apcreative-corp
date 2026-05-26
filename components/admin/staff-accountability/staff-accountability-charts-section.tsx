@@ -130,6 +130,7 @@ export function StaffAccountabilityLeaderboard({
                             profileId={employee.profileId}
                             name={employee.fullName}
                             email={employee.email}
+                            imageUrl={employee.imageUrl}
                             size="md"
                           />
                           <div className="min-w-0">

@@ -84,36 +84,39 @@ export function TaskAssignmentCard({
   return (
     <>
       <Card
-        className="cursor-pointer rounded-lg py-3 px-1 transition-colors hover:bg-muted bg-white"
+        className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-2 transition-colors hover:bg-muted"
         onClick={() => onOpenDetails?.(assignment)}
       >
-        <CardContent className="space-y-3 px-4 py-1">
-          <div className="flex items-start justify-between gap-2">
-            <h2 className="line-clamp-2  font-bold leading-snug">
+        <CardContent className="min-w-0 space-y-2.5 px-3 py-1">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <h2 className="line-clamp-2 min-w-0 break-words font-bold leading-snug">
               {assignment.title}
             </h2>
-            <div className="flex shrink-0 flex-col items-end gap-1 flex-row">
+            <div className="flex max-w-full flex-wrap gap-1">
               <TaskTypeBadge taskType={assignment.taskType} />
               <TaskStatusBadge status={assignment.status} />
             </div>
           </div>
 
           {showAssignee ? (
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex min-w-0 items-center gap-2 text-xs">
               <UserAvatar
                 profileId={assignment.assignedToProfileId}
                 name={assignment.assignedToName}
+                imageUrl={assignment.assignedToImageUrl}
                 size="sm"
               />
-              <p>
-                <span className="text-muted-foreground">Assignee:</span>{" "}
+              <p className="min-w-0 break-words">
                 {assignment.assignedToName}
               </p>
             </div>
           ) : null}
 
           <TaskAssigneeBrands brands={assignment.assigneeBrands} />
-
+          <p className="text-xs">
+            <span className="text-muted-foreground">Assigned to:</span>{" "}
+            <span className="font-medium"> {assignment.assignedToName}</span>
+          </p>
           <p className="text-xs">
             <span className="text-muted-foreground">Created by:</span>{" "}
             <span className="font-medium"> {assignment.createdByName}</span>
@@ -159,7 +162,7 @@ export function TaskAssignmentCard({
           ) : null}
 
           <div
-            className="flex flex-wrap gap-1.5 pt-1"
+            className="grid grid-cols-2 gap-1.5 pt-1 [&_button]:h-8 [&_button]:min-w-0 [&_button]:px-2 [&_button]:text-[11px] [&_svg]:size-3"
             onClick={(event) => event.stopPropagation()}
           >
             {isAssignee &&
@@ -173,8 +176,8 @@ export function TaskAssignmentCard({
                   disabled={isPending}
                 >
                   {assignment.status === "REVISION"
-                    ? "Resubmit Proof"
-                    : "Submit Proof"}
+                    ? "Resubmit"
+                    : "Proof"}
                 </Button>
                 <Button
                   type="button"
@@ -183,7 +186,7 @@ export function TaskAssignmentCard({
                   onClick={() => setBlockerOpen(true)}
                   disabled={isPending}
                 >
-                  Report Blocker
+                  Blocker
                 </Button>
               </>
             ) : null}
@@ -196,7 +199,7 @@ export function TaskAssignmentCard({
                   onClick={() => setDoneDialogOpen(true)}
                   disabled={isPending}
                 >
-                  Confirm Done
+                  Done
                 </Button>
                 <Button
                   type="button"
@@ -205,7 +208,7 @@ export function TaskAssignmentCard({
                   onClick={() => setRevisionOpen(true)}
                   disabled={isPending}
                 >
-                  Request Revision
+                  Revision
                 </Button>
               </>
             ) : null}
@@ -214,7 +217,7 @@ export function TaskAssignmentCard({
               <Button type="button" size="sm" variant="neutral" asChild>
                 <a href={assignment.proofUrl} target="_blank" rel="noreferrer">
                   <ExternalLink className="size-3" />
-                  View proof
+                  View
                 </a>
               </Button>
             ) : null}

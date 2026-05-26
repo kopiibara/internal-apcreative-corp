@@ -1,11 +1,14 @@
 "use client"
 
 import { type CSSProperties, useSyncExternalStore } from "react"
+import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { FileText, ExternalLink } from "lucide-react"
 
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
 import { PageTransition } from "@/components/layout/page-transition"
 import { ForcedPasswordChangeDialog } from "@/components/auth/forced-password-change-dialog"
+import { Button } from "@/components/ui/button"
 import {
     SidebarInset,
     SidebarProvider,
@@ -13,6 +16,12 @@ import {
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { appVersion } from "@/lib/app-version"
 import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { adminGroups, employeeGroups, type SidebarGroupItem } from "@/types/sidebar"
 import { cn } from "@/lib/utils"
@@ -181,6 +190,45 @@ export function DashboardShell({
                         </div>
 
                         <div className="flex min-w-0 items-center gap-2">
+                            {/* 
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="neutral"
+                                        size="sm"
+                                        className="h-9 gap-2 px-3"
+                                    >
+                                        <FileText className="size-4" />
+                                        <span className="hidden sm:inline">Changelog</span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                    align="end"
+                                    sideOffset={8}
+                                    className="w-72 rounded-lg border-2 border-border p-4 shadow-[var(--shadow-hard-sm)]"
+                                >
+                                    <div className="space-y-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="font-semibold">Changelog</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Current version v{appVersion}
+                                                </p>
+                                            </div>
+                                            <Badge variant="secondary">v{appVersion}</Badge>
+                                        </div>
+                                        <Button asChild size="sm" className="w-full justify-between">
+                                            <Link href="/changelog">
+                                                View changelog
+                                                <ExternalLink className="size-4" />
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                            */}
+
                             <Badge
                                 variant="neutral"
                                 className="h-9 border-2 px-4 text-sm font-medium tabular-nums"
@@ -189,7 +237,7 @@ export function DashboardShell({
                             </Badge>
 
                             {/*
-                                   <Button
+                            <Button
                                 variant="neutral"
                                 size="sm"
                                 onClick={handleExport}

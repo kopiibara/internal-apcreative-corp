@@ -6,19 +6,16 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { authClient } from "@/lib/auth/auth-client"
-import { appVersion } from "@/lib/app-version"
 import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { useTheme } from "@/components/ui/theme-provider"
-import type { AccountType } from "@/app/admin/account-control/schema"
-import { AccountTypeBadge } from "@/components/admin/accounts/account-status-badge"
 import { UserAvatar } from "@/components/shared/user-avatar"
 
 import {
     ChevronDown,
     ChevronsUpDown,
-    FileText,
     LogOut,
     Moon,
+    Settings,
     Sun,
 } from "lucide-react"
 
@@ -577,6 +574,16 @@ export function DashboardSidebar({
 
                                 <DropdownMenuSeparator />
 
+                                <DropdownMenuItem asChild>
+                                    <Link
+                                        href="/account"
+                                        className="flex cursor-pointer flex-row items-center gap-2"
+                                    >
+                                        <Settings className="h-4 w-4" />
+                                        Account settings
+                                    </Link>
+                                </DropdownMenuItem>
+
                                 <DropdownMenuItem
                                     onClick={handleToggleTheme}
                                     className="flex cursor-pointer flex-row items-center gap-2"
@@ -591,19 +598,6 @@ export function DashboardSidebar({
                                             ? "Switch to light mode"
                                             : "Switch to dark mode"
                                         : "Switch theme"}
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem asChild>
-                                    <Link
-                                        href="/changelog"
-                                        className="flex cursor-pointer flex-row items-center gap-2"
-                                    >
-                                        <FileText className="h-4 w-4" />
-                                        Changelog
-                                        <span className="ml-auto text-xs text-muted-foreground">
-                                            v{appVersion}
-                                        </span>
-                                    </Link>
                                 </DropdownMenuItem>
 
                                 <DropdownMenuSeparator />

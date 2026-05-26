@@ -82,6 +82,7 @@ function EmployeeCompactSummary({ items }: { items: EmployeeChartItem[] }) {
               profileId={item.profileId}
               name={item.employeeName}
               email={item.email}
+              imageUrl={item.imageUrl}
               size="sm"
             />
             <div className="min-w-0">

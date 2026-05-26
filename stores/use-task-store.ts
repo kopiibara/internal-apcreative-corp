@@ -18,8 +18,12 @@ type TaskStore = {
   isCreateDialogOpen: boolean;
   isEditDialogOpen: boolean;
   selectedAssignment: TaskAssignmentRecord | null;
+  liveAssignments: TaskAssignmentRecord[] | null;
   assignmentPatches: Record<number, TaskAssignmentRecord>;
   setSearchQuery: (query: string) => void;
+  syncTaskAssignmentsFromServer: (
+    assignments: TaskAssignmentRecord[],
+  ) => void;
   updateTaskAssignmentInStore: (assignment: TaskAssignmentRecord) => void;
   clearAssignmentPatch: (assignmentId: number) => void;
   setSelectedStatusFilter: (status: TaskAssignmentStatus | "all") => void;
@@ -42,10 +46,48 @@ export const useTaskStore = create<TaskStore>((set) => ({
   isCreateDialogOpen: false,
   isEditDialogOpen: false,
   selectedAssignment: null,
+  liveAssignments: null,
   assignmentPatches: {},
   setSearchQuery: (searchQuery) => set({ searchQuery }),
+  syncTaskAssignmentsFromServer: (assignments) =>
+    set((state) => {
+      const assignmentPatches = { ...state.assignmentPatches };
+
+      for (const assignment of assignments) {
+        const patch = assignmentPatches[assignment.assignmentId];
+
+        if (
+          patch &&
+          (patch.status !== assignment.status ||
+            patch.updatedAt !== assignment.updatedAt)
+        ) {
+          delete assignmentPatches[assignment.assignmentId];
+        }
+      }
+
+      return {
+        liveAssignments: assignments,
+        assignmentPatches,
+        selectedAssignment: state.selectedAssignment
+          ? assignments.find(
+              (assignment) =>
+                assignment.assignmentId ===
+                state.selectedAssignment?.assignmentId,
+            ) ??
+            assignmentPatches[state.selectedAssignment.assignmentId] ??
+            state.selectedAssignment
+          : null,
+      };
+    }),
   updateTaskAssignmentInStore: (assignment) =>
     set((state) => ({
+      liveAssignments: state.liveAssignments
+        ? state.liveAssignments.map((currentAssignment) =>
+            currentAssignment.assignmentId === assignment.assignmentId
+              ? assignment
+              : currentAssignment,
+          )
+        : state.liveAssignments,
       assignmentPatches: {
         ...state.assignmentPatches,
         [assignment.assignmentId]: assignment,

@@ -29,8 +29,7 @@ export function UserAvatar({
   size = "md",
   className,
 }: UserAvatarProps) {
-  const [uploadedFailed, setUploadedFailed] = useState(false);
-  const [diceBearFailed, setDiceBearFailed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   const seed = useMemo(
     () => resolveAvatarSeed(profileId, name),
@@ -38,19 +37,16 @@ export function UserAvatar({
   );
 
   const diceBearSrc = useMemo(() => {
-    if (diceBearFailed) {
-      return null;
-    }
-
     try {
       return createDiceBearDataUri(seed);
     } catch {
       return null;
     }
-  }, [seed, diceBearFailed]);
+  }, [seed]);
 
-  const showUploaded = Boolean(imageUrl) && !uploadedFailed;
-  const showDiceBear = !showUploaded && Boolean(diceBearSrc) && !diceBearFailed;
+  const showUploaded = Boolean(imageUrl) && failedSrc !== imageUrl;
+  const showDiceBear =
+    !showUploaded && Boolean(diceBearSrc) && failedSrc !== diceBearSrc;
   const imageSrc = showUploaded ? imageUrl! : showDiceBear ? diceBearSrc! : null;
   const initials = getInitialsFromName(name);
   const alt = name?.trim() || "User avatar";
@@ -67,14 +63,7 @@ export function UserAvatar({
         <AvatarImage
           src={imageSrc}
           alt={alt}
-          onError={() => {
-            if (showUploaded) {
-              setUploadedFailed(true);
-              return;
-            }
-
-            setDiceBearFailed(true);
-          }}
+          onError={() => setFailedSrc(imageSrc)}
         />
       ) : null}
       <AvatarFallback className="rounded-lg bg-secondary-background font-semibold">

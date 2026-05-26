@@ -28,6 +28,7 @@ export type ProfileStatus =
 type ProfileRow = {
   id: number;
   auth_user_id: string;
+  user_image: string | null;
   account_type: AccountType;
   full_name: string;
   email: string;
@@ -56,20 +57,22 @@ export async function getCurrentProfileContext() {
   const profileResult = await query<ProfileRow>(
     `
     SELECT
-      id,
-      auth_user_id,
-      account_type,
-      full_name,
-      email,
-      position,
-      department,
-      phone_number,
-      status,
-      must_change_password,
-      first_login_completed_at,
-      password_changed_at
-    FROM profile
-    WHERE auth_user_id = $1
+      p.id,
+      p.auth_user_id,
+      u.image AS user_image,
+      p.account_type,
+      p.full_name,
+      p.email,
+      p.position,
+      p.department,
+      p.phone_number,
+      p.status,
+      p.must_change_password,
+      p.first_login_completed_at,
+      p.password_changed_at
+    FROM profile p
+    JOIN "user" u ON u.id = p.auth_user_id
+    WHERE p.auth_user_id = $1
     LIMIT 1
     `,
     [session.user.id],
@@ -83,7 +86,10 @@ export async function getCurrentProfileContext() {
 
   return {
     session,
-    user: session.user,
+    user: {
+      ...session.user,
+      image: profile.user_image,
+    },
     profile,
   };
 }

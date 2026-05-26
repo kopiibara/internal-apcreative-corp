@@ -64,6 +64,7 @@ export function ApprovalKanbanCard({
             profileId={report.submittedByProfileId}
             name={report.submittedByName}
             email={report.submittedByEmail}
+            imageUrl={report.submittedByImageUrl}
             size="sm"
           />
           <p className="truncate">
