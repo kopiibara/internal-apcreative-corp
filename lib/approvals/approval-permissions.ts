@@ -1,5 +1,10 @@
 import "server-only";
 
+import {
+  isActiveFullStackDeveloper,
+  profileHasAccessToBrand,
+  profileHasAllBrandsAccess,
+} from "@/lib/brand-access/effective-brand-access";
 import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import { query } from "@/lib/db";
 import { can } from "@/lib/permissions";
@@ -11,8 +16,7 @@ import {
 import type { ContentReport } from "@/types/content-report";
 
 const BRAND_OFFICER_ROLE_SLUG = "brand-officer";
-const FULL_STACK_DEVELOPER_ROLE_SLUG = "full-stack-developer";
-
+const MULTIMEDIA_ROLE_SLUG = "multimedia";
 type ApprovalActor = {
   id: number;
   auth_user_id: string;
@@ -52,6 +56,27 @@ export async function isBrandOfficerForBrand(
     return false;
   }
 
+  const hasAllBrandsOfficer = await query<{ has_access: boolean }>(
+    `
+    SELECT EXISTS (
+      SELECT 1
+      FROM user_brand_access uba
+      JOIN role r ON r.id = uba.role_id
+      JOIN brand b ON b.id = uba.brand_id
+      WHERE uba.profile_id = $1
+        AND uba.is_active = true
+        AND b.is_active = true
+        AND b.slug = $2
+        AND r.slug = $3
+    ) AS has_access
+    `,
+    [profileId, ALL_BRAND_SLUG, BRAND_OFFICER_ROLE_SLUG],
+  );
+
+  if (hasAllBrandsOfficer.rows[0]?.has_access) {
+    return profileHasAccessToBrand(profileId, brandId);
+  }
+
   const result = await query<{ has_access: boolean }>(
     `
     SELECT EXISTS (
@@ -73,7 +98,35 @@ export async function isBrandOfficerForBrand(
   return Boolean(result.rows[0]?.has_access);
 }
 
+export async function profileHasMultimediaRoleForBrand(
+  profileId: number,
+  brandId: number,
+) {
+  const result = await query<{ has_role: boolean }>(
+    `
+    SELECT EXISTS (
+      SELECT 1
+      FROM user_brand_access uba
+      JOIN role r ON r.id = uba.role_id
+      JOIN brand b ON b.id = uba.brand_id
+      WHERE uba.profile_id = $1
+        AND uba.is_active = true
+        AND b.is_active = true
+        AND r.slug = $3
+        AND (uba.brand_id = $2 OR b.slug = $4)
+    ) AS has_role
+    `,
+    [profileId, brandId, MULTIMEDIA_ROLE_SLUG, ALL_BRAND_SLUG],
+  );
+
+  return Boolean(result.rows[0]?.has_role);
+}
+
 export async function profileHasActiveBrandAssignment(profileId: number) {
+  if (await profileHasAllBrandsAccess(profileId)) {
+    return true;
+  }
+
   const result = await query<{ has_access: boolean }>(
     `
     SELECT EXISTS (
@@ -92,6 +145,50 @@ export async function profileHasActiveBrandAssignment(profileId: number) {
   return Boolean(result.rows[0]?.has_access);
 }
 
+export async function profileHasApprovalCreatableBrandAssignment(
+  profileId: number,
+) {
+  if (await profileHasAllBrandsAccess(profileId)) {
+    const result = await query<{ has_multimedia_scope: boolean }>(
+      `
+      SELECT EXISTS (
+        SELECT 1
+        FROM user_brand_access uba
+        JOIN role r ON r.id = uba.role_id
+        JOIN brand b ON b.id = uba.brand_id
+        WHERE uba.profile_id = $1
+          AND uba.is_active = true
+          AND b.is_active = true
+          AND b.slug = $2
+          AND r.slug = $3
+      ) AS has_multimedia_scope
+      `,
+      [profileId, ALL_BRAND_SLUG, MULTIMEDIA_ROLE_SLUG],
+    );
+
+    return !result.rows[0]?.has_multimedia_scope;
+  }
+
+  const result = await query<{ has_access: boolean }>(
+    `
+    SELECT EXISTS (
+      SELECT 1
+      FROM user_brand_access uba
+      JOIN role r ON r.id = uba.role_id
+      JOIN brand b ON b.id = uba.brand_id
+      WHERE uba.profile_id = $1
+        AND uba.is_active = true
+        AND b.is_active = true
+        AND b.slug <> $2
+        AND r.slug <> $3
+    ) AS has_access
+    `,
+    [profileId, ALL_BRAND_SLUG, MULTIMEDIA_ROLE_SLUG],
+  );
+
+  return Boolean(result.rows[0]?.has_access);
+}
+
 /** Employee-dashboard users create approvals from any active brand assignment. */
 export async function canEmployeeCreateContentReport(
   actor: ApprovalActor,
@@ -105,30 +202,18 @@ export async function canEmployeeCreateContentReport(
     return canUserCreateApprovalForBrand(actor.id, brandId);
   }
 
-  return profileHasActiveBrandAssignment(actor.id);
+  return profileHasApprovalCreatableBrandAssignment(actor.id);
 }
 
 export async function canUserCreateApprovalForBrand(
   profileId: number,
   brandId: number,
 ) {
-  const result = await query<{ has_access: boolean }>(
-    `
-    SELECT EXISTS (
-      SELECT 1
-      FROM user_brand_access uba
-      JOIN brand b ON b.id = uba.brand_id
-      WHERE uba.profile_id = $1
-        AND uba.brand_id = $2
-        AND uba.is_active = true
-        AND b.is_active = true
-        AND b.slug <> $3
-    ) AS has_access
-    `,
-    [profileId, brandId, ALL_BRAND_SLUG],
-  );
+  if (!(await profileHasAccessToBrand(profileId, brandId))) {
+    return false;
+  }
 
-  return Boolean(result.rows[0]?.has_access);
+  return !(await profileHasMultimediaRoleForBrand(profileId, brandId));
 }
 
 export async function canUserViewApprovalRequest(
@@ -142,7 +227,7 @@ export async function canUserViewApprovalRequest(
   if (report.submittedByProfileId === actor.id) {
     if (isEmployeeAccountType(actor.account_type)) {
       return report.brandId != null
-        ? canUserCreateApprovalForBrand(actor.id, report.brandId)
+        ? profileHasAccessToBrand(actor.id, report.brandId)
         : profileHasActiveBrandAssignment(actor.id);
     }
 
@@ -219,38 +304,7 @@ export async function canSupervisorAssignTaskToUser(
     return false;
   }
 
-  const result = await query<{ can_assign: boolean }>(
-    `
-    SELECT EXISTS (
-      SELECT 1
-      FROM profile assignee
-      JOIN user_brand_access assignee_access
-        ON assignee_access.profile_id = assignee.id
-       AND assignee_access.is_active = true
-      JOIN role assignee_role ON assignee_role.id = assignee_access.role_id
-      JOIN brand b ON b.id = assignee_access.brand_id AND b.is_active = true
-      WHERE assignee.id = $2
-        AND assignee.status = 'ACTIVE'
-        AND assignee_role.slug = $3
-        AND b.slug <> $4
-        AND EXISTS (
-          SELECT 1
-          FROM user_brand_access supervisor_access
-          WHERE supervisor_access.profile_id = $1
-            AND supervisor_access.brand_id = assignee_access.brand_id
-            AND supervisor_access.is_active = true
-        )
-    ) AS can_assign
-    `,
-    [
-      supervisor.id,
-      assigneeProfileId,
-      FULL_STACK_DEVELOPER_ROLE_SLUG,
-      ALL_BRAND_SLUG,
-    ],
-  );
-
-  return Boolean(result.rows[0]?.can_assign);
+  return isActiveFullStackDeveloper(assigneeProfileId);
 }
 
 export async function assertSupervisorCanAssignTasksToUsers(
@@ -261,44 +315,39 @@ export async function assertSupervisorCanAssignTasksToUsers(
     return { ok: true as const };
   }
 
-  const result = await query<{ invalid_count: number }>(
-    `
-    SELECT COUNT(*)::int AS invalid_count
-    FROM profile assignee
-    WHERE assignee.id = ANY($2::integer[])
-      AND assignee.account_type = 'FULL_STACK_DEVELOPER'
-      AND NOT EXISTS (
-        SELECT 1
-        FROM user_brand_access assignee_access
-        JOIN role assignee_role ON assignee_role.id = assignee_access.role_id
-        JOIN brand b ON b.id = assignee_access.brand_id AND b.is_active = true
-        WHERE assignee_access.profile_id = assignee.id
-          AND assignee_access.is_active = true
-          AND assignee_role.slug = $3
-          AND b.slug <> $4
-          AND EXISTS (
-            SELECT 1
-            FROM user_brand_access supervisor_access
-            WHERE supervisor_access.profile_id = $1
-              AND supervisor_access.brand_id = assignee_access.brand_id
-              AND supervisor_access.is_active = true
-          )
-      )
-    `,
-    [
-      supervisor.id,
-      assigneeProfileIds.filter((assigneeId) => assigneeId !== supervisor.id),
-      FULL_STACK_DEVELOPER_ROLE_SLUG,
-      ALL_BRAND_SLUG,
-    ],
-  );
+  for (const assigneeId of assigneeProfileIds) {
+    if (assigneeId === supervisor.id) {
+      continue;
+    }
 
-  if ((result.rows[0]?.invalid_count ?? 0) > 0) {
-    return {
-      ok: false as const,
-      message:
-        "Supervisors can only assign tasks to Full Stack Developer users on shared brands.",
-    };
+    const assigneeResult = await query<{ account_type: AccountType }>(
+      `
+      SELECT account_type
+      FROM profile
+      WHERE id = $1
+        AND status = 'ACTIVE'
+      LIMIT 1
+      `,
+      [assigneeId],
+    );
+    const assignee = assigneeResult.rows[0];
+
+    if (assignee?.account_type !== "FULL_STACK_DEVELOPER") {
+      continue;
+    }
+
+    const canAssign = await canSupervisorAssignTaskToUser(
+      supervisor,
+      assigneeId,
+    );
+
+    if (!canAssign) {
+      return {
+        ok: false as const,
+        message:
+          "Supervisors can only assign graded tasks to active Full Stack Developer accounts.",
+      };
+    }
   }
 
   return { ok: true as const };

@@ -91,7 +91,7 @@ Do not put `brand_id` directly in `profile`.
 
 ```txt
 CLIENT, EMPLOYEE → /employee/dashboard
-SUPERVISOR, MANAGER, EXECUTIVE → /admin/dashboard
+SUPERVISOR, MANAGER, EXECUTIVE, FULL_STACK_DEVELOPER → /admin/dashboard
 ```
 
 CLIENT and EMPLOYEE use brand/role/permission checks.
