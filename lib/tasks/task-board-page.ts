@@ -40,6 +40,21 @@ async function loadTaskPermissions(
     can(authUserId, "tasks.review"),
   ]);
 
+  if (accountType === "FULL_STACK_DEVELOPER") {
+    return {
+      canCreate: false,
+      canAssign: false,
+      canUpdate: false,
+      canDelete: false,
+      canViewAll: canViewAllPermission,
+      canManageAll: false,
+      canSubmitProof,
+      canReportBlocker: canSubmitProof,
+      canReview: false,
+      isEmployee: false,
+    } satisfies TaskPermissionFlags;
+  }
+
   const permissions: TaskPermissionFlags = {
     canCreate,
     canAssign,
@@ -48,6 +63,7 @@ async function loadTaskPermissions(
     canViewAll: canViewAllPermission,
     canManageAll,
     canSubmitProof,
+    canReportBlocker: canSubmitProof,
     canReview,
     isEmployee: isEmployeeAccountType(accountType),
   };
@@ -128,6 +144,7 @@ export async function loadEmployeeTaskBoardPageData(profile: {
       isEmployee: true,
       canCreate: canAssignBrandTeamTasks,
       canSubmitProof: permissions.canSubmitProof,
+      canReportBlocker: permissions.canReportBlocker,
     },
   };
 }

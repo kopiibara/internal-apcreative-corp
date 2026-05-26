@@ -52,10 +52,10 @@ export function ApprovalKanbanCard({
 
   return (
     <Card
-      className="cursor-pointer bg-card rounded-lg px-3 py-2 shadow-sm transition-colors hover:bg-muted"
+      className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-2 transition-colors hover:bg-muted"
       onClick={onClick}
     >
-      <CardContent className="space-y-3 p-2">
+      <CardContent className="min-w-0 space-y-2.5 px-3 py-1">
         <p className="truncate text-md font-bold">
           {report.brandName ?? "No brand"}
         </p>

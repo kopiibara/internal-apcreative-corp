@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 import { authClient } from "@/lib/auth/auth-client"
 import { isWideLayoutRoute } from "@/lib/wide-routes"
@@ -187,8 +187,22 @@ export function DashboardSidebar({
         return () => cancelAnimationFrame(frame)
     }, [])
 
+    const previousPathnameRef = useRef<string | null>(null)
+
     useEffect(() => {
-        if (!isMobile && isWideLayoutRoute(pathname)) {
+        if (isMobile) {
+            previousPathnameRef.current = pathname
+            return
+        }
+
+        const previousPathname = previousPathnameRef.current
+        const enteredWideLayoutRoute =
+            isWideLayoutRoute(pathname) &&
+            (previousPathname === null || !isWideLayoutRoute(previousPathname))
+
+        previousPathnameRef.current = pathname
+
+        if (enteredWideLayoutRoute) {
             setOpen(false)
         }
     }, [isMobile, pathname, setOpen])

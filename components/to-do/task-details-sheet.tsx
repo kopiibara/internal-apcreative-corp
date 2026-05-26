@@ -269,7 +269,7 @@ export function TaskDetailsSheet({
     isAssignee &&
     permissions.canSubmitProof &&
     (assignment?.status === "ASSIGNED" || assignment?.status === "REVISION")
-  const canReportBlocker = canSubmitProof
+  const canReportBlocker = canSubmitProof && permissions.canReportBlocker
   const canReview =
     Boolean(assignment) &&
     permissions.canReview &&
