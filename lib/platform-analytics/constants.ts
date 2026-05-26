@@ -26,7 +26,7 @@ export const PLATFORM_VIEW_COPY: Record<
   META: {
     title: "Meta Analytics",
     subtitle:
-      "Track Facebook and Instagram performance, including followers, page likes, reach, impressions, engagement, posts, and webhook activity.",
+      "Facebook analytics per enabled business page. Each active page has its own status, metrics, and post table.",
     liveBadge: "Live Integration",
     demoBadge: "Not Connected",
   },

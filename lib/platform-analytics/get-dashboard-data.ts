@@ -1,10 +1,6 @@
 import "server-only"
 
-import {
-  filterMetaKpisByScope,
-  loadMetaPlatformSlice,
-  metaAccountIdFromFilter,
-} from "@/lib/platform-analytics/adapters/meta-adapter"
+import { loadMetaPlatformSlice } from "@/lib/platform-analytics/adapters/meta-adapter"
 import { buildDemoPlatformSlice } from "@/lib/platform-analytics/demo-data"
 import { getDemoCharts } from "@/lib/platform-analytics/platform-charts"
 import type {
@@ -41,10 +37,11 @@ export async function getPlatformAnalyticsDashboardData(input?: {
       syncHistory: demo.syncHistory,
       charts: getDemoCharts(platform),
       metaNeedsBootstrap: false,
+      metaBusinessPages: [],
     }
   }
 
-  const meta = await loadMetaPlatformSlice(metaAccountIdFromFilter(accountId))
+  const meta = await loadMetaPlatformSlice(accountId)
 
   return {
     platform: "META",
@@ -52,7 +49,7 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     isDemo: false,
     accounts: meta.accounts,
     connection: meta.connection,
-    overviewKpis: filterMetaKpisByScope(meta.overviewKpis, metaScope),
+    overviewKpis: meta.overviewKpis,
     engagementKpis: meta.engagementKpis,
     audienceInsightKpis: meta.audienceInsightKpis,
     growthSnapshots: meta.growthSnapshots,
@@ -62,6 +59,7 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     syncHistory: meta.syncHistory,
     charts: meta.charts,
     metaNeedsBootstrap: meta.metaNeedsBootstrap,
+    metaBusinessPages: meta.metaBusinessPages,
   }
 }
 

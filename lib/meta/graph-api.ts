@@ -117,14 +117,24 @@ type GraphPost = {
   message?: string
   permalink_url?: string
   created_time?: string
+  full_picture?: string
+  likes?: { summary?: { total_count?: number } }
   reactions?: { summary?: { total_count?: number } }
   comments?: { summary?: { total_count?: number } }
   shares?: { count?: number }
 }
 
+function readPostReactionCount(post: GraphPost) {
+  return (
+    post.reactions?.summary?.total_count ??
+    post.likes?.summary?.total_count ??
+    0
+  )
+}
+
 export async function fetchRecentPagePosts(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
-  limit = 25
+  limit = 50
 ) {
   const token = resolveMetaPageAccessToken(page.access_token_env_key)
   if (!token) {
@@ -136,11 +146,13 @@ export async function fetchRecentPagePosts(
     token,
     {
       fields:
-        "id,message,permalink_url,created_time,reactions.summary(true),comments.summary(true),shares",
+        "id,message,created_time,permalink_url,full_picture,shares,likes.summary(true),comments.summary(true),reactions.summary(true)",
       limit: String(limit),
     }
   )
 }
+
+export { readPostReactionCount }
 
 export async function fetchPageInsights(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,

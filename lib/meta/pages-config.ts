@@ -5,6 +5,7 @@ export type MetaPageConfigKey = "neon-nights" | "pro-group" | "al-qaysar"
 export type MetaPageConfig = {
   key: MetaPageConfigKey
   name: string
+  displayName: string
   brandSlug: string
   enabled: boolean
   pageId: string
@@ -26,6 +27,7 @@ const metaPagesDefinition = [
   {
     key: "neon-nights" as const,
     name: "Neon Nights",
+    displayName: "Neon Nights Bar Club",
     brandSlug: "neon-nights",
     enabledEnvKey: "NEON_NIGHTS_META_ENABLED",
     pageIdEnvKey: "NEON_NIGHTS_META_PAGE_ID",
@@ -34,6 +36,7 @@ const metaPagesDefinition = [
   {
     key: "pro-group" as const,
     name: "Pro Group",
+    displayName: "Pro Group",
     brandSlug: "pro-group",
     enabledEnvKey: "PRO_GROUP_META_ENABLED",
     pageIdEnvKey: "PRO_GROUP_META_PAGE_ID",
@@ -42,6 +45,7 @@ const metaPagesDefinition = [
   {
     key: "al-qaysar" as const,
     name: "Al Qaysar",
+    displayName: "Al Qaysar",
     brandSlug: "al-qaysar",
     enabledEnvKey: "AL_QAYSAR_META_ENABLED",
     pageIdEnvKey: "AL_QAYSAR_META_PAGE_ID",
@@ -55,6 +59,7 @@ function buildMetaPageConfig(
   return {
     key: definition.key,
     name: definition.name,
+    displayName: definition.displayName,
     brandSlug: definition.brandSlug,
     enabled: readEnvFlag(definition.enabledEnvKey),
     pageId: readEnv(definition.pageIdEnvKey),
