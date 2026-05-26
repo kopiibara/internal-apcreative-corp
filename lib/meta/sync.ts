@@ -7,6 +7,7 @@ import {
   fetchPageSummary,
   fetchPostInsights,
   fetchRecentPagePosts,
+  readPostReactionCount,
   PAGE_INSIGHT_METRICS,
   parseInsightValues,
 } from "@/lib/meta/graph-api"
@@ -198,11 +199,11 @@ export async function syncHourlyPostMetrics() {
 
     try {
       const summary = await fetchPageSummary(page)
-      const postsResponse = await fetchRecentPagePosts(page, 25)
+      const postsResponse = await fetchRecentPagePosts(page, 50)
       const posts = postsResponse.data ?? []
 
       for (const post of posts) {
-        const reactions = post.reactions?.summary?.total_count ?? 0
+        const reactions = readPostReactionCount(post)
         const comments = post.comments?.summary?.total_count ?? 0
         const shares = post.shares?.count ?? 0
         const engagementRate = calculateEngagementRate({
@@ -217,11 +218,14 @@ export async function syncHourlyPostMetrics() {
         try {
           const insightsResponse = await fetchPostInsights(post.id, page)
           postInsights = {
+            picture_url: post.full_picture ?? null,
             raw: insightsResponse.data,
             parsed: parseInsightValues(insightsResponse.data ?? []),
           }
         } catch {
-          postInsights = {}
+          postInsights = {
+            picture_url: post.full_picture ?? null,
+          }
         }
 
         await query(

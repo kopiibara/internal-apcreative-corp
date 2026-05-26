@@ -2,6 +2,7 @@ import "server-only"
 
 import { query } from "@/lib/db"
 import { getMetaIntegrationStatus } from "@/lib/meta/connection-status"
+import { getActiveMetaPages } from "@/lib/meta/pages-config"
 import type {
   MetaFacebookPageRow,
   MetaPageDailySnapshotRow,
@@ -44,6 +45,7 @@ export type MetaMonitoringDashboardData = {
     totalFollowers: number | null
     pageLikes: number | null
     newFollowers: number | null
+    newLikes: number | null
     totalReactions: number
     totalComments: number
     totalShares: number
@@ -109,8 +111,13 @@ export async function getMetaMonitoringDashboardData(
 ): Promise<MetaMonitoringDashboardData> {
   const integrationStatus = await getMetaIntegrationStatus()
 
+  const enabledPageIds = getActiveMetaPages()
+    .map((page) => page.pageId)
+    .filter(Boolean)
+
   const pagesResult = await query<MetaFacebookPageRow>(
-    `
+    enabledPageIds.length > 0
+      ? `
     SELECT
       id,
       facebook_page_id,
@@ -122,8 +129,23 @@ export async function getMetaMonitoringDashboardData(
       last_synced_at
     FROM meta_facebook_page
     WHERE is_active = true
+      AND facebook_page_id = ANY($1::text[])
     ORDER BY page_name ASC
     `
+      : `
+    SELECT
+      id,
+      facebook_page_id,
+      page_name,
+      brand_id,
+      access_token_env_key,
+      is_active,
+      webhook_subscribed_fields,
+      last_synced_at
+    FROM meta_facebook_page
+    WHERE false
+    `,
+    enabledPageIds.length > 0 ? [enabledPageIds] : []
   )
 
   const pageId =
@@ -250,6 +272,8 @@ export async function getMetaMonitoringDashboardData(
   const previousSnapshot = snapshots.rows[1]
   const latestFollowers = latestSnapshot?.followers_count ?? null
   const previousFollowers = previousSnapshot?.followers_count ?? null
+  const latestLikes = latestSnapshot?.page_likes ?? null
+  const previousLikes = previousSnapshot?.page_likes ?? null
 
   return {
     pages: pagesResult.rows,
@@ -268,6 +292,10 @@ export async function getMetaMonitoringDashboardData(
       newFollowers:
         latestFollowers !== null && previousFollowers !== null
           ? latestFollowers - previousFollowers
+          : null,
+      newLikes:
+        latestLikes !== null && previousLikes !== null
+          ? latestLikes - previousLikes
           : null,
       totalReactions: Number(postTotals.rows[0]?.reactions ?? 0),
       totalComments: Number(postTotals.rows[0]?.comments ?? 0),
