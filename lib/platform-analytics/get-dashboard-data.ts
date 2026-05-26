@@ -24,6 +24,8 @@ export async function getPlatformAnalyticsDashboardData(input?: {
   accountId?: string | null;
   metaScope?: MetaScope;
   dateRange?: AnalyticsDateRange;
+  customDateFrom?: string | null;
+  customDateTo?: string | null;
 }): Promise<PlatformAnalyticsDashboardData> {
   const platform: AnalyticsPlatform = input?.platform ?? "META";
   const accountId = input?.accountId ?? null;
@@ -70,7 +72,11 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     };
   }
 
-  const meta = await loadMetaPlatformSlice(metaAccountIdFromFilter(accountId));
+  const meta = await loadMetaPlatformSlice(metaAccountIdFromFilter(accountId), {
+    dateRange: input?.dateRange,
+    customDateFrom: input?.customDateFrom,
+    customDateTo: input?.customDateTo,
+  });
 
   return {
     platform: "META",
