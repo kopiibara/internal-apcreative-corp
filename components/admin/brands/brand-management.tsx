@@ -70,7 +70,7 @@ export function BrandManagement({
         brand.name.toLowerCase().includes(normalizedSearch) ||
         brand.slug.toLowerCase().includes(normalizedSearch)
       const matchesStatus =
-        selectedStatusFilter === "all" ||
+        (selectedStatusFilter === "all" && brand.isActive) ||
         (selectedStatusFilter === "active" && brand.isActive) ||
         (selectedStatusFilter === "inactive" && !brand.isActive)
 
@@ -147,15 +147,10 @@ export function BrandManagement({
         ) : null}
       </div>
 
-      <Card className="shadow-none">
-        <CardHeader className="gap-3 border-b-2 border-border">
-          <CardTitle className="font-semibold">Brand selector</CardTitle>
-          <BrandFilters
-            brands={filteredBrands}
-            selectedBrandId={selectedViewBrand?.id ?? null}
-          />
-        </CardHeader>
-      </Card>
+      <BrandFilters
+        brands={filteredBrands}
+        selectedBrandId={selectedViewBrand?.id ?? null}
+      />
 
       {selectedViewBrand ? (
         <>

@@ -219,3 +219,20 @@ CREATE TABLE IF NOT EXISTS account_invite_brand_access (
 - Do not add a global unique index enforcing one primary brand for all account types.
 - CLIENT and EMPLOYEE primary brand rules are enforced in server validation.
 - SUPERVISOR, MANAGER, and EXECUTIVE are not blocked by multiple primary flags.
+
+## Approval Publishing Proof
+
+`content_report` stores publishing ownership and proof with nullable columns so
+existing approval records remain valid:
+
+- `publishing_proof_url`
+- `publishing_proof_note`
+- `publishing_proof_submitted_by_profile_id`
+- `publishing_proof_submitted_at`
+- `published_by_profile_id`
+- `published_at`
+- `scheduled_by_profile_id`
+- `scheduled_at`
+
+Requests must not move to `publish_status = 'Published'` without publishing
+proof.

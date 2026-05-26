@@ -1,28 +1,28 @@
 import { redirect } from "next/navigation"
 
 import { ReminderBoard } from "@/components/to-do/reminder-board"
-import { getCurrentProfileContext } from "@/lib/auth/auth-session"
+import { requireEmployee } from "@/lib/auth/auth-session"
 import { canAccessEmployeeTaskPage } from "@/lib/tasks/employee-task-access"
 import { getRemindersForProfile } from "@/lib/reminders/reminders"
 
 export default async function EmployeeToDoRemindersPage() {
-  const context = await getCurrentProfileContext()
+  const { profile } = await requireEmployee()
 
-  if (!context || context.profile.status !== "ACTIVE") {
+  if (profile.status !== "ACTIVE") {
     redirect("/login")
   }
 
-  const allowed = await canAccessEmployeeTaskPage(
-    context.profile.auth_user_id,
-    context.profile.account_type,
-    context.profile.id
+  const canAccessReminders = await canAccessEmployeeTaskPage(
+    profile.auth_user_id,
+    profile.account_type,
+    profile.id
   )
 
-  if (!allowed) {
+  if (!canAccessReminders) {
     redirect("/employee/dashboard")
   }
 
-  const reminders = await getRemindersForProfile(context.profile.id)
+  const reminders = await getRemindersForProfile(profile.id)
 
   return <ReminderBoard reminders={reminders} />
 }

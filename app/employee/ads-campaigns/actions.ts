@@ -158,7 +158,14 @@ export async function deleteAdsCampaign(
 
 export async function importGoogleAdsCsvMetrics(
   input: z.infer<typeof googleAdsImportSchema>
-): Promise<EmployeeAdsActionResult<{ importedRows: number }>> {
+): Promise<
+  EmployeeAdsActionResult<{
+    importedRows: number
+    sourceTemplate: string
+    templateLabel: string
+    dateRange: { start: string; end: string } | null
+  }>
+> {
   try {
     const profile = await requireActiveEmployeeProfile()
     const rateLimit = await enforceRateLimit({
@@ -180,7 +187,7 @@ export async function importGoogleAdsCsvMetrics(
       }
     }
 
-    const importedRows = await importGoogleAdsMetricsForEmployee({
+    const importResult = await importGoogleAdsMetricsForEmployee({
       profile,
       brandId: parsed.data.brandId,
       fileName: parsed.data.fileName,
@@ -188,12 +195,21 @@ export async function importGoogleAdsCsvMetrics(
     })
     revalidateEmployeeAdsCampaigns()
 
+    const dateLabel = importResult.dateRange
+      ? `${importResult.dateRange.start} to ${importResult.dateRange.end}`
+      : "selected dates"
+
     return {
       success: true,
-      message: `Imported ${importedRows} Google Ads row${
-        importedRows === 1 ? "" : "s"
-      }.`,
-      data: { importedRows },
+      message: `Imported ${importResult.rowCount} Google Ads row${
+        importResult.rowCount === 1 ? "" : "s"
+      } (${importResult.templateLabel}) for ${dateLabel}.`,
+      data: {
+        importedRows: importResult.rowCount,
+        sourceTemplate: importResult.sourceTemplate,
+        templateLabel: importResult.templateLabel,
+        dateRange: importResult.dateRange,
+      },
     }
   } catch (error) {
     return {

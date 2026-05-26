@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { PoolClient } from "pg";
 
 import {
   approvalKanbanColumnSchema,
@@ -18,6 +17,7 @@ import { getApprovalContentReportById } from "@/lib/content-reports";
 import { canApprovalAction, canDirectorReview } from "@/lib/permissions";
 import { query, transaction } from "@/lib/db";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { insertApprovalActivityLog } from "@/lib/approvals/approval-activity-log";
 
 import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
 
@@ -35,6 +35,7 @@ type ReviewGateRow = {
   director_notes: string | null;
   publish_status: "Pending" | "Scheduled" | "Published" | "Cancelled";
   scheduled_published_date: Date | null;
+  publishing_proof_url: string | null;
   remarks_revision_summary: string | null;
 };
 
@@ -151,6 +152,7 @@ async function getReviewGate(reportId: number) {
       director_notes,
       publish_status,
       scheduled_published_date,
+      publishing_proof_url,
       remarks_revision_summary
     FROM content_report
     WHERE id = $1
@@ -184,50 +186,6 @@ async function getUpdatedApprovalOrThrow(reportId: number) {
   }
 
   return updatedApproval;
-}
-
-async function insertApprovalActivityLog({
-  client,
-  reportId,
-  actorProfileId,
-  action,
-  fromStatus,
-  toStatus,
-  notes,
-  metadata,
-}: {
-  client: PoolClient;
-  reportId: number;
-  actorProfileId: number;
-  action: string;
-  fromStatus: string | null;
-  toStatus: string | null;
-  notes: string;
-  metadata?: Record<string, unknown>;
-}) {
-  await client.query(
-    `
-    INSERT INTO approval_activity_log (
-      content_report_id,
-      actor_profile_id,
-      action,
-      from_status,
-      to_status,
-      notes,
-      metadata
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
-    `,
-    [
-      reportId,
-      actorProfileId,
-      action,
-      fromStatus,
-      toStatus,
-      notes,
-      metadata ? JSON.stringify(metadata) : null,
-    ],
-  );
 }
 
 export async function updateSupervisorReview(
@@ -279,6 +237,7 @@ export async function updateSupervisorReview(
           director_notes,
           publish_status,
           scheduled_published_date,
+          publishing_proof_url,
           remarks_revision_summary
         FROM content_report
         WHERE id = $1
@@ -335,6 +294,22 @@ export async function updateSupervisorReview(
           source: "approval_form",
         },
       });
+
+      if (
+        parsed.data.supervisorStatus === "Approved" &&
+        current.director_status === "Approved"
+      ) {
+        await insertApprovalActivityLog({
+          client,
+          reportId: parsed.data.reportId,
+          actorProfileId: authorization.context.profile.id,
+          action: "ready_to_publish",
+          fromStatus: current.publish_status,
+          toStatus: "Ready to Publish",
+          notes: "Supervisor and Director approvals are complete.",
+          metadata: { source: "approval_form" },
+        });
+      }
     });
 
     revalidateApprovalRoutes();
@@ -422,6 +397,7 @@ export async function updateDirectorReview(
           director_notes,
           publish_status,
           scheduled_published_date,
+          publishing_proof_url,
           remarks_revision_summary
         FROM content_report
         WHERE id = $1
@@ -487,6 +463,22 @@ export async function updateDirectorReview(
           source: "approval_form",
         },
       });
+
+      if (
+        current.supervisor_status === "Approved" &&
+        parsed.data.directorStatus === "Approved"
+      ) {
+        await insertApprovalActivityLog({
+          client,
+          reportId: parsed.data.reportId,
+          actorProfileId: context.profile.id,
+          action: "ready_to_publish",
+          fromStatus: current.publish_status,
+          toStatus: "Ready to Publish",
+          notes: "Supervisor and Director approvals are complete.",
+          metadata: { source: "approval_form" },
+        });
+      }
     });
 
     revalidateApprovalRoutes();
@@ -576,6 +568,7 @@ export async function updatePublishingInfo(
           director_notes,
           publish_status,
           scheduled_published_date,
+          publishing_proof_url,
           remarks_revision_summary
         FROM content_report
         WHERE id = $1
@@ -607,6 +600,38 @@ export async function updatePublishingInfo(
           publish_status = $2,
           scheduled_published_date = $3,
           remarks_revision_summary = $4,
+          publishing_proof_url = CASE
+            WHEN $2 = 'Published' THEN $5
+            ELSE publishing_proof_url
+          END,
+          publishing_proof_note = CASE
+            WHEN $2 = 'Published' THEN $4
+            ELSE publishing_proof_note
+          END,
+          publishing_proof_submitted_by_profile_id = CASE
+            WHEN $2 = 'Published' THEN $6
+            ELSE publishing_proof_submitted_by_profile_id
+          END,
+          publishing_proof_submitted_at = CASE
+            WHEN $2 = 'Published' THEN now()
+            ELSE publishing_proof_submitted_at
+          END,
+          published_by_profile_id = CASE
+            WHEN $2 = 'Published' THEN $6
+            ELSE published_by_profile_id
+          END,
+          published_at = CASE
+            WHEN $2 = 'Published' THEN now()
+            ELSE published_at
+          END,
+          scheduled_by_profile_id = CASE
+            WHEN $2 = 'Scheduled' THEN $6
+            ELSE scheduled_by_profile_id
+          END,
+          scheduled_at = CASE
+            WHEN $2 = 'Scheduled' THEN now()
+            ELSE scheduled_at
+          END,
           updated_at = now()
         WHERE id = $1
         `,
@@ -615,6 +640,8 @@ export async function updatePublishingInfo(
           parsed.data.publishStatus,
           parsed.data.scheduledPublishedDate,
           parsed.data.remarksRevisionSummary,
+          parsed.data.proofUrl,
+          authorization.context.profile.id,
         ],
       );
 
@@ -633,6 +660,7 @@ export async function updatePublishingInfo(
           scheduledPublishedDate: serializeStatus(
             parsed.data.scheduledPublishedDate,
           ),
+          proofUrl: parsed.data.proofUrl,
           previousRemarksRevisionSummary: current.remarks_revision_summary,
           confirmationAccepted: parsed.data.confirmationAccepted,
           source: "approval_form",
@@ -734,6 +762,7 @@ export async function updateApprovalKanbanColumn(
           director_notes,
           publish_status,
           scheduled_published_date,
+          publishing_proof_url,
           remarks_revision_summary
         FROM content_report
         WHERE id = $1
@@ -821,6 +850,18 @@ export async function updateApprovalKanbanColumn(
             metadata: {
               ...baseLog.metadata,
               resolvedFromRevision: true,
+            },
+          });
+          await insertApprovalActivityLog({
+            ...baseLog,
+            action: "ready_to_publish",
+            fromStatus: current.publish_status,
+            toStatus: "Ready to Publish",
+            notes: "Supervisor and Director approvals are complete.",
+            metadata: {
+              ...baseLog.metadata,
+              resolvedFromRevision: true,
+              source: "kanban_drag",
             },
           });
           return;
@@ -969,6 +1010,17 @@ export async function updateApprovalKanbanColumn(
           fromStatus: current.director_status,
           toStatus: "Approved",
         });
+        await insertApprovalActivityLog({
+          ...baseLog,
+          action: "ready_to_publish",
+          fromStatus: current.publish_status,
+          toStatus: "Ready to Publish",
+          notes: "Supervisor and Director approvals are complete.",
+          metadata: {
+            ...baseLog.metadata,
+            source: "kanban_drag",
+          },
+        });
         return;
       }
 
@@ -993,6 +1045,12 @@ export async function updateApprovalKanbanColumn(
 
         const nextStatus =
           parsed.data.toColumn === "scheduled" ? "Scheduled" : "Published";
+
+        if (nextStatus === "Published" && !current.publishing_proof_url) {
+          throw new Error(
+            "Publishing proof is required before marking as Published.",
+          );
+        }
 
         await client.query(
           `

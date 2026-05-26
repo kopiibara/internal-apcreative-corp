@@ -3,20 +3,7 @@
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import {
-  BarChart3,
-  FileUp,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react"
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  XAxis,
-  YAxis,
-} from "recharts"
+import { FileUp, Pencil, Plus, Trash2 } from "lucide-react"
 
 import {
   createAdsCampaign,
@@ -24,8 +11,11 @@ import {
   importGoogleAdsCsvMetrics,
   updateAdsCampaign,
 } from "@/app/employee/ads-campaigns/actions"
+import { GoogleAdsImportDialog } from "@/components/employee/ads-campaigns/google-ads-import-dialog"
 import { FilterBadge } from "@/components/shared/filter-badge"
 import { FilterBadgeGroup } from "@/components/shared/filter-badge-group"
+import { GoogleAdsKpiCards } from "@/components/shared/google-ads-kpi-cards"
+import { GoogleAdsPerformanceChart } from "@/components/shared/google-ads-performance-chart"
 import { StatusBadge } from "@/components/shared/status-badge"
 import {
   AlertDialog,
@@ -45,14 +35,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  type ChartConfig,
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
 import {
   Dialog,
   DialogContent,
@@ -91,6 +73,7 @@ import {
   type GoogleAdsMetric,
   type GoogleAdsSummary,
 } from "@/lib/ads-campaigns-types"
+import { summarizeGoogleAdsMetrics } from "@/lib/ads-campaigns/google-ads-metrics-display"
 
 type AdsCampaignsDashboardProps = {
   brands: AssignedAdsBrand[]
@@ -121,32 +104,11 @@ const platformLabels: Record<AdsPlatform, string> = {
   TIKTOK: "TikTok",
 }
 
-const chartConfig = {
-  impressions: {
-    label: "Impressions",
-    color: "var(--chart-1)",
-  },
-  cost: {
-    label: "Cost",
-    color: "var(--chart-2)",
-  },
-  conversions: {
-    label: "Conversions",
-    color: "var(--chart-3)",
-  },
-  avgTargetCpa: {
-    label: "Avg. Target CPA",
-    color: "var(--chart-4)",
-  },
-} satisfies ChartConfig
-
 const pesoFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",
   maximumFractionDigits: 2,
 })
-
-const numberFormatter = new Intl.NumberFormat("en-US")
 
 function formatPeso(value: number | null | undefined) {
   return pesoFormatter.format(value ?? 0)
@@ -187,56 +149,6 @@ function getCampaignDraft(
     endDate: campaign?.endDate ?? "",
     notes: campaign?.notes ?? "",
   }
-}
-
-function summarizeMetrics(metrics: GoogleAdsMetric[]): GoogleAdsSummary {
-  const totalCost = metrics.reduce((total, metric) => total + metric.cost, 0)
-  const totalConversions = metrics.reduce(
-    (total, metric) => total + metric.conversions,
-    0
-  )
-
-  return {
-    totalCost,
-    totalImpressions: metrics.reduce(
-      (total, metric) => total + metric.impressions,
-      0
-    ),
-    totalConversions,
-    avgCpa: totalConversions > 0 ? totalCost / totalConversions : null,
-    lastImportedAt: null,
-    lastSourceFileName: null,
-  }
-}
-
-function KpiCard({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string
-  value: string
-  detail: string
-  tone: string
-}) {
-  return (
-    <Card className={`min-h-[140px] justify-between px-4 py-4 ${tone}`}>
-      <CardHeader className="gap-0 px-0">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] opacity-80">
-          {label}
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-2 px-0">
-        <CardTitle className="text-3xl font-black uppercase leading-none tracking-normal">
-          {value}
-        </CardTitle>
-        <CardDescription className="text-xs font-semibold opacity-90">
-          {detail}
-        </CardDescription>
-      </CardContent>
-    </Card>
-  )
 }
 
 function CampaignDialog({
@@ -488,7 +400,6 @@ export function AdsCampaignsDashboard({
   )
   const [selectedMonth, setSelectedMonth] = useState("all")
   const [selectedSourceFile, setSelectedSourceFile] = useState("all")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [campaignToDelete, setCampaignToDelete] =
@@ -532,16 +443,9 @@ export function AdsCampaignsDashboard({
         selectedMonth === "all" &&
         selectedSourceFile === "all"
         ? summary
-        : summarizeMetrics(visibleMetrics),
+        : summarizeGoogleAdsMetrics(visibleMetrics),
     [selectedBrandId, selectedMonth, selectedSourceFile, summary, visibleMetrics]
   )
-  const chartData = visibleMetrics.map((metric) => ({
-    date: metric.metricDate,
-    impressions: metric.impressions,
-    cost: metric.cost,
-    conversions: metric.conversions,
-    avgTargetCpa: metric.avgTargetCpa ?? 0,
-  }))
 
   function openCreateDialog() {
     setDraft({
@@ -614,23 +518,17 @@ export function AdsCampaignsDashboard({
     })
   }
 
-  async function submitCsvImport() {
-    if (!selectedFile) {
-      toast.error("Choose a Google Ads CSV file first.")
-      return
-    }
-
+  function submitCsvImport(file: File) {
     if (selectedBrandId === "all") {
       toast.error("Choose one brand before importing Google Ads data.")
       return
     }
 
-    const csvText = await selectedFile.text()
-
     startTransition(async () => {
+      const csvText = await file.text()
       const result = await importGoogleAdsCsvMetrics({
         brandId: Number(selectedBrandId),
-        fileName: selectedFile.name,
+        fileName: file.name,
         csvText,
       })
 
@@ -640,7 +538,6 @@ export function AdsCampaignsDashboard({
       }
 
       toast.success(result.message)
-      setSelectedFile(null)
       setImportDialogOpen(false)
       router.refresh()
     })
@@ -753,97 +650,9 @@ export function AdsCampaignsDashboard({
 
       {selectedPlatform === "GOOGLE" ? (
         <>
-          <section className="grid min-w-0 grid-cols-2 gap-2 md:gap-3 xl:grid-cols-4 pr-1">
-            <KpiCard
-              label="01 / Spend"
-              value={formatPeso(visibleSummary.totalCost)}
-              detail="Total Google Ads cost"
-              tone="bg-background text-foreground"
-            />
-            <KpiCard
-              label="02 / Impressions"
-              value={numberFormatter.format(visibleSummary.totalImpressions)}
-              detail="Total ad impressions"
-              tone="bg-blue text-white"
-            />
-            <KpiCard
-              label="03 / Conversions"
-              value={numberFormatter.format(visibleSummary.totalConversions)}
-              detail="Imported conversion count"
-              tone="bg-cyan text-white"
-            />
-            <KpiCard
-              label="04 / CPA"
-              value={
-                visibleSummary.avgCpa == null
-                  ? "-"
-                  : formatPeso(visibleSummary.avgCpa)
-              }
-              detail="Cost divided by conversions"
-              tone="bg-magenta text-white"
-            />
-          </section>
+          <GoogleAdsKpiCards summary={visibleSummary} />
 
-          <Card className="min-w-0 shadow-none">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="size-5" />
-                Google Ads Performance
-              </CardTitle>
-              <CardDescription>
-                Time series from imported CSV rows.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {chartData.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Import Google Ads CSV data to show the performance chart.
-                </p>
-              ) : (
-                <ChartContainer
-                  config={chartConfig}
-                  className="aspect-auto h-[240px] w-full md:h-[320px]"
-                >
-                  <LineChart data={chartData} margin={{ left: 0, right: 12 }}>
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fontSize: 11 }}
-                    />
-                    <YAxis tickLine={false} axisLine={false} width={44} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <ChartLegend content={<ChartLegendContent />} />
-                    <Line
-                      type="monotone"
-                      dataKey="impressions"
-                      stroke="var(--color-impressions)"
-                      dot={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="cost"
-                      stroke="var(--color-cost)"
-                      dot={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="conversions"
-                      stroke="var(--color-conversions)"
-                      dot={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="avgTargetCpa"
-                      stroke="var(--color-avgTargetCpa)"
-                      dot={false}
-                    />
-                  </LineChart>
-                </ChartContainer>
-              )}
-            </CardContent>
-          </Card>
+          <GoogleAdsPerformanceChart metrics={visibleMetrics} />
         </>
       ) : (
         <Card className="shadow-none">
@@ -960,63 +769,14 @@ export function AdsCampaignsDashboard({
         isPending={isPending}
       />
 
-      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileUp className="size-5" />
-              Google Ads CSV Import
-            </DialogTitle>
-            <DialogDescription>
-              Upload a Google Ads CSV with Date, Impr., Avg. target CPA,
-              Conversions, and Cost.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label>CSV file</Label>
-              <Input
-                type="file"
-                accept=".csv,text/csv"
-                onChange={(event) =>
-                  setSelectedFile(event.target.files?.[0] ?? null)
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                {selectedFile
-                  ? selectedFile.name
-                  : summary.lastSourceFileName
-                    ? `Last imported: ${summary.lastSourceFileName}`
-                    : "No Google Ads CSV imported yet."}
-              </p>
-            </div>
-            {selectedBrandId === "all" ? (
-              <p className="rounded-lg border-2 border-amber-500 bg-amber-100 p-3 text-sm font-semibold text-amber-950">
-                Choose one brand before importing Google Ads data.
-              </p>
-            ) : null}
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="neutral"
-              onClick={() => setImportDialogOpen(false)}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={submitCsvImport}
-              disabled={isPending || !selectedFile || selectedBrandId === "all"}
-            >
-              {isPending ? "Importing..." : "Import CSV"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <GoogleAdsImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        selectedBrandId={selectedBrandId}
+        lastSourceFileName={summary.lastSourceFileName}
+        isPending={isPending}
+        onImport={submitCsvImport}
+      />
 
       <AlertDialog
         open={Boolean(campaignToDelete)}

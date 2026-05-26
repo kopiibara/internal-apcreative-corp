@@ -2,7 +2,7 @@ import { Clock, ExternalLink } from "lucide-react"
 
 import { ApprovalActivityTimeline } from "@/components/shared/approval-activity-timeline"
 import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -26,7 +26,7 @@ import {
   getKanbanStageConfig,
 } from "@/lib/approvals/approval-kanban-status"
 import type { AccountType } from "@/lib/auth/account-type"
-import { cn, getInitialsFromName } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import type { ApprovalActivityLog, ContentReport } from "@/types/content-report"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -220,6 +220,7 @@ export function ApprovalMainDetails({ report }: ApprovalMainDetailsProps) {
 
 type DiscussionEntry = {
   id: string
+  authorProfileId?: number
   authorName: string
   authorRole: string
   at: string
@@ -233,6 +234,7 @@ function buildDiscussionEntries(report: ContentReport): DiscussionEntry[] {
   if (hasText(report.employeeComments)) {
     entries.push({
       id: "employee-comment",
+      authorProfileId: report.submittedByProfileId,
       authorName: report.submittedByName,
       authorRole: "Employee",
       at: report.dateSubmitted,
@@ -285,11 +287,11 @@ function DiscussionCommentItem({ entry }: { entry: DiscussionEntry }) {
       <div className="flex flex-col w-full items-start">
         <div className="flex flex-row w-full justify-between items-start">
           <div className="flex flex-row gap-2">
-            <Avatar className="h-9 w-9 shrink-0 rounded-lg border-2 border-border">
-              <AvatarFallback className="rounded-lg text-[10px] font-semibold">
-                {getInitialsFromName(entry.authorName)}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar
+              profileId={entry.authorProfileId}
+              name={entry.authorName}
+              size="sm"
+            />
             <div className="flex flex-col gap-4 ">
               <div className="flex flex-col gap-0">
                 <span className="text-sm font-semibold">{entry.authorName}</span>
@@ -426,6 +428,49 @@ export function ApprovalMetadataPanel({ report }: ApprovalMetadataPanelProps) {
           </DetailField>
         </div>
       </ApprovalDetailSection>
+
+      {report.publishStatus === "Published" ? (
+        <ApprovalDetailSection title="Publishing proof">
+          <div className="space-y-4">
+            <DetailField label="Proof">
+              {report.publishingProofUrl ? (
+                <a
+                  href={report.publishingProofUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-medium underline-offset-4 hover:underline"
+                >
+                  <ExternalLink className="size-3.5" />
+                  Open proof
+                </a>
+              ) : (
+                "Not submitted"
+              )}
+            </DetailField>
+            {report.publishingProofNote ? (
+              <DetailField label="Proof note">
+                <LongText>{report.publishingProofNote}</LongText>
+              </DetailField>
+            ) : null}
+            {report.publishingProofSubmittedByName ? (
+              <DetailField label="Proof submitted by">
+                {report.publishingProofSubmittedByName}
+                {report.publishingProofSubmittedAt
+                  ? ` Â· ${dateTimeFormatter.format(new Date(report.publishingProofSubmittedAt))}`
+                  : null}
+              </DetailField>
+            ) : null}
+            {report.publishedByName ? (
+              <DetailField label="Published by">
+                {report.publishedByName}
+                {report.publishedAt
+                  ? ` Â· ${dateTimeFormatter.format(new Date(report.publishedAt))}`
+                  : null}
+              </DetailField>
+            ) : null}
+          </div>
+        </ApprovalDetailSection>
+      ) : null}
     </>
   )
 }

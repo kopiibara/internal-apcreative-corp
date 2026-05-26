@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useApprovalStore } from "@/stores/use-approval-store"
 import {
@@ -39,6 +40,7 @@ export function PublishingReviewForm({
   const [scheduledDate, setScheduledDate] = useState<string | null>(
     report.scheduledPublishedDate
   )
+  const [proofUrl, setProofUrl] = useState(report.publishingProofUrl ?? "")
   const [remarks, setRemarks] = useState(report.remarksRevisionSummary ?? "")
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -54,6 +56,7 @@ export function PublishingReviewForm({
       report,
       publishStatus,
       scheduledPublishedDate: scheduledDate,
+      proofUrl,
       notes: remarks,
       onSaved,
     })
@@ -98,6 +101,22 @@ export function PublishingReviewForm({
               className="min-h-28"
             />
           </div>
+
+          {publishStatus === "Published" ? (
+            <div className="space-y-2">
+              <Label htmlFor="details-publishing-proof">
+                Publishing proof URL
+              </Label>
+              <Input
+                id="details-publishing-proof"
+                value={proofUrl}
+                onChange={(event) => setProofUrl(event.target.value)}
+                disabled={!canEdit}
+                placeholder="https://..."
+                required
+              />
+            </div>
+          ) : null}
 
           <Button
             type="submit"

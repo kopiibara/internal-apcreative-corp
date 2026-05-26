@@ -9,6 +9,7 @@ import {
   TimelineTitle,
 } from "@/components/reui/timeline"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
@@ -33,6 +34,11 @@ function getActionLabel(action: string) {
     supervisor_review_update: "Marketing Supervisor updated review",
     director_review_update: "Director updated review",
     publishing_update: "Publishing details updated",
+    content_report_created: "Approval request created",
+    ready_to_publish: "Moved to Ready to Publish",
+    brand_officer_scheduled_publish: "Brand Officer scheduled publishing",
+    publishing_proof_submitted: "Proof submitted",
+    brand_officer_published: "Brand Officer published the request",
     kanban_supervisor_status_update: "Supervisor status changed",
     kanban_director_status_update: "Director status changed",
     kanban_publishing_update: "Publishing status changed",
@@ -92,8 +98,18 @@ export function ApprovalActivityTimeline({
             <TimelineIndicator />
             <TimelineSeparator />
             <TimelineContent className="min-w-0 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-
+              <div className="flex min-w-0 gap-3">
+                <UserAvatar
+                  profileId={log.actorProfileId}
+                  name={log.actorName}
+                  size="sm"
+                />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="text-sm font-semibold">{log.actorName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {log.actorPosition || log.actorAccountType}
+                  </p>
+                </div>
               </div>
 
               {log.notes ? (

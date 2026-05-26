@@ -21,12 +21,14 @@ type DetermineTaskTypeInput = {
   creatorAccountType: AccountType;
   creatorProfileId: number;
   assignedToProfileIds: number[];
+  canAssignTeamTasks?: boolean;
 };
 
 export function determineTaskType({
   creatorAccountType,
   creatorProfileId,
   assignedToProfileIds,
+  canAssignTeamTasks = false,
 }: DetermineTaskTypeInput): TaskType {
   const uniqueAssignees = [...new Set(assignedToProfileIds)];
 
@@ -35,13 +37,17 @@ export function determineTaskType({
   }
 
   if (
-    isAdminAccountType(creatorAccountType) &&
+    (isAdminAccountType(creatorAccountType) || canAssignTeamTasks) &&
     uniqueAssignees.some((assigneeId) => assigneeId !== creatorProfileId)
   ) {
     return "GRADED";
   }
 
   return "NON_GRADED";
+}
+
+export function isPersonalTaskType(taskType: TaskType) {
+  return taskType === "NON_GRADED";
 }
 
 export function canAssignGradedTasks(accountType: AccountType) {

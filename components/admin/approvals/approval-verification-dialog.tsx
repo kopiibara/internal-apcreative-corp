@@ -146,12 +146,13 @@ function ApprovalVerificationDialogContent({
               })
             : payload.type === "publishing"
               ? await updatePublishingInfo({
-                  reportId: payload.report.id,
-                  publishStatus: payload.publishStatus,
-                  scheduledPublishedDate: payload.scheduledPublishedDate,
-                  remarksRevisionSummary: notes,
-                  confirmationAccepted,
-                })
+                reportId: payload.report.id,
+                publishStatus: payload.publishStatus,
+                scheduledPublishedDate: payload.scheduledPublishedDate,
+                proofUrl: payload.proofUrl,
+                remarksRevisionSummary: notes,
+                confirmationAccepted,
+              })
               : await updateApprovalKanbanColumn({
                   reportId: payload.report.id,
                   fromColumn: payload.fromColumn,

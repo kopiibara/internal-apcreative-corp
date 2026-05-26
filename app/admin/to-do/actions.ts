@@ -21,11 +21,22 @@ import {
 } from "@/lib/auth/account-type";
 import { can } from "@/lib/permissions";
 import { query, transaction } from "@/lib/db";
-import { enforceRateLimit } from "@/lib/rate-limit";
+import { assertSupervisorCanAssignTasksToUsers } from "@/lib/approvals/approval-permissions";
+import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
+import {
+  sanitizeOptionalText,
+  sanitizeRequiredText,
+} from "@/lib/security/sanitize-text";
+import {
+  assertBrandOfficerCanAssignToProfiles,
+  profileHasBrandOfficerRole,
+} from "@/lib/tasks/brand-officer-task-assign";
+import { getGradedTaskReviewBlockReason } from "@/lib/tasks/task-review-guards";
 import {
   canAssignGradedTasks,
   canReviewTaskAssignments,
   determineTaskType,
+  isPersonalTaskType,
 } from "@/lib/tasks/task-type";
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses";
 import { TASK_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
@@ -148,6 +159,16 @@ function normalizeSubmitTaskProofInput(input: unknown) {
   };
 }
 
+async function guardTaskMutationRateLimit(
+  bucket: string,
+): Promise<{ success: false; message: string } | null> {
+  return rejectIfRateLimited({
+    bucket,
+    limit: 60,
+    windowMs: 60_000,
+  });
+}
+
 async function insertTaskActivityLog(
   client: PoolClient,
   input: {
@@ -229,28 +250,70 @@ export async function createTask(input: unknown): Promise<ActionResult> {
   const { context } = authorization;
   const uniqueAssignees = [...new Set(parsed.data.assignedToProfileIds)];
 
+  const isBrandOfficer = await profileHasBrandOfficerRole(context.profile.id);
+  const canAssignTeamTasks =
+    isBrandOfficer &&
+    (await can(context.profile.auth_user_id, "tasks.assign"));
+
   if (isEmployeeAccountType(context.profile.account_type)) {
     const isPersonalSelfTask =
       uniqueAssignees.length === 1 && uniqueAssignees[0] === context.profile.id;
 
-    if (!isPersonalSelfTask) {
+    if (!canAssignTeamTasks) {
       return {
         success: false,
-        message: "You can only create personal tasks assigned to yourself.",
+        message: isPersonalSelfTask
+          ? "Use Reminders for personal follow-ups. You cannot create To-Do tasks."
+          : "You do not have permission to assign team tasks.",
       };
     }
+
+    if (isPersonalSelfTask) {
+      return {
+        success: false,
+        message: "Use Reminders for personal follow-ups.",
+      };
+    }
+
+    const assigneeCheck = await assertBrandOfficerCanAssignToProfiles(
+      context.profile.id,
+      uniqueAssignees,
+    );
+
+    if (!assigneeCheck.ok) {
+      return {
+        success: false,
+        message: assigneeCheck.message,
+      };
+    }
+  }
+
+  const supervisorAssigneeCheck = await assertSupervisorCanAssignTasksToUsers(
+    context.profile,
+    uniqueAssignees,
+  );
+
+  if (!supervisorAssigneeCheck.ok) {
+    return {
+      success: false,
+      message: supervisorAssigneeCheck.message,
+    };
   }
 
   const taskType = determineTaskType({
     creatorAccountType: context.profile.account_type,
     creatorProfileId: context.profile.id,
     assignedToProfileIds: uniqueAssignees,
+    canAssignTeamTasks,
   });
 
   if (taskType === "GRADED") {
     const canAssign = await can(context.profile.auth_user_id, "tasks.assign");
 
-    if (!canAssign || !canAssignGradedTasks(context.profile.account_type)) {
+    if (
+      !canAssign ||
+      (!canAssignGradedTasks(context.profile.account_type) && !canAssignTeamTasks)
+    ) {
       return {
         success: false,
         message: "You do not have permission to assign graded tasks.",
@@ -265,14 +328,10 @@ export async function createTask(input: unknown): Promise<ActionResult> {
     }
   }
 
-  const rateLimit = await enforceRateLimit({
-    bucket: "task:create",
-    limit: 40,
-    windowMs: 60_000,
-  });
+  const rateLimitError = await guardTaskMutationRateLimit("task:create");
 
-  if (!rateLimit.success) {
-    return { success: false, message: rateLimit.message };
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   try {
@@ -293,8 +352,8 @@ export async function createTask(input: unknown): Promise<ActionResult> {
         RETURNING id
         `,
         [
-          parsed.data.title,
-          parsed.data.description ?? null,
+          sanitizeRequiredText(parsed.data.title, 200),
+          sanitizeOptionalText(parsed.data.description ?? null, 4000),
           taskType,
           parsed.data.priority ?? null,
           context.profile.id,
@@ -374,6 +433,12 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
 
   if (authorization.error) {
     return authorization.error;
+  }
+
+  const rateLimitError = await guardTaskMutationRateLimit("task:update");
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const parsed = updateTaskSchema.safeParse(input);
@@ -533,6 +598,12 @@ export async function deleteTask(input: unknown): Promise<ActionResult> {
     return authorization.error;
   }
 
+  const rateLimitError = await guardTaskMutationRateLimit("task:delete");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const parsed = deleteTaskSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -595,6 +666,12 @@ export async function submitTaskProof(
     return authorization.error;
   }
 
+  const rateLimitError = await guardTaskMutationRateLimit("task:submit-proof");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const parsed = submitTaskProofSchema.safeParse(
     normalizeSubmitTaskProofInput(input),
   );
@@ -621,6 +698,8 @@ export async function submitTaskProof(
     };
   }
 
+  const nextStatus = isPersonalTaskType(assignment.taskType) ? "DONE" : "PENDING";
+
   if (!["ASSIGNED", "REVISION"].includes(assignment.status)) {
     return {
       success: false,
@@ -639,15 +718,22 @@ export async function submitTaskProof(
         `
         UPDATE task_assignment
         SET
-          status = 'PENDING',
-          proof_type = $2,
-          proof_url = $3,
-          proof_note = $4,
+          status = $2,
+          proof_type = $3,
+          proof_url = $4,
+          proof_note = $5,
           submitted_at = now(),
+          completed_at = CASE WHEN $2 = 'DONE' THEN now() ELSE completed_at END,
           updated_at = now()
         WHERE id = $1
         `,
-        [parsed.data.assignmentId, parsed.data.proofType, proofUrl, proofNote],
+        [
+          parsed.data.assignmentId,
+          nextStatus,
+          parsed.data.proofType,
+          proofUrl,
+          proofNote,
+        ],
       );
 
       await insertTaskActivityLog(client, {
@@ -655,11 +741,13 @@ export async function submitTaskProof(
         assignmentId: assignment.assignmentId,
         actorProfileId: context.profile.id,
         action:
-          assignment.status === "REVISION"
-            ? "PROOF_RESUBMITTED"
-            : "PROOF_SUBMITTED",
+          nextStatus === "DONE"
+            ? "TASK_MARKED_DONE"
+            : assignment.status === "REVISION"
+              ? "PROOF_RESUBMITTED"
+              : "PROOF_SUBMITTED",
         fromStatus: assignment.status,
-        toStatus: "PENDING",
+        toStatus: nextStatus,
         notes: proofNote ?? proofUrl,
         metadata: {
           proofType: parsed.data.proofType,
@@ -693,6 +781,12 @@ export async function reportTaskBlocker(
 
   if (authorization.error) {
     return authorization.error;
+  }
+
+  const rateLimitError = await guardTaskMutationRateLimit("task:blocker");
+
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   const parsed = reportTaskBlockerSchema.safeParse(input);
@@ -785,6 +879,12 @@ export async function confirmTaskBlocker(
     return authorization.error;
   }
 
+  const rateLimitError = await guardTaskMutationRateLimit("task:blocker-confirm");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const parsed = confirmTaskBlockerSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -819,10 +919,15 @@ export async function confirmTaskBlocker(
     };
   }
 
-  if (assignment.assignedToProfileId === context.profile.id) {
+  const reviewBlockReason = getGradedTaskReviewBlockReason(
+    assignment,
+    context.profile.id,
+  );
+
+  if (reviewBlockReason) {
     return {
       success: false,
-      message: "You cannot review your own task.",
+      message: reviewBlockReason,
     };
   }
 
@@ -946,6 +1051,12 @@ export async function changeTaskAssignmentStatus(
     return authorization.error;
   }
 
+  const rateLimitError = await guardTaskMutationRateLimit("task:status-change");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const parsed = changeTaskAssignmentStatusSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -980,10 +1091,15 @@ export async function changeTaskAssignmentStatus(
     };
   }
 
-  if (assignment.assignedToProfileId === context.profile.id) {
+  const reviewBlockReason = getGradedTaskReviewBlockReason(
+    assignment,
+    context.profile.id,
+  );
+
+  if (reviewBlockReason) {
     return {
       success: false,
-      message: "You cannot approve or review your own task.",
+      message: reviewBlockReason,
     };
   }
 
@@ -1082,6 +1198,12 @@ export async function confirmTaskDone(
     return authorization.error;
   }
 
+  const rateLimitError = await guardTaskMutationRateLimit("task:confirm-done");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const parsed = confirmTaskDoneSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -1100,10 +1222,15 @@ export async function confirmTaskDone(
 
   const { context } = authorization;
 
-  if (assignment.assignedToProfileId === context.profile.id) {
+  const reviewBlockReason = getGradedTaskReviewBlockReason(
+    assignment,
+    context.profile.id,
+  );
+
+  if (reviewBlockReason) {
     return {
       success: false,
-      message: "You cannot approve or review your own task.",
+      message: reviewBlockReason,
     };
   }
 
@@ -1180,6 +1307,12 @@ export async function requestTaskRevision(
     return authorization.error;
   }
 
+  const rateLimitError = await guardTaskMutationRateLimit("task:revision");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
   const parsed = requestTaskRevisionSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -1197,10 +1330,15 @@ export async function requestTaskRevision(
 
   const { context } = authorization;
 
-  if (assignment.assignedToProfileId === context.profile.id) {
+  const reviewBlockReason = getGradedTaskReviewBlockReason(
+    assignment,
+    context.profile.id,
+  );
+
+  if (reviewBlockReason) {
     return {
       success: false,
-      message: "You cannot approve or review your own task.",
+      message: reviewBlockReason,
     };
   }
 

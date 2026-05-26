@@ -17,6 +17,7 @@ import {
   ChartTooltip,
 } from "@/components/ui/chart"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import {
   toEmployeeChartItems,
   type EmployeeChartItem,
@@ -74,13 +75,21 @@ function EmployeeCompactSummary({ items }: { items: EmployeeChartItem[] }) {
       {items.map((item) => (
         <li
           key={`${item.employeeName}-${item.email}`}
-          className="flex items-center justify-between gap-2 rounded-lg bg-muted/20 px-2 py-1.5"
+          className="flex items-center justify-between gap-2 rounded-lg border-2 border-border bg-muted/20 px-2 py-1.5"
         >
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <UserAvatar
+              profileId={item.profileId}
+              name={item.employeeName}
+              email={item.email}
+              size="sm"
+            />
+            <div className="min-w-0">
             <p className="truncate font-medium">{item.employeeName}</p>
             <p className="truncate text-muted-foreground">
               {item.done}/{item.graded} done · {item.approvals} approvals
             </p>
+            </div>
           </div>
           <span className="shrink-0 font-medium tabular-nums">
             {item.taskPoints} pts

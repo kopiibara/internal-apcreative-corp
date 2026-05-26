@@ -12,6 +12,7 @@ import { TaskProofDialog } from "@/components/to-do/task-proof-dialog"
 import { TaskRevisionDialog } from "@/components/to-do/task-revision-dialog"
 import { TaskStatusChangeDialog } from "@/components/to-do/task-status-change-dialog"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
 import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
@@ -98,10 +99,17 @@ export function TaskAssignmentCard({
           </div>
 
           {showAssignee ? (
-            <p className="text-xs">
-              <span className="text-muted-foreground">Assignee:</span>{" "}
-              {assignment.assignedToName}
-            </p>
+            <div className="flex items-center gap-2 text-xs">
+              <UserAvatar
+                profileId={assignment.assignedToProfileId}
+                name={assignment.assignedToName}
+                size="sm"
+              />
+              <p>
+                <span className="text-muted-foreground">Assignee:</span>{" "}
+                {assignment.assignedToName}
+              </p>
+            </div>
           ) : null}
 
           <TaskAssigneeBrands brands={assignment.assigneeBrands} />
