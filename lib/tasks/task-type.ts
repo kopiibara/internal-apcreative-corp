@@ -51,11 +51,15 @@ export function isPersonalTaskType(taskType: TaskType) {
 }
 
 export function canAssignGradedTasks(accountType: AccountType) {
-  return isAdminAccountType(accountType);
+  return (
+    isAdminAccountType(accountType) && accountType !== "FULL_STACK_DEVELOPER"
+  );
 }
 
 export function canReviewTaskAssignments(accountType: AccountType) {
-  return isAdminAccountType(accountType);
+  return (
+    isAdminAccountType(accountType) && accountType !== "FULL_STACK_DEVELOPER"
+  );
 }
 
 export function isAssignmentCompletedOnTime(

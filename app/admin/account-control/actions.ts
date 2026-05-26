@@ -261,7 +261,6 @@ async function revokeAuthSessionsIfPossible(userId: string) {
 
 function canUseSensitiveAccountAction(accountType: AccountType) {
   return (
-    accountType === "FULL_STACK_DEVELOPER" ||
     accountType === "SUPERVISOR" ||
     accountType === "MANAGER" ||
     accountType === "DIRECTOR" ||

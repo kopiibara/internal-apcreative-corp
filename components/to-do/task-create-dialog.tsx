@@ -127,6 +127,7 @@ export function TaskCreateDialog({
         return current.filter((id) => id !== assigneeId)
       }
 
+      setAssigneePickerOpen(false)
       return [...current, assigneeId]
     })
   }

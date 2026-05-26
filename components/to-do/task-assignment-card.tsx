@@ -84,20 +84,10 @@ export function TaskAssignmentCard({
   return (
     <>
       <Card
-        className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-2 transition-colors hover:bg-muted"
+        className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-3 transition-colors hover:bg-muted"
         onClick={() => onOpenDetails?.(assignment)}
       >
-        <CardContent className="min-w-0 space-y-2.5 px-3 py-1">
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <h2 className="line-clamp-2 min-w-0 break-words font-bold leading-snug">
-              {assignment.title}
-            </h2>
-            <div className="flex max-w-full flex-wrap gap-1">
-              <TaskTypeBadge taskType={assignment.taskType} />
-              <TaskStatusBadge status={assignment.status} />
-            </div>
-          </div>
-
+        <CardContent className="min-w-0 space-y-2.5 px-4 py-2">
           {showAssignee ? (
             <div className="flex min-w-0 items-center gap-2 text-xs">
               <UserAvatar
@@ -111,8 +101,18 @@ export function TaskAssignmentCard({
               </p>
             </div>
           ) : null}
+          <div className="flex min-w-0 flex-col gap-1.5">
 
-          <TaskAssigneeBrands brands={assignment.assigneeBrands} />
+            <h1 className="line-clamp-2 min-w-0  font-bold leading-snug">
+              {assignment.title}
+            </h1>
+            <div className="flex max-w-full flex-wrap gap-1">
+              <TaskTypeBadge taskType={assignment.taskType} />
+              <TaskStatusBadge status={assignment.status} />
+              <TaskAssigneeBrands brands={assignment.assigneeBrands} />
+            </div>
+          </div>
+
           <p className="text-xs">
             <span className="text-muted-foreground">Assigned to:</span>{" "}
             <span className="font-medium"> {assignment.assignedToName}</span>
@@ -168,27 +168,28 @@ export function TaskAssignmentCard({
             {isAssignee &&
               permissions.canSubmitProof &&
               ["ASSIGNED", "REVISION"].includes(assignment.status) ? (
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setProofOpen(true)}
-                  disabled={isPending}
-                >
-                  {assignment.status === "REVISION"
-                    ? "Resubmit"
-                    : "Proof"}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="neutral"
-                  onClick={() => setBlockerOpen(true)}
-                  disabled={isPending}
-                >
-                  Blocker
-                </Button>
-              </>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setProofOpen(true)}
+                disabled={isPending}
+              >
+                {assignment.status === "REVISION" ? "Resubmit" : "Proof"}
+              </Button>
+            ) : null}
+
+            {isAssignee &&
+              permissions.canReportBlocker &&
+              ["ASSIGNED", "REVISION"].includes(assignment.status) ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="neutral"
+                onClick={() => setBlockerOpen(true)}
+                disabled={isPending}
+              >
+                Blocker
+              </Button>
             ) : null}
 
             {canReviewTask && assignment.status === "PENDING" ? (

@@ -185,17 +185,22 @@ export function ApprovalMainDetails({ report }: ApprovalMainDetailsProps) {
 
   return (
     <ApprovalDetailSection title="Request details">
-      <div className="space-y-2">
-        <div>
-          <p className="text-lg font-bold leading-snug">
-            {report.brandName ?? "No brand"}
-          </p>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <div className="flex w-full justify-between">
+            <p className="text-lg font-bold leading-snug">
+              {report.brandName ?? "No brand"}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <Badge variant="secondary">{report.contentType}</Badge>
+              <Badge variant="neutral">{report.platform}</Badge>
+            </div>
+          </div>
+
           <p className="mt-1 text-sm text-muted-foreground">{captionPreview}</p>
+          <p className="text-sm text-foreground">{report.contentInspo}</p>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <Badge variant="secondary">{report.contentType}</Badge>
-          <Badge variant="neutral">{report.platform}</Badge>
-        </div>
+
         {report.assetLink ? (
           <Button type="button" size="sm" variant="outline" asChild className=" h-fit py-1 items-center gap-1.5 text-xs"
           >

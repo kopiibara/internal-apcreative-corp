@@ -6,6 +6,7 @@ export type TaskPermissionFlags = {
   canViewAll: boolean
   canManageAll: boolean
   canSubmitProof: boolean
+  canReportBlocker: boolean
   canReview: boolean
   isEmployee: boolean
 }

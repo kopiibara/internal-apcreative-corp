@@ -69,6 +69,15 @@ type TaskBoardLiveData = {
   assignments: TaskAssignmentRecord[];
 };
 
+const FULL_STACK_DEVELOPER_RESTRICTED_TASK_PERMISSIONS = new Set([
+  "tasks.create",
+  "tasks.assign",
+  "tasks.update",
+  "tasks.delete",
+  "tasks.review",
+  "tasks.manage_all",
+]);
+
 async function authorizeTaskAction(permissionKeys: string[]) {
   const context = await getCurrentProfileContext();
 
@@ -86,6 +95,21 @@ async function authorizeTaskAction(permissionKeys: string[]) {
       error: {
         success: false,
         message: "Your account is not active.",
+      } satisfies ActionResult,
+    };
+  }
+
+  if (
+    context.profile.account_type === "FULL_STACK_DEVELOPER" &&
+    permissionKeys.some((permissionKey) =>
+      FULL_STACK_DEVELOPER_RESTRICTED_TASK_PERMISSIONS.has(permissionKey),
+    )
+  ) {
+    return {
+      error: {
+        success: false,
+        message:
+          "Full Stack Developer accounts can only submit proof for assigned tasks.",
       } satisfies ActionResult,
     };
   }
@@ -1454,6 +1478,10 @@ export async function getCanReviewTasks(): Promise<boolean> {
   const context = await getCurrentProfileContext();
 
   if (!context || context.profile.status !== "ACTIVE") {
+    return false;
+  }
+
+  if (context.profile.account_type === "FULL_STACK_DEVELOPER") {
     return false;
   }
 
