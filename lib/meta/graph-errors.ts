@@ -15,6 +15,8 @@ export function classifyMetaGraphError(error: unknown): MetaGraphErrorInfo {
   const permissionDenied =
     lower.includes("permission") ||
     lower.includes("(#10)") ||
+    lower.includes("error code 10") ||
+    lower.includes("pages_read_engagement") ||
     lower.includes("(#200)") ||
     lower.includes("does not have permission") ||
     lower.includes("requires") ||

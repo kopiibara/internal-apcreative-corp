@@ -6,7 +6,8 @@ import {
   getActiveMetaPagesForSync,
   validateEnabledMetaPages,
 } from "@/lib/meta/pages-config"
-import { fetchPageSummary } from "@/lib/meta/graph-api"
+import { fetchPageSummarySafe } from "@/lib/meta/graph-api"
+import { clearMetaPageTokenCache } from "@/lib/meta/page-token"
 import { runAllMetaSyncJobs } from "@/lib/meta/sync"
 
 export type MetaBootstrapResult = {
@@ -65,12 +66,20 @@ export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
 
   const registeredPages: Array<{ id: string; name: string }> = []
 
+  clearMetaPageTokenCache()
+
   for (const page of activePages) {
     try {
-      const summary = await fetchPageSummary({
+      const summaryResult = await fetchPageSummarySafe({
         facebook_page_id: page.pageId,
         access_token_env_key: page.accessTokenEnvKey,
       })
+
+      if (!summaryResult.ok) {
+        throw new Error(summaryResult.error)
+      }
+
+      const summary = summaryResult.data
       registeredPages.push({
         id: summary.id,
         name: summary.name ?? page.name,

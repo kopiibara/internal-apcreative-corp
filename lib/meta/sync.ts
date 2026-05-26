@@ -16,6 +16,7 @@ import {
   getActiveMetaPagesForSync,
   type MetaSyncPage,
 } from "@/lib/meta/pages-config"
+import { clearMetaPageTokenCache } from "@/lib/meta/page-token"
 import type { MetaFacebookPageRow, MetaSyncType } from "@/lib/meta/types"
 
 async function startSyncRun(syncType: MetaSyncType, facebookPageId: string | null) {
@@ -152,6 +153,7 @@ async function mergeSnapshotMetrics(
 
 /** Page name, likes, followers — no posts or insights. */
 export async function syncDailyPageSnapshots() {
+  clearMetaPageTokenCache()
   const pages = await listActiveMetaFacebookPages()
   let affected = 0
 
@@ -229,6 +231,7 @@ export async function syncDailyPageSnapshots() {
 
 /** Post list with reactions, comments, shares — no per-post insights calls. */
 export async function syncHourlyPostMetrics() {
+  clearMetaPageTokenCache()
   const pages = await listActiveMetaFacebookPages()
   let affected = 0
 
@@ -236,7 +239,12 @@ export async function syncHourlyPostMetrics() {
     const runId = await startSyncRun("hourly_posts", page.facebook_page_id)
 
     try {
-      const postsResult = await fetchRecentPagePostsSafe(page, 50)
+      let postsResult = await fetchRecentPagePostsSafe(page, 50)
+
+      if (!postsResult.ok && postsResult.permissionDenied) {
+        clearMetaPageTokenCache()
+        postsResult = await fetchRecentPagePostsSafe(page, 50)
+      }
 
       if (!postsResult.ok) {
         throw new Error(postsResult.error)
@@ -357,6 +365,7 @@ export async function syncHourlyPostMetrics() {
 
 /** Page insights: reach, impressions, engagements — requires read_insights. */
 export async function syncDailyInsights() {
+  clearMetaPageTokenCache()
   const pages = await listActiveMetaFacebookPages()
   let affected = 0
 

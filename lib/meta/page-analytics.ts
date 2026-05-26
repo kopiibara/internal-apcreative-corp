@@ -8,6 +8,10 @@ import {
 import { isMetaWebhookConfigured } from "@/lib/meta/config"
 import { classifyMetaGraphError } from "@/lib/meta/graph-errors"
 import { POSTS_PERMISSION_MESSAGE } from "@/lib/meta/graph-api"
+import {
+  resolveEffectivePageAccessToken,
+  type ResolvedPageTokenSource,
+} from "@/lib/meta/page-token"
 import type { MetaPageConfig, MetaPageConfigKey } from "@/lib/meta/pages-config"
 import { getActiveMetaPages } from "@/lib/meta/pages-config"
 import type { MetaSyncRunSummary } from "@/lib/meta/monitoring-data"
@@ -72,6 +76,8 @@ export type MetaBusinessPageDashboard = {
   instagramStatus: "Not connected yet"
   pageAccessTokenStatus: "OK" | "Missing" | "Expired"
   cronStatus: "OK" | "Missing"
+  tokenSource: ResolvedPageTokenSource | null
+  tokenResolutionHint: string | null
   lastSyncAt: string | null
   postsSyncStatus: MetaSyncJobDisplayStatus
   insightsSyncStatus: MetaSyncJobDisplayStatus
@@ -406,6 +412,25 @@ async function loadPageAnalytics(
   const hasDbPage = dbPage.rows.length > 0
   const lastSyncRow = dbPage.rows[0]?.last_synced_at
 
+  let tokenSource: ResolvedPageTokenSource | null = null
+  let tokenResolutionHint: string | null = null
+
+  try {
+    const resolved = await resolveEffectivePageAccessToken({
+      facebookPageId: pageId,
+      accessTokenEnvKey: config.accessTokenEnvKey,
+    })
+    tokenSource = resolved.source
+    if (resolved.source === "env_user_token_resolved") {
+      tokenResolutionHint =
+        "Using Page token resolved from your User token via /me/accounts."
+    } else if (resolved.source === "env_page_token") {
+      tokenResolutionHint = "Using Page access token from environment."
+    }
+  } catch {
+    tokenResolutionHint = null
+  }
+
   const newFollowers =
     latestFollowers !== null && previousFollowers !== null
       ? latestFollowers - previousFollowers
@@ -428,6 +453,8 @@ async function loadPageAnalytics(
     instagramStatus: "Not connected yet" as const,
     pageAccessTokenStatus,
     cronStatus: integration.cronConfigured ? "OK" : "Missing",
+    tokenSource,
+    tokenResolutionHint,
     lastSyncAt: lastSyncRow ? new Date(lastSyncRow).toISOString() : null,
     postsSyncStatus,
     insightsSyncStatus,
@@ -566,6 +593,8 @@ function buildUnconfiguredPageDashboard(
     instagramStatus: "Not connected yet",
     pageAccessTokenStatus: pageChecklist.tokenConfigured ? "OK" : "Missing",
     cronStatus: integration.cronConfigured ? "OK" : "Missing",
+    tokenSource: null,
+    tokenResolutionHint: null,
     lastSyncAt: null,
     postsSyncStatus: "Never",
     insightsSyncStatus: "Never",
