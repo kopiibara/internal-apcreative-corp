@@ -49,8 +49,24 @@ export const updatePublishingInfoSchema = z
     publishStatus: z.enum(PUBLISH_STATUSES),
     scheduledPublishedDate: optionalDateSchema,
     remarksRevisionSummary: requiredNotesSchema,
+    proofUrl: z.preprocess((value) => {
+      if (typeof value === "string") {
+        const trimmed = value.trim();
+
+        return trimmed.length > 0 ? trimmed : null;
+      }
+
+      return value ?? null;
+    }, z.string().url("Publishing proof must be a valid URL.").nullable()),
     confirmationAccepted: confirmationAcceptedSchema,
   })
+  .refine(
+    (data) => data.publishStatus !== "Published" || Boolean(data.proofUrl),
+    {
+      path: ["proofUrl"],
+      message: "Publishing proof is required before marking as Published.",
+    },
+  )
   .strict();
 
 export const approvalKanbanColumnSchema = z

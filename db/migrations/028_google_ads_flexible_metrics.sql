@@ -8,4 +8,9 @@ ALTER TABLE google_ads_daily_metrics
 DROP CONSTRAINT IF EXISTS google_ads_daily_metrics_import_unique;
 
 ALTER TABLE google_ads_daily_metrics
+DROP CONSTRAINT IF EXISTS google_ads_daily_metrics_daily_unique;
+
+DROP INDEX IF EXISTS google_ads_daily_metrics_daily_unique;
+
+ALTER TABLE google_ads_daily_metrics
 ADD CONSTRAINT google_ads_daily_metrics_daily_unique UNIQUE (profile_id, brand_id, metric_date);

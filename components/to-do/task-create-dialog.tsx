@@ -27,6 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
   SelectContent,
@@ -48,6 +49,7 @@ type TaskCreateDialogProps = {
   currentAccountType: AccountType
   permissions: TaskPermissionFlags
   personalOnly?: boolean
+  canAssignTeamTasks?: boolean
 }
 
 export function TaskCreateDialog({
@@ -58,6 +60,7 @@ export function TaskCreateDialog({
   currentAccountType,
   permissions,
   personalOnly = false,
+  canAssignTeamTasks = false,
 }: TaskCreateDialogProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -99,8 +102,15 @@ export function TaskCreateDialog({
         assignedToProfileIds: personalOnly
           ? [currentProfileId]
           : selectedAssigneeIds,
+        canAssignTeamTasks,
       }),
-    [currentAccountType, currentProfileId, personalOnly, selectedAssigneeIds]
+    [
+      canAssignTeamTasks,
+      currentAccountType,
+      currentProfileId,
+      personalOnly,
+      selectedAssigneeIds,
+    ]
   )
 
   const selectedAssignees = assigneeOptions.filter((assignee) =>
@@ -164,10 +174,12 @@ export function TaskCreateDialog({
           </DialogTitle>
           <DialogDescription>
             {personalOnly
-              ? "Personal tasks are assigned to you and do not count toward staff accountability scoring."
-              : resolvedTaskType === "GRADED"
-                ? "This task will count toward staff accountability scoring."
-                : "Personal tasks do not count toward staff accountability scoring."}
+              ? "Personal tasks are private, assigned only to you, and are hidden from admin review boards."
+              : canAssignTeamTasks
+                ? "Assign graded work to Multimedia or Content Creator accounts on your shared brands."
+                : resolvedTaskType === "GRADED"
+                  ? "This task will count toward staff accountability scoring."
+                  : "Personal tasks do not count toward staff accountability scoring."}
           </DialogDescription>
         </DialogHeader>
 
@@ -213,7 +225,11 @@ export function TaskCreateDialog({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                  <div className="max-h-56 overflow-y-auto p-2">
+                  <ScrollArea
+                    className="h-56 max-h-56"
+                    scrollbars="vertical"
+                    viewportClassName="p-2"
+                  >
                     {assigneeOptions.map((assignee) => {
                       const isSelected = selectedAssigneeIds.includes(assignee.id)
 
@@ -256,7 +272,7 @@ export function TaskCreateDialog({
                         </Button>
                       )
                     })}
-                  </div>
+                  </ScrollArea>
                 </PopoverContent>
               </Popover>
 

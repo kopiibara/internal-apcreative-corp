@@ -33,7 +33,7 @@ export function ApprovalKanbanCard({
 
   return (
     <Card
-      className="cursor-pointer bg-white rounded-lg px-3 py-2 shadow-sm transition-colors hover:bg-muted"
+      className="cursor-pointer bg-card rounded-lg px-3 py-2 shadow-sm transition-colors hover:bg-muted"
       onClick={onClick}
     >
       <CardContent className="space-y-3 p-2">

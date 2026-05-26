@@ -428,6 +428,49 @@ export function ApprovalMetadataPanel({ report }: ApprovalMetadataPanelProps) {
           </DetailField>
         </div>
       </ApprovalDetailSection>
+
+      {report.publishStatus === "Published" ? (
+        <ApprovalDetailSection title="Publishing proof">
+          <div className="space-y-4">
+            <DetailField label="Proof">
+              {report.publishingProofUrl ? (
+                <a
+                  href={report.publishingProofUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-medium underline-offset-4 hover:underline"
+                >
+                  <ExternalLink className="size-3.5" />
+                  Open proof
+                </a>
+              ) : (
+                "Not submitted"
+              )}
+            </DetailField>
+            {report.publishingProofNote ? (
+              <DetailField label="Proof note">
+                <LongText>{report.publishingProofNote}</LongText>
+              </DetailField>
+            ) : null}
+            {report.publishingProofSubmittedByName ? (
+              <DetailField label="Proof submitted by">
+                {report.publishingProofSubmittedByName}
+                {report.publishingProofSubmittedAt
+                  ? ` Â· ${dateTimeFormatter.format(new Date(report.publishingProofSubmittedAt))}`
+                  : null}
+              </DetailField>
+            ) : null}
+            {report.publishedByName ? (
+              <DetailField label="Published by">
+                {report.publishedByName}
+                {report.publishedAt
+                  ? ` Â· ${dateTimeFormatter.format(new Date(report.publishedAt))}`
+                  : null}
+              </DetailField>
+            ) : null}
+          </div>
+        </ApprovalDetailSection>
+      ) : null}
     </>
   )
 }

@@ -42,11 +42,13 @@ import {
   getEmployeeApprovalKanbanStage,
 } from "@/lib/approvals/approval-kanban"
 import { useContentReportStore } from "@/stores/use-content-report-store"
+import type { ContentReportBrandOption } from "@/lib/content-report-brand-options"
 import type { ContentReport } from "@/types/content-report"
 import { cn } from "@/lib/utils"
 
 type EmployeeApprovalKanbanBoardProps = {
   reports: ContentReport[]
+  brandOptions: ContentReportBrandOption[]
 }
 
 function buildEmployeeColumns(reports: ContentReport[]) {
@@ -63,6 +65,7 @@ function buildEmployeeColumns(reports: ContentReport[]) {
 
 export function EmployeeApprovalKanbanBoard({
   reports,
+  brandOptions,
 }: EmployeeApprovalKanbanBoardProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -114,6 +117,7 @@ export function EmployeeApprovalKanbanBoard({
     () => buildEmployeeColumns(filteredReports),
     [filteredReports]
   )
+  const hasNoReports = reports.length === 0
 
   function handleCancelReport() {
     if (!selectedContentReport) {
@@ -154,6 +158,13 @@ export function EmployeeApprovalKanbanBoard({
           </p>
         </div>
 
+        {hasNoReports ? (
+          <p className="shrink-0 rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+            No approval reports yet. Create your first submission to start the
+            review workflow.
+          </p>
+        ) : null}
+
         <div className="flex min-w-0 flex-wrap items-center justify-start gap-3 lg:shrink-0 lg:justify-end">
           <Tabs
             value={activeView}
@@ -182,7 +193,6 @@ export function EmployeeApprovalKanbanBoard({
           <BoardSection className="w-full min-w-0 overflow-hidden  pb-1 gap-2">
             <CardHeader className="min-w-0 shrink-0 gap-3">
               <div className="flex items-center justify-between gap-3">
-                <CardTitle className="text-card-foreground">My submissions</CardTitle>
                 {isPending ? (
                   <span className="text-xs text-muted-foreground">Updating...</span>
                 ) : null}
@@ -217,7 +227,6 @@ export function EmployeeApprovalKanbanBoard({
         <TabsContent value="table" className="mt-0 min-w-0 overflow-hidden">
           <Card className="w-full min-w-0 overflow-hidden">
             <CardHeader className="gap-3">
-              <CardTitle>My submissions</CardTitle>
               <EmployeeApprovalFilters reports={reports} />
             </CardHeader>
             <CardContent className="min-w-0">
@@ -231,6 +240,7 @@ export function EmployeeApprovalKanbanBoard({
         <ContentReportFormDialog
           mode="create"
           open={isCreateDialogOpen}
+          brandOptions={brandOptions}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               closeCreateDialog()
@@ -244,6 +254,7 @@ export function EmployeeApprovalKanbanBoard({
           key={selectedContentReport.id}
           mode="edit"
           open={isEditDialogOpen}
+          brandOptions={brandOptions}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               closeEditDialog()

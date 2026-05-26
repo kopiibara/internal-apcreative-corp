@@ -13,7 +13,9 @@
     "meta:verify-schema": "tsx scripts/verify-meta-schema.ts",
     "meta:test-webhook": "tsx scripts/meta-test-webhook.ts",
     "db:seed-approval-kanban": "tsx scripts/seed-approval-kanban-demo.ts",
-    "db:clear-approval-kanban": "tsx scripts/clear-approval-kanban-demo.ts"
+    "db:clear-approval-kanban": "tsx scripts/clear-approval-kanban-demo.ts",
+    "db:test:clean": "tsx scripts/reset-testing-db.ts",
+    "db:test:seed": "tsx scripts/seed-testing-accounts.ts"
   },
   "dependencies": {
     "@dicebear/collection": "^9.4.2",
@@ -53,6 +55,7 @@
     "react-dom": "19.2.4",
     "react-is": "^19.2.4",
     "recharts": "^3.8.1",
+    "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "web-push": "^3.6.7",

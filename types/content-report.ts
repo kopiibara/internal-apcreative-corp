@@ -44,24 +44,44 @@ export type ContentReport = {
   directorReviewedAt: string | null;
   publishStatus: PublishStatus;
   scheduledPublishedDate: string | null;
+  publishingProofUrl: string | null;
+  publishingProofNote: string | null;
+  publishingProofSubmittedByName: string | null;
+  publishingProofSubmittedAt: string | null;
+  publishedByName: string | null;
+  publishedAt: string | null;
+  scheduledByName: string | null;
+  scheduledAt: string | null;
   remarksRevisionSummary: string | null;
   activityLogs: ApprovalActivityLog[];
+  approvalPublishingPermissions?: ApprovalPublishingPermissions;
   createdAt: string;
   updatedAt: string;
 };
 
+export type ApprovalPublishingPermissions = {
+  canPublishNow: boolean;
+  canSchedulePublish: boolean;
+};
+
+/**
+ * Employees may edit/cancel their report until publishing ends the workflow.
+ * Stays editable after supervisor or director approval (including when only one
+ * has approved, or both are approved but not yet published).
+ */
 export function canEmployeeEditReport(report: {
   supervisorStatus: ReviewStatus;
   directorStatus: ReviewStatus;
   publishStatus: PublishStatus;
 }) {
-  return (
-    report.publishStatus !== "Published" &&
-    !(
-      report.supervisorStatus === "Approved" &&
-      report.directorStatus === "Approved"
-    )
-  );
+  if (
+    report.publishStatus === "Published" ||
+    report.publishStatus === "Cancelled"
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 export function canEditPublishingFields(report: {
