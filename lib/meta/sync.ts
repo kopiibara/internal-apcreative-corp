@@ -3,14 +3,15 @@ import "server-only"
 import { query } from "@/lib/db"
 import {
   calculateEngagementRate,
-  fetchPageInsights,
-  fetchPageSummary,
-  fetchPostInsights,
-  fetchRecentPagePosts,
-  readPostReactionCount,
-  PAGE_INSIGHT_METRICS,
+  DAILY_PAGE_INSIGHT_METRICS,
+  EXTENDED_PAGE_INSIGHT_METRICS,
+  fetchPageInsightsSafe,
+  fetchPageSummarySafe,
+  fetchRecentPagePostsSafe,
   parseInsightValues,
+  readPostReactionCount,
 } from "@/lib/meta/graph-api"
+import { isMetaPermissionError } from "@/lib/meta/graph-errors"
 import {
   getActiveMetaPagesForSync,
   type MetaSyncPage,
@@ -112,6 +113,44 @@ export async function listActiveMetaFacebookPages() {
   }))
 }
 
+async function getLatestFollowersForPage(facebookPageId: string) {
+  const result = await query<{ followers_count: number | null }>(
+    `
+    SELECT followers_count
+    FROM meta_page_daily_snapshot
+    WHERE facebook_page_id = $1
+    ORDER BY snapshot_date DESC
+    LIMIT 1
+    `,
+    [facebookPageId]
+  )
+
+  return result.rows[0]?.followers_count ?? null
+}
+
+async function mergeSnapshotMetrics(
+  facebookPageId: string,
+  snapshotDate: string,
+  patch: Record<string, unknown>
+) {
+  const existing = await query<{ metrics: Record<string, unknown> }>(
+    `
+    SELECT metrics
+    FROM meta_page_daily_snapshot
+    WHERE facebook_page_id = $1 AND snapshot_date = $2::date
+    `,
+    [facebookPageId, snapshotDate]
+  )
+
+  const merged = {
+    ...(existing.rows[0]?.metrics ?? {}),
+    ...patch,
+  }
+
+  return merged
+}
+
+/** Page name, likes, followers — no posts or insights. */
 export async function syncDailyPageSnapshots() {
   const pages = await listActiveMetaFacebookPages()
   let affected = 0
@@ -120,21 +159,19 @@ export async function syncDailyPageSnapshots() {
     const runId = await startSyncRun("daily_page", page.facebook_page_id)
 
     try {
-      const summary = await fetchPageSummary(page)
-      let insightsMetrics: Record<string, unknown> = {}
+      const summaryResult = await fetchPageSummarySafe(page)
 
-      try {
-        const insights = await fetchPageInsights(page, PAGE_INSIGHT_METRICS)
-        const parsed = parseInsightValues(insights.data ?? [])
-        insightsMetrics = {
-          insights: insights.data,
-          parsed,
-        }
-      } catch {
-        insightsMetrics = { insights: [] }
+      if (!summaryResult.ok) {
+        throw new Error(summaryResult.error)
       }
 
+      const summary = summaryResult.data
       const snapshotDate = new Date().toISOString().slice(0, 10)
+
+      const metrics = await mergeSnapshotMetrics(page.facebook_page_id, snapshotDate, {
+        daily_page_synced_at: new Date().toISOString(),
+        page_summary_available: true,
+      })
 
       await query(
         `
@@ -150,14 +187,14 @@ export async function syncDailyPageSnapshots() {
         DO UPDATE SET
           followers_count = EXCLUDED.followers_count,
           page_likes = EXCLUDED.page_likes,
-          metrics = EXCLUDED.metrics
+          metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
         `,
         [
           page.facebook_page_id,
           snapshotDate,
           summary.followers_count ?? null,
           summary.fan_count ?? null,
-          JSON.stringify(insightsMetrics),
+          JSON.stringify(metrics),
         ]
       )
 
@@ -190,6 +227,7 @@ export async function syncDailyPageSnapshots() {
   return affected
 }
 
+/** Post list with reactions, comments, shares — no per-post insights calls. */
 export async function syncHourlyPostMetrics() {
   const pages = await listActiveMetaFacebookPages()
   let affected = 0
@@ -198,9 +236,14 @@ export async function syncHourlyPostMetrics() {
     const runId = await startSyncRun("hourly_posts", page.facebook_page_id)
 
     try {
-      const summary = await fetchPageSummary(page)
-      const postsResponse = await fetchRecentPagePosts(page, 50)
-      const posts = postsResponse.data ?? []
+      const postsResult = await fetchRecentPagePostsSafe(page, 50)
+
+      if (!postsResult.ok) {
+        throw new Error(postsResult.error)
+      }
+
+      const posts = postsResult.data.data ?? []
+      const followers = await getLatestFollowersForPage(page.facebook_page_id)
 
       for (const post of posts) {
         const reactions = readPostReactionCount(post)
@@ -210,23 +253,8 @@ export async function syncHourlyPostMetrics() {
           reactions,
           comments,
           shares,
-          followers: summary.followers_count ?? null,
+          followers,
         })
-
-        let postInsights: Record<string, unknown> = {}
-
-        try {
-          const insightsResponse = await fetchPostInsights(post.id, page)
-          postInsights = {
-            picture_url: post.full_picture ?? null,
-            raw: insightsResponse.data,
-            parsed: parseInsightValues(insightsResponse.data ?? []),
-          }
-        } catch {
-          postInsights = {
-            picture_url: post.full_picture ?? null,
-          }
-        }
 
         await query(
           `
@@ -268,7 +296,7 @@ export async function syncHourlyPostMetrics() {
             comments,
             shares,
             engagementRate,
-            JSON.stringify(postInsights),
+            JSON.stringify({ picture_url: post.full_picture ?? null }),
           ]
         )
 
@@ -312,6 +340,101 @@ export async function syncHourlyPostMetrics() {
       const message =
         error instanceof Error ? error.message : "Hourly post sync failed"
       if (runId) {
+        await finishSyncRun(
+          runId,
+          "FAILED",
+          0,
+          isMetaPermissionError(error)
+            ? `${message} (permission)`
+            : message
+        )
+      }
+    }
+  }
+
+  return affected
+}
+
+/** Page insights: reach, impressions, engagements — requires read_insights. */
+export async function syncDailyInsights() {
+  const pages = await listActiveMetaFacebookPages()
+  let affected = 0
+
+  for (const page of pages) {
+    const runId = await startSyncRun("daily_insights", page.facebook_page_id)
+
+    try {
+      const snapshotDate = new Date().toISOString().slice(0, 10)
+      let insightsPayload: Record<string, unknown> = {
+        insights_permission_denied: false,
+        insights_sync_failed: false,
+      }
+
+      const primary = await fetchPageInsightsSafe(
+        page,
+        DAILY_PAGE_INSIGHT_METRICS
+      )
+
+      if (primary.ok) {
+        const parsed = parseInsightValues(primary.data.data ?? [])
+        insightsPayload = {
+          ...insightsPayload,
+          insights: primary.data.data,
+          parsed,
+          daily_insights_synced_at: new Date().toISOString(),
+        }
+
+        const extended = await fetchPageInsightsSafe(
+          page,
+          EXTENDED_PAGE_INSIGHT_METRICS
+        )
+        if (extended.ok) {
+          const extendedParsed = parseInsightValues(extended.data.data ?? [])
+          insightsPayload.parsed = {
+            ...parsed,
+            ...extendedParsed,
+          }
+          insightsPayload.extended_insights = extended.data.data
+        }
+      } else {
+        insightsPayload.insights_permission_denied = primary.permissionDenied
+        insightsPayload.insights_sync_failed = !primary.permissionDenied
+        insightsPayload.insights_error = primary.error
+      }
+
+      const metrics = await mergeSnapshotMetrics(
+        page.facebook_page_id,
+        snapshotDate,
+        insightsPayload
+      )
+
+      await query(
+        `
+        INSERT INTO meta_page_daily_snapshot (
+          facebook_page_id,
+          snapshot_date,
+          metrics
+        )
+        VALUES ($1, $2::date, $3::jsonb)
+        ON CONFLICT (facebook_page_id, snapshot_date)
+        DO UPDATE SET
+          metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
+        `,
+        [page.facebook_page_id, snapshotDate, JSON.stringify(metrics)]
+      )
+
+      if (runId) {
+        if (primary.ok) {
+          await finishSyncRun(runId, "SUCCESS", primary.data.data?.length ?? 0)
+          affected += 1
+        } else {
+          await finishSyncRun(runId, "FAILED", 0, primary.error)
+        }
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Daily insights sync failed"
+      if (runId) {
         await finishSyncRun(runId, "FAILED", 0, message)
       }
     }
@@ -326,10 +449,20 @@ export async function runMetaSyncJob(syncType: MetaSyncType) {
       return syncHourlyPostMetrics()
     case "daily_page":
       return syncDailyPageSnapshots()
+    case "daily_insights":
+      return syncDailyInsights()
     case "weekly_summary":
     case "monthly_summary":
       return syncDailyPageSnapshots()
     default:
       return 0
   }
+}
+
+export async function runAllMetaSyncJobs() {
+  const dailyPage = await syncDailyPageSnapshots()
+  const hourlyPosts = await syncHourlyPostMetrics()
+  const dailyInsights = await syncDailyInsights()
+
+  return { dailyPage, hourlyPosts, dailyInsights }
 }

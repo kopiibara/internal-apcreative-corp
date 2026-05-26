@@ -7,7 +7,7 @@ import {
   validateEnabledMetaPages,
 } from "@/lib/meta/pages-config"
 import { fetchPageSummary } from "@/lib/meta/graph-api"
-import { syncDailyPageSnapshots, syncHourlyPostMetrics } from "@/lib/meta/sync"
+import { runAllMetaSyncJobs } from "@/lib/meta/sync"
 
 export type MetaBootstrapResult = {
   registeredPages: Array<{ id: string; name: string }>
@@ -95,24 +95,25 @@ export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
 
   let dailySnapshots = 0
   let postMetrics = 0
+  let dailyInsights = 0
 
   try {
-    dailySnapshots = await syncDailyPageSnapshots()
+    const syncResult = await runAllMetaSyncJobs()
+    dailySnapshots = syncResult.dailyPage
+    postMetrics = syncResult.hourlyPosts
+    dailyInsights = syncResult.dailyInsights
   } catch (error) {
     errors.push(
-      error instanceof Error ? error.message : "Daily page sync failed."
+      error instanceof Error ? error.message : "Meta sync failed."
     )
   }
 
-  try {
-    postMetrics = await syncHourlyPostMetrics()
-  } catch (error) {
-    errors.push(
-      error instanceof Error ? error.message : "Hourly post sync failed."
-    )
-  }
-
-  if (dailySnapshots === 0 && postMetrics === 0 && errors.length === 0) {
+  if (
+    dailySnapshots === 0 &&
+    postMetrics === 0 &&
+    dailyInsights === 0 &&
+    errors.length === 0
+  ) {
     errors.push(
       "Pages were registered but sync returned no records. Check token permissions (read_insights, pages_read_engagement)."
     )

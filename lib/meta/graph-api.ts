@@ -4,6 +4,7 @@ import {
   getMetaGraphApiBaseUrl,
   resolveMetaPageAccessToken,
 } from "@/lib/meta/config"
+import { classifyMetaGraphError } from "@/lib/meta/graph-errors"
 import type { MetaFacebookPageRow } from "@/lib/meta/types"
 
 export type DiscoveredFacebookPage = {
@@ -12,24 +13,31 @@ export type DiscoveredFacebookPage = {
   followers_count?: number
   fan_count?: number
   link?: string
+  access_token?: string
 }
 
-export const PAGE_INSIGHT_METRICS = [
+/** Primary daily insights requested by product spec. */
+export const DAILY_PAGE_INSIGHT_METRICS = [
   "page_impressions",
-  "page_impressions_unique",
-  "page_engaged_users",
   "page_post_engagements",
+  "page_fans",
+  "page_follows",
+] as const
+
+/** Extra insights fetched when read_insights allows. */
+export const EXTENDED_PAGE_INSIGHT_METRICS = [
+  "page_impressions_unique",
   "page_views_total",
+  "page_engaged_users",
   "page_fan_adds",
 ] as const
 
-export const POST_INSIGHT_METRICS = [
-  "post_impressions",
-  "post_engaged_users",
-  "post_clicks",
+export const PAGE_INSIGHT_METRICS = [
+  ...DAILY_PAGE_INSIGHT_METRICS,
+  ...EXTENDED_PAGE_INSIGHT_METRICS,
 ] as const
 
-type GraphApiError = {
+type GraphApiErrorBody = {
   error?: {
     message?: string
     type?: string
@@ -37,11 +45,32 @@ type GraphApiError = {
   }
 }
 
+export type MetaGraphFetchResult<T> =
+  | { ok: true; data: T }
+  | {
+      ok: false
+      error: string
+      permissionDenied: boolean
+      tokenExpired: boolean
+    }
+
+type GraphPost = {
+  id: string
+  message?: string
+  permalink_url?: string
+  created_time?: string
+  full_picture?: string
+  likes?: { summary?: { total_count?: number } }
+  reactions?: { summary?: { total_count?: number } }
+  comments?: { summary?: { total_count?: number } }
+  shares?: { count?: number }
+}
+
 async function metaGraphFetch<T>(
   path: string,
   accessToken: string,
   searchParams?: Record<string, string>
-) {
+): Promise<T> {
   const url = new URL(`${getMetaGraphApiBaseUrl()}${path}`)
   url.searchParams.set("access_token", accessToken)
 
@@ -57,7 +86,7 @@ async function metaGraphFetch<T>(
     cache: "no-store",
   })
 
-  const body = (await response.json()) as T & GraphApiError
+  const body = (await response.json()) as T & GraphApiErrorBody
 
   if (!response.ok || body.error) {
     throw new Error(
@@ -69,37 +98,41 @@ async function metaGraphFetch<T>(
   return body
 }
 
-export async function discoverFacebookPagesFromToken(accessToken: string) {
+export async function metaGraphFetchSafe<T>(
+  path: string,
+  accessToken: string,
+  searchParams?: Record<string, string>
+): Promise<MetaGraphFetchResult<T>> {
   try {
-    const me = await metaGraphFetch<DiscoveredFacebookPage>("/me", accessToken, {
-      fields: "id,name,followers_count,fan_count,link",
-    })
-
-    if (me.id) {
-      return [me]
+    const data = await metaGraphFetch<T>(path, accessToken, searchParams)
+    return { ok: true, data }
+  } catch (error) {
+    const info = classifyMetaGraphError(error)
+    return {
+      ok: false,
+      error: info.message,
+      permissionDenied: info.permissionDenied,
+      tokenExpired: info.tokenExpired,
     }
-  } catch {
-    // Fall through to managed accounts (user/system token).
   }
+}
 
-  const accounts = await metaGraphFetch<{ data: DiscoveredFacebookPage[] }>(
-    "/me/accounts",
-    accessToken,
-    {
-      fields: "id,name,followers_count,fan_count,link,access_token",
-    }
-  )
-
-  return accounts.data ?? []
+function resolvePageToken(
+  page: Pick<MetaFacebookPageRow, "access_token_env_key">
+) {
+  const token = resolveMetaPageAccessToken(page.access_token_env_key)?.trim()
+  if (!token) {
+    throw new Error(
+      "Meta Page access token is not configured. Set the page token env variable (e.g. NEON_NIGHTS_META_PAGE_ACCESS_TOKEN)."
+    )
+  }
+  return token
 }
 
 export async function fetchPageSummary(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">
 ) {
-  const token = resolveMetaPageAccessToken(page.access_token_env_key)
-  if (!token) {
-    throw new Error("Meta Page access token is not configured.")
-  }
+  const token = resolvePageToken(page)
 
   return metaGraphFetch<{
     id: string
@@ -108,45 +141,62 @@ export async function fetchPageSummary(
     fan_count?: number
     link?: string
   }>(`/${page.facebook_page_id}`, token, {
-    fields: "id,name,followers_count,fan_count,link",
+    fields: "id,name,fan_count,followers_count",
   })
 }
 
-type GraphPost = {
-  id: string
-  message?: string
-  permalink_url?: string
-  created_time?: string
-  full_picture?: string
-  likes?: { summary?: { total_count?: number } }
-  reactions?: { summary?: { total_count?: number } }
-  comments?: { summary?: { total_count?: number } }
-  shares?: { count?: number }
+export async function fetchPageSummarySafe(
+  page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">
+) {
+  const token = resolvePageToken(page)
+  return metaGraphFetchSafe<{
+    id: string
+    name?: string
+    followers_count?: number
+    fan_count?: number
+    link?: string
+  }>(`/${page.facebook_page_id}`, token, {
+    fields: "id,name,fan_count,followers_count",
+  })
 }
 
 function readPostReactionCount(post: GraphPost) {
   return (
-    post.reactions?.summary?.total_count ??
     post.likes?.summary?.total_count ??
+    post.reactions?.summary?.total_count ??
     0
   )
 }
+
+const POST_LIST_FIELDS =
+  "id,message,created_time,permalink_url,full_picture,shares,likes.summary(true),comments.summary(true)"
 
 export async function fetchRecentPagePosts(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
   limit = 50
 ) {
-  const token = resolveMetaPageAccessToken(page.access_token_env_key)
-  if (!token) {
-    throw new Error("Meta Page access token is not configured.")
-  }
+  const token = resolvePageToken(page)
 
   return metaGraphFetch<{ data: GraphPost[] }>(
     `/${page.facebook_page_id}/posts`,
     token,
     {
-      fields:
-        "id,message,created_time,permalink_url,full_picture,shares,likes.summary(true),comments.summary(true),reactions.summary(true)",
+      fields: POST_LIST_FIELDS,
+      limit: String(limit),
+    }
+  )
+}
+
+export async function fetchRecentPagePostsSafe(
+  page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
+  limit = 50
+) {
+  const token = resolvePageToken(page)
+  return metaGraphFetchSafe<{ data: GraphPost[] }>(
+    `/${page.facebook_page_id}/posts`,
+    token,
+    {
+      fields: POST_LIST_FIELDS,
       limit: String(limit),
     }
   )
@@ -156,12 +206,9 @@ export { readPostReactionCount }
 
 export async function fetchPageInsights(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
-  metricNames: readonly string[] = PAGE_INSIGHT_METRICS
+  metricNames: readonly string[] = DAILY_PAGE_INSIGHT_METRICS
 ) {
-  const token = resolveMetaPageAccessToken(page.access_token_env_key)
-  if (!token) {
-    throw new Error("Meta Page access token is not configured.")
-  }
+  const token = resolvePageToken(page)
 
   return metaGraphFetch<{
     data: Array<{
@@ -177,24 +224,22 @@ export async function fetchPageInsights(
   })
 }
 
-export async function fetchPostInsights(
-  postId: string,
-  page: Pick<MetaFacebookPageRow, "access_token_env_key">
+export async function fetchPageInsightsSafe(
+  page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
+  metricNames: readonly string[] = DAILY_PAGE_INSIGHT_METRICS
 ) {
-  const token = resolveMetaPageAccessToken(page.access_token_env_key)
-  if (!token) {
-    throw new Error("Meta Page access token is not configured.")
-  }
-
-  return metaGraphFetch<{
+  const token = resolvePageToken(page)
+  return metaGraphFetchSafe<{
     data: Array<{
       name: string
+      title?: string
+      description?: string
       period: string
-      values: Array<{ value: number; end_time?: string }>
+      values: Array<{ value: number | Record<string, number>; end_time?: string }>
     }>
-  }>(`/${postId}/insights`, token, {
-    metric: POST_INSIGHT_METRICS.join(","),
-    period: "lifetime",
+  }>(`/${page.facebook_page_id}/insights`, token, {
+    metric: metricNames.join(","),
+    period: "day",
   })
 }
 
@@ -225,6 +270,10 @@ export function calculateEngagementRate(input: {
   followers: number | null
 }) {
   const interactions = input.reactions + input.comments + input.shares
-  const denominator = input.followers && input.followers > 0 ? input.followers : 1
+  const denominator =
+    input.followers && input.followers > 0 ? input.followers : 1
   return Number((interactions / denominator).toFixed(4))
 }
+
+export const POSTS_PERMISSION_MESSAGE =
+  "Posts unavailable from current permission/token. Please regenerate the Page Access Token with pages_read_engagement and pages_read_user_content."

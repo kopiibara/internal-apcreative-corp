@@ -163,7 +163,9 @@ export function PlatformAnalyticsDashboard({
     })
   }
 
-  function handleSync(syncType: "hourly_posts" | "daily_page") {
+  function handleSync(
+    syncType: "hourly_posts" | "daily_page" | "daily_insights"
+  ) {
     startTransition(async () => {
       const result = await triggerMetaSyncAction(syncType)
       if (!result.success) {
@@ -200,7 +202,8 @@ export function PlatformAnalyticsDashboard({
             onConnect={handleBootstrap}
             onSyncAll={handleSyncAll}
             onSyncPosts={() => handleSync("hourly_posts")}
-            onSyncInsights={() => handleSync("daily_page")}
+            onSyncInsights={() => handleSync("daily_insights")}
+            onSyncPage={() => handleSync("daily_page")}
           />
         </div>
 
@@ -368,6 +371,7 @@ function PlatformActions({
   onConnect,
   onSyncAll,
   onSyncPosts,
+  onSyncPage,
   onSyncInsights,
 }: {
   platform: AnalyticsPlatform
@@ -376,6 +380,7 @@ function PlatformActions({
   onConnect: () => void
   onSyncAll: () => void
   onSyncPosts: () => void
+  onSyncPage: () => void
   onSyncInsights: () => void
 }) {
   if (!canManage) {
@@ -390,6 +395,9 @@ function PlatformActions({
         </Button>
         <Button type="button" variant="neutral" disabled={isPending} onClick={onSyncAll}>
           Sync Meta
+        </Button>
+        <Button type="button" variant="neutral" disabled={isPending} onClick={onSyncPage}>
+          Sync Page
         </Button>
         <Button type="button" variant="neutral" disabled={isPending} onClick={onSyncPosts}>
           Sync Posts
