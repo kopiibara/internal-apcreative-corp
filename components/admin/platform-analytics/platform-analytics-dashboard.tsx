@@ -1,211 +1,327 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useTransition } from "react"
-import { toast } from "sonner"
+import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 
 import {
   bootstrapMetaMonitoringAction,
+  disconnectYouTubeAction,
   fetchPlatformAnalyticsAction,
   syncAllMetaMonitoringAction,
+  syncYouTubeAction,
   triggerMetaSyncAction,
-} from "@/app/admin/platform-analytics/actions"
-import { MetaBusinessPageCard } from "@/components/admin/platform-analytics/meta-business-page-card"
-import { PlatformAnalyticsCharts } from "@/components/admin/platform-analytics/platform-analytics-charts"
-import { StatusBadge } from "@/components/shared/status-badge"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+} from "@/app/admin/platform-analytics/actions";
+import { MetaBusinessPageCard } from "@/components/admin/platform-analytics/meta-business-page-card";
+import { PlatformAnalyticsCharts } from "@/components/admin/platform-analytics/platform-analytics-charts";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
+} from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
+  META_SCOPE_OPTIONS,
   PAGE_SUBTITLE,
   PAGE_TITLE,
   PLATFORM_NAV,
   PLATFORM_VIEW_COPY,
-} from "@/lib/platform-analytics/constants"
+} from "@/lib/platform-analytics/constants";
 import type {
+  AnalyticsDateRange,
   AnalyticsPlatform,
   KpiMetric,
+  MetaScope,
   PlatformAnalyticsDashboardData,
   PlatformCode,
-} from "@/lib/platform-analytics/types"
-import { cn } from "@/lib/utils"
+} from "@/lib/platform-analytics/types";
+import { cn } from "@/lib/utils";
 
 type PlatformAnalyticsDashboardProps = {
-  initialData: PlatformAnalyticsDashboardData
-  canManage: boolean
-  bootstrapMessage?: string | null
-}
+  initialData: PlatformAnalyticsDashboardData;
+  canManage: boolean;
+  bootstrapMessage?: string | null;
+};
 
 const dateFormatter = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "medium",
   timeStyle: "short",
-})
+});
 
-const PLATFORM_TABS: Record<PlatformCode, { value: string; label: string }[]> = {
-  META: [
-    { value: "overview", label: "Overview" },
-    { value: "content", label: "Content Performance" },
-    { value: "audience", label: "Audience Insights" },
-    { value: "engagement", label: "Engagement" },
-    { value: "logs", label: "Webhook Activity" },
-    { value: "sync", label: "Sync History" },
-  ],
-  TIKTOK: [
-    { value: "overview", label: "Overview" },
-    { value: "content", label: "Video Performance" },
-    { value: "audience", label: "Audience Insights" },
-    { value: "engagement", label: "Engagement" },
-    { value: "logs", label: "Webhook Activity" },
-    { value: "sync", label: "Sync History" },
-  ],
-  YOUTUBE: [
-    { value: "overview", label: "Overview" },
-    { value: "content", label: "Video Performance" },
-    { value: "audience", label: "Audience Retention" },
-    { value: "engagement", label: "Engagement" },
-    { value: "logs", label: "Webhook Activity" },
-    { value: "sync", label: "Sync History" },
-  ],
-  GOOGLE: [
-    { value: "overview", label: "Overview" },
-    { value: "campaigns", label: "Campaign Performance" },
-    { value: "adgroups", label: "Ad Group Performance" },
-    { value: "keywords", label: "Keywords" },
-    { value: "conversions", label: "Conversion Tracking" },
-    { value: "logs", label: "Webhook Activity" },
-    { value: "sync", label: "Sync History" },
-  ],
-}
+const ANALYTICS_DATE_RANGE_OPTIONS: Array<{
+  value: AnalyticsDateRange;
+  label: string;
+}> = [
+  { value: "7d", label: "Last 7 days" },
+  { value: "28d", label: "Last 28 days" },
+  { value: "90d", label: "Last 90 days" },
+  { value: "365d", label: "Last 365 days" },
+];
+
+const PLATFORM_TABS: Record<PlatformCode, { value: string; label: string }[]> =
+  {
+    META: [
+      { value: "logs", label: "Webhook Activity" },
+      { value: "sync", label: "Sync History" },
+    ],
+    TIKTOK: [
+      { value: "overview", label: "Overview" },
+      { value: "content", label: "Video Performance" },
+      { value: "audience", label: "Audience Insights" },
+      { value: "engagement", label: "Engagement" },
+      { value: "logs", label: "Webhook Activity" },
+      { value: "sync", label: "Sync History" },
+    ],
+    YOUTUBE: [
+      { value: "overview", label: "Overview" },
+      { value: "content", label: "Video Performance" },
+      { value: "audience", label: "Audience Growth" },
+      { value: "engagement", label: "Engagement" },
+      { value: "logs", label: "Webhook Activity" },
+      { value: "sync", label: "Sync History" },
+    ],
+    GOOGLE: [
+      { value: "overview", label: "Overview" },
+      { value: "campaigns", label: "Campaign Performance" },
+      { value: "adgroups", label: "Ad Group Performance" },
+      { value: "keywords", label: "Keywords" },
+      { value: "conversions", label: "Conversion Tracking" },
+      { value: "logs", label: "Webhook Activity" },
+      { value: "sync", label: "Sync History" },
+    ],
+  };
 
 export function PlatformAnalyticsDashboard({
   initialData,
   canManage,
   bootstrapMessage,
 }: PlatformAnalyticsDashboardProps) {
-  const [data, setData] = useState(initialData)
+  const [data, setData] = useState(initialData);
   const [platform, setPlatform] = useState<AnalyticsPlatform>(
-    initialData.platform === "META" ? "META" : initialData.platform
-  )
-  const [accountId, setAccountId] = useState("all")
-  const [isPending, startTransition] = useTransition()
+    initialData.platform === "META" ? "META" : initialData.platform,
+  );
+  const [metaScope, setMetaScope] = useState<MetaScope>("combined");
+  const [accountId, setAccountId] = useState("all");
+  const [dateRange, setDateRange] = useState<AnalyticsDateRange>("28d");
+  const [isPending, startTransition] = useTransition();
 
-  const platformCode = platform as PlatformCode
-  const copy = PLATFORM_VIEW_COPY[platformCode]
+  const platformCode = platform as PlatformCode;
+  const copy = PLATFORM_VIEW_COPY[platformCode];
+  const tabs = PLATFORM_TABS[platformCode];
 
   useEffect(() => {
     if (bootstrapMessage) {
       if (bootstrapMessage.toLowerCase().includes("fail")) {
-        toast.error(bootstrapMessage)
+        toast.error(bootstrapMessage);
       } else {
-        toast.message(bootstrapMessage)
+        toast.message(bootstrapMessage);
       }
     }
-  }, [bootstrapMessage])
+  }, [bootstrapMessage]);
 
-  function reload(nextPlatform?: AnalyticsPlatform, nextAccount?: string) {
+  function reload(
+    nextPlatform?: AnalyticsPlatform,
+    nextAccount?: string,
+    nextScope?: MetaScope,
+    nextDateRange?: AnalyticsDateRange,
+  ) {
     startTransition(async () => {
-      const p = nextPlatform ?? platform
+      const p = nextPlatform ?? platform;
+      const selectedAccount = nextAccount ?? accountId;
       const result = await fetchPlatformAnalyticsAction({
         platform: p,
-        accountId:
-          (nextAccount ?? accountId) === "all" ? null : (nextAccount ?? accountId),
-        metaScope: "combined",
-      })
+        accountId: selectedAccount === "all" ? null : selectedAccount,
+        metaScope: p === "META" ? (nextScope ?? metaScope) : "combined",
+        dateRange: nextDateRange ?? dateRange,
+      });
+
       if (!result.success || !result.data) {
-        toast.error(result.message)
-        return
+        toast.error(result.message);
+        return;
       }
-      setData(result.data)
-    })
+
+      setData(result.data);
+    });
   }
 
   function handlePlatformChange(next: AnalyticsPlatform) {
-    setPlatform(next)
-    setAccountId("all")
-    reload(next, "all")
+    setPlatform(next);
+    setAccountId("all");
+    reload(next, "all");
+  }
+
+  function handleMetaScopeChange(scope: MetaScope) {
+    setMetaScope(scope);
+    reload("META", accountId, scope);
+  }
+
+  function handleDateRangeChange(nextRange: AnalyticsDateRange) {
+    setDateRange(nextRange);
+
+    if (platform !== "YOUTUBE") {
+      reload(platform, accountId, metaScope, nextRange);
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await syncYouTubeAction({
+        accountId: accountId === "all" ? null : accountId,
+        dateRange: nextRange,
+      });
+
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success(result.message);
+      reload("YOUTUBE", accountId, "combined", nextRange);
+    });
   }
 
   function handleBootstrap() {
     startTransition(async () => {
-      const result = await bootstrapMetaMonitoringAction()
+      const result = await bootstrapMetaMonitoringAction();
       if (!result.success) {
-        toast.error(result.message)
-        return
+        toast.error(result.message);
+        return;
       }
-      toast.success(result.message)
-      reload("META", accountId)
-    })
+      toast.success(result.message);
+      reload("META", accountId, metaScope);
+    });
+  }
+
+  function handleYouTubeConnect() {
+    startTransition(async () => {
+      window.location.href = "/api/platform-analytics/youtube/connect";
+    });
+  }
+
+  function handleYouTubeDisconnect() {
+    startTransition(async () => {
+      if (!window.confirm("Disconnect this YouTube account?")) {
+        return;
+      }
+
+      const result = await disconnectYouTubeAction({
+        accountId: accountId === "all" ? null : accountId,
+      });
+
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success(result.message);
+      setAccountId("all");
+      reload("YOUTUBE", "all", "combined", dateRange);
+    });
+  }
+
+  function handleYouTubeSync() {
+    startTransition(async () => {
+      const result = await syncYouTubeAction({
+        accountId: accountId === "all" ? null : accountId,
+        dateRange,
+      });
+
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success(result.message);
+      reload("YOUTUBE", accountId, "combined", dateRange);
+    });
   }
 
   function handleSyncAll() {
     startTransition(async () => {
-      const result = await syncAllMetaMonitoringAction()
+      const result = await syncAllMetaMonitoringAction();
       if (!result.success) {
-        toast.error(result.message)
-        return
+        toast.error(result.message);
+        return;
       }
-      toast.success(result.message)
-      reload()
-    })
+      toast.success(result.message);
+      reload();
+    });
   }
 
   function handleSync(
-    syncType: "hourly_posts" | "daily_page" | "daily_insights"
+    syncType: "hourly_posts" | "daily_page" | "daily_insights",
   ) {
     startTransition(async () => {
-      const result = await triggerMetaSyncAction(syncType)
+      const result = await triggerMetaSyncAction(syncType);
       if (!result.success) {
-        toast.error(result.message)
-        return
+        toast.error(result.message);
+        return;
       }
-      toast.success(result.message)
-      reload()
-    })
+      toast.success(result.message);
+      reload();
+    });
   }
-
-  const tabs =
-    platform === "META"
-      ? [
-          { value: "logs", label: "Webhook Activity" },
-          { value: "sync", label: "Sync History" },
-        ]
-      : PLATFORM_TABS[platformCode]
 
   return (
     <div className="min-w-0 space-y-6">
       <header className="space-y-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-normal">{PAGE_TITLE}</h1>
+            <h1 className="text-2xl font-semibold tracking-normal">
+              {PAGE_TITLE}
+            </h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               {PAGE_SUBTITLE}
             </p>
           </div>
           <PlatformActions
             platform={platform}
+            isConnected={data.connection.apiConnected}
             canManage={canManage}
             isPending={isPending}
-            onConnect={handleBootstrap}
-            onSyncAll={handleSyncAll}
-            onSyncPosts={() => handleSync("hourly_posts")}
-            onSyncInsights={() => handleSync("daily_insights")}
+            onConnect={
+              platform === "YOUTUBE" ? handleYouTubeConnect : handleBootstrap
+            }
+            onDisconnect={
+              platform === "YOUTUBE" ? handleYouTubeDisconnect : undefined
+            }
+            onSyncAll={
+              platform === "YOUTUBE" ? handleYouTubeSync : handleSyncAll
+            }
+            onSyncPosts={() =>
+              platform === "YOUTUBE"
+                ? handleYouTubeSync()
+                : handleSync("hourly_posts")
+            }
             onSyncPage={() => handleSync("daily_page")}
+            onSyncInsights={() =>
+              platform === "YOUTUBE"
+                ? handleYouTubeSync()
+                : handleSync("daily_insights")
+            }
           />
         </div>
+
+        {platform === "YOUTUBE" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {ANALYTICS_DATE_RANGE_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                size="sm"
+                variant={dateRange === option.value ? "default" : "neutral"}
+                disabled={isPending}
+                onClick={() => handleDateRangeChange(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap gap-1 border-b border-border pb-3">
           {PLATFORM_NAV.map((item) => (
@@ -244,11 +360,28 @@ export function PlatformAnalyticsDashboard({
             </p>
           </div>
 
+          {platform === "META" ? (
+            <div className="flex flex-wrap gap-1">
+              {META_SCOPE_OPTIONS.map((scope) => (
+                <Button
+                  key={scope.value}
+                  type="button"
+                  size="sm"
+                  variant={metaScope === scope.value ? "default" : "neutral"}
+                  disabled={isPending}
+                  onClick={() => handleMetaScopeChange(scope.value)}
+                >
+                  {scope.label}
+                </Button>
+              ))}
+            </div>
+          ) : null}
         </div>
 
-        {platform !== "META" ? (
-          <ConnectionStatusCard connection={data.connection} isDemo={data.isDemo} />
-        ) : null}
+        <ConnectionStatusCard
+          connection={data.connection}
+          isDemo={data.isDemo}
+        />
 
         {!data.isDemo &&
         data.metaNeedsBootstrap &&
@@ -256,8 +389,8 @@ export function PlatformAnalyticsDashboard({
         platform === "META" ? (
           <p className="text-sm text-muted-foreground">
             Connect Meta to start syncing analytics. Use{" "}
-            <strong>Connect Meta</strong> above after setting environment variables
-            in your host.
+            <strong>Connect Meta</strong> above after setting environment
+            variables in your host.
           </p>
         ) : null}
       </section>
@@ -268,8 +401,8 @@ export function PlatformAnalyticsDashboard({
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
                 No Meta business pages are enabled. Set{" "}
-                <code className="text-xs">NEON_NIGHTS_META_ENABLED=true</code> and
-                configure the Page ID and access token.
+                <code className="text-xs">NEON_NIGHTS_META_ENABLED=true</code>{" "}
+                and configure the Page ID and access token.
               </CardContent>
             </Card>
           ) : (
@@ -287,7 +420,7 @@ export function PlatformAnalyticsDashboard({
             emptyMessage={
               data.isDemo
                 ? undefined
-                : "No live data yet — run sync after connecting Meta."
+                : "No live data yet - run sync after connecting the selected platform."
             }
           />
         </>
@@ -315,7 +448,11 @@ export function PlatformAnalyticsDashboard({
               {platform === "GOOGLE" ? (
                 <PlaceholderPanel message="Content performance is not applicable for Google Ads." />
               ) : (
-                <ContentTable platform={platformCode} rows={data.contentPerformance} />
+                <ContentTable
+                  platform={platformCode}
+                  rows={data.contentPerformance}
+                  lastSyncedAt={data.connection.lastSyncAt}
+                />
               )}
             </TabsContent>
 
@@ -361,52 +498,81 @@ export function PlatformAnalyticsDashboard({
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
 
 function PlatformActions({
   platform,
+  isConnected,
   canManage,
   isPending,
   onConnect,
+  onDisconnect,
   onSyncAll,
   onSyncPosts,
   onSyncPage,
   onSyncInsights,
 }: {
-  platform: AnalyticsPlatform
-  canManage: boolean
-  isPending: boolean
-  onConnect: () => void
-  onSyncAll: () => void
-  onSyncPosts: () => void
-  onSyncPage: () => void
-  onSyncInsights: () => void
+  platform: AnalyticsPlatform;
+  isConnected: boolean;
+  canManage: boolean;
+  isPending: boolean;
+  onConnect: () => void;
+  onDisconnect?: () => void;
+  onSyncAll: () => void;
+  onSyncPosts: () => void;
+  onSyncPage: () => void;
+  onSyncInsights: () => void;
 }) {
   if (!canManage) {
-    return null
+    return null;
   }
 
   if (platform === "META") {
     return (
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="default" disabled={isPending} onClick={onConnect}>
+        <Button
+          type="button"
+          variant="default"
+          disabled={isPending}
+          onClick={onConnect}
+        >
           Connect Meta
         </Button>
-        <Button type="button" variant="neutral" disabled={isPending} onClick={onSyncAll}>
+        <Button
+          type="button"
+          variant="neutral"
+          disabled={isPending}
+          onClick={onSyncAll}
+        >
           Sync Meta
         </Button>
-        <Button type="button" variant="neutral" disabled={isPending} onClick={onSyncPage}>
+        <Button
+          type="button"
+          variant="neutral"
+          disabled={isPending}
+          onClick={onSyncPage}
+        >
           Sync Page
         </Button>
-        <Button type="button" variant="neutral" disabled={isPending} onClick={onSyncPosts}>
+        <Button
+          type="button"
+          variant="neutral"
+          disabled={isPending}
+          onClick={onSyncPosts}
+        >
           Sync Posts
         </Button>
-        <Button type="button" variant="neutral" disabled={isPending} onClick={onSyncInsights}>
+        <Button
+          type="button"
+          variant="neutral"
+          disabled={isPending}
+          onClick={onSyncInsights}
+        >
           Sync Insights
         </Button>
       </div>
-    )
+    );
   }
 
   if (platform === "TIKTOK") {
@@ -422,23 +588,48 @@ function PlatformActions({
           Sync Videos
         </Button>
       </div>
-    )
+    );
   }
 
   if (platform === "YOUTUBE") {
     return (
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="neutral" disabled>
-          Connect YouTube
+        <Button
+          type="button"
+          variant={isConnected ? "neutral" : "default"}
+          disabled={isPending || isConnected}
+          onClick={onConnect}
+        >
+          {isConnected ? "Connected" : "Connect YouTube"}
         </Button>
-        <Button type="button" variant="neutral" disabled>
+        {isConnected ? (
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isPending}
+            onClick={onDisconnect}
+          >
+            Disconnect YouTube
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="neutral"
+          disabled={isPending || !isConnected}
+          onClick={onSyncAll}
+        >
           Sync YouTube
         </Button>
-        <Button type="button" variant="neutral" disabled>
+        <Button
+          type="button"
+          variant="neutral"
+          disabled={isPending || !isConnected}
+          onClick={onSyncPosts}
+        >
           Sync Videos
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -453,15 +644,15 @@ function PlatformActions({
         Sync Campaigns
       </Button>
     </div>
-  )
+  );
 }
 
 function ConnectionStatusCard({
   connection,
   isDemo,
 }: {
-  connection: PlatformAnalyticsDashboardData["connection"]
-  isDemo: boolean
+  connection: PlatformAnalyticsDashboardData["connection"];
+  isDemo: boolean;
 }) {
   return (
     <Card className="border-border/80 bg-background/50">
@@ -473,8 +664,12 @@ function ConnectionStatusCard({
           </Badge>
           {isDemo ? <DemoBadge /> : null}
           {connection.webhookSupported ? (
-            <Badge variant={connection.webhookConfigured ? "default" : "neutral"}>
-              {connection.webhookConfigured ? "Webhook ready" : "Webhook pending"}
+            <Badge
+              variant={connection.webhookConfigured ? "default" : "neutral"}
+            >
+              {connection.webhookConfigured
+                ? "Webhook ready"
+                : "Webhook pending"}
             </Badge>
           ) : null}
           <Badge variant="neutral">Sync: {connection.syncHealth}</Badge>
@@ -483,18 +678,24 @@ function ConnectionStatusCard({
       <CardContent>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {connection.statusRows.map((row) => (
-            <StatusRow key={row.label} label={row.label} ok={row.ok} detail={row.detail} />
+            <StatusRow
+              key={row.label}
+              label={row.label}
+              ok={row.ok}
+              detail={row.detail}
+            />
           ))}
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function KpiGrid({ metrics }: { metrics: KpiMetric[] }) {
   if (metrics.length === 0) {
-    return null
+    return null;
   }
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => (
@@ -514,15 +715,15 @@ function KpiGrid({ metrics }: { metrics: KpiMetric[] }) {
         </Card>
       ))}
     </div>
-  )
+  );
 }
 
 function GrowthTable({
   rows,
   isDemo,
 }: {
-  rows: PlatformAnalyticsDashboardData["growthSnapshots"]
-  isDemo: boolean
+  rows: PlatformAnalyticsDashboardData["growthSnapshots"];
+  isDemo: boolean;
 }) {
   return (
     <Card>
@@ -532,7 +733,7 @@ function GrowthTable({
       </CardHeader>
       <CardContent>
         <ScrollArea className="w-full" scrollbars="horizontal">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
+          <table className="w-full min-w-160 border-collapse text-sm">
             <thead>
               <tr className="border-b text-left">
                 <th className="py-2 pr-4">Date</th>
@@ -551,9 +752,9 @@ function GrowthTable({
                 rows.map((row) => (
                   <tr key={row.id} className="border-b">
                     <td className="py-2 pr-4">{row.date}</td>
-                    <td className="py-2 pr-4">{row.followers ?? "—"}</td>
+                    <td className="py-2 pr-4">{row.followers ?? "-"}</td>
                     <td className="py-2 pr-4">
-                      {row.secondaryLabel}: {row.secondaryValue ?? "—"}
+                      {row.secondaryLabel}: {row.secondaryValue ?? "-"}
                     </td>
                   </tr>
                 ))
@@ -563,18 +764,20 @@ function GrowthTable({
         </ScrollArea>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function ContentTable({
   platform,
   rows,
+  lastSyncedAt,
 }: {
-  platform: PlatformCode
-  rows: PlatformAnalyticsDashboardData["contentPerformance"]
+  platform: PlatformCode;
+  rows: PlatformAnalyticsDashboardData["contentPerformance"];
+  lastSyncedAt: string | null;
 }) {
-  const isGoogle = platform === "GOOGLE"
-  const isYouTube = platform === "YOUTUBE"
+  const isGoogle = platform === "GOOGLE";
+  const isYouTube = platform === "YOUTUBE";
 
   return (
     <Card>
@@ -582,10 +785,15 @@ function ContentTable({
         <CardTitle className="text-base">
           {isYouTube ? "Video performance" : "Content performance"}
         </CardTitle>
+        {isYouTube ? (
+          <CardDescription>
+            Synced content performance. Last synced: {lastSyncedAt ?? "Never"}
+          </CardDescription>
+        ) : null}
       </CardHeader>
       <CardContent>
         <ScrollArea className="w-full" scrollbars="horizontal">
-          <table className="w-full min-w-[1000px] border-collapse text-sm">
+          <table className="w-full min-w-250 border-collapse text-sm">
             <thead>
               <tr className="border-b text-left">
                 <th className="py-2 pr-4">Title</th>
@@ -613,7 +821,7 @@ function ContentTable({
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={12} className="py-6 text-muted-foreground">
-                    {isGoogle ? "N/A" : "No live data yet"}
+                    {isGoogle ? "N/A" : "No synced data yet"}
                   </td>
                 </tr>
               ) : (
@@ -625,13 +833,15 @@ function ContentTable({
                     <td className="py-2 pr-4">
                       {row.publishedAt
                         ? dateFormatter.format(new Date(row.publishedAt))
-                        : "—"}
+                        : "-"}
                     </td>
-                    <td className="py-2 pr-4">{row.views ?? "—"}</td>
+                    <td className="py-2 pr-4">{row.views ?? "-"}</td>
                     {isYouTube ? (
                       <>
-                        <td className="py-2 pr-4">{row.watchTime ?? "—"}</td>
-                        <td className="py-2 pr-4">{row.avgViewDuration ?? "—"}</td>
+                        <td className="py-2 pr-4">{row.watchTime ?? "-"}</td>
+                        <td className="py-2 pr-4">
+                          {row.avgViewDuration ?? "-"}
+                        </td>
                       </>
                     ) : null}
                     <td className="py-2 pr-4">{row.likes}</td>
@@ -639,8 +849,12 @@ function ContentTable({
                     <td className="py-2 pr-4">{row.shares}</td>
                     {platform === "TIKTOK" ? (
                       <>
-                        <td className="py-2 pr-4">{row.engagementRate ?? "—"}</td>
-                        <td className="py-2 pr-4">{row.profileVisits ?? "—"}</td>
+                        <td className="py-2 pr-4">
+                          {row.engagementRate ?? "-"}
+                        </td>
+                        <td className="py-2 pr-4">
+                          {row.profileVisits ?? "-"}
+                        </td>
                       </>
                     ) : null}
                     <td className="py-2 pr-4">{row.source}</td>
@@ -652,13 +866,13 @@ function ContentTable({
         </ScrollArea>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function CampaignTable({
   rows,
 }: {
-  rows: PlatformAnalyticsDashboardData["campaignPerformance"]
+  rows: PlatformAnalyticsDashboardData["campaignPerformance"];
 }) {
   return (
     <Card>
@@ -667,7 +881,7 @@ function CampaignTable({
       </CardHeader>
       <CardContent>
         <ScrollArea className="w-full" scrollbars="horizontal">
-          <table className="w-full min-w-[960px] border-collapse text-sm">
+          <table className="w-full min-w-240 border-collapse text-sm">
             <thead>
               <tr className="border-b text-left">
                 <th className="py-2 pr-4">Campaign</th>
@@ -697,7 +911,9 @@ function CampaignTable({
                     <td className="py-2 pr-4">
                       {row.impressions.toLocaleString("en-PH")}
                     </td>
-                    <td className="py-2 pr-4">{row.clicks.toLocaleString("en-PH")}</td>
+                    <td className="py-2 pr-4">
+                      {row.clicks.toLocaleString("en-PH")}
+                    </td>
                     <td className="py-2 pr-4">{row.ctr}</td>
                     <td className="py-2 pr-4">{row.cpc}</td>
                     <td className="py-2 pr-4">{row.spend}</td>
@@ -712,13 +928,13 @@ function CampaignTable({
         </ScrollArea>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function ActivityLogs({
   logs,
 }: {
-  logs: PlatformAnalyticsDashboardData["activityLogs"]
+  logs: PlatformAnalyticsDashboardData["activityLogs"];
 }) {
   return (
     <Card>
@@ -726,10 +942,12 @@ function ActivityLogs({
         <CardTitle className="text-base">Webhook activity</CardTitle>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[400px] w-full">
+        <ScrollArea className="h-100 w-full">
           <div className="space-y-3 pr-4">
             {logs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No activity logged yet.</p>
+              <p className="text-sm text-muted-foreground">
+                No activity logged yet.
+              </p>
             ) : (
               logs.map((log) => (
                 <div key={log.id} className="rounded-lg border p-3 text-sm">
@@ -749,13 +967,13 @@ function ActivityLogs({
         </ScrollArea>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function SyncHistoryTable({
   rows,
 }: {
-  rows: PlatformAnalyticsDashboardData["syncHistory"]
+  rows: PlatformAnalyticsDashboardData["syncHistory"];
 }) {
   return (
     <Card>
@@ -764,7 +982,7 @@ function SyncHistoryTable({
       </CardHeader>
       <CardContent>
         <ScrollArea className="w-full" scrollbars="horizontal">
-          <table className="w-full min-w-[800px] border-collapse text-sm">
+          <table className="w-full min-w-200 border-collapse text-sm">
             <thead>
               <tr className="border-b text-left">
                 <th className="py-2 pr-4">Started</th>
@@ -783,7 +1001,7 @@ function SyncHistoryTable({
                   </td>
                   <td className="py-2 pr-4">{row.syncType}</td>
                   <td className="py-2 pr-4 font-mono text-xs">
-                    {row.accountId ?? "—"}
+                    {row.accountId ?? "-"}
                   </td>
                   <td className="py-2 pr-4">
                     <StatusBadge status={row.status} />
@@ -795,7 +1013,7 @@ function SyncHistoryTable({
                   </td>
                   <td className="py-2 pr-4">{row.recordsSynced}</td>
                   <td className="max-w-xs py-2 pr-4 text-destructive">
-                    {row.errorMessage ?? "—"}
+                    {row.errorMessage ?? "-"}
                   </td>
                 </tr>
               ))}
@@ -804,7 +1022,7 @@ function SyncHistoryTable({
         </ScrollArea>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function PlaceholderPanel({ message }: { message: string }) {
@@ -814,16 +1032,22 @@ function PlaceholderPanel({ message }: { message: string }) {
         {message}
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function PlatformBadge({ platform }: { platform: PlatformCode }) {
-  const labels = { META: "Meta", TIKTOK: "TikTok", YOUTUBE: "YouTube", GOOGLE: "Google" }
+  const labels = {
+    META: "Meta",
+    TIKTOK: "TikTok",
+    YOUTUBE: "YouTube",
+    GOOGLE: "Google",
+  };
+
   return (
     <Badge variant="neutral" className={cn("font-medium")}>
       {labels[platform]}
     </Badge>
-  )
+  );
 }
 
 function DemoBadge() {
@@ -834,7 +1058,7 @@ function DemoBadge() {
     >
       Demo Data
     </Badge>
-  )
+  );
 }
 
 function StatusRow({
@@ -842,16 +1066,22 @@ function StatusRow({
   ok,
   detail,
 }: {
-  label: string
-  ok: boolean
-  detail?: string
+  label: string;
+  ok: boolean;
+  detail?: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm">
       <span>{label}</span>
-      <span className={ok ? "text-green-700 dark:text-green-400" : "text-amber-700 dark:text-amber-300"}>
+      <span
+        className={
+          ok
+            ? "text-green-700 dark:text-green-400"
+            : "text-amber-700 dark:text-amber-300"
+        }
+      >
         {detail ?? (ok ? "OK" : "Missing")}
       </span>
     </div>
-  )
+  );
 }

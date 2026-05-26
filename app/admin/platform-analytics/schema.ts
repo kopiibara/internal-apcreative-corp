@@ -1,18 +1,53 @@
-import { z } from "zod"
+import { z } from "zod";
 
-export const analyticsPlatforms = ["META", "TIKTOK", "YOUTUBE", "GOOGLE"] as const
+export const analyticsPlatforms = [
+  "META",
+  "TIKTOK",
+  "YOUTUBE",
+  "GOOGLE",
+] as const;
 
-export const metaScopes = ["combined", "facebook", "instagram"] as const
+export const metaScopes = ["combined", "facebook", "instagram"] as const;
+
+export const analyticsDateRanges = ["7d", "28d", "90d", "365d"] as const;
 
 export const platformAnalyticsFiltersSchema = z.object({
   platform: z.enum(analyticsPlatforms).default("META"),
   accountId: z.string().trim().optional().nullable(),
   metaScope: z.enum(metaScopes).default("combined"),
-})
+  dateRange: z.enum(analyticsDateRanges).default("28d"),
+});
 
 export const metaMonitoringFiltersSchema = z.object({
   pageId: z.string().trim().optional().nullable(),
-})
+});
+
+export const metaPostsSortOptions = [
+  "latest",
+  "highest_engagement",
+  "most_comments",
+  "most_shares",
+  "most_reactions",
+] as const;
+
+export const metaPostsPageSizes = [10, 25, 50] as const;
+
+export const metaPostsFiltersSchema = z.object({
+  pageKey: z.enum(["neon-nights", "pro-group", "al-qaysar"]).default("neon-nights"),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z
+    .union([z.literal(10), z.literal(25), z.literal(50)])
+    .default(10),
+  sort: z.enum(metaPostsSortOptions).default("latest"),
+  search: z.string().trim().optional(),
+  dateFrom: z.string().trim().optional().nullable(),
+  dateTo: z.string().trim().optional().nullable(),
+});
+
+export const metaPostCommentsSchema = z.object({
+  pageKey: z.enum(["neon-nights", "pro-group", "al-qaysar"]),
+  postId: z.string().trim().min(1),
+});
 
 export const registerMetaPageSchema = z.object({
   facebookPageId: z.string().trim().min(1, "Facebook Page ID is required."),
@@ -23,4 +58,4 @@ export const registerMetaPageSchema = z.object({
     .array(z.string().trim().min(1))
     .min(1, "At least one webhook field is required.")
     .default(["feed"]),
-})
+});

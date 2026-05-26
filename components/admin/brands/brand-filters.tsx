@@ -7,6 +7,7 @@ import { FilterBadge } from "@/components/shared/filter-badge"
 import { FilterBadgeGroup } from "@/components/shared/filter-badge-group"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { neoInputClass } from "@/lib/ui/neo-ui"
 import { useBrandStore } from "@/stores/use-brand-store"
@@ -34,32 +35,9 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
   } = useBrandStore()
 
   return (
-    <div className="flex min-w-0 flex-col gap-3">
-      <FilterBadgeGroup label="" className="min-w-0">
-        <FilterBadge
-          active={selectedBrandFilter === "all"}
-          onClick={() => setSelectedBrandFilter("all")}
-        >
-          All Brands
-        </FilterBadge>
-
-        {brands.map((brand) => (
-          <FilterBadge
-            key={brand.id}
-            active={
-              selectedBrandFilter !== "all" &&
-              selectedBrandId === brand.id &&
-              selectedBrandFilter === String(brand.id)
-            }
-            onClick={() => setSelectedBrandFilter(String(brand.id))}
-          >
-            {brand.name}
-          </FilterBadge>
-        ))}
-      </FilterBadgeGroup>
-
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="relative min-w-0 sm:w-[260px] md:w-[320px]">
+    <ScrollArea className="w-full pb-2" scrollbars="horizontal">
+      <div className="flex w-max min-w-full items-center gap-2 py-1 pr-1">
+        <div className="relative shrink-0 min-w-[220px] sm:min-w-[260px] md:min-w-[320px]">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchQuery}
@@ -69,33 +47,63 @@ export function BrandFilters({ brands, selectedBrandId }: BrandFiltersProps) {
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {(["active", "inactive"] as const).map((status) => (
+        <FilterBadgeGroup label="" className="min-w-0 shrink-0" scrollable>
+          <FilterBadge
+            active={selectedBrandFilter === "all"}
+            onClick={() => setSelectedBrandFilter("all")}
+          >
+            All Brands
+          </FilterBadge>
+
+          {brands.map((brand) => (
             <FilterBadge
-              key={status}
-              active={selectedStatusFilter === status}
-              onClick={() => {
-                setSelectedStatusFilter(
-                  selectedStatusFilter === status ? "all" : status
-                )
-                setSelectedBrandFilter("all")
-              }}
+              key={brand.id}
+              active={
+                selectedBrandFilter !== "all" &&
+                selectedBrandId === brand.id &&
+                selectedBrandFilter === String(brand.id)
+              }
+              onClick={() => setSelectedBrandFilter(String(brand.id))}
             >
-              {statusLabels[status]}
+              {brand.name}
             </FilterBadge>
           ))}
+        </FilterBadgeGroup>
 
-          <Button
-            type="button"
-            variant="neutral"
-            size="sm"
-            className="h-9 whitespace-nowrap rounded-lg shadow-none hover:translate-x-0 hover:translate-y-0 hover:shadow-none active:translate-x-0 active:translate-y-0"
-            onClick={resetBrandFilters}
-          >
-            Reset Filters
-          </Button>
-        </div>
+        <FilterBadge
+          active={selectedStatusFilter === "active"}
+          onClick={() => {
+            setSelectedStatusFilter(
+              selectedStatusFilter === "active" ? "all" : "active",
+            )
+            setSelectedBrandFilter("all")
+          }}
+        >
+          {statusLabels.active}
+        </FilterBadge>
+
+        <FilterBadge
+          active={selectedStatusFilter === "inactive"}
+          onClick={() => {
+            setSelectedStatusFilter(
+              selectedStatusFilter === "inactive" ? "all" : "inactive",
+            )
+            setSelectedBrandFilter("all")
+          }}
+        >
+          {statusLabels.inactive}
+        </FilterBadge>
+
+        <Button
+          type="button"
+          variant="neutral"
+          size="sm"
+          className="h-9 shrink-0 whitespace-nowrap rounded-lg shadow-none hover:translate-x-0 hover:translate-y-0 hover:shadow-none active:translate-x-0 active:translate-y-0"
+          onClick={resetBrandFilters}
+        >
+          Reset Filters
+        </Button>
       </div>
-    </div>
+    </ScrollArea>
   )
 }
