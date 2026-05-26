@@ -14,9 +14,8 @@ import { getMetaMonitoringDashboardData } from "@/lib/meta/monitoring-data";
 import { getPlatformAnalyticsDashboardData } from "@/lib/platform-analytics/get-dashboard-data";
 import type { AnalyticsPlatform, MetaScope } from "@/lib/platform-analytics/types";
 import {
+  runAllMetaSyncJobs,
   runMetaSyncJob,
-  syncDailyPageSnapshots,
-  syncHourlyPostMetrics,
 } from "@/lib/meta/sync";
 import type { MetaSyncType } from "@/lib/meta/types";
 import { can } from "@/lib/permissions";
@@ -239,8 +238,9 @@ export async function bootstrapMetaMonitoringAction(): Promise<
 
 export async function syncAllMetaMonitoringAction(): Promise<
   MetaMonitoringActionResult<{
-    dailySnapshots: number;
-    postMetrics: number;
+    dailyPage: number;
+    hourlyPosts: number;
+    dailyInsights: number;
   }>
 > {
   const authError = await authorizeMetaManage();
@@ -249,16 +249,13 @@ export async function syncAllMetaMonitoringAction(): Promise<
   }
 
   try {
-    const [dailySnapshots, postMetrics] = await Promise.all([
-      syncDailyPageSnapshots(),
-      syncHourlyPostMetrics(),
-    ]);
+    const result = await runAllMetaSyncJobs();
     revalidatePath("/admin/platform-analytics");
 
     return {
       success: true,
-      message: "Full analytics sync completed.",
-      data: { dailySnapshots, postMetrics },
+      message: `Meta sync finished: daily_page=${result.dailyPage}, hourly_posts=${result.hourlyPosts}, daily_insights=${result.dailyInsights}.`,
+      data: result,
     };
   } catch (error) {
     return {

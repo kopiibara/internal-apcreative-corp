@@ -7,6 +7,7 @@ export type MetaWebhookProcessingStatus =
 export type MetaSyncType =
   | "hourly_posts"
   | "daily_page"
+  | "daily_insights"
   | "weekly_summary"
   | "monthly_summary"
 
