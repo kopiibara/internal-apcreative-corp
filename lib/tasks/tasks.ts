@@ -421,6 +421,7 @@ export async function getTaskAssignmentsForEmployee(profileId: number) {
     `
     ${ASSIGNMENT_SELECT}
     WHERE ta.assigned_to_profile_id = $1
+       OR t.created_by_profile_id = $1
     ORDER BY
       CASE ta.status
         WHEN 'ASSIGNED' THEN 1
