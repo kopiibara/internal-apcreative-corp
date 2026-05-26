@@ -92,3 +92,12 @@ Page files should fetch data, check access, and compose components — not hold 
 - Server actions and `lib/**` services own auth, permissions, SQL, validation, sanitization, and rate limits.
 - Client components own UI state and interaction only.
 - Never place SQL, env secrets, or permission enforcement only in client code.
+
+## Automated Versioning and Changelog
+
+- Use Conventional Commits (`fix:`, `feat:`, `feat!:`) so release tooling can
+  choose patch, minor, or major bumps.
+- Run `npm run release:dry` before `npm run release`.
+- `release-it` generates `public/CHANGELOG.md`.
+- The app version should be read from `package.json` through a shared helper.
+- Do not commit fake changelog entries or hand-edit versions unless necessary.

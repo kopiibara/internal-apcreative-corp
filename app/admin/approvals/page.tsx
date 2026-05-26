@@ -40,6 +40,7 @@ export default async function ApprovalsPage({ searchParams }: ApprovalsPageProps
     <ApprovalKanbanBoard
       reports={reports}
       accountType={context.profile.account_type}
+      position={context.profile.position}
       canSupervisorReview={canSupervisorReview}
       canDirectorReview={canDirectorReview}
       canPublishUpdate={canPublishUpdate}

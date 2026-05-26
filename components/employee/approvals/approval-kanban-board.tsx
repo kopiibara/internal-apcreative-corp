@@ -39,8 +39,10 @@ import {
 import { filterApprovalReports } from "@/lib/approvals/approval-filters"
 import {
   EMPLOYEE_APPROVAL_KANBAN_COLUMNS,
+  getBrandOfficerReadyToPublishCount,
   getEmployeeApprovalKanbanStage,
 } from "@/lib/approvals/approval-kanban"
+import { useApprovalPollingRefresh } from "@/hooks/use-approval-polling-refresh"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 import type { ContentReportBrandOption } from "@/lib/content-report-brand-options"
 import type { ContentReport } from "@/types/content-report"
@@ -49,6 +51,8 @@ import { cn } from "@/lib/utils"
 type EmployeeApprovalKanbanBoardProps = {
   reports: ContentReport[]
   brandOptions: ContentReportBrandOption[]
+  canCreateContentReport?: boolean
+  currentProfileId: number
 }
 
 function buildEmployeeColumns(reports: ContentReport[]) {
@@ -66,8 +70,11 @@ function buildEmployeeColumns(reports: ContentReport[]) {
 export function EmployeeApprovalKanbanBoard({
   reports,
   brandOptions,
+  canCreateContentReport = false,
+  currentProfileId,
 }: EmployeeApprovalKanbanBoardProps) {
   const router = useRouter()
+  useApprovalPollingRefresh()
   const [isPending, startTransition] = useTransition()
   const {
     selectedContentReport,
@@ -115,6 +122,10 @@ export function EmployeeApprovalKanbanBoard({
 
   const columns = useMemo(
     () => buildEmployeeColumns(filteredReports),
+    [filteredReports]
+  )
+  const readyToPublishCount = useMemo(
+    () => getBrandOfficerReadyToPublishCount(filteredReports),
     [filteredReports]
   )
   const hasNoReports = reports.length === 0
@@ -165,7 +176,7 @@ export function EmployeeApprovalKanbanBoard({
           </p>
         ) : null}
 
-        <div className="flex min-w-0 flex-wrap items-center justify-start gap-3 lg:shrink-0 lg:justify-end">
+        <div className="flex min-w-0 flex-wrap items-center justify-start gap-3 pr-1 lg:shrink-0 lg:justify-end">
           <Tabs
             value={activeView}
             onValueChange={(value) =>
@@ -174,14 +185,23 @@ export function EmployeeApprovalKanbanBoard({
             className="w-auto shrink-0"
           >
             <TabsList>
-              <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
+              <TabsTrigger value="kanban">
+                Kanban Board
+                {readyToPublishCount > 0 ? (
+                  <span className="ml-2 rounded-md border border-border bg-background px-1.5 text-xs">
+                    {readyToPublishCount}
+                  </span>
+                ) : null}
+              </TabsTrigger>
               <TabsTrigger value="table">Table View</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Button className="shrink-0" onClick={openCreateDialog}>
-            <Plus className="size-4" />
-            Create Approval Report
-          </Button>
+          {canCreateContentReport ? (
+            <Button className="shrink-0" onClick={openCreateDialog}>
+              <Plus className="size-4" />
+              Create Approval Report
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -230,7 +250,10 @@ export function EmployeeApprovalKanbanBoard({
               <EmployeeApprovalFilters reports={reports} />
             </CardHeader>
             <CardContent className="min-w-0">
-              <EmployeeApprovalTableView reports={filteredReports} />
+              <EmployeeApprovalTableView
+                reports={filteredReports}
+                currentProfileId={currentProfileId}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -264,7 +287,7 @@ export function EmployeeApprovalKanbanBoard({
         />
       ) : null}
 
-      <ContentReportDetailsSheet />
+      <ContentReportDetailsSheet currentProfileId={currentProfileId} />
 
       <AlertDialog
         open={isDeleteDialogOpen}

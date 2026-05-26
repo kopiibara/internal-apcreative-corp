@@ -27,7 +27,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
   SelectContent,
@@ -66,9 +65,7 @@ export function TaskCreateDialog({
   const [isPending, startTransition] = useTransition()
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([
-    currentProfileId,
-  ])
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([])
   const [dueDate, setDueDate] = useState<string | null>(null)
   const [priority, setPriority] = useState<string>("none")
   const [assigneePickerOpen, setAssigneePickerOpen] = useState(false)
@@ -136,6 +133,11 @@ export function TaskCreateDialog({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    if (!personalOnly && selectedAssigneeIds.length === 0) {
+      toast.error("Select at least one assignee.")
+      return
+    }
+
     startTransition(async () => {
       const result = await createTask({
         title,
@@ -152,7 +154,7 @@ export function TaskCreateDialog({
         onOpenChange(false)
         setTitle("")
         setDescription("")
-        setSelectedAssigneeIds([currentProfileId])
+        setSelectedAssigneeIds([])
         setDueDate(null)
         setPriority("none")
         router.refresh()
@@ -224,11 +226,17 @@ export function TaskCreateDialog({
                     <ChevronsUpDown className="size-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                  <ScrollArea
-                    className="h-56 max-h-56"
-                    scrollbars="vertical"
-                    viewportClassName="p-2"
+                <PopoverContent
+                  align="start"
+                  sideOffset={6}
+                  className="w-[var(--radix-popover-trigger-width)] p-0"
+                  onWheel={(event) => event.stopPropagation()}
+                  onTouchMove={(event) => event.stopPropagation()}
+                >
+                  <div
+                    className="max-h-[min(300px,50vh)] overflow-y-auto overscroll-contain p-2 pr-1"
+                    onWheel={(event) => event.stopPropagation()}
+                    onTouchMove={(event) => event.stopPropagation()}
                   >
                     {assigneeOptions.map((assignee) => {
                       const isSelected = selectedAssigneeIds.includes(assignee.id)
@@ -272,7 +280,7 @@ export function TaskCreateDialog({
                         </Button>
                       )
                     })}
-                  </ScrollArea>
+                  </div>
                 </PopoverContent>
               </Popover>
 
@@ -298,9 +306,7 @@ export function TaskCreateDialog({
                         variant="ghost"
                         size="icon-sm"
                         onClick={() => toggleAssignee(assignee.id)}
-                        disabled={
-                          isPending || selectedAssigneeIds.length === 1
-                        }
+                        disabled={isPending}
                       >
                         <X className="size-3" />
                       </Button>

@@ -26,7 +26,7 @@ export const reviewStatuses = APPROVAL_STATUSES;
 export const publishStatuses = PUBLISH_STATUSES;
 
 export const platformOptions = [
-  "Meta (Instagram and Facebook)",
+  "Meta (IG and FB)",
   "TikTok",
   "YouTube",
   "All Platforms",
@@ -60,7 +60,7 @@ const optionalUrlSchema = z.preprocess((value) => {
 export const createContentReportSchema = z.object({
   brandId: z.coerce.number().int().positive().optional(),
   contentType: z.enum(contentTypes),
-  platform: z.enum(platformOptions).default("Meta (Instagram and Facebook)"),
+  platform: z.enum(platformOptions).default("Meta (IG and FB)"),
   contentInspo: optionalTextSchema,
   caption: z.string().trim().min(1, "Caption is required."),
   assetLink: optionalUrlSchema,

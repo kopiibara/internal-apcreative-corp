@@ -18,10 +18,17 @@ import { query, transaction } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import {
+  canEmployeeCreateContentReport,
+  canUserCreateApprovalForBrand,
   canUserPublishApprovalRequest,
   canUserScheduleApprovalRequest,
 } from "@/lib/approvals/approval-permissions";
+import { isEmployeeAccountType } from "@/lib/auth/account-type";
 import { insertApprovalActivityLog } from "@/lib/approvals/approval-activity-log";
+import {
+  buildRevisionAddressedMetadata,
+  getOpenRevisionRequestsFromLogs,
+} from "@/lib/approvals/approval-revision";
 
 import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
 
@@ -34,6 +41,12 @@ export type ActionResult<T = unknown> = {
 type ReportOwnershipRow = {
   submitted_by_profile_id: number;
   brand_id: number | null;
+  content_type: string;
+  platform: string;
+  content_inspo: string | null;
+  caption: string;
+  asset_link: string | null;
+  employee_comments: string | null;
   supervisor_status: "Pending" | "Approved" | "Rejected" | "Revision";
   director_status: "Pending" | "Approved" | "Rejected" | "Revision";
   publish_status: "Pending" | "Scheduled" | "Published" | "Cancelled";
@@ -46,7 +59,83 @@ function revalidateApprovalRoutes() {
   }
 }
 
-async function authorizeContentReportAction(permissionKey: string) {
+function formatNullableText(value: string | null) {
+  return value ?? "";
+}
+
+function getChangedApprovalFields(
+  current: ReportOwnershipRow,
+  next: {
+    brandId: number;
+    contentType: string;
+    platform: string;
+    contentInspo: string | null;
+    caption: string;
+    assetLink: string | null;
+    employeeComments: string | null;
+  },
+) {
+  const fields = [
+    {
+      field: "brandId",
+      label: "Brand",
+      from: current.brand_id == null ? null : String(current.brand_id),
+      to: String(next.brandId),
+    },
+    {
+      field: "contentType",
+      label: "Content type",
+      from: current.content_type,
+      to: next.contentType,
+    },
+    {
+      field: "platform",
+      label: "Platform",
+      from: current.platform,
+      to: next.platform,
+    },
+    {
+      field: "contentInspo",
+      label: "Content inspo",
+      from: formatNullableText(current.content_inspo),
+      to: formatNullableText(next.contentInspo),
+    },
+    {
+      field: "caption",
+      label: "Caption",
+      from: current.caption,
+      to: next.caption,
+    },
+    {
+      field: "assetLink",
+      label: "Asset link",
+      from: formatNullableText(current.asset_link),
+      to: formatNullableText(next.assetLink),
+    },
+    {
+      field: "employeeComments",
+      label: "Employee notes",
+      from: formatNullableText(current.employee_comments),
+      to: formatNullableText(next.employeeComments),
+    },
+  ];
+
+  return fields.filter((field) => field.from !== field.to);
+}
+
+const CONTENT_REPORT_PERMISSION_MESSAGES: Record<string, string> = {
+  "content_reports.create":
+    "You need an active brand assignment before you can create approval requests.",
+  "content_reports.update":
+    "You do not have permission to update this approval request.",
+  "content_reports.view":
+    "You do not have permission to view approval requests.",
+};
+
+async function authorizeContentReportAction(
+  permissionKey: string,
+  brandId?: number,
+) {
   const context = await getCurrentProfileContext();
 
   if (!context) {
@@ -67,13 +156,19 @@ async function authorizeContentReportAction(permissionKey: string) {
     };
   }
 
-  const allowed = await can(context.profile.auth_user_id, permissionKey);
+  const allowed = await can(
+    context.profile.auth_user_id,
+    permissionKey,
+    brandId,
+  );
 
   if (!allowed) {
     return {
       error: {
         success: false,
-        message: "You do not have permission to perform this action.",
+        message:
+          CONTENT_REPORT_PERMISSION_MESSAGES[permissionKey] ??
+          "You do not have permission to perform this action.",
       } satisfies ActionResult,
     };
   }
@@ -89,6 +184,12 @@ async function getReportOwnership(reportId: number) {
     SELECT
       submitted_by_profile_id,
       brand_id,
+      content_type,
+      platform,
+      content_inspo,
+      caption,
+      asset_link,
+      employee_comments,
       supervisor_status,
       director_status,
       publish_status,
@@ -106,12 +207,20 @@ async function getReportOwnership(reportId: number) {
 export async function createContentReport(
   input: unknown,
 ): Promise<ActionResult> {
-  const authorization = await authorizeContentReportAction(
-    "content_reports.create",
-  );
+  const context = await getCurrentProfileContext();
 
-  if (authorization.error) {
-    return authorization.error;
+  if (!context) {
+    return {
+      success: false,
+      message: "You must be signed in to perform this action.",
+    };
+  }
+
+  if (context.profile.status !== "ACTIVE") {
+    return {
+      success: false,
+      message: "Your account is not active.",
+    };
   }
 
   const rateLimit = await enforceRateLimit({
@@ -133,7 +242,7 @@ export async function createContentReport(
     };
   }
 
-  const { profile } = authorization.context;
+  const { profile } = context;
   const brandResolution = await resolveContentReportBrandId(
     profile.id,
     parsed.data.brandId,
@@ -147,6 +256,22 @@ export async function createContentReport(
   }
 
   const brandId = brandResolution.brandId;
+
+  if (!isEmployeeAccountType(profile.account_type)) {
+    return {
+      success: false,
+      message: "Only employee accounts can create approval requests.",
+    };
+  }
+
+  const canCreate = await canEmployeeCreateContentReport(profile, brandId);
+
+  if (!canCreate) {
+    return {
+      success: false,
+      message: CONTENT_REPORT_PERMISSION_MESSAGES["content_reports.create"],
+    };
+  }
 
   try {
     await query(
@@ -220,12 +345,20 @@ export async function createContentReport(
 export async function updateContentReport(
   input: unknown,
 ): Promise<ActionResult> {
-  const authorization = await authorizeContentReportAction(
-    "content_reports.update",
-  );
+  const context = await getCurrentProfileContext();
 
-  if (authorization.error) {
-    return authorization.error;
+  if (!context) {
+    return {
+      success: false,
+      message: "You must be signed in to perform this action.",
+    };
+  }
+
+  if (context.profile.status !== "ACTIVE") {
+    return {
+      success: false,
+      message: "Your account is not active.",
+    };
   }
 
   const rateLimit = await enforceRateLimit({
@@ -247,7 +380,7 @@ export async function updateContentReport(
     };
   }
 
-  const { profile } = authorization.context;
+  const { profile } = context;
   const report = await getReportOwnership(parsed.data.reportId);
 
   if (!report || report.submitted_by_profile_id !== profile.id) {
@@ -283,36 +416,196 @@ export async function updateContentReport(
     };
   }
 
-  try {
-    await query(
-      `
-      UPDATE content_report
-      SET
-        brand_id = $2,
-        content_type = $3,
-        platform = $4,
-        content_inspo = $5,
-        caption = $6,
-        asset_link = $7,
-        employee_comments = $8,
-        updated_at = now()
-      WHERE id = $1
-      `,
-      [
-        parsed.data.reportId,
-        brandResolution.brandId,
-        parsed.data.contentType,
-        parsed.data.platform,
-        parsed.data.contentInspo,
-        parsed.data.caption,
-        parsed.data.assetLink,
-        parsed.data.employeeComments,
-      ],
-    );
+  const brandId = brandResolution.brandId;
 
-    for (const route of APPROVAL_REVALIDATE_PATHS) {
-      revalidatePath(route);
-    }
+  if (!isEmployeeAccountType(profile.account_type)) {
+    return {
+      success: false,
+      message: "Only employee accounts can update approval requests.",
+    };
+  }
+
+  const canUpdate = await canUserCreateApprovalForBrand(profile.id, brandId);
+
+  if (!canUpdate) {
+    return {
+      success: false,
+      message: CONTENT_REPORT_PERMISSION_MESSAGES["content_reports.update"],
+    };
+  }
+  const brandChanged = report.brand_id !== brandId;
+  const reviewStarted =
+    report.supervisor_status !== "Pending" ||
+    report.director_status !== "Pending";
+
+  if (brandChanged && reviewStarted) {
+    return {
+      success: false,
+      message:
+        "Brand can only be changed before Supervisor or Director review starts.",
+    };
+  }
+
+  const changedFields = getChangedApprovalFields(report, {
+    brandId,
+    contentType: parsed.data.contentType,
+    platform: parsed.data.platform,
+    contentInspo: parsed.data.contentInspo,
+    caption: parsed.data.caption,
+    assetLink: parsed.data.assetLink,
+    employeeComments: parsed.data.employeeComments,
+  });
+  const hadSupervisorRevision = report.supervisor_status === "Revision";
+  const hadDirectorRevision = report.director_status === "Revision";
+
+  try {
+    await transaction(async (client) => {
+      const activityLogsResult = await client.query<{
+        id: number;
+        content_report_id: number;
+        actor_profile_id: number;
+        actor_name: string;
+        actor_account_type: string;
+        actor_position: string | null;
+        action: string;
+        from_status: string | null;
+        to_status: string | null;
+        notes: string;
+        metadata: Record<string, unknown> | null;
+        created_at: Date;
+      }>(
+        `
+        SELECT
+          aal.id,
+          aal.content_report_id,
+          aal.actor_profile_id,
+          actor.full_name AS actor_name,
+          actor.account_type AS actor_account_type,
+          actor.position AS actor_position,
+          aal.action,
+          aal.from_status,
+          aal.to_status,
+          aal.notes,
+          aal.metadata,
+          aal.created_at
+        FROM approval_activity_log aal
+        JOIN profile actor ON actor.id = aal.actor_profile_id
+        WHERE aal.content_report_id = $1
+        ORDER BY aal.created_at ASC
+        `,
+        [parsed.data.reportId],
+      );
+
+      const activityLogs = activityLogsResult.rows.map((row) => ({
+        id: row.id,
+        contentReportId: row.content_report_id,
+        actorProfileId: row.actor_profile_id,
+        actorName: row.actor_name,
+        actorAccountType: row.actor_account_type,
+        actorPosition: row.actor_position,
+        action: row.action,
+        fromStatus: row.from_status,
+        toStatus: row.to_status,
+        notes: row.notes,
+        metadata: row.metadata,
+        createdAt: row.created_at.toISOString(),
+      }));
+
+      const openRevisionRequests = getOpenRevisionRequestsFromLogs(activityLogs, {
+        supervisorStatus: report.supervisor_status,
+        directorStatus: report.director_status,
+      });
+
+      await client.query(
+        `
+        UPDATE content_report
+        SET
+          brand_id = $2,
+          content_type = $3,
+          platform = $4,
+          content_inspo = $5,
+          caption = $6,
+          asset_link = $7,
+          employee_comments = $8,
+          supervisor_status = CASE
+            WHEN $9 THEN 'Pending'
+            ELSE supervisor_status
+          END,
+          director_status = CASE
+            WHEN $10 THEN 'Pending'
+            ELSE director_status
+          END,
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [
+          parsed.data.reportId,
+          brandId,
+          parsed.data.contentType,
+          parsed.data.platform,
+          parsed.data.contentInspo,
+          parsed.data.caption,
+          parsed.data.assetLink,
+          parsed.data.employeeComments,
+          hadSupervisorRevision,
+          hadDirectorRevision,
+        ],
+      );
+
+      if (changedFields.length > 0) {
+        await insertApprovalActivityLog({
+          client,
+          reportId: parsed.data.reportId,
+          actorProfileId: profile.id,
+          action: "approval_request_edited",
+          fromStatus: report.publish_status,
+          toStatus: report.publish_status,
+          notes: `Approval request edited. Changed fields: ${changedFields
+            .map((field) => field.label)
+            .join(", ")}.`,
+          metadata: {
+            changedFields,
+            source: "approval_form",
+          },
+        });
+      }
+
+      for (const revisionRequest of openRevisionRequests) {
+        await insertApprovalActivityLog({
+          client,
+          reportId: parsed.data.reportId,
+          actorProfileId: profile.id,
+          action: "revision_addressed",
+          fromStatus: "Revision",
+          toStatus: "Pending",
+          notes: [
+            `Creator addressed revision requested by ${revisionRequest.requestedByName}.`,
+            `Addressed areas: ${revisionRequest.areaLabels.join(", ") || "Updated fields"}`,
+            changedFields.length > 0
+              ? `Changed fields:\n${changedFields
+                  .map(
+                    (field) =>
+                      `- ${field.label}: "${field.from || "Empty"}" → "${field.to || "Empty"}"`,
+                  )
+                  .join("\n")}`
+              : null,
+            `${revisionRequest.roleLabel} status reset from Revision to Pending.`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          metadata: buildRevisionAddressedMetadata({
+            revisionRole: revisionRequest.role,
+            revisionAreas: revisionRequest.areas,
+            revisionInstruction: revisionRequest.instruction,
+            addressedByProfileId: profile.id,
+            addressedByName: profile.full_name,
+            changedFields,
+          }),
+        });
+      }
+    });
+
+    revalidateApprovalRoutes();
 
     return {
       success: true,

@@ -68,14 +68,6 @@ function DirectorReviewFormFields({
       return
     }
 
-    if (
-      status === "Approved" &&
-      report.supervisorStatus !== "Approved"
-    ) {
-      toast.error("Supervisor approval is required before Director approval.")
-      return
-    }
-
     openVerificationDialog({
       type: "director",
       report: {

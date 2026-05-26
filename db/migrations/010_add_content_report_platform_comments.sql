@@ -1,5 +1,5 @@
 ALTER TABLE content_report
-  ADD COLUMN IF NOT EXISTS platform TEXT NOT NULL DEFAULT 'Meta (Instagram and Facebook)',
+  ADD COLUMN IF NOT EXISTS platform TEXT NOT NULL DEFAULT 'Meta (IG and FB)',
   ADD COLUMN IF NOT EXISTS employee_comments TEXT;
 
 ALTER TABLE content_report
@@ -8,7 +8,7 @@ ALTER TABLE content_report
 ALTER TABLE content_report
   ADD CONSTRAINT content_report_platform_check CHECK (
     platform IN (
-      'Meta (Instagram and Facebook)',
+      'Meta (IG and FB)',
       'TikTok',
       'YouTube',
       'All Platforms'

@@ -31,7 +31,7 @@ export function ApprovalRoleStatusBadge({
 type ApprovalStatusBadgesProps = {
   supervisorStatus: ApprovalStatus
   directorStatus: ApprovalStatus
-  publishStatus: PublishStatus
+  publishStatus: PublishStatus | "Ready to Publish"
   compact?: boolean
   className?: string
 }

@@ -11,6 +11,7 @@ import {
   ApprovalMetadataPanel,
   ApprovalSheetHeader,
 } from "@/components/shared/approval-details-display"
+import { ApprovalNeedsRevisionPanel } from "@/components/shared/approval-needs-revision-panel"
 import {
   Sheet,
   SheetContent,
@@ -27,6 +28,7 @@ import type { ContentReport } from "@/types/content-report"
 type ApprovalDetailsSheetProps = {
   reports: ContentReport[]
   accountType: AccountType
+  position?: string | null
   canSupervisorReview: boolean
   canDirectorReview: boolean
   canPublishUpdate: boolean
@@ -35,6 +37,7 @@ type ApprovalDetailsSheetProps = {
 export function ApprovalDetailsSheet({
   reports,
   accountType,
+  position,
   canSupervisorReview,
   canDirectorReview,
   canPublishUpdate,
@@ -66,6 +69,7 @@ export function ApprovalDetailsSheet({
               report={resolvedApproval}
               variant="admin"
               accountType={accountType}
+              position={position}
             />
           ) : (
             <>
@@ -83,6 +87,7 @@ export function ApprovalDetailsSheet({
               <ApprovalDetailsGrid
                 main={
                   <>
+                    <ApprovalNeedsRevisionPanel report={resolvedApproval} />
                     <ApprovalMainDetails report={resolvedApproval} />
                     <ApprovalCommentsSection report={resolvedApproval} />
                     <ApprovalActivitySection report={resolvedApproval} />

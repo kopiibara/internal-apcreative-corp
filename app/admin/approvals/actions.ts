@@ -18,6 +18,12 @@ import { canApprovalAction, canDirectorReview } from "@/lib/permissions";
 import { query, transaction } from "@/lib/db";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { insertApprovalActivityLog } from "@/lib/approvals/approval-activity-log";
+import {
+  buildRevisionRequestMetadata,
+  getApprovalRevisionAreaLabel,
+  type ApprovalRevisionAreaId,
+  type ApprovalRevisionRole,
+} from "@/lib/approvals/approval-revision";
 
 import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
 
@@ -75,17 +81,19 @@ function getKanbanReviewLane({
   canSupervisorReview,
   hasDirectorAccess,
   supervisorStatus,
+  position,
 }: {
   accountType: string;
   canSupervisorReview: boolean;
   hasDirectorAccess: boolean;
   supervisorStatus: ReviewGateRow["supervisor_status"];
+  position?: string | null;
 }) {
   if (accountType === "SUPERVISOR") {
     return "supervisor";
   }
 
-  if (accountType === "DIRECTOR") {
+  if (accountType === "DIRECTOR" || position?.toLowerCase().includes("director")) {
     return "director";
   }
 
@@ -178,6 +186,66 @@ function serializeStatus(value: unknown) {
   return value == null ? null : String(value);
 }
 
+function formatRevisionActivityNotes(input: {
+  revisionAreas: ApprovalRevisionAreaId[];
+  revisionInstruction: string;
+  otherExplanation?: string | null;
+}) {
+  const areaLabels = input.revisionAreas.map(getApprovalRevisionAreaLabel);
+  const otherLine = input.otherExplanation?.trim()
+    ? `\nOther details: ${input.otherExplanation.trim()}`
+    : "";
+
+  return `Areas:\n- ${areaLabels.join("\n- ")}\nInstruction:\n${input.revisionInstruction.trim()}${otherLine}`;
+}
+
+async function logRevisionRequested({
+  client,
+  reportId,
+  actorProfileId,
+  revisionRole,
+  fromStatus,
+  revisionAreas,
+  revisionInstruction,
+  otherExplanation,
+  source,
+}: {
+  client: Parameters<typeof insertApprovalActivityLog>[0]["client"];
+  reportId: number;
+  actorProfileId: number;
+  revisionRole: ApprovalRevisionRole;
+  fromStatus: string;
+  revisionAreas: ApprovalRevisionAreaId[];
+  revisionInstruction: string;
+  otherExplanation?: string | null;
+  source: string;
+}) {
+  const metadata = buildRevisionRequestMetadata({
+    revisionRole,
+    revisionAreas,
+    revisionInstruction,
+    otherExplanation,
+  });
+
+  await insertApprovalActivityLog({
+    client,
+    reportId,
+    actorProfileId,
+    action: "revision_requested",
+    fromStatus,
+    toStatus: "Revision",
+    notes: formatRevisionActivityNotes({
+      revisionAreas,
+      revisionInstruction,
+      otherExplanation,
+    }),
+    metadata: {
+      ...metadata,
+      source,
+    },
+  });
+}
+
 async function getUpdatedApprovalOrThrow(reportId: number) {
   const updatedApproval = await getApprovalContentReportById(reportId);
 
@@ -251,6 +319,11 @@ export async function updateSupervisorReview(
         throw new Error("Content report was not found.");
       }
 
+      const isRevisionRequest = parsed.data.supervisorStatus === "Revision";
+      const reviewNotes = isRevisionRequest
+        ? null
+        : parsed.data.supervisorNotes?.trim() || null;
+
       await client.query(
         `
         UPDATE content_report
@@ -275,25 +348,39 @@ export async function updateSupervisorReview(
         [
           parsed.data.reportId,
           parsed.data.supervisorStatus,
-          parsed.data.supervisorNotes,
+          reviewNotes,
           authorization.context.profile.id,
         ],
       );
 
-      await insertApprovalActivityLog({
-        client,
-        reportId: parsed.data.reportId,
-        actorProfileId: authorization.context.profile.id,
-        action: "supervisor_review_update",
-        fromStatus: current.supervisor_status,
-        toStatus: parsed.data.supervisorStatus,
-        notes: parsed.data.supervisorNotes,
-        metadata: {
-          previousNotes: current.supervisor_notes,
-          confirmationAccepted: parsed.data.confirmationAccepted,
+      if (isRevisionRequest) {
+        await logRevisionRequested({
+          client,
+          reportId: parsed.data.reportId,
+          actorProfileId: authorization.context.profile.id,
+          revisionRole: "supervisor",
+          fromStatus: current.supervisor_status,
+          revisionAreas: parsed.data.revisionAreas ?? [],
+          revisionInstruction: parsed.data.revisionInstruction ?? "",
+          otherExplanation: parsed.data.otherExplanation,
           source: "approval_form",
-        },
-      });
+        });
+      } else {
+        await insertApprovalActivityLog({
+          client,
+          reportId: parsed.data.reportId,
+          actorProfileId: authorization.context.profile.id,
+          action: "supervisor_review_update",
+          fromStatus: current.supervisor_status,
+          toStatus: parsed.data.supervisorStatus,
+          notes: parsed.data.supervisorNotes ?? "",
+          metadata: {
+            previousNotes: current.supervisor_notes,
+            confirmationAccepted: parsed.data.confirmationAccepted,
+            source: "approval_form",
+          },
+        });
+      }
 
       if (
         parsed.data.supervisorStatus === "Approved" &&
@@ -411,14 +498,14 @@ export async function updateDirectorReview(
         throw new Error("Content report was not found.");
       }
 
-      if (
-        parsed.data.directorStatus === "Approved" &&
-        current.supervisor_status !== "Approved"
-      ) {
-        throw new Error(
-          "Supervisor approval is required before Director approval.",
-        );
+      if (context.profile.account_type === "SUPERVISOR") {
+        throw new Error("You do not have permission to update Director Review.");
       }
+
+      const isRevisionRequest = parsed.data.directorStatus === "Revision";
+      const reviewNotes = isRevisionRequest
+        ? null
+        : parsed.data.directorNotes?.trim() || null;
 
       await client.query(
         `
@@ -444,25 +531,39 @@ export async function updateDirectorReview(
         [
           parsed.data.reportId,
           parsed.data.directorStatus,
-          parsed.data.directorNotes,
+          reviewNotes,
           context.profile.id,
         ],
       );
 
-      await insertApprovalActivityLog({
-        client,
-        reportId: parsed.data.reportId,
-        actorProfileId: context.profile.id,
-        action: "director_review_update",
-        fromStatus: current.director_status,
-        toStatus: parsed.data.directorStatus,
-        notes: parsed.data.directorNotes,
-        metadata: {
-          previousNotes: current.director_notes,
-          confirmationAccepted: parsed.data.confirmationAccepted,
+      if (isRevisionRequest) {
+        await logRevisionRequested({
+          client,
+          reportId: parsed.data.reportId,
+          actorProfileId: context.profile.id,
+          revisionRole: "director",
+          fromStatus: current.director_status,
+          revisionAreas: parsed.data.revisionAreas ?? [],
+          revisionInstruction: parsed.data.revisionInstruction ?? "",
+          otherExplanation: parsed.data.otherExplanation,
           source: "approval_form",
-        },
-      });
+        });
+      } else {
+        await insertApprovalActivityLog({
+          client,
+          reportId: parsed.data.reportId,
+          actorProfileId: context.profile.id,
+          action: "director_review_update",
+          fromStatus: current.director_status,
+          toStatus: parsed.data.directorStatus,
+          notes: parsed.data.directorNotes ?? "",
+          metadata: {
+            previousNotes: current.director_notes,
+            confirmationAccepted: parsed.data.confirmationAccepted,
+            source: "approval_form",
+          },
+        });
+      }
 
       if (
         current.supervisor_status === "Approved" &&
@@ -740,11 +841,6 @@ export async function updateApprovalKanbanColumn(
     context.profile.id,
     "approvals.request_revision",
   );
-  const canPublishUpdate = await canApprovalAction(
-    context.profile.auth_user_id,
-    context.profile.id,
-    "approvals.publish_update",
-  );
   const hasDirectorAccess = await canDirectorReview(
     context.profile.auth_user_id,
     context.profile.id,
@@ -776,7 +872,10 @@ export async function updateApprovalKanbanColumn(
         throw new Error("Content report was not found.");
       }
 
-      const notes = parsed.data.notes;
+      const isRevisionMove = parsed.data.toColumn === "revision";
+      const notes = isRevisionMove
+        ? (parsed.data.revisionInstruction ?? "")
+        : (parsed.data.notes ?? "");
       const baseLog = {
         client,
         reportId: parsed.data.reportId,
@@ -790,10 +889,34 @@ export async function updateApprovalKanbanColumn(
         },
       };
 
-      if (parsed.data.toColumn === "pending") {
-        if (!canSupervisorReview) {
+      const nextStatusByColumn = {
+        pending: "Pending",
+        approved: "Approved",
+        "ready-to-publish": "Approved",
+        revision: "Revision",
+        rejected: "Rejected",
+        published: null,
+      } as const;
+      const nextStatus = nextStatusByColumn[parsed.data.toColumn];
+
+      if (!nextStatus) {
+        throw new Error(
+          "Use the publishing form to schedule or publish approval requests.",
+        );
+      }
+
+      const reviewLane = getKanbanReviewLane({
+        accountType: context.profile.account_type,
+        position: context.profile.position,
+        canSupervisorReview,
+        hasDirectorAccess,
+        supervisorStatus: current.supervisor_status,
+      });
+
+      if (reviewLane === "director") {
+        if (!hasDirectorAccess) {
           throw new Error(
-            "You do not have permission to update Supervisor Review.",
+            "You do not have permission to update Director Review.",
           );
         }
 
@@ -801,57 +924,48 @@ export async function updateApprovalKanbanColumn(
           `
           UPDATE content_report
           SET
-            supervisor_status = 'Pending',
-            supervisor_notes = $2,
-            supervisor_reviewed_by_profile_id = $3,
-            supervisor_reviewed_at = now(),
+            director_status = $2,
+            director_notes = $3,
+            director_reviewed_by_profile_id = $4,
+            director_reviewed_at = now(),
             publish_status = 'Pending',
             scheduled_published_date = NULL,
             updated_at = now()
           WHERE id = $1
           `,
-          [parsed.data.reportId, notes, context.profile.id],
+          [
+            parsed.data.reportId,
+            nextStatus,
+            isRevisionMove ? null : notes,
+            context.profile.id,
+          ],
         );
-        await insertApprovalActivityLog({
-          ...baseLog,
-          action: "kanban_supervisor_status_update",
-          fromStatus: current.supervisor_status,
-          toStatus: "Pending",
-        });
-        return;
-      }
 
-      if (parsed.data.toColumn === "supervisor-approved") {
-        if (
-          current.supervisor_status === "Approved" &&
-          current.director_status === "Revision" &&
-          hasDirectorAccess
-        ) {
-          await client.query(
-            `
-            UPDATE content_report
-            SET
-              director_status = 'Approved',
-              director_notes = $2,
-              director_reviewed_by_profile_id = $3,
-              director_reviewed_at = now(),
-              publish_status = 'Pending',
-              scheduled_published_date = NULL,
-              updated_at = now()
-            WHERE id = $1
-            `,
-            [parsed.data.reportId, notes, context.profile.id],
-          );
+        if (isRevisionMove) {
+          await logRevisionRequested({
+            client,
+            reportId: parsed.data.reportId,
+            actorProfileId: context.profile.id,
+            revisionRole: "director",
+            fromStatus: current.director_status,
+            revisionAreas: parsed.data.revisionAreas ?? [],
+            revisionInstruction: parsed.data.revisionInstruction ?? "",
+            otherExplanation: parsed.data.otherExplanation,
+            source: "kanban_drag",
+          });
+        } else {
           await insertApprovalActivityLog({
             ...baseLog,
             action: "kanban_director_status_update",
             fromStatus: current.director_status,
-            toStatus: "Approved",
-            metadata: {
-              ...baseLog.metadata,
-              resolvedFromRevision: true,
-            },
+            toStatus: nextStatus,
           });
+        }
+
+        if (
+          current.supervisor_status === "Approved" &&
+          nextStatus === "Approved"
+        ) {
           await insertApprovalActivityLog({
             ...baseLog,
             action: "ready_to_publish",
@@ -860,156 +974,68 @@ export async function updateApprovalKanbanColumn(
             notes: "Supervisor and Director approvals are complete.",
             metadata: {
               ...baseLog.metadata,
-              resolvedFromRevision: true,
               source: "kanban_drag",
             },
           });
-          return;
         }
-
-        if (!canSupervisorReview) {
-          throw new Error(
-            "You do not have permission to update Supervisor Review.",
-          );
-        }
-
-        await client.query(
-          `
-          UPDATE content_report
-          SET
-            supervisor_status = 'Approved',
-            supervisor_notes = $2,
-            supervisor_reviewed_by_profile_id = $3,
-            supervisor_reviewed_at = now(),
-            director_status = CASE
-              WHEN director_status IN ('Rejected', 'Revision') THEN 'Pending'
-              ELSE director_status
-            END,
-            publish_status = 'Pending',
-            scheduled_published_date = NULL,
-            updated_at = now()
-          WHERE id = $1
-          `,
-          [parsed.data.reportId, notes, context.profile.id],
-        );
-        await insertApprovalActivityLog({
-          ...baseLog,
-          action: "kanban_supervisor_status_update",
-          fromStatus: current.supervisor_status,
-          toStatus: "Approved",
-        });
         return;
       }
 
-      if (
-        parsed.data.toColumn === "revision" ||
-        parsed.data.toColumn === "rejected"
-      ) {
-        const nextStatus =
-          parsed.data.toColumn === "revision" ? "Revision" : "Rejected";
-        const reviewLane = getKanbanReviewLane({
-          accountType: context.profile.account_type,
-          canSupervisorReview,
-          hasDirectorAccess,
-          supervisorStatus: current.supervisor_status,
-        });
+      const canApplySupervisorDecision =
+        nextStatus === "Revision" ? canRequestRevision : canSupervisorReview;
 
-        if (reviewLane === "director") {
-          if (!hasDirectorAccess) {
-            throw new Error(
-              "You do not have permission to update Director Review.",
-            );
-          }
-
-          await client.query(
-            `
-            UPDATE content_report
-            SET
-              director_status = $2,
-              director_notes = $3,
-              director_reviewed_by_profile_id = $4,
-              director_reviewed_at = now(),
-              publish_status = 'Pending',
-              scheduled_published_date = NULL,
-              updated_at = now()
-            WHERE id = $1
-            `,
-            [parsed.data.reportId, nextStatus, notes, context.profile.id],
-          );
-          await insertApprovalActivityLog({
-            ...baseLog,
-            action: "kanban_director_status_update",
-            fromStatus: current.director_status,
-            toStatus: nextStatus,
-          });
-          return;
-        }
-
-        const canApplySupervisorDecision =
-          nextStatus === "Revision" ? canRequestRevision : canSupervisorReview;
-
-        if (!canApplySupervisorDecision) {
-          throw new Error(
-            "You do not have permission to update Supervisor Review.",
-          );
-        }
-
-        await client.query(
-          `
-          UPDATE content_report
-          SET
-            supervisor_status = $2,
-            supervisor_notes = $3,
-            supervisor_reviewed_by_profile_id = $4,
-            supervisor_reviewed_at = now(),
-            publish_status = 'Pending',
-            scheduled_published_date = NULL,
-            updated_at = now()
-          WHERE id = $1
-          `,
-          [parsed.data.reportId, nextStatus, notes, context.profile.id],
+      if (!canApplySupervisorDecision) {
+        throw new Error(
+          "You do not have permission to update Supervisor Review.",
         );
+      }
+
+      await client.query(
+        `
+        UPDATE content_report
+        SET
+          supervisor_status = $2,
+          supervisor_notes = $3,
+          supervisor_reviewed_by_profile_id = $4,
+          supervisor_reviewed_at = now(),
+          publish_status = 'Pending',
+          scheduled_published_date = NULL,
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [
+          parsed.data.reportId,
+          nextStatus,
+          isRevisionMove ? null : notes,
+          context.profile.id,
+        ],
+      );
+
+      if (isRevisionMove) {
+        await logRevisionRequested({
+          client,
+          reportId: parsed.data.reportId,
+          actorProfileId: context.profile.id,
+          revisionRole: "supervisor",
+          fromStatus: current.supervisor_status,
+          revisionAreas: parsed.data.revisionAreas ?? [],
+          revisionInstruction: parsed.data.revisionInstruction ?? "",
+          otherExplanation: parsed.data.otherExplanation,
+          source: "kanban_drag",
+        });
+      } else {
         await insertApprovalActivityLog({
           ...baseLog,
           action: "kanban_supervisor_status_update",
           fromStatus: current.supervisor_status,
           toStatus: nextStatus,
         });
-        return;
       }
 
-      if (parsed.data.toColumn === "ready-to-publish") {
-        if (!hasDirectorAccess) {
-          throw new Error(
-            "You do not have permission to update Director Review.",
-          );
-        }
-
-        if (current.supervisor_status !== "Approved") {
-          throw new Error("Supervisor approval is required first.");
-        }
-
-        await client.query(
-          `
-          UPDATE content_report
-          SET
-            director_status = 'Approved',
-            director_notes = $2,
-            director_reviewed_by_profile_id = $3,
-            director_reviewed_at = now(),
-            publish_status = 'Pending',
-            scheduled_published_date = NULL,
-            updated_at = now()
-          WHERE id = $1
-          `,
-          [parsed.data.reportId, notes, context.profile.id],
-        );
-        await insertApprovalActivityLog({
-          ...baseLog,
-          action: "kanban_director_status_update",
-          fromStatus: current.director_status,
-          toStatus: "Approved",
-        });
+      if (
+        nextStatus === "Approved" &&
+        current.director_status === "Approved"
+      ) {
         await insertApprovalActivityLog({
           ...baseLog,
           action: "ready_to_publish",
@@ -1020,55 +1046,6 @@ export async function updateApprovalKanbanColumn(
             ...baseLog.metadata,
             source: "kanban_drag",
           },
-        });
-        return;
-      }
-
-      if (
-        parsed.data.toColumn === "scheduled" ||
-        parsed.data.toColumn === "published"
-      ) {
-        if (!canPublishUpdate) {
-          throw new Error("You do not have permission to update Publishing.");
-        }
-
-        if (
-          !canEditPublishingFields({
-            supervisorStatus: current.supervisor_status,
-            directorStatus: current.director_status,
-          })
-        ) {
-          throw new Error(
-            "Publishing fields are locked until supervisor and director are approved.",
-          );
-        }
-
-        const nextStatus =
-          parsed.data.toColumn === "scheduled" ? "Scheduled" : "Published";
-
-        if (nextStatus === "Published" && !current.publishing_proof_url) {
-          throw new Error(
-            "Publishing proof is required before marking as Published.",
-          );
-        }
-
-        await client.query(
-          `
-          UPDATE content_report
-          SET
-            publish_status = $2,
-            scheduled_published_date = COALESCE(scheduled_published_date, now()),
-            remarks_revision_summary = $3,
-            updated_at = now()
-          WHERE id = $1
-          `,
-          [parsed.data.reportId, nextStatus, notes],
-        );
-        await insertApprovalActivityLog({
-          ...baseLog,
-          action: "kanban_publishing_update",
-          fromStatus: current.publish_status,
-          toStatus: nextStatus,
         });
       }
     });

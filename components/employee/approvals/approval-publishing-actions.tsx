@@ -22,15 +22,20 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import type { ContentReport } from "@/types/content-report"
+import type {
+  ApprovalPublishingPermissions,
+  ContentReport,
+} from "@/types/content-report"
 
 type ApprovalPublishingActionsProps = {
   report: ContentReport
+  publishingPermissions: ApprovalPublishingPermissions
   compact?: boolean
 }
 
 export function ApprovalPublishingActions({
   report,
+  publishingPermissions,
   compact = false,
 }: ApprovalPublishingActionsProps) {
   const router = useRouter()
@@ -46,9 +51,8 @@ export function ApprovalPublishingActions({
     report.publishingProofUrl ?? "",
   )
   const [isPending, startTransition] = useTransition()
-  const permissions = report.approvalPublishingPermissions
-  const canPublishNow = permissions?.canPublishNow === true
-  const canSchedulePublish = permissions?.canSchedulePublish === true
+  const canPublishNow = publishingPermissions.canPublishNow
+  const canSchedulePublish = publishingPermissions.canSchedulePublish
 
   if (!canPublishNow && !canSchedulePublish) {
     return null

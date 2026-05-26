@@ -11,12 +11,10 @@ export const APPROVAL_KANBAN_DEMO_MARKER =
 
 export type EmployeeApprovalKanbanColumnId =
   | "pending"
-  | "supervisor-review"
-  | "director-review"
   | "revision"
   | "rejected"
+  | "approved"
   | "ready-to-publish"
-  | "scheduled"
   | "published";
 
 export const EMPLOYEE_APPROVAL_KANBAN_COLUMNS: {
@@ -30,16 +28,6 @@ export const EMPLOYEE_APPROVAL_KANBAN_COLUMNS: {
     description: "New submissions waiting to enter review.",
   },
   {
-    id: "supervisor-review",
-    title: "Supervisor Review",
-    description: "Reports waiting on marketing supervisor review.",
-  },
-  {
-    id: "director-review",
-    title: "Director Review",
-    description: "Supervisor-approved reports waiting on director review.",
-  },
-  {
     id: "revision",
     title: "Revision",
     description: "Reports sent back for revision.",
@@ -50,14 +38,14 @@ export const EMPLOYEE_APPROVAL_KANBAN_COLUMNS: {
     description: "Reports rejected by supervisor or director.",
   },
   {
+    id: "approved",
+    title: "Approved",
+    description: "Reports approved by one reviewer and waiting on the other.",
+  },
+  {
     id: "ready-to-publish",
     title: "Ready to Publish",
     description: "Fully approved reports waiting on publishing.",
-  },
-  {
-    id: "scheduled",
-    title: "Scheduled",
-    description: "Approved content scheduled for publishing.",
   },
   {
     id: "published",
@@ -69,12 +57,10 @@ export const EMPLOYEE_APPROVAL_KANBAN_COLUMNS: {
 /** Canonical workflow stage derived only from supervisor/director/publish fields. */
 export type ApprovalWorkflowStage =
   | "published"
-  | "scheduled"
   | "rejected"
   | "revision"
   | "ready-to-publish"
-  | "director-review"
-  | "supervisor-review"
+  | "approved"
   | "pending";
 
 export type ApprovalKanbanFields = {
@@ -84,55 +70,101 @@ export type ApprovalKanbanFields = {
   scheduledPublishedDate?: string | null;
 };
 
-function isDirectorAwaitingReview(directorStatus: ApprovalStatus) {
-  return directorStatus === "Pending";
-}
+export type ApprovalDisplayStatus = {
+  supervisorStatus: ApprovalStatus;
+  directorStatus: ApprovalStatus;
+  publishStatus: PublishStatus | "Ready to Publish";
+};
 
-export function isAwaitingDirectorReview(report: ApprovalKanbanFields) {
-  return (
-    report.supervisorStatus === "Approved" &&
-    isDirectorAwaitingReview(report.directorStatus)
-  );
+type ApprovalReviewerLane = "supervisor" | "director" | "overview";
+
+export type ApprovalKanbanViewerContext = {
+  accountType?: AccountType;
+  position?: string | null;
+  canSupervisorReview?: boolean;
+  canDirectorReview?: boolean;
+  canPublishUpdate?: boolean;
+  isBrandOfficerView?: boolean;
+};
+
+function isDirectorPosition(position?: string | null) {
+  return position?.toLowerCase().includes("director") ?? false;
 }
 
 export function isReadyToPublish(report: ApprovalKanbanFields) {
   return (
     report.supervisorStatus === "Approved" &&
     report.directorStatus === "Approved" &&
-    report.publishStatus === "Pending"
+    report.publishStatus !== "Published" &&
+    report.publishStatus !== "Cancelled"
   );
 }
 
-/**
- * Single source of truth for approval workflow stage (ordered checks).
- * Director Review means supervisor approved and director has not approved yet.
- */
-export function resolveApprovalWorkflowStage(
+function isRejected(report: ApprovalKanbanFields) {
+  return (
+    report.supervisorStatus === "Rejected" ||
+    report.directorStatus === "Rejected" ||
+    report.publishStatus === "Cancelled"
+  );
+}
+
+function isRevision(report: ApprovalKanbanFields) {
+  return (
+    report.supervisorStatus === "Revision" ||
+    report.directorStatus === "Revision"
+  );
+}
+
+function hasAnyApproval(report: ApprovalKanbanFields) {
+  return (
+    report.supervisorStatus === "Approved" ||
+    report.directorStatus === "Approved"
+  );
+}
+
+export function getApprovalReviewerLane({
+  accountType,
+  position,
+  canSupervisorReview,
+  canDirectorReview,
+  isBrandOfficerView,
+}: ApprovalKanbanViewerContext): ApprovalReviewerLane {
+  if (isBrandOfficerView) {
+    return "overview";
+  }
+
+  if (accountType === "SUPERVISOR") {
+    return "supervisor";
+  }
+
+  if (accountType === "DIRECTOR" || isDirectorPosition(position)) {
+    return "director";
+  }
+
+  if (canSupervisorReview && !canDirectorReview) {
+    return "supervisor";
+  }
+
+  if (canDirectorReview && !canSupervisorReview) {
+    return "director";
+  }
+
+  return "overview";
+}
+
+export function getApprovalKanbanColumn(
   report: ApprovalKanbanFields,
-): ApprovalWorkflowStage {
+  context: ApprovalKanbanViewerContext = {},
+): ApprovalKanbanColumnId {
   if (report.publishStatus === "Published") {
     return "published";
   }
 
-  if (
-    report.publishStatus === "Scheduled" ||
-    Boolean(report.scheduledPublishedDate)
-  ) {
-    return "scheduled";
-  }
-
-  if (
-    report.supervisorStatus === "Rejected" ||
-    report.directorStatus === "Rejected" ||
-    report.publishStatus === "Cancelled"
-  ) {
+  if (isRejected(report)) {
     return "rejected";
   }
 
-  if (
-    report.supervisorStatus === "Revision" ||
-    report.directorStatus === "Revision"
-  ) {
+  if (isRevision(report)) {
     return "revision";
   }
 
@@ -140,88 +172,69 @@ export function resolveApprovalWorkflowStage(
     return "ready-to-publish";
   }
 
-  if (isAwaitingDirectorReview(report)) {
-    return "director-review";
+  const lane = getApprovalReviewerLane(context);
+
+  if (lane === "supervisor") {
+    return report.supervisorStatus === "Approved" ? "approved" : "pending";
   }
 
-  if (
-    report.supervisorStatus === "Pending" &&
-    report.directorStatus === "Pending"
-  ) {
-    return "pending";
+  if (lane === "director") {
+    return report.directorStatus === "Approved" ? "approved" : "pending";
   }
 
-  if (report.supervisorStatus === "Pending") {
-    return "supervisor-review";
-  }
-
-  return "pending";
+  return hasAnyApproval(report) ? "approved" : "pending";
 }
 
-const ADMIN_WORKFLOW_TO_COLUMN: Record<
-  ApprovalWorkflowStage,
-  ApprovalKanbanColumnId
-> = {
-  published: "published",
-  scheduled: "scheduled",
-  rejected: "rejected",
-  revision: "revision",
-  "ready-to-publish": "ready-to-publish",
-  "director-review": "supervisor-approved",
-  "supervisor-review": "pending",
-  pending: "pending",
-};
+export function getApprovalDisplayStatus(
+  report: ApprovalKanbanFields,
+): ApprovalDisplayStatus {
+  return {
+    supervisorStatus: report.supervisorStatus,
+    directorStatus: report.directorStatus,
+    publishStatus:
+      isReadyToPublish(report) && report.publishStatus === "Pending"
+        ? "Ready to Publish"
+        : report.publishStatus,
+  };
+}
 
-const EMPLOYEE_WORKFLOW_TO_COLUMN: Record<
-  ApprovalWorkflowStage,
-  EmployeeApprovalKanbanColumnId
-> = {
-  published: "published",
-  scheduled: "scheduled",
-  rejected: "rejected",
-  revision: "revision",
-  "ready-to-publish": "ready-to-publish",
-  "director-review": "director-review",
-  "supervisor-review": "supervisor-review",
-  pending: "pending",
-};
+/** Single source of truth for approval workflow stage labels. */
+export function resolveApprovalWorkflowStage(
+  report: ApprovalKanbanFields,
+  context: ApprovalKanbanViewerContext = {},
+): ApprovalWorkflowStage {
+  return getApprovalKanbanColumn(report, context);
+}
 
 export function getApprovalKanbanStage(
   report: ApprovalKanbanFields,
+  context: ApprovalKanbanViewerContext = {},
 ): ApprovalKanbanColumnId {
-  return ADMIN_WORKFLOW_TO_COLUMN[resolveApprovalWorkflowStage(report)];
+  return getApprovalKanbanColumn(report, context);
 }
 
 export function getEmployeeApprovalKanbanStage(
   report: ApprovalKanbanFields,
 ): EmployeeApprovalKanbanColumnId {
-  return EMPLOYEE_WORKFLOW_TO_COLUMN[resolveApprovalWorkflowStage(report)];
+  return getApprovalKanbanColumn(report, { isBrandOfficerView: true });
 }
 
 const WORKFLOW_STAGE_LABELS: Record<ApprovalWorkflowStage, string> = {
   published: "Published",
-  scheduled: "Scheduled",
   rejected: "Rejected",
   revision: "Revision",
   "ready-to-publish": "Ready to Publish",
-  "director-review": "Director Review",
-  "supervisor-review": "Supervisor Review",
+  approved: "Approved",
   pending: "Pending",
 };
 
 /** Human-readable workflow label from actual review fields (not a merged status). */
 export function getApprovalWorkflowStageLabel(
   report: ApprovalKanbanFields,
-  options?: { accountType?: AccountType },
+  options?: ApprovalKanbanViewerContext,
 ) {
-  const stage = resolveApprovalWorkflowStage(report);
-
-  if (stage === "director-review") {
-    return WORKFLOW_STAGE_LABELS["director-review"];
-  }
-
-  const adminColumnId = ADMIN_WORKFLOW_TO_COLUMN[stage];
-  return getApprovalKanbanColumnTitle(adminColumnId, options?.accountType);
+  const stage = resolveApprovalWorkflowStage(report, options);
+  return getApprovalKanbanColumnTitle(stage, options?.accountType);
 }
 
 export function getEmployeeApprovalWorkflowStageLabel(
@@ -229,4 +242,57 @@ export function getEmployeeApprovalWorkflowStageLabel(
 ) {
   const stage = resolveApprovalWorkflowStage(report);
   return WORKFLOW_STAGE_LABELS[stage];
+}
+
+function isReviewActionable(status: ApprovalStatus) {
+  return status === "Pending" || status === "Revision";
+}
+
+function isOpenForReviewCount(report: ApprovalKanbanFields) {
+  return report.publishStatus !== "Published" && report.publishStatus !== "Cancelled";
+}
+
+export function getSupervisorPendingCount(reports: ApprovalKanbanFields[]) {
+  return reports.filter(
+    (report) =>
+      isOpenForReviewCount(report) && isReviewActionable(report.supervisorStatus),
+  ).length;
+}
+
+export function getDirectorPendingCount(reports: ApprovalKanbanFields[]) {
+  return reports.filter(
+    (report) =>
+      isOpenForReviewCount(report) && isReviewActionable(report.directorStatus),
+  ).length;
+}
+
+export function getBrandOfficerReadyToPublishCount(
+  reports: ApprovalKanbanFields[],
+) {
+  return reports.filter(isReadyToPublish).length;
+}
+
+export function getApprovalActionableCount(
+  reports: ApprovalKanbanFields[],
+  context: ApprovalKanbanViewerContext,
+) {
+  if (context.isBrandOfficerView) {
+    return getBrandOfficerReadyToPublishCount(reports);
+  }
+
+  const lane = getApprovalReviewerLane(context);
+
+  if (lane === "supervisor") {
+    return getSupervisorPendingCount(reports);
+  }
+
+  if (lane === "director") {
+    return getDirectorPendingCount(reports);
+  }
+
+  return reports.filter(
+    (report) =>
+      getApprovalKanbanColumn(report, context) === "pending" &&
+      isOpenForReviewCount(report),
+  ).length;
 }

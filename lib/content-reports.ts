@@ -9,7 +9,10 @@ import type {
   PublishStatus,
   ReviewStatus,
 } from "@/app/employee/approvals/schema";
-import type { ApprovalActivityLog, ContentReport } from "@/types/content-report";
+import type {
+  ApprovalActivityLog,
+  ContentReport,
+} from "@/types/content-report";
 
 type ContentReportRow = {
   id: number;
@@ -229,19 +232,20 @@ export async function getMyContentReports(profileId: number) {
     [profileId],
   );
 
-  return result.rows.map((row) => mapContentReport(row));
+  const activityLogsByReportId = await getApprovalActivityLogsByReportIds(
+    result.rows.map((row) => row.id),
+  );
+
+  return result.rows.map((row) =>
+    mapContentReport(row, activityLogsByReportId.get(row.id) ?? []),
+  );
 }
 
-export async function getBrandOfficerPublishingContentReports(
-  profileId: number,
-) {
+export async function getBrandOfficerBrandContentReports(profileId: number) {
   const result = await query<ContentReportRow>(
     `
     ${contentReportSelect}
-    WHERE cr.supervisor_status = 'Approved'
-      AND cr.director_status = 'Approved'
-      AND cr.publish_status IN ('Pending', 'Scheduled', 'Published')
-      AND cr.brand_id IN (
+    WHERE cr.brand_id IN (
         SELECT uba.brand_id
         FROM user_brand_access uba
         JOIN role r ON r.id = uba.role_id
@@ -252,6 +256,7 @@ export async function getBrandOfficerPublishingContentReports(
           AND assigned_brand.slug <> $2
           AND r.slug = 'brand-officer'
       )
+      AND cr.submitted_by_profile_id <> $1
     ORDER BY cr.date_submitted DESC, cr.id DESC
     `,
     [profileId, ALL_BRAND_SLUG],
@@ -267,13 +272,13 @@ export async function getBrandOfficerPublishingContentReports(
 }
 
 export async function getEmployeeVisibleContentReports(profileId: number) {
-  const [ownReports, publishingReports] = await Promise.all([
+  const [ownReports, brandOfficerReports] = await Promise.all([
     getMyContentReports(profileId),
-    getBrandOfficerPublishingContentReports(profileId),
+    getBrandOfficerBrandContentReports(profileId),
   ]);
   const reportsById = new Map<number, ContentReport>();
 
-  for (const report of [...ownReports, ...publishingReports]) {
+  for (const report of [...ownReports, ...brandOfficerReports]) {
     reportsById.set(report.id, report);
   }
 
