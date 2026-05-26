@@ -28,6 +28,7 @@ import {
 import type { AccountType } from "@/lib/auth/account-type"
 import { cn } from "@/lib/utils"
 import type { ApprovalActivityLog, ContentReport } from "@/types/content-report"
+import { Button } from "../ui/button"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -101,12 +102,14 @@ type ApprovalSheetHeaderProps = {
   report: ContentReport
   variant?: "admin" | "employee"
   accountType?: AccountType
+  position?: string | null
 }
 
 function getKanbanStageLabel(
   report: ContentReport,
   variant: "admin" | "employee",
-  accountType?: AccountType
+  accountType?: AccountType,
+  position?: string | null
 ) {
   if (variant === "employee") {
     const stageId = getEmployeeApprovalKanbanStage(report)
@@ -121,10 +124,10 @@ function getKanbanStageLabel(
     }
   }
 
-  const stageId = getApprovalKanbanStage(report)
+  const stageId = getApprovalKanbanStage(report, { accountType, position })
   const config = getKanbanStageConfig(stageId)
   return {
-    label: getApprovalWorkflowStageLabel(report, { accountType }),
+    label: getApprovalWorkflowStageLabel(report, { accountType, position }),
     badgeClassName: cn(
       "border-2 shadow-none",
       config.badgeClassName,
@@ -137,8 +140,9 @@ export function ApprovalSheetHeader({
   report,
   variant = "admin",
   accountType,
+  position,
 }: ApprovalSheetHeaderProps) {
-  const kanbanStage = getKanbanStageLabel(report, variant, accountType)
+  const kanbanStage = getKanbanStageLabel(report, variant, accountType, position)
 
   return (
     <>
@@ -193,15 +197,17 @@ export function ApprovalMainDetails({ report }: ApprovalMainDetailsProps) {
           <Badge variant="neutral">{report.platform}</Badge>
         </div>
         {report.assetLink ? (
-          <a
-            href={report.assetLink}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+          <Button type="button" size="sm" variant="outline" asChild className=" h-fit py-1 items-center gap-1.5 text-xs"
           >
-            <ExternalLink className="size-3.5" />
-            Open asset
-          </a>
+            <a
+              href={report.assetLink}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ExternalLink className="size-3" />
+              Open asset
+            </a>
+          </Button>
         ) : (
           <span className="text-sm text-muted-foreground">No asset link</span>
         )}

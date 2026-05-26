@@ -20,6 +20,11 @@ export type ApprovalActivityLog = {
   createdAt: string;
 };
 
+export type ApprovalPublishingPermissions = {
+  canPublishNow: boolean;
+  canSchedulePublish: boolean;
+};
+
 export type ContentReport = {
   id: number;
   submittedByProfileId: number;
@@ -54,14 +59,10 @@ export type ContentReport = {
   scheduledAt: string | null;
   remarksRevisionSummary: string | null;
   activityLogs: ApprovalActivityLog[];
+  /** Set server-side for brand officers on the employee approvals page. */
   approvalPublishingPermissions?: ApprovalPublishingPermissions;
   createdAt: string;
   updatedAt: string;
-};
-
-export type ApprovalPublishingPermissions = {
-  canPublishNow: boolean;
-  canSchedulePublish: boolean;
 };
 
 /**
@@ -69,6 +70,20 @@ export type ApprovalPublishingPermissions = {
  * Stays editable after supervisor or director approval (including when only one
  * has approved, or both are approved but not yet published).
  */
+export function canEmployeeEditOwnReport(
+  report: {
+    submittedByProfileId: number;
+    supervisorStatus: ReviewStatus;
+    directorStatus: ReviewStatus;
+    publishStatus: PublishStatus;
+  },
+  profileId: number,
+) {
+  return (
+    report.submittedByProfileId === profileId && canEmployeeEditReport(report)
+  );
+}
+
 export function canEmployeeEditReport(report: {
   supervisorStatus: ReviewStatus;
   directorStatus: ReviewStatus;

@@ -17,9 +17,8 @@ const brandApprovalStages: {
     { id: "pending", title: "Pending" },
     { id: "revision", title: "Revision" },
     { id: "rejected", title: "Rejected" },
-    { id: "supervisor-approved", title: "Director Review" },
+    { id: "approved", title: "Approved" },
     { id: "ready-to-publish", title: "Ready to Publish" },
-    { id: "scheduled", title: "Scheduled" },
     { id: "published", title: "Published" },
   ]
 
@@ -47,9 +46,8 @@ export function RecentBrandApprovals({ approvals }: RecentBrandApprovalsProps) {
       pending: [],
       revision: [],
       rejected: [],
-      "supervisor-approved": [],
+      approved: [],
       "ready-to-publish": [],
-      scheduled: [],
       published: [],
     }
   )

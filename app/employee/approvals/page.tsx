@@ -3,7 +3,10 @@ import {
   getEmployeeContentReportBrandOptions,
   getEmployeeVisibleContentReports,
 } from "@/lib/content-reports"
-import { decorateApprovalPublishingPermissions } from "@/lib/approvals/approval-permissions"
+import {
+  canEmployeeCreateContentReport,
+  decorateApprovalPublishingPermissions,
+} from "@/lib/approvals/approval-permissions"
 import { requireEmployee } from "@/lib/auth/auth-session"
 import { redirect } from "next/navigation"
 
@@ -19,11 +22,14 @@ export default async function ApprovalsPage() {
     getEmployeeContentReportBrandOptions(profile.id),
   ])
   const reports = await decorateApprovalPublishingPermissions(profile, rawReports)
+  const canCreateContentReport = await canEmployeeCreateContentReport(profile)
 
   return (
     <EmployeeApprovalKanbanBoard
       reports={reports}
       brandOptions={brandOptions}
+      canCreateContentReport={canCreateContentReport}
+      currentProfileId={profile.id}
     />
   )
 }

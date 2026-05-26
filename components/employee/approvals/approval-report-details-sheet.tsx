@@ -1,5 +1,7 @@
 "use client"
 
+import { Pencil } from "lucide-react"
+
 import {
   ApprovalDetailsGrid,
   ApprovalDiscussionSection,
@@ -8,23 +10,43 @@ import {
   ApprovalMetadataPanel,
   ApprovalSheetHeader,
 } from "@/components/shared/approval-details-display"
+import { ApprovalNeedsRevisionPanel } from "@/components/shared/approval-needs-revision-panel"
 import { ApprovalPublishingActions } from "@/components/employee/approvals/approval-publishing-actions"
+import { getApprovalPublishingPermissions } from "@/lib/approvals/approval-publishing-permissions"
+import { Button } from "@/components/ui/button"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  canEmployeeEditOwnReport,
+} from "@/types/content-report"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 
-export function ContentReportDetailsSheet() {
+type ContentReportDetailsSheetProps = {
+  currentProfileId: number
+}
+
+export function ContentReportDetailsSheet({
+  currentProfileId,
+}: ContentReportDetailsSheetProps) {
   const {
     selectedContentReport,
     isDetailsSheetOpen,
     closeDetailsSheet,
+    openEditDialog,
   } = useContentReportStore()
+  const canEdit =
+    selectedContentReport != null &&
+    canEmployeeEditOwnReport(selectedContentReport, currentProfileId)
+  const publishingPermissions = selectedContentReport
+    ? getApprovalPublishingPermissions(selectedContentReport)
+    : null
 
   return (
     <Sheet
@@ -35,7 +57,7 @@ export function ContentReportDetailsSheet() {
         }
       }}
     >
-      <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden sm:max-w-4xl! sm:w-[50vw]!  px-4">
+      <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden sm:max-w-4xl! sm:w-[50vw]! px-4">
         <SheetHeader className="shrink-0 pb-4 ">
           {selectedContentReport ? (
             <ApprovalSheetHeader
@@ -58,22 +80,39 @@ export function ContentReportDetailsSheet() {
               <ApprovalDetailsGrid
                 main={
                   <>
+                    <ApprovalNeedsRevisionPanel report={selectedContentReport} />
                     <ApprovalMainDetails report={selectedContentReport} />
                     <ApprovalDiscussionSection report={selectedContentReport} />
                   </>
                 }
                 sidebar={<ApprovalMetadataPanel report={selectedContentReport} />}
               />
-              {selectedContentReport.approvalPublishingPermissions
-                ?.canPublishNow ||
-              selectedContentReport.approvalPublishingPermissions
-                ?.canSchedulePublish ? (
+              {publishingPermissions?.canPublishNow ||
+              publishingPermissions?.canSchedulePublish ? (
                 <ApprovalDetailSection title="Publishing actions">
-                  <ApprovalPublishingActions report={selectedContentReport} />
+                  <ApprovalPublishingActions
+                    report={selectedContentReport}
+                    publishingPermissions={publishingPermissions}
+                  />
                 </ApprovalDetailSection>
               ) : null}
             </>
           </ScrollArea>
+        ) : null}
+
+        {canEdit && selectedContentReport ? (
+          <SheetFooter className="sticky bottom-0 z-10 shrink-0 pb-4! bg-background/95 px-0 py-3 backdrop-blur">
+            <Button
+              type="button"
+              variant="neutral"
+              size="sm"
+              className="w-fit"
+              onClick={() => openEditDialog(selectedContentReport)}
+            >
+              <Pencil className="size-4" />
+              Edit Approval
+            </Button>
+          </SheetFooter>
         ) : null}
       </SheetContent>
     </Sheet>

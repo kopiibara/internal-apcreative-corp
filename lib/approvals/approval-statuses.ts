@@ -37,9 +37,8 @@ export type ApprovalKanbanColumnId =
   | "pending"
   | "revision"
   | "rejected"
-  | "supervisor-approved"
+  | "approved"
   | "ready-to-publish"
-  | "scheduled"
   | "published";
 
 export type ApprovalKanbanColumn = {
@@ -53,9 +52,8 @@ export const APPROVAL_KANBAN_COLUMN_ORDER = [
   "pending",
   "revision",
   "rejected",
-  "supervisor-approved",
+  "approved",
   "ready-to-publish",
-  "scheduled",
   "published",
 ] as const satisfies readonly ApprovalKanbanColumnId[];
 
@@ -76,19 +74,14 @@ export const APPROVAL_KANBAN_COLUMNS = [
     description: "Items rejected by supervisor or director.",
   },
   {
-    id: "supervisor-approved",
-    title: "Supervisor Approved",
-    description: "Supervisor-approved items waiting on director review.",
+    id: "approved",
+    title: "Approved",
+    description: "Items approved by the current reviewer.",
   },
   {
     id: "ready-to-publish",
     title: "Ready to Publish",
     description: "Fully approved items ready for publishing.",
-  },
-  {
-    id: "scheduled",
-    title: "Scheduled",
-    description: "Items scheduled for publishing.",
   },
   {
     id: "published",
@@ -124,9 +117,7 @@ function getApprovalKanbanColumnDisplayTitle(
   column: ApprovalKanbanColumn,
   accountType?: AccountType,
 ) {
-  if (column.id === "supervisor-approved" && accountType === "DIRECTOR") {
-    return "Director Review";
-  }
+  void accountType;
 
   return column.title;
 }

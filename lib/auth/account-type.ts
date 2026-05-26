@@ -12,11 +12,14 @@ export const accountTypes = [
 
 export type AccountType = (typeof accountTypes)[number];
 
-const employeeAccountTypes: AccountType[] = ["CLIENT", "EMPLOYEE"];
+const employeeAccountTypes: AccountType[] = [
+  "CLIENT",
+  "EMPLOYEE",
+  "FULL_STACK_DEVELOPER",
+];
 
 /** Admin-side account types that use the admin dashboard and permission bypass. */
 export const ADMIN_ACCOUNT_TYPES = [
-  "FULL_STACK_DEVELOPER",
   "DIRECTOR",
   "SUPERVISOR",
   "MANAGER",

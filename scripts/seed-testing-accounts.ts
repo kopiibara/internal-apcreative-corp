@@ -23,6 +23,7 @@ type AccountSeed = {
     | "SUPERVISOR"
     | "MANAGER"
     | "EXECUTIVE"
+    | "DIRECTOR"
     | "FULL_STACK_DEVELOPER";
   position: string;
   department: string;
@@ -92,7 +93,7 @@ const accounts: AccountSeed[] = [
   {
     fullName: "Director Test",
     email: "testing.director@apcreative.test",
-    accountType: "MANAGER",
+    accountType: "DIRECTOR",
     position: "Director of Marketing",
     department: "Marketing",
     roleSlug: "director",

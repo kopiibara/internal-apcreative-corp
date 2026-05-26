@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { authClient } from "@/lib/auth/auth-client"
+import { appVersion } from "@/lib/app-version"
 import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { useTheme } from "@/components/ui/theme-provider"
 import type { AccountType } from "@/app/admin/account-control/schema"
@@ -15,6 +16,7 @@ import { UserAvatar } from "@/components/shared/user-avatar"
 import {
     ChevronDown,
     ChevronsUpDown,
+    FileText,
     LogOut,
     Moon,
     Sun,
@@ -98,10 +100,11 @@ export function DashboardSidebar({
     const isCollapsed = !isMobile && state === "collapsed"
     const canSeeAccountControl =
         mode === "admin" &&
-        (user?.accountType === "FULL_STACK_DEVELOPER" ||
+        (user?.accountType === "DIRECTOR" ||
             user?.accountType === "SUPERVISOR" ||
-            user?.roleSlugs?.includes("supervisor") ||
-            user?.roleSlugs?.includes("full-stack-developer"))
+            user?.roleSlugs?.includes("director") ||
+            user?.roleSlugs?.includes("marketing-director") ||
+            user?.roleSlugs?.includes("supervisor"))
     const taskBadge = formatSidebarBadge(employeeActionableTaskCount)
     const canSeeAdsCampaigns = user?.canAccessAdsCampaigns === true
     const canSeeTaskBoard = user?.canAccessTaskBoard === true
@@ -588,6 +591,19 @@ export function DashboardSidebar({
                                             ? "Switch to light mode"
                                             : "Switch to dark mode"
                                         : "Switch theme"}
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem asChild>
+                                    <Link
+                                        href="/changelog"
+                                        className="flex cursor-pointer flex-row items-center gap-2"
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                        Changelog
+                                        <span className="ml-auto text-xs text-muted-foreground">
+                                            v{appVersion}
+                                        </span>
+                                    </Link>
                                 </DropdownMenuItem>
 
                                 <DropdownMenuSeparator />

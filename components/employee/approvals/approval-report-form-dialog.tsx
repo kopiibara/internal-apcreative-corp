@@ -33,6 +33,12 @@ import {
   mergeContentReportBrandOptions,
   type ContentReportBrandOption,
 } from "@/lib/content-report-brand-options"
+import {
+  getHighlightedRevisionFormFields,
+  getOpenRevisionRequestsFromLogs,
+  type ApprovalRevisionFormField,
+} from "@/lib/approvals/approval-revision"
+import { cn } from "@/lib/utils"
 import type { ContentReport } from "@/types/content-report"
 
 type ContentReportFormDialogProps = {
@@ -73,7 +79,7 @@ function getInitialFormState(
   return {
     brandId: getDefaultBrandId(formBrandOptions, report),
     contentType: report?.contentType ?? "",
-    platform: report?.platform ?? "Meta (Instagram and Facebook)",
+    platform: report?.platform ?? "Meta (IG and FB)",
     contentInspo: report?.contentInspo ?? "",
     caption: report?.caption ?? "",
     assetLink: report?.assetLink ?? "",
@@ -98,8 +104,27 @@ export function ContentReportFormDialog({
     getInitialFormState(formBrandOptions, report),
   )
   const [isPending, startTransition] = useTransition()
-  const showBrandSelect = formBrandOptions.length > 1
-  const showBrandReadOnly = !showBrandSelect && formBrandOptions.length === 1
+  const canEditBrand =
+    isCreateMode ||
+    !report ||
+    (report.supervisorStatus === "Pending" && report.directorStatus === "Pending")
+  const showBrandSelect =
+    (isCreateMode && formBrandOptions.length > 0) ||
+    (formBrandOptions.length > 1 && canEditBrand)
+  const showBrandReadOnly =
+    (!showBrandSelect && formBrandOptions.length === 1 && !isCreateMode) ||
+    (!canEditBrand && Boolean(report?.brandName))
+  const openRevisionRequests =
+    !isCreateMode && report
+      ? getOpenRevisionRequestsFromLogs(report.activityLogs, report)
+      : []
+  const highlightedFields = getHighlightedRevisionFormFields(openRevisionRequests)
+
+  function revisionFieldClass(field: ApprovalRevisionFormField) {
+    return highlightedFields.has(field)
+      ? "rounded-lg border-2 border-amber-600 bg-amber-50/60 p-2"
+      : undefined
+  }
 
   function handleOpenChange(nextOpen: boolean) {
     if (nextOpen) {
@@ -143,9 +168,9 @@ export function ContentReportFormDialog({
       const result = isCreateMode
         ? await createContentReport(payload)
         : await updateContentReport({
-            reportId: report?.id,
-            ...payload,
-          })
+          reportId: report?.id,
+          ...payload,
+        })
 
       if (result.success) {
         toast.success(result.message)
@@ -173,8 +198,24 @@ export function ContentReportFormDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {openRevisionRequests.length > 0 ? (
+            <div className="space-y-3 rounded-lg border-2 border-amber-600 bg-amber-50 p-4 text-sm text-amber-950">
+              <p className="font-semibold">Revision instructions</p>
+              {openRevisionRequests.map((request) => (
+                <div key={request.id} className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide">
+                    {request.roleLabel} feedback
+                  </p>
+                  <p className="whitespace-pre-wrap leading-relaxed">
+                    {request.instruction}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           {showBrandSelect ? (
-            <div className="space-y-2">
+            <div className={cn("space-y-2", revisionFieldClass("brandId"))}>
               <Label>Brand</Label>
               <Select
                 value={formState.brandId || undefined}
@@ -196,13 +237,22 @@ export function ContentReportFormDialog({
               </Select>
             </div>
           ) : showBrandReadOnly ? (
-            <div className="space-y-2">
+            <div className={cn("space-y-2", revisionFieldClass("brandId"))}>
               <Label>Brand</Label>
-              <Input value={formBrandOptions[0].name} disabled readOnly />
+              <Input
+                value={report?.brandName ?? formBrandOptions[0]?.name ?? ""}
+                disabled
+                readOnly
+              />
+              {!canEditBrand ? (
+                <p className="text-xs text-muted-foreground">
+                  Brand is locked after Supervisor or Director review starts.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
-          <div className="space-y-2">
+          <div className={cn("space-y-2", revisionFieldClass("contentType"))}>
             <Label>Content Type</Label>
             <ContentTypeSelect
               value={formState.contentType}
@@ -211,7 +261,7 @@ export function ContentReportFormDialog({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className={cn("space-y-2", revisionFieldClass("platform"))}>
             <Label>Platform</Label>
             <Select
               value={formState.platform || undefined}
@@ -231,7 +281,7 @@ export function ContentReportFormDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className={cn("space-y-2", revisionFieldClass("contentInspo"))}>
             <Label htmlFor={`${mode}-content-inspo`}>Content Inspo</Label>
             <Textarea
               id={`${mode}-content-inspo`}
@@ -243,7 +293,7 @@ export function ContentReportFormDialog({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className={cn("space-y-2", revisionFieldClass("caption"))}>
             <Label htmlFor={`${mode}-caption`}>Caption</Label>
             <Textarea
               id={`${mode}-caption`}
@@ -254,7 +304,7 @@ export function ContentReportFormDialog({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className={cn("space-y-2", revisionFieldClass("assetLink"))}>
             <Label htmlFor={`${mode}-asset-link`}>Asset Link</Label>
             <Input
               id={`${mode}-asset-link`}
@@ -265,7 +315,7 @@ export function ContentReportFormDialog({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className={cn("space-y-2", revisionFieldClass("employeeComments"))}>
             <Label htmlFor={`${mode}-employee-comments`}>
               Employee Notes / Comments
             </Label>

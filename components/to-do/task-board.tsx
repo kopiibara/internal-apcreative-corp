@@ -103,7 +103,7 @@ export function TaskBoard({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between p-1">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-normal">{copy.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>

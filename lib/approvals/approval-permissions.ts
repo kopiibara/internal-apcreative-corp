@@ -4,7 +4,10 @@ import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import { query } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import type { AccountType } from "@/lib/auth/account-type";
-import { isAdminAccountType } from "@/lib/auth/account-type";
+import {
+  isAdminAccountType,
+  isEmployeeAccountType,
+} from "@/lib/auth/account-type";
 import type { ContentReport } from "@/types/content-report";
 
 const BRAND_OFFICER_ROLE_SLUG = "brand-officer";
@@ -70,6 +73,41 @@ export async function isBrandOfficerForBrand(
   return Boolean(result.rows[0]?.has_access);
 }
 
+export async function profileHasActiveBrandAssignment(profileId: number) {
+  const result = await query<{ has_access: boolean }>(
+    `
+    SELECT EXISTS (
+      SELECT 1
+      FROM user_brand_access uba
+      JOIN brand b ON b.id = uba.brand_id
+      WHERE uba.profile_id = $1
+        AND uba.is_active = true
+        AND b.is_active = true
+        AND b.slug <> $2
+    ) AS has_access
+    `,
+    [profileId, ALL_BRAND_SLUG],
+  );
+
+  return Boolean(result.rows[0]?.has_access);
+}
+
+/** Employee-dashboard users create approvals from any active brand assignment. */
+export async function canEmployeeCreateContentReport(
+  actor: ApprovalActor,
+  brandId?: number,
+) {
+  if (!isEmployeeAccountType(actor.account_type)) {
+    return false;
+  }
+
+  if (brandId != null) {
+    return canUserCreateApprovalForBrand(actor.id, brandId);
+  }
+
+  return profileHasActiveBrandAssignment(actor.id);
+}
+
 export async function canUserCreateApprovalForBrand(
   profileId: number,
   brandId: number,
@@ -102,14 +140,17 @@ export async function canUserViewApprovalRequest(
   }
 
   if (report.submittedByProfileId === actor.id) {
+    if (isEmployeeAccountType(actor.account_type)) {
+      return report.brandId != null
+        ? canUserCreateApprovalForBrand(actor.id, report.brandId)
+        : profileHasActiveBrandAssignment(actor.id);
+    }
+
     return can(actor.auth_user_id, "content_reports.view", report.brandId ?? undefined);
   }
 
-  if (
-    isApprovalReadyForPublishing(report) &&
-    ["Pending", "Scheduled", "Published"].includes(report.publishStatus)
-  ) {
-    return isBrandOfficerForBrand(actor.id, report.brandId);
+  if (await isBrandOfficerForBrand(actor.id, report.brandId)) {
+    return true;
   }
 
   return false;
@@ -156,7 +197,7 @@ export async function canUserScheduleApprovalRequest(
 export async function decorateApprovalPublishingPermissions(
   actor: ApprovalActor,
   reports: ContentReport[],
-) {
+): Promise<ContentReport[]> {
   const decorated = await Promise.all(
     reports.map(async (report) => ({
       ...report,

@@ -10,6 +10,7 @@ import {
   updatePublishingInfo,
   updateSupervisorReview,
 } from "@/app/admin/approvals/actions"
+import { ApprovalRevisionRequestFields } from "@/components/admin/approvals/approval-revision-request-fields"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import type { ApprovalRevisionAreaId } from "@/lib/approvals/approval-revision"
 import {
   type ApprovalVerificationPayload,
   useApprovalStore,
@@ -30,6 +32,22 @@ import type { ContentReport } from "@/types/content-report"
 
 type ApprovalVerificationDialogProps = {
   onApprovalUpdated?: (approval: ContentReport) => void
+}
+
+function isRevisionPayload(payload: ApprovalVerificationPayload) {
+  if (payload.type === "kanban") {
+    return payload.toColumn === "revision"
+  }
+
+  if (payload.type === "supervisor") {
+    return payload.supervisorStatus === "Revision"
+  }
+
+  if (payload.type === "director") {
+    return payload.directorStatus === "Revision"
+  }
+
+  return false
 }
 
 export function ApprovalVerificationDialog({
@@ -85,30 +103,43 @@ function ApprovalVerificationDialogContent({
 }) {
   const router = useRouter()
   const closeVerificationDialog = useApprovalStore(
-    (state) => state.closeVerificationDialog
+    (state) => state.closeVerificationDialog,
   )
   const clearPendingKanbanMove = useApprovalStore(
-    (state) => state.clearPendingKanbanMove
+    (state) => state.clearPendingKanbanMove,
   )
   const updateApprovalInStore = useApprovalStore(
-    (state) => state.updateApprovalInStore
+    (state) => state.updateApprovalInStore,
   )
+  const isRevisionRequest = isRevisionPayload(payload)
   const [notes, setNotes] = useState(payload.notes)
+  const [revisionAreas, setRevisionAreas] = useState<ApprovalRevisionAreaId[]>(
+    [],
+  )
+  const [revisionInstruction, setRevisionInstruction] = useState("")
+  const [otherExplanation, setOtherExplanation] = useState("")
   const [confirmationAccepted, setConfirmationAccepted] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const canConfirm = notes.trim().length > 0 && confirmationAccepted
+
+  const canConfirm = isRevisionRequest
+    ? revisionAreas.length > 0 &&
+      revisionInstruction.trim().length > 0 &&
+      (!revisionAreas.includes("other") || otherExplanation.trim().length > 0) &&
+      confirmationAccepted
+    : notes.trim().length > 0 && confirmationAccepted
 
   const actionSummary =
     payload.type === "kanban"
       ? payload.toColumn === "ready-to-publish"
-        ? "This will mark Director review as Approved and move the submission to Ready to Publish."
-        : payload.toColumn === "supervisor-approved" &&
-            payload.report.directorStatus === "Revision"
-          ? "This will mark Director review as Approved and move the submission to Ready to Publish."
+        ? "This will approve your review lane and move the submission to Ready to Publish if both approvals are complete."
+        : payload.toColumn === "revision"
+          ? "This will send the request back to the creator with structured revision feedback."
           : "This will update the approval workflow for the selected column."
       : payload.type === "director" && payload.directorStatus === "Approved"
-        ? "This will mark Director review as Approved and move the submission to Ready to Publish."
-        : null
+        ? "This will mark Director review as Approved and move the submission to Ready to Publish if Supervisor approval is complete."
+        : isRevisionRequest
+          ? "This will send the request back to the creator with structured revision feedback."
+          : null
 
   function handleCancel() {
     payload.onCancelled?.()
@@ -118,7 +149,22 @@ function ApprovalVerificationDialogContent({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!notes.trim()) {
+    if (isRevisionRequest) {
+      if (revisionAreas.length === 0) {
+        toast.error("Select at least one revision area.")
+        return
+      }
+
+      if (!revisionInstruction.trim()) {
+        toast.error("Add a clear revision instruction for the creator.")
+        return
+      }
+
+      if (revisionAreas.includes("other") && !otherExplanation.trim()) {
+        toast.error("Add a short explanation when Other is selected.")
+        return
+      }
+    } else if (!notes.trim()) {
       toast.error("Please add a note before updating this approval.")
       return
     }
@@ -128,37 +174,48 @@ function ApprovalVerificationDialogContent({
       return
     }
 
+    const revisionPayload = isRevisionRequest
+      ? {
+          revisionAreas,
+          revisionInstruction: revisionInstruction.trim(),
+          otherExplanation: otherExplanation.trim() || undefined,
+        }
+      : {}
+
     startTransition(async () => {
       const result =
         payload.type === "supervisor"
           ? await updateSupervisorReview({
               reportId: payload.report.id,
               supervisorStatus: payload.supervisorStatus,
-              supervisorNotes: notes,
+              supervisorNotes: isRevisionRequest ? undefined : notes,
               confirmationAccepted,
+              ...revisionPayload,
             })
           : payload.type === "director"
             ? await updateDirectorReview({
                 reportId: payload.report.id,
                 directorStatus: payload.directorStatus,
-                directorNotes: notes,
+                directorNotes: isRevisionRequest ? undefined : notes,
                 confirmationAccepted,
+                ...revisionPayload,
               })
             : payload.type === "publishing"
               ? await updatePublishingInfo({
-                reportId: payload.report.id,
-                publishStatus: payload.publishStatus,
-                scheduledPublishedDate: payload.scheduledPublishedDate,
-                proofUrl: payload.proofUrl,
-                remarksRevisionSummary: notes,
-                confirmationAccepted,
-              })
+                  reportId: payload.report.id,
+                  publishStatus: payload.publishStatus,
+                  scheduledPublishedDate: payload.scheduledPublishedDate,
+                  proofUrl: payload.proofUrl,
+                  remarksRevisionSummary: notes,
+                  confirmationAccepted,
+                })
               : await updateApprovalKanbanColumn({
                   reportId: payload.report.id,
                   fromColumn: payload.fromColumn,
                   toColumn: payload.toColumn,
-                  notes,
+                  notes: isRevisionRequest ? undefined : notes,
                   confirmationAccepted,
+                  ...revisionPayload,
                 })
 
       if (result.success) {
@@ -185,20 +242,33 @@ function ApprovalVerificationDialogContent({
 
   return (
     <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Approval Verification</DialogTitle>
-          <DialogDescription>
-            Please add a note and confirm this approval update. The action will
-            be recorded under your authenticated account.
-            {actionSummary ? ` ${actionSummary}` : ""}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogHeader>
+        <DialogTitle>
+          {isRevisionRequest ? "Request Revision" : "Approval Verification"}
+        </DialogTitle>
+        <DialogDescription>
+          {isRevisionRequest
+            ? "Select the areas that need revision and explain what the creator should change. This feedback is stored separately from general comments."
+            : "Please add a note and confirm this approval update. The action will be recorded under your authenticated account."}
+          {actionSummary ? ` ${actionSummary}` : ""}
+        </DialogDescription>
+      </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {isRevisionRequest ? (
+          <ApprovalRevisionRequestFields
+            report={payload.report}
+            revisionAreas={revisionAreas}
+            revisionInstruction={revisionInstruction}
+            otherExplanation={otherExplanation}
+            onRevisionAreasChange={setRevisionAreas}
+            onRevisionInstructionChange={setRevisionInstruction}
+            onOtherExplanationChange={setOtherExplanation}
+            disabled={isPending}
+          />
+        ) : (
           <div className="space-y-2">
-            <Label htmlFor="approval-verification-notes">
-              Notes / reason
-            </Label>
+            <Label htmlFor="approval-verification-notes">Notes / reason</Label>
             <Textarea
               id="approval-verification-notes"
               value={notes}
@@ -208,39 +278,44 @@ function ApprovalVerificationDialogContent({
               required
             />
           </div>
+        )}
 
-          <div className="flex items-start gap-3 rounded-lg border p-3">
-            <Checkbox
-              id="approval-confirmation-accepted"
-              checked={confirmationAccepted}
-              onCheckedChange={(checked) =>
-                setConfirmationAccepted(checked === true)
-              }
-              disabled={isPending}
-            />
-            <Label
-              htmlFor="approval-confirmation-accepted"
-              className="text-sm leading-relaxed"
-            >
-              I confirm that I reviewed this request and this action will be
-              recorded under my account.
-            </Label>
-          </div>
+        <div className="flex items-start gap-3 rounded-lg border p-3">
+          <Checkbox
+            id="approval-confirmation-accepted"
+            checked={confirmationAccepted}
+            onCheckedChange={(checked) =>
+              setConfirmationAccepted(checked === true)
+            }
+            disabled={isPending}
+          />
+          <Label
+            htmlFor="approval-confirmation-accepted"
+            className="text-sm leading-relaxed"
+          >
+            I confirm that I reviewed this request and this action will be
+            recorded under my account.
+          </Label>
+        </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isPending || !canConfirm}>
-              {isPending ? "Confirming..." : "Confirm Update"}
-            </Button>
-          </DialogFooter>
-        </form>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isPending || !canConfirm}>
+            {isPending
+              ? "Confirming..."
+              : isRevisionRequest
+                ? "Confirm Revision"
+                : "Confirm Update"}
+          </Button>
+        </DialogFooter>
+      </form>
     </DialogContent>
   )
 }
