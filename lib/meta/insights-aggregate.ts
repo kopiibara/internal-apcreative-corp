@@ -55,6 +55,30 @@ export function sumInsightMetricInRange(
   return found ? total : null
 }
 
+export function sumParsedMetricsWithFallback(
+  snapshots: Array<{
+    snapshot_date: string
+    metrics: Record<string, unknown> | null
+  }>,
+  metricNames: string[],
+  since: string,
+  until: string
+): number | null {
+  for (const metricName of metricNames) {
+    const total = sumParsedMetricsInSnapshots(
+      snapshots,
+      metricName,
+      since,
+      until
+    )
+    if (total !== null) {
+      return total
+    }
+  }
+
+  return null
+}
+
 export function sumParsedMetricsInSnapshots(
   snapshots: Array<{ snapshot_date: string; metrics: Record<string, unknown> | null }>,
   metricName: string,

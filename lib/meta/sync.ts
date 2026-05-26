@@ -3,20 +3,15 @@ import "server-only"
 import { query } from "@/lib/db"
 import { resolveMetaAnalyticsWindow } from "@/lib/meta/date-range"
 import {
-  parseInsightTimeSeries,
-  sumReactionInsightMetrics,
+  mergeInsightTimeSeries,
+  type InsightTimeSeries,
 } from "@/lib/meta/insights-aggregate"
 import {
   calculateEngagementRate,
-  DAILY_PAGE_INSIGHT_METRICS,
-  EXTENDED_PAGE_INSIGHT_METRICS,
   fetchPageInsightsRangeSafe,
-  fetchPageInsightsSafe,
   fetchPageSummarySafe,
   fetchPostLinkClicksSafe,
   fetchRecentPagePostsSafe,
-  REACTION_PAGE_INSIGHT_FALLBACK_METRICS,
-  REACTION_PAGE_INSIGHT_METRICS,
   readPostReactionCount,
 } from "@/lib/meta/graph-api"
 import { isMetaPermissionError } from "@/lib/meta/graph-errors"
@@ -25,6 +20,7 @@ import {
   type MetaSyncPage,
 } from "@/lib/meta/pages-config"
 import { clearMetaPageTokenCache } from "@/lib/meta/page-token"
+import { logMetaSyncEvent } from "@/lib/meta/sync-logger"
 import type { MetaFacebookPageRow, MetaSyncType } from "@/lib/meta/types"
 
 async function startSyncRun(syncType: MetaSyncType, facebookPageId: string | null) {
@@ -172,15 +168,32 @@ export async function syncDailyPageSnapshots() {
       const summaryResult = await fetchPageSummarySafe(page)
 
       if (!summaryResult.ok) {
+        logMetaSyncEvent({
+          source: "page_summary",
+          facebookPageId: page.facebook_page_id,
+          brandId: page.brand_id,
+          status: "failed",
+          errorMessage: summaryResult.error,
+        })
         throw new Error(summaryResult.error)
       }
 
       const summary = summaryResult.data
       const snapshotDate = new Date().toISOString().slice(0, 10)
 
+      logMetaSyncEvent({
+        source: "page_summary",
+        facebookPageId: page.facebook_page_id,
+        brandId: page.brand_id,
+        status: "success",
+        recordsAffected: 1,
+      })
+
       const metrics = await mergeSnapshotMetrics(page.facebook_page_id, snapshotDate, {
         daily_page_synced_at: new Date().toISOString(),
         page_summary_available: true,
+        page_link: summary.link ?? null,
+        page_picture_url: summary.picture?.data?.url ?? null,
       })
 
       await query(
@@ -255,10 +268,24 @@ export async function syncHourlyPostMetrics() {
       }
 
       if (!postsResult.ok) {
+        logMetaSyncEvent({
+          source: "posts",
+          facebookPageId: page.facebook_page_id,
+          brandId: page.brand_id,
+          status: "failed",
+          errorMessage: postsResult.error,
+        })
         throw new Error(postsResult.error)
       }
 
       const posts = postsResult.data.data ?? []
+      logMetaSyncEvent({
+        source: "posts",
+        facebookPageId: page.facebook_page_id,
+        brandId: page.brand_id,
+        status: "success",
+        recordsAffected: posts.length,
+      })
       const followers = await getLatestFollowersForPage(page.facebook_page_id)
 
       for (const post of posts) {
@@ -376,7 +403,7 @@ export async function syncHourlyPostMetrics() {
 
 async function upsertDailyInsightSnapshots(
   facebookPageId: string,
-  series: ReturnType<typeof parseInsightTimeSeries>,
+  series: InsightTimeSeries,
   extraPayload: Record<string, unknown>
 ) {
   let rows = 0
@@ -408,6 +435,33 @@ async function upsertDailyInsightSnapshots(
   return rows
 }
 
+const INSIGHT_METRIC_GROUPS = [
+  {
+    key: "reach",
+    metrics: ["page_impressions_unique"] as const,
+  },
+  {
+    key: "impressions",
+    metrics: ["page_impressions"] as const,
+  },
+  {
+    key: "post_engagements",
+    metrics: ["page_post_engagements"] as const,
+  },
+  {
+    key: "profile_visits",
+    metrics: ["page_views_total"] as const,
+  },
+  {
+    key: "new_likes",
+    metrics: ["page_fan_adds"] as const,
+  },
+  {
+    key: "new_followers",
+    metrics: ["page_daily_follows", "page_daily_follows_unique"] as const,
+  },
+] as const
+
 /** Page insights: reach, impressions, engagements — requires read_insights. */
 export async function syncDailyInsights() {
   clearMetaPageTokenCache()
@@ -420,88 +474,83 @@ export async function syncDailyInsights() {
 
     try {
       const snapshotDate = new Date().toISOString().slice(0, 10)
-      let insightsPayload: Record<string, unknown> = {
-        insights_permission_denied: false,
-        insights_sync_failed: false,
-      }
+      let series: InsightTimeSeries = {}
+      let anySuccess = false
+      let anyFailure = false
+      let permissionDenied = false
+      const metricErrors: Record<string, string> = {}
 
-      const ranged = await fetchPageInsightsRangeSafe(
-        page,
-        DAILY_PAGE_INSIGHT_METRICS,
-        window.sinceDate,
-        window.untilDate
-      )
+      for (const group of INSIGHT_METRIC_GROUPS) {
+        let groupSeries: typeof series | null = null
 
-      if (ranged.ok) {
-        let series = ranged.series
-
-        const extended = await fetchPageInsightsRangeSafe(
-          page,
-          EXTENDED_PAGE_INSIGHT_METRICS,
-          window.sinceDate,
-          window.untilDate
-        )
-        if (extended.ok) {
-          for (const [date, metrics] of Object.entries(extended.series)) {
-            series[date] = { ...(series[date] ?? {}), ...metrics }
-          }
-        }
-
-        const reactions = await fetchPageInsightsRangeSafe(
-          page,
-          REACTION_PAGE_INSIGHT_METRICS,
-          window.sinceDate,
-          window.untilDate
-        )
-        if (reactions.ok) {
-          for (const [date, metrics] of Object.entries(reactions.series)) {
-            series[date] = { ...(series[date] ?? {}), ...metrics }
-          }
-        } else {
-          const fallback = await fetchPageInsightsRangeSafe(
+        for (const metricName of group.metrics) {
+          const result = await fetchPageInsightsRangeSafe(
             page,
-            REACTION_PAGE_INSIGHT_FALLBACK_METRICS,
+            [metricName],
             window.sinceDate,
             window.untilDate
           )
-          if (fallback.ok) {
-            for (const [date, metrics] of Object.entries(fallback.series)) {
-              series[date] = { ...(series[date] ?? {}), ...metrics }
-            }
+
+          if (result.ok && Object.keys(result.series).length > 0) {
+            groupSeries = mergeInsightTimeSeries(groupSeries ?? {}, result.series)
+            logMetaSyncEvent({
+              source: "insights",
+              facebookPageId: page.facebook_page_id,
+              brandId: page.brand_id,
+              dateRange: `${window.since}..${window.until}`,
+              metric: metricName,
+              status: "success",
+              recordsAffected: Object.keys(result.series).length,
+            })
+            break
+          }
+
+          permissionDenied = permissionDenied || result.permissionDenied
+          if (!result.ok) {
+            metricErrors[`${group.key}:${metricName}`] =
+              result.error ?? "Insights metric unavailable"
+            logMetaSyncEvent({
+              source: "insights",
+              facebookPageId: page.facebook_page_id,
+              brandId: page.brand_id,
+              dateRange: `${window.since}..${window.until}`,
+              metric: metricName,
+              status: "failed",
+              errorMessage: result.error,
+            })
           }
         }
 
-        const todayMetrics = series[snapshotDate] ?? {}
-        const reactionTotal = sumReactionInsightMetrics(todayMetrics)
-        if (reactionTotal !== null) {
-          todayMetrics.page_actions_post_reactions_total = reactionTotal
-          series[snapshotDate] = todayMetrics
+        if (groupSeries && Object.keys(groupSeries).length > 0) {
+          series = mergeInsightTimeSeries(series, groupSeries)
+          anySuccess = true
+        } else {
+          anyFailure = true
         }
+      }
 
-        insightsPayload = {
-          ...insightsPayload,
-          parsed: todayMetrics,
-          insight_series_days: Object.keys(series).length,
-          daily_insights_synced_at: new Date().toISOString(),
-        }
+      const insightsPayload: Record<string, unknown> = {
+        insights_permission_denied: permissionDenied && !anySuccess,
+        insights_sync_failed: !anySuccess && anyFailure,
+        insights_partial: anySuccess && anyFailure,
+        insight_metric_errors: metricErrors,
+        insight_series_days: Object.keys(series).length,
+        daily_insights_synced_at: new Date().toISOString(),
+        parsed: series[snapshotDate] ?? {},
+      }
 
+      if (anySuccess) {
         const rowsWritten = await upsertDailyInsightSnapshots(
           page.facebook_page_id,
           series,
           {
-            insights_permission_denied: false,
+            insights_permission_denied: Boolean(insightsPayload.insights_permission_denied),
             insights_sync_failed: false,
+            insights_partial: Boolean(insightsPayload.insights_partial),
+            insight_metric_errors: metricErrors,
           }
         )
 
-        const primary = await fetchPageInsightsSafe(
-          page,
-          DAILY_PAGE_INSIGHT_METRICS
-        )
-        if (primary.ok) {
-          insightsPayload.insights = primary.data.data
-        }
-
         const metrics = await mergeSnapshotMetrics(
           page.facebook_page_id,
           snapshotDate,
@@ -523,15 +572,25 @@ export async function syncDailyInsights() {
           [page.facebook_page_id, snapshotDate, JSON.stringify(metrics)]
         )
 
+        logMetaSyncEvent({
+          source: "insights",
+          facebookPageId: page.facebook_page_id,
+          brandId: page.brand_id,
+          dateRange: `${window.since}..${window.until}`,
+          status: anyFailure ? "partial" : "success",
+          recordsAffected: rowsWritten,
+        })
+
         if (runId) {
-          await finishSyncRun(runId, "SUCCESS", rowsWritten)
+          await finishSyncRun(
+            runId,
+            anyFailure ? "SUCCESS" : "SUCCESS",
+            rowsWritten,
+            anyFailure ? JSON.stringify(metricErrors) : null
+          )
           affected += 1
         }
       } else {
-        insightsPayload.insights_permission_denied = ranged.permissionDenied
-        insightsPayload.insights_sync_failed = !ranged.permissionDenied
-        insightsPayload.insights_error = ranged.error
-
         const metrics = await mergeSnapshotMetrics(
           page.facebook_page_id,
           snapshotDate,
@@ -553,8 +612,24 @@ export async function syncDailyInsights() {
           [page.facebook_page_id, snapshotDate, JSON.stringify(metrics)]
         )
 
+        logMetaSyncEvent({
+          source: "insights",
+          facebookPageId: page.facebook_page_id,
+          brandId: page.brand_id,
+          dateRange: `${window.since}..${window.until}`,
+          status: "failed",
+          errorMessage: JSON.stringify(metricErrors),
+        })
+
         if (runId) {
-          await finishSyncRun(runId, "FAILED", 0, ranged.error ?? "Insights sync failed")
+          await finishSyncRun(
+            runId,
+            "FAILED",
+            0,
+            permissionDenied
+              ? "Insights permission denied"
+              : JSON.stringify(metricErrors)
+          )
         }
       }
 
