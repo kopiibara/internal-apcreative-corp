@@ -99,6 +99,13 @@ No code changes are required.
 ## Scheduled sync (cron)
 
 Sync jobs only loop through pages where `*_META_ENABLED=true` and credentials are set.
+Each job is independent — one failure does not stop the others.
+
+| Job | Purpose |
+|-----|---------|
+| `daily_page` | Page name, likes (`fan_count`), followers |
+| `hourly_posts` | Posts with reactions, comments, shares |
+| `daily_insights` | Reach, impressions, engagements (`read_insights`) |
 
 ```bash
 curl -H "x-meta-cron-secret: $META_CRON_SECRET" \
@@ -106,9 +113,12 @@ curl -H "x-meta-cron-secret: $META_CRON_SECRET" \
 
 curl -H "x-meta-cron-secret: $META_CRON_SECRET" \
   "https://internal.apcreativecorp.com/api/meta/cron?job=hourly_posts"
+
+curl -H "x-meta-cron-secret: $META_CRON_SECRET" \
+  "https://internal.apcreativecorp.com/api/meta/cron?job=daily_insights"
 ```
 
-Data fetched per active page: page name, likes, followers, posts, post reactions/comments/shares, page insights, engagement metrics.
+Use the **Page access token** from `/me/accounts?fields=id,name,access_token` in `NEON_NIGHTS_META_PAGE_ACCESS_TOKEN` — not a Graph API Explorer user token.
 
 ---
 

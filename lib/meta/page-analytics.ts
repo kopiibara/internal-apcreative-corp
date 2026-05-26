@@ -1,7 +1,13 @@
 import "server-only"
 
 import { query } from "@/lib/db"
-import { getMetaIntegrationStatus, getMetaEnvChecklist } from "@/lib/meta/connection-status"
+import {
+  getMetaIntegrationStatus,
+  getMetaEnvChecklist,
+} from "@/lib/meta/connection-status"
+import { isMetaWebhookConfigured } from "@/lib/meta/config"
+import { classifyMetaGraphError } from "@/lib/meta/graph-errors"
+import { POSTS_PERMISSION_MESSAGE } from "@/lib/meta/graph-api"
 import type { MetaPageConfig, MetaPageConfigKey } from "@/lib/meta/pages-config"
 import { getActiveMetaPages } from "@/lib/meta/pages-config"
 import type { MetaSyncRunSummary } from "@/lib/meta/monitoring-data"
@@ -9,6 +15,7 @@ import type {
   MetaPageDailySnapshotRow,
   MetaPostMetricsRow,
 } from "@/lib/meta/types"
+import type { MetaMetricDisplayState } from "@/lib/platform-analytics/format"
 
 export type MetaBusinessPageInsightSummary = {
   pageImpressions: number | null
@@ -17,7 +24,11 @@ export type MetaBusinessPageInsightSummary = {
   pagePostEngagements: number | null
   pageViewsTotal: number | null
   pageFanAdds: number | null
+  pageFans: number | null
+  pageFollows: number | null
   insightsUnavailable: boolean
+  insightsPermissionDenied: boolean
+  insightsSyncFailed: boolean
 }
 
 export type MetaBusinessPagePostRow = {
@@ -33,6 +44,23 @@ export type MetaBusinessPagePostRow = {
   engagementTotal: number
 }
 
+export type MetaCapabilityStatus =
+  | "Available"
+  | "Permission required"
+  | "Sync failed"
+  | "No data yet"
+
+export type MetaPermissionCapabilities = {
+  pageAccessToken: "OK" | "Missing" | "Expired"
+  pageSummary: MetaCapabilityStatus
+  posts: MetaCapabilityStatus
+  insights: MetaCapabilityStatus
+  webhooks: "Connected" | "Not connected"
+  ads: "Not connected" | "Available"
+}
+
+export type MetaSyncJobDisplayStatus = "Success" | "Failed" | "Never"
+
 export type MetaBusinessPageDashboard = {
   key: MetaPageConfigKey
   displayName: string
@@ -42,9 +70,13 @@ export type MetaBusinessPageDashboard = {
   connectionStatus: "Connected" | "Not connected" | "Needs configuration"
   facebookPageStatus: "Connected" | "Not connected"
   instagramStatus: "Not connected yet"
-  pageAccessTokenStatus: "OK" | "Missing"
+  pageAccessTokenStatus: "OK" | "Missing" | "Expired"
   cronStatus: "OK" | "Missing"
   lastSyncAt: string | null
+  postsSyncStatus: MetaSyncJobDisplayStatus
+  insightsSyncStatus: MetaSyncJobDisplayStatus
+  postsUnavailableMessage: string | null
+  permissions: MetaPermissionCapabilities
   metrics: {
     totalFollowers: number | null
     pageLikes: number | null
@@ -59,6 +91,21 @@ export type MetaBusinessPageDashboard = {
     profileVisits: number | null
     linkClicks: number | null
     topPerformingPost: string | null
+    states: {
+      totalFollowers: MetaMetricDisplayState
+      pageLikes: MetaMetricDisplayState
+      newFollowers: MetaMetricDisplayState
+      newLikes: MetaMetricDisplayState
+      postEngagements: MetaMetricDisplayState
+      reactions: MetaMetricDisplayState
+      comments: MetaMetricDisplayState
+      shares: MetaMetricDisplayState
+      reach: MetaMetricDisplayState
+      impressions: MetaMetricDisplayState
+      profileVisits: MetaMetricDisplayState
+      linkClicks: MetaMetricDisplayState
+      topPerformingPost: MetaMetricDisplayState
+    }
   }
   insights: MetaBusinessPageInsightSummary
   allPosts: MetaBusinessPagePostRow[]
@@ -75,7 +122,8 @@ function parsePageInsightsFromSnapshot(
   metrics: Record<string, unknown> | null | undefined
 ): MetaBusinessPageInsightSummary {
   const parsed = metrics?.parsed as Record<string, number> | undefined
-  const insights = metrics?.insights
+  const permissionDenied = Boolean(metrics?.insights_permission_denied)
+  const syncFailed = Boolean(metrics?.insights_sync_failed)
 
   if (!parsed || typeof parsed !== "object") {
     return {
@@ -85,7 +133,11 @@ function parsePageInsightsFromSnapshot(
       pagePostEngagements: null,
       pageViewsTotal: null,
       pageFanAdds: null,
-      insightsUnavailable: Array.isArray(insights) && insights.length === 0,
+      pageFans: null,
+      pageFollows: null,
+      insightsUnavailable: permissionDenied || syncFailed,
+      insightsPermissionDenied: permissionDenied,
+      insightsSyncFailed: syncFailed,
     }
   }
 
@@ -96,7 +148,11 @@ function parsePageInsightsFromSnapshot(
     pagePostEngagements: parsed.page_post_engagements ?? null,
     pageViewsTotal: parsed.page_views_total ?? null,
     pageFanAdds: parsed.page_fan_adds ?? null,
+    pageFans: parsed.page_fans ?? null,
+    pageFollows: parsed.page_follows ?? null,
     insightsUnavailable: false,
+    insightsPermissionDenied: permissionDenied,
+    insightsSyncFailed: syncFailed,
   }
 }
 
@@ -123,6 +179,73 @@ function mapPostRow(post: MetaPostMetricsRow): MetaBusinessPagePostRow {
     shares,
     engagementTotal: reactions + comments + shares,
   }
+}
+
+function getLastSyncRun(
+  runs: MetaSyncRunSummary[],
+  syncType: string
+): MetaSyncRunSummary | undefined {
+  return runs.find((run) => run.sync_type === syncType)
+}
+
+function syncJobDisplayStatus(
+  run: MetaSyncRunSummary | undefined
+): MetaSyncJobDisplayStatus {
+  if (!run) {
+    return "Never"
+  }
+  return run.status === "SUCCESS" ? "Success" : "Failed"
+}
+
+function runIndicatesPermissionDenied(run: MetaSyncRunSummary | undefined) {
+  if (!run?.error_log) {
+    return false
+  }
+  return classifyMetaGraphError(new Error(run.error_log)).permissionDenied
+}
+
+function runIndicatesTokenExpired(run: MetaSyncRunSummary | undefined) {
+  if (!run?.error_log) {
+    return false
+  }
+  return classifyMetaGraphError(new Error(run.error_log)).tokenExpired
+}
+
+function capabilityFromSyncRun(
+  run: MetaSyncRunSummary | undefined,
+  hasData: boolean
+): MetaCapabilityStatus {
+  if (!run) {
+    return hasData ? "Available" : "No data yet"
+  }
+  if (run.status === "SUCCESS") {
+    return "Available"
+  }
+  if (runIndicatesPermissionDenied(run)) {
+    return "Permission required"
+  }
+  return "Sync failed"
+}
+
+function metricState(input: {
+  value: number | null | undefined
+  hasData: boolean
+  permissionDenied?: boolean
+  syncFailed?: boolean
+}): MetaMetricDisplayState {
+  if (input.permissionDenied) {
+    return "permission"
+  }
+  if (input.syncFailed) {
+    return "sync_failed"
+  }
+  if (input.value !== null && input.value !== undefined) {
+    return "available"
+  }
+  if (input.hasData) {
+    return "available"
+  }
+  return "no_data"
 }
 
 async function loadPageAnalytics(
@@ -206,7 +329,7 @@ async function loadPageAnalytics(
         FROM meta_sync_run
         WHERE facebook_page_id = $1
         ORDER BY started_at DESC
-        LIMIT 5
+        LIMIT 20
         `,
         [pageId]
       ),
@@ -237,9 +360,62 @@ async function loadPageAnalytics(
     null
   )
 
+  const runs = recentSyncRuns.rows
+  const dailyPageRun = getLastSyncRun(runs, "daily_page")
+  const hourlyPostsRun = getLastSyncRun(runs, "hourly_posts")
+  const dailyInsightsRun = getLastSyncRun(runs, "daily_insights")
+
+  const postsSyncStatus = syncJobDisplayStatus(hourlyPostsRun)
+  const insightsSyncStatus = syncJobDisplayStatus(dailyInsightsRun)
+
+  const postsPermissionDenied = runIndicatesPermissionDenied(hourlyPostsRun)
+  const tokenExpired =
+    runIndicatesTokenExpired(dailyPageRun) ||
+    runIndicatesTokenExpired(hourlyPostsRun) ||
+    runIndicatesTokenExpired(dailyInsightsRun)
+
+  const pageAccessTokenStatus = !pageChecklist.tokenConfigured
+    ? "Missing"
+    : tokenExpired
+      ? "Expired"
+      : "OK"
+
+  const hasSummaryData =
+    latestFollowers !== null || latestLikes !== null || Boolean(dbPage.rows[0])
+
+  const permissions: MetaPermissionCapabilities = {
+    pageAccessToken: pageAccessTokenStatus,
+    pageSummary: capabilityFromSyncRun(dailyPageRun, hasSummaryData),
+    posts: capabilityFromSyncRun(hourlyPostsRun, mappedPosts.length > 0),
+    insights: insights.insightsPermissionDenied
+      ? "Permission required"
+      : capabilityFromSyncRun(
+          dailyInsightsRun,
+          insights.pageImpressions !== null || insights.pagePostEngagements !== null
+        ),
+    webhooks: isMetaWebhookConfigured() ? "Connected" : "Not connected",
+    ads: "Not connected",
+  }
+
+  const postsUnavailableMessage =
+    postsPermissionDenied || permissions.posts === "Permission required"
+      ? POSTS_PERMISSION_MESSAGE
+      : null
+
   const tokenReady = pageChecklist.ready
   const hasDbPage = dbPage.rows.length > 0
   const lastSyncRow = dbPage.rows[0]?.last_synced_at
+
+  const newFollowers =
+    latestFollowers !== null && previousFollowers !== null
+      ? latestFollowers - previousFollowers
+      : null
+  const newLikes =
+    latestLikes !== null && previousLikes !== null
+      ? latestLikes - previousLikes
+      : null
+
+  const postEngagements = mappedPosts.length > 0 ? reactions + comments + shares : null
 
   return {
     key: config.key,
@@ -250,31 +426,101 @@ async function loadPageAnalytics(
     connectionStatus: tokenReady && hasDbPage ? "Connected" : "Not connected",
     facebookPageStatus: hasDbPage && tokenReady ? "Connected" : "Not connected",
     instagramStatus: "Not connected yet" as const,
-    pageAccessTokenStatus: pageChecklist.tokenConfigured ? "OK" : "Missing",
+    pageAccessTokenStatus,
     cronStatus: integration.cronConfigured ? "OK" : "Missing",
     lastSyncAt: lastSyncRow ? new Date(lastSyncRow).toISOString() : null,
+    postsSyncStatus,
+    insightsSyncStatus,
+    postsUnavailableMessage,
+    permissions,
     metrics: {
       totalFollowers: latestFollowers,
       pageLikes: latestLikes,
-      newFollowers:
-        latestFollowers !== null && previousFollowers !== null
-          ? latestFollowers - previousFollowers
-          : null,
-      newLikes:
-        latestLikes !== null && previousLikes !== null
-          ? latestLikes - previousLikes
-          : null,
-      postEngagements: reactions + comments + shares,
+      newFollowers,
+      newLikes,
+      postEngagements,
       reactions,
       comments,
       shares,
       reach: insights.pageImpressions,
-      impressions: insights.pageImpressionsUnique,
+      impressions:
+        insights.pageImpressionsUnique ?? insights.pageImpressions,
       profileVisits: insights.pageViewsTotal,
       linkClicks: null,
       topPerformingPost: topPost?.message
         ? topPost.message.slice(0, 80)
         : null,
+      states: {
+        totalFollowers: metricState({
+          value: latestFollowers,
+          hasData: hasSummaryData,
+          syncFailed: dailyPageRun?.status === "FAILED",
+        }),
+        pageLikes: metricState({
+          value: latestLikes,
+          hasData: hasSummaryData,
+          syncFailed: dailyPageRun?.status === "FAILED",
+        }),
+        newFollowers: metricState({
+          value: newFollowers,
+          hasData: snapshots.rows.length >= 2,
+        }),
+        newLikes: metricState({
+          value: newLikes,
+          hasData: snapshots.rows.length >= 2,
+        }),
+        postEngagements: metricState({
+          value: postEngagements,
+          hasData: mappedPosts.length > 0,
+          permissionDenied: postsPermissionDenied,
+          syncFailed:
+            postsSyncStatus === "Failed" && !postsPermissionDenied,
+        }),
+        reactions: metricState({
+          value: reactions,
+          hasData: mappedPosts.length > 0,
+          permissionDenied: postsPermissionDenied,
+        }),
+        comments: metricState({
+          value: comments,
+          hasData: mappedPosts.length > 0,
+          permissionDenied: postsPermissionDenied,
+        }),
+        shares: metricState({
+          value: shares,
+          hasData: mappedPosts.length > 0,
+          permissionDenied: postsPermissionDenied,
+        }),
+        reach: metricState({
+          value: insights.pageImpressions,
+          hasData: insights.pageImpressions !== null,
+          permissionDenied: insights.insightsPermissionDenied,
+          syncFailed: insights.insightsSyncFailed,
+        }),
+        impressions: metricState({
+          value: insights.pageImpressionsUnique ?? insights.pageImpressions,
+          hasData:
+            insights.pageImpressionsUnique !== null ||
+            insights.pageImpressions !== null,
+          permissionDenied: insights.insightsPermissionDenied,
+          syncFailed: insights.insightsSyncFailed,
+        }),
+        profileVisits: metricState({
+          value: insights.pageViewsTotal,
+          hasData: insights.pageViewsTotal !== null,
+          permissionDenied: insights.insightsPermissionDenied,
+          syncFailed: insights.insightsSyncFailed,
+        }),
+        linkClicks: metricState({
+          value: null,
+          hasData: false,
+        }),
+        topPerformingPost: metricState({
+          value: topPost ? 1 : null,
+          hasData: Boolean(topPost),
+          permissionDenied: postsPermissionDenied,
+        }),
+      },
     },
     insights,
     allPosts: mappedPosts,
@@ -284,7 +530,7 @@ async function loadPageAnalytics(
       followers: row.followers_count,
       pageLikes: row.page_likes,
     })),
-    recentSyncRuns: recentSyncRuns.rows,
+    recentSyncRuns: runs,
   } satisfies MetaBusinessPageDashboard
 }
 
@@ -293,6 +539,22 @@ function buildUnconfiguredPageDashboard(
   integration: Awaited<ReturnType<typeof getMetaIntegrationStatus>>,
   pageChecklist: ReturnType<typeof getMetaEnvChecklist>["pages"][number]
 ): MetaBusinessPageDashboard {
+  const emptyStates = {
+    totalFollowers: "no_data" as const,
+    pageLikes: "no_data" as const,
+    newFollowers: "no_data" as const,
+    newLikes: "no_data" as const,
+    postEngagements: "no_data" as const,
+    reactions: "no_data" as const,
+    comments: "no_data" as const,
+    shares: "no_data" as const,
+    reach: "no_data" as const,
+    impressions: "no_data" as const,
+    profileVisits: "no_data" as const,
+    linkClicks: "no_data" as const,
+    topPerformingPost: "no_data" as const,
+  }
+
   return {
     key: config.key,
     displayName: config.displayName,
@@ -305,6 +567,17 @@ function buildUnconfiguredPageDashboard(
     pageAccessTokenStatus: pageChecklist.tokenConfigured ? "OK" : "Missing",
     cronStatus: integration.cronConfigured ? "OK" : "Missing",
     lastSyncAt: null,
+    postsSyncStatus: "Never",
+    insightsSyncStatus: "Never",
+    postsUnavailableMessage: null,
+    permissions: {
+      pageAccessToken: pageChecklist.tokenConfigured ? "OK" : "Missing",
+      pageSummary: "No data yet",
+      posts: "No data yet",
+      insights: "No data yet",
+      webhooks: isMetaWebhookConfigured() ? "Connected" : "Not connected",
+      ads: "Not connected",
+    },
     metrics: {
       totalFollowers: null,
       pageLikes: null,
@@ -319,6 +592,7 @@ function buildUnconfiguredPageDashboard(
       profileVisits: null,
       linkClicks: null,
       topPerformingPost: null,
+      states: emptyStates,
     },
     insights: {
       pageImpressions: null,
@@ -327,7 +601,11 @@ function buildUnconfiguredPageDashboard(
       pagePostEngagements: null,
       pageViewsTotal: null,
       pageFanAdds: null,
+      pageFans: null,
+      pageFollows: null,
       insightsUnavailable: false,
+      insightsPermissionDenied: false,
+      insightsSyncFailed: false,
     },
     allPosts: [],
     growthSnapshots: [],

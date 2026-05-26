@@ -12,6 +12,7 @@ const cronSchema = z.object({
   job: z.enum([
     "hourly_posts",
     "daily_page",
+    "daily_insights",
     "weekly_summary",
     "monthly_summary",
     "process_webhooks",
