@@ -242,6 +242,9 @@ type ActivityLogJsonRow = {
   createdAt: string;
 };
 
+const STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL =
+  "('CLIENT', 'EMPLOYEE', 'FULL_STACK_DEVELOPER')";
+
 const ASSIGNMENT_SELECT = `
   SELECT
     ta.id AS assignment_id,
@@ -592,6 +595,37 @@ export async function getStaffAccountabilitySummaries() {
   return data.summaries;
 }
 
+export async function getStaffAccountabilityFilterOptions() {
+  const [brands, employees] = await Promise.all([
+    query<{ id: number; name: string }>(
+      `
+      SELECT id, name
+      FROM brand
+      WHERE is_active = true
+      ORDER BY name ASC, id ASC
+      `,
+    ),
+    query<{ id: number; full_name: string; email: string }>(
+      `
+      SELECT id, full_name, email
+      FROM profile
+      WHERE status = 'ACTIVE'
+        AND account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
+      ORDER BY full_name ASC, id ASC
+      `,
+    ),
+  ]);
+
+  return {
+    brands: brands.rows.map((row) => ({ id: row.id, name: row.name })),
+    employees: employees.rows.map((row) => ({
+      id: row.id,
+      fullName: row.full_name,
+      email: row.email,
+    })),
+  };
+}
+
 function getPerformanceLabel(completionRate: number) {
   if (completionRate >= 90) {
     return "Excellent";
@@ -674,7 +708,7 @@ export async function getStaffAccountabilityData({
         AND uba.is_active = true
       LEFT JOIN brand b ON b.id = uba.brand_id AND b.is_active = true
       WHERE p.status = 'ACTIVE'
-        AND p.account_type IN ('CLIENT', 'EMPLOYEE')
+        AND p.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
         AND ($1::integer IS NULL OR EXISTS (
           SELECT 1
           FROM user_brand_access brand_filter
@@ -701,7 +735,7 @@ export async function getStaffAccountabilityData({
       JOIN profile assignee ON assignee.id = ta.assigned_to_profile_id
       WHERE t.task_type = 'GRADED'
         AND assignee.status = 'ACTIVE'
-        AND assignee.account_type IN ('CLIENT', 'EMPLOYEE')
+        AND assignee.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
         AND (
           $1::timestamptz IS NULL
           OR (
@@ -746,7 +780,7 @@ export async function getStaffAccountabilityData({
         AND derived_brand.is_active = true
       WHERE t.task_type = 'GRADED'
         AND assignee.status = 'ACTIVE'
-        AND assignee.account_type IN ('CLIENT', 'EMPLOYEE')
+        AND assignee.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
         AND (
           $1::timestamptz IS NULL
           OR (
