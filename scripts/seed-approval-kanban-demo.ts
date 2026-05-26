@@ -2,7 +2,6 @@ import "dotenv/config";
 
 import { pool, query, transaction } from "@/lib/db";
 import { APPROVAL_KANBAN_DEMO_MARKER } from "@/lib/approvals/approval-kanban";
-import type { ApprovalKanbanColumnId } from "@/lib/approvals/approval-statuses";
 
 type SeedContext = {
   brandId: number;
@@ -12,7 +11,7 @@ type SeedContext = {
 };
 
 type DemoReport = {
-  stage: ApprovalKanbanColumnId;
+  stage: string;
   title: string;
   contentType: string;
   platform: string;
@@ -27,17 +26,17 @@ const demoReports: DemoReport[] = [
     stage: "pending",
     title: "Pending intake sample",
     contentType: "Graphic",
-    platform: "Meta (Instagram and Facebook)",
+    platform: "Meta (IG and FB)",
     supervisorStatus: "Pending",
     directorStatus: "Pending",
     publishStatus: "Pending",
     scheduledPublishedDate: null,
   },
   {
-    stage: "supervisor-approved",
-    title: "Supervisor approved sample",
+    stage: "approved",
+    title: "Approved sample",
     contentType: "Carousel",
-    platform: "Meta (Instagram and Facebook)",
+    platform: "Meta (IG and FB)",
     supervisorStatus: "Approved",
     directorStatus: "Pending",
     publishStatus: "Pending",
@@ -57,7 +56,7 @@ const demoReports: DemoReport[] = [
     stage: "scheduled",
     title: "Scheduled sample",
     contentType: "Promo Announcement",
-    platform: "Meta (Instagram and Facebook)",
+    platform: "Meta (IG and FB)",
     supervisorStatus: "Approved",
     directorStatus: "Approved",
     publishStatus: "Scheduled",
@@ -87,7 +86,7 @@ const demoReports: DemoReport[] = [
     stage: "rejected",
     title: "Rejected sample",
     contentType: "Story",
-    platform: "Meta (Instagram and Facebook)",
+    platform: "Meta (IG and FB)",
     supervisorStatus: "Rejected",
     directorStatus: "Pending",
     publishStatus: "Pending",

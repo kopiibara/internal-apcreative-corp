@@ -68,14 +68,6 @@ function DirectorReviewFormFields({
       return
     }
 
-    if (
-      status === "Approved" &&
-      report.supervisorStatus !== "Approved"
-    ) {
-      toast.error("Supervisor approval is required before Director approval.")
-      return
-    }
-
     openVerificationDialog({
       type: "director",
       report: {
@@ -98,13 +90,7 @@ function DirectorReviewFormFields({
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {status === "Approved" &&
-          report.supervisorStatus === "Approved" ? (
-            <p className="text-xs text-muted-foreground">
-              Approved submissions move to the Ready to Publish column on the
-              board.
-            </p>
-          ) : null}
+
 
           <div className="space-y-2">
             <Label>Director of Marketing Status</Label>

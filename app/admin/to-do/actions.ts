@@ -21,15 +21,22 @@ import {
 } from "@/lib/auth/account-type";
 import { can } from "@/lib/permissions";
 import { query, transaction } from "@/lib/db";
+import { assertSupervisorCanAssignTasksToUsers } from "@/lib/approvals/approval-permissions";
 import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
 import {
   sanitizeOptionalText,
   sanitizeRequiredText,
 } from "@/lib/security/sanitize-text";
 import {
+  assertBrandOfficerCanAssignToProfiles,
+  profileHasBrandOfficerRole,
+} from "@/lib/tasks/brand-officer-task-assign";
+import { getGradedTaskReviewBlockReason } from "@/lib/tasks/task-review-guards";
+import {
   canAssignGradedTasks,
   canReviewTaskAssignments,
   determineTaskType,
+  isPersonalTaskType,
 } from "@/lib/tasks/task-type";
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses";
 import { TASK_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
@@ -243,28 +250,70 @@ export async function createTask(input: unknown): Promise<ActionResult> {
   const { context } = authorization;
   const uniqueAssignees = [...new Set(parsed.data.assignedToProfileIds)];
 
+  const isBrandOfficer = await profileHasBrandOfficerRole(context.profile.id);
+  const canAssignTeamTasks =
+    isBrandOfficer &&
+    (await can(context.profile.auth_user_id, "tasks.assign"));
+
   if (isEmployeeAccountType(context.profile.account_type)) {
     const isPersonalSelfTask =
       uniqueAssignees.length === 1 && uniqueAssignees[0] === context.profile.id;
 
-    if (!isPersonalSelfTask) {
+    if (!canAssignTeamTasks) {
       return {
         success: false,
-        message: "You can only create personal tasks assigned to yourself.",
+        message: isPersonalSelfTask
+          ? "Use Reminders for personal follow-ups. You cannot create To-Do tasks."
+          : "You do not have permission to assign team tasks.",
       };
     }
+
+    if (isPersonalSelfTask) {
+      return {
+        success: false,
+        message: "Use Reminders for personal follow-ups.",
+      };
+    }
+
+    const assigneeCheck = await assertBrandOfficerCanAssignToProfiles(
+      context.profile.id,
+      uniqueAssignees,
+    );
+
+    if (!assigneeCheck.ok) {
+      return {
+        success: false,
+        message: assigneeCheck.message,
+      };
+    }
+  }
+
+  const supervisorAssigneeCheck = await assertSupervisorCanAssignTasksToUsers(
+    context.profile,
+    uniqueAssignees,
+  );
+
+  if (!supervisorAssigneeCheck.ok) {
+    return {
+      success: false,
+      message: supervisorAssigneeCheck.message,
+    };
   }
 
   const taskType = determineTaskType({
     creatorAccountType: context.profile.account_type,
     creatorProfileId: context.profile.id,
     assignedToProfileIds: uniqueAssignees,
+    canAssignTeamTasks,
   });
 
   if (taskType === "GRADED") {
     const canAssign = await can(context.profile.auth_user_id, "tasks.assign");
 
-    if (!canAssign || !canAssignGradedTasks(context.profile.account_type)) {
+    if (
+      !canAssign ||
+      (!canAssignGradedTasks(context.profile.account_type) && !canAssignTeamTasks)
+    ) {
       return {
         success: false,
         message: "You do not have permission to assign graded tasks.",
@@ -649,6 +698,8 @@ export async function submitTaskProof(
     };
   }
 
+  const nextStatus = isPersonalTaskType(assignment.taskType) ? "DONE" : "PENDING";
+
   if (!["ASSIGNED", "REVISION"].includes(assignment.status)) {
     return {
       success: false,
@@ -667,15 +718,22 @@ export async function submitTaskProof(
         `
         UPDATE task_assignment
         SET
-          status = 'PENDING',
-          proof_type = $2,
-          proof_url = $3,
-          proof_note = $4,
+          status = $2,
+          proof_type = $3,
+          proof_url = $4,
+          proof_note = $5,
           submitted_at = now(),
+          completed_at = CASE WHEN $2 = 'DONE' THEN now() ELSE completed_at END,
           updated_at = now()
         WHERE id = $1
         `,
-        [parsed.data.assignmentId, parsed.data.proofType, proofUrl, proofNote],
+        [
+          parsed.data.assignmentId,
+          nextStatus,
+          parsed.data.proofType,
+          proofUrl,
+          proofNote,
+        ],
       );
 
       await insertTaskActivityLog(client, {
@@ -683,11 +741,13 @@ export async function submitTaskProof(
         assignmentId: assignment.assignmentId,
         actorProfileId: context.profile.id,
         action:
-          assignment.status === "REVISION"
-            ? "PROOF_RESUBMITTED"
-            : "PROOF_SUBMITTED",
+          nextStatus === "DONE"
+            ? "TASK_MARKED_DONE"
+            : assignment.status === "REVISION"
+              ? "PROOF_RESUBMITTED"
+              : "PROOF_SUBMITTED",
         fromStatus: assignment.status,
-        toStatus: "PENDING",
+        toStatus: nextStatus,
         notes: proofNote ?? proofUrl,
         metadata: {
           proofType: parsed.data.proofType,
@@ -859,10 +919,15 @@ export async function confirmTaskBlocker(
     };
   }
 
-  if (assignment.assignedToProfileId === context.profile.id) {
+  const reviewBlockReason = getGradedTaskReviewBlockReason(
+    assignment,
+    context.profile.id,
+  );
+
+  if (reviewBlockReason) {
     return {
       success: false,
-      message: "You cannot review your own task.",
+      message: reviewBlockReason,
     };
   }
 
@@ -1026,10 +1091,15 @@ export async function changeTaskAssignmentStatus(
     };
   }
 
-  if (assignment.assignedToProfileId === context.profile.id) {
+  const reviewBlockReason = getGradedTaskReviewBlockReason(
+    assignment,
+    context.profile.id,
+  );
+
+  if (reviewBlockReason) {
     return {
       success: false,
-      message: "You cannot approve or review your own task.",
+      message: reviewBlockReason,
     };
   }
 
@@ -1152,10 +1222,15 @@ export async function confirmTaskDone(
 
   const { context } = authorization;
 
-  if (assignment.assignedToProfileId === context.profile.id) {
+  const reviewBlockReason = getGradedTaskReviewBlockReason(
+    assignment,
+    context.profile.id,
+  );
+
+  if (reviewBlockReason) {
     return {
       success: false,
-      message: "You cannot approve or review your own task.",
+      message: reviewBlockReason,
     };
   }
 
@@ -1255,10 +1330,15 @@ export async function requestTaskRevision(
 
   const { context } = authorization;
 
-  if (assignment.assignedToProfileId === context.profile.id) {
+  const reviewBlockReason = getGradedTaskReviewBlockReason(
+    assignment,
+    context.profile.id,
+  );
+
+  if (reviewBlockReason) {
     return {
       success: false,
-      message: "You cannot approve or review your own task.",
+      message: reviewBlockReason,
     };
   }
 

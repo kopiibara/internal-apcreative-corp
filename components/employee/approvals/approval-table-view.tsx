@@ -31,13 +31,14 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  canEmployeeEditReport,
+  canEmployeeEditOwnReport,
   type ContentReport,
 } from "@/types/content-report"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 
 type EmployeeApprovalTableViewProps = {
   reports: ContentReport[]
+  currentProfileId: number
 }
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -81,10 +82,12 @@ function SortButton({
 }
 
 function getContentReportColumns({
+  currentProfileId,
   openEditDialog,
   openDeleteDialog,
   openDetailsSheet,
 }: {
+  currentProfileId: number
   openEditDialog: (report: ContentReport) => void
   openDeleteDialog: (report: ContentReport) => void
   openDetailsSheet: (report: ContentReport) => void
@@ -226,7 +229,7 @@ function getContentReportColumns({
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
         const report = row.original
-        const canEdit = canEmployeeEditReport(report)
+        const canEdit = canEmployeeEditOwnReport(report, currentProfileId)
 
         return (
           <div className="text-right">
@@ -273,6 +276,7 @@ function getContentReportColumns({
 
 export function EmployeeApprovalTableView({
   reports,
+  currentProfileId,
 }: EmployeeApprovalTableViewProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const { openEditDialog, openDeleteDialog, openDetailsSheet } =
@@ -282,6 +286,7 @@ export function EmployeeApprovalTableView({
   const table = useReactTable({
     data: reports,
     columns: getContentReportColumns({
+      currentProfileId,
       openEditDialog,
       openDeleteDialog,
       openDetailsSheet,

@@ -1,11 +1,18 @@
+import "server-only";
+
+import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import { query } from "@/lib/db";
+import type { ContentReportBrandOption } from "@/lib/content-report-brand-options";
 import type {
   ContentType,
   Platform,
   PublishStatus,
   ReviewStatus,
 } from "@/app/employee/approvals/schema";
-import type { ApprovalActivityLog, ContentReport } from "@/types/content-report";
+import type {
+  ApprovalActivityLog,
+  ContentReport,
+} from "@/types/content-report";
 
 type ContentReportRow = {
   id: number;
@@ -31,6 +38,14 @@ type ContentReportRow = {
   director_reviewed_at: Date | null;
   publish_status: PublishStatus;
   scheduled_published_date: Date | null;
+  publishing_proof_url: string | null;
+  publishing_proof_note: string | null;
+  publishing_proof_submitted_by_name: string | null;
+  publishing_proof_submitted_at: Date | null;
+  published_by_name: string | null;
+  published_at: Date | null;
+  scheduled_by_name: string | null;
+  scheduled_at: Date | null;
   remarks_revision_summary: string | null;
   created_at: Date;
   updated_at: Date;
@@ -80,6 +95,14 @@ const contentReportSelect = `
     cr.director_reviewed_at,
     cr.publish_status,
     cr.scheduled_published_date,
+    cr.publishing_proof_url,
+    cr.publishing_proof_note,
+    proof_submitter.full_name AS publishing_proof_submitted_by_name,
+    cr.publishing_proof_submitted_at,
+    publisher.full_name AS published_by_name,
+    cr.published_at,
+    scheduler.full_name AS scheduled_by_name,
+    cr.scheduled_at,
     cr.remarks_revision_summary,
     cr.created_at,
     cr.updated_at
@@ -90,6 +113,12 @@ const contentReportSelect = `
     ON supervisor.id = cr.supervisor_reviewed_by_profile_id
   LEFT JOIN profile director
     ON director.id = cr.director_reviewed_by_profile_id
+  LEFT JOIN profile proof_submitter
+    ON proof_submitter.id = cr.publishing_proof_submitted_by_profile_id
+  LEFT JOIN profile publisher
+    ON publisher.id = cr.published_by_profile_id
+  LEFT JOIN profile scheduler
+    ON scheduler.id = cr.scheduled_by_profile_id
 `;
 
 function mapContentReport(
@@ -120,6 +149,15 @@ function mapContentReport(
     directorReviewedAt: row.director_reviewed_at?.toISOString() ?? null,
     publishStatus: row.publish_status,
     scheduledPublishedDate: row.scheduled_published_date?.toISOString() ?? null,
+    publishingProofUrl: row.publishing_proof_url,
+    publishingProofNote: row.publishing_proof_note,
+    publishingProofSubmittedByName: row.publishing_proof_submitted_by_name,
+    publishingProofSubmittedAt:
+      row.publishing_proof_submitted_at?.toISOString() ?? null,
+    publishedByName: row.published_by_name,
+    publishedAt: row.published_at?.toISOString() ?? null,
+    scheduledByName: row.scheduled_by_name,
+    scheduledAt: row.scheduled_at?.toISOString() ?? null,
     remarksRevisionSummary: row.remarks_revision_summary,
     activityLogs,
     createdAt: row.created_at.toISOString(),
@@ -194,7 +232,63 @@ export async function getMyContentReports(profileId: number) {
     [profileId],
   );
 
-  return result.rows.map((row) => mapContentReport(row));
+  const activityLogsByReportId = await getApprovalActivityLogsByReportIds(
+    result.rows.map((row) => row.id),
+  );
+
+  return result.rows.map((row) =>
+    mapContentReport(row, activityLogsByReportId.get(row.id) ?? []),
+  );
+}
+
+export async function getBrandOfficerBrandContentReports(profileId: number) {
+  const result = await query<ContentReportRow>(
+    `
+    ${contentReportSelect}
+    WHERE cr.brand_id IN (
+        SELECT uba.brand_id
+        FROM user_brand_access uba
+        JOIN role r ON r.id = uba.role_id
+        JOIN brand assigned_brand ON assigned_brand.id = uba.brand_id
+        WHERE uba.profile_id = $1
+          AND uba.is_active = true
+          AND assigned_brand.is_active = true
+          AND assigned_brand.slug <> $2
+          AND r.slug = 'brand-officer'
+      )
+      AND cr.submitted_by_profile_id <> $1
+    ORDER BY cr.date_submitted DESC, cr.id DESC
+    `,
+    [profileId, ALL_BRAND_SLUG],
+  );
+
+  const activityLogsByReportId = await getApprovalActivityLogsByReportIds(
+    result.rows.map((row) => row.id),
+  );
+
+  return result.rows.map((row) =>
+    mapContentReport(row, activityLogsByReportId.get(row.id) ?? []),
+  );
+}
+
+export async function getEmployeeVisibleContentReports(profileId: number) {
+  const [ownReports, brandOfficerReports] = await Promise.all([
+    getMyContentReports(profileId),
+    getBrandOfficerBrandContentReports(profileId),
+  ]);
+  const reportsById = new Map<number, ContentReport>();
+
+  for (const report of [...ownReports, ...brandOfficerReports]) {
+    reportsById.set(report.id, report);
+  }
+
+  return [...reportsById.values()].sort((left, right) => {
+    const dateDelta =
+      new Date(right.dateSubmitted).getTime() -
+      new Date(left.dateSubmitted).getTime();
+
+    return dateDelta || right.id - left.id;
+  });
 }
 
 export async function getApprovalContentReports() {
@@ -250,4 +344,76 @@ export async function getPrimaryActiveBrandId(profileId: number) {
   );
 
   return result.rows[0]?.brand_id ?? null;
+}
+
+export async function getEmployeeContentReportBrandOptions(profileId: number) {
+  const result = await query<{
+    id: number;
+    name: string;
+    is_primary: boolean;
+  }>(
+    `
+    SELECT b.id, b.name, uba.is_primary
+    FROM user_brand_access uba
+    JOIN brand b ON b.id = uba.brand_id
+    WHERE uba.profile_id = $1
+      AND uba.is_active = true
+      AND b.is_active = true
+      AND b.slug <> $2
+    ORDER BY uba.is_primary DESC, b.name ASC, b.id ASC
+    `,
+    [profileId, ALL_BRAND_SLUG],
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    isPrimary: row.is_primary,
+  })) satisfies ContentReportBrandOption[];
+}
+
+export async function resolveContentReportBrandId(
+  profileId: number,
+  requestedBrandId?: number,
+  existingBrandId?: number | null,
+) {
+  const brands = await getEmployeeContentReportBrandOptions(profileId);
+
+  if (brands.length === 0) {
+    return {
+      ok: false as const,
+      message:
+        "Your account needs an active brand assignment before submitting reports.",
+    };
+  }
+
+  if (requestedBrandId != null) {
+    const selected = brands.find((brand) => brand.id === requestedBrandId);
+
+    if (!selected) {
+      return {
+        ok: false as const,
+        message: "You do not have access to the selected brand.",
+      };
+    }
+
+    return { ok: true as const, brandId: selected.id };
+  }
+
+  if (existingBrandId != null) {
+    const existing = brands.find((brand) => brand.id === existingBrandId);
+
+    if (existing) {
+      return { ok: true as const, brandId: existing.id };
+    }
+  }
+
+  if (brands.length === 1) {
+    return { ok: true as const, brandId: brands[0].id };
+  }
+
+  return {
+    ok: false as const,
+    message: "Select a brand for this approval request.",
+  };
 }

@@ -48,6 +48,7 @@ type TaskCreateDialogProps = {
   currentAccountType: AccountType
   permissions: TaskPermissionFlags
   personalOnly?: boolean
+  canAssignTeamTasks?: boolean
 }
 
 export function TaskCreateDialog({
@@ -58,14 +59,13 @@ export function TaskCreateDialog({
   currentAccountType,
   permissions,
   personalOnly = false,
+  canAssignTeamTasks = false,
 }: TaskCreateDialogProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([
-    currentProfileId,
-  ])
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([])
   const [dueDate, setDueDate] = useState<string | null>(null)
   const [priority, setPriority] = useState<string>("none")
   const [assigneePickerOpen, setAssigneePickerOpen] = useState(false)
@@ -99,8 +99,15 @@ export function TaskCreateDialog({
         assignedToProfileIds: personalOnly
           ? [currentProfileId]
           : selectedAssigneeIds,
+        canAssignTeamTasks,
       }),
-    [currentAccountType, currentProfileId, personalOnly, selectedAssigneeIds]
+    [
+      canAssignTeamTasks,
+      currentAccountType,
+      currentProfileId,
+      personalOnly,
+      selectedAssigneeIds,
+    ]
   )
 
   const selectedAssignees = assigneeOptions.filter((assignee) =>
@@ -126,6 +133,11 @@ export function TaskCreateDialog({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    if (!personalOnly && selectedAssigneeIds.length === 0) {
+      toast.error("Select at least one assignee.")
+      return
+    }
+
     startTransition(async () => {
       const result = await createTask({
         title,
@@ -142,7 +154,7 @@ export function TaskCreateDialog({
         onOpenChange(false)
         setTitle("")
         setDescription("")
-        setSelectedAssigneeIds([currentProfileId])
+        setSelectedAssigneeIds([])
         setDueDate(null)
         setPriority("none")
         router.refresh()
@@ -164,10 +176,12 @@ export function TaskCreateDialog({
           </DialogTitle>
           <DialogDescription>
             {personalOnly
-              ? "Personal tasks are assigned to you and do not count toward staff accountability scoring."
-              : resolvedTaskType === "GRADED"
-                ? "This task will count toward staff accountability scoring."
-                : "Personal tasks do not count toward staff accountability scoring."}
+              ? "Personal tasks are private, assigned only to you, and are hidden from admin review boards."
+              : canAssignTeamTasks
+                ? "Assign graded work to Multimedia or Content Creator accounts on your shared brands."
+                : resolvedTaskType === "GRADED"
+                  ? "This task will count toward staff accountability scoring."
+                  : "Personal tasks do not count toward staff accountability scoring."}
           </DialogDescription>
         </DialogHeader>
 
@@ -212,8 +226,18 @@ export function TaskCreateDialog({
                     <ChevronsUpDown className="size-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
-                  <div className="max-h-56 overflow-y-auto p-2">
+                <PopoverContent
+                  align="start"
+                  sideOffset={6}
+                  className="w-[var(--radix-popover-trigger-width)] p-0"
+                  onWheel={(event) => event.stopPropagation()}
+                  onTouchMove={(event) => event.stopPropagation()}
+                >
+                  <div
+                    className="max-h-[min(300px,50vh)] overflow-y-auto overscroll-contain p-2 pr-1"
+                    onWheel={(event) => event.stopPropagation()}
+                    onTouchMove={(event) => event.stopPropagation()}
+                  >
                     {assigneeOptions.map((assignee) => {
                       const isSelected = selectedAssigneeIds.includes(assignee.id)
 
@@ -282,9 +306,7 @@ export function TaskCreateDialog({
                         variant="ghost"
                         size="icon-sm"
                         onClick={() => toggleAssignee(assignee.id)}
-                        disabled={
-                          isPending || selectedAssigneeIds.length === 1
-                        }
+                        disabled={isPending}
                       >
                         <X className="size-3" />
                       </Button>

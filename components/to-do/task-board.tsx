@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react"
 import { Plus } from "lucide-react"
 
+import { useTaskBoardSync } from "@/hooks/use-task-board-sync"
+
 import { TaskCreateDialog } from "@/components/to-do/task-create-dialog"
 import { TaskDetailsSheet } from "@/components/to-do/task-details-sheet"
 import { TaskEditDialog } from "@/components/to-do/task-edit-dialog"
@@ -38,6 +40,7 @@ const COPY = {
       "Track assigned tasks, submit proof, and monitor review status.",
     cardTitle: "My tasks",
     createLabel: "Add Personal Task",
+    teamCreateLabel: "Assign Task",
   },
 } as const
 
@@ -53,6 +56,13 @@ export function TaskBoard({
     useState<TaskAssignmentRecord | null>(null)
   const copy = COPY[variant]
   const isEmployeeView = variant === "employee"
+  const canAssignTeamTasks = isEmployeeView && permissions.canAssign
+  const showCreateButton = isEmployeeView
+    ? canAssignTeamTasks
+    : permissions.canCreate
+  const createLabel = isEmployeeView
+    ? COPY.employee.teamCreateLabel
+    : COPY.admin.createLabel
   const {
     isCreateDialogOpen,
     isEditDialogOpen,
@@ -80,26 +90,38 @@ export function TaskBoard({
     ? assignmentPatches[detailsAssignment.assignmentId] ?? detailsAssignment
     : null
 
+  useTaskBoardSync({
+    assignments,
+    enablePolling: isEmployeeView,
+  })
+
+  const emptyMessage = isEmployeeView
+    ? canAssignTeamTasks
+      ? "No team tasks yet. Assign work to Multimedia or Content Creator teammates on your shared brands."
+      : "No tasks assigned yet. Use Reminders for personal follow-ups."
+    : "No tasks yet. Add a task to assign work and start the review workflow."
+
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between pr-1">
-        <div>
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between p-1">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-normal">{copy.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
         </div>
-        {permissions.canCreate ? (
-          <Button onClick={openCreateDialog}>
+
+        {hasNoTasks ? (
+          <p className="shrink-0 rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+            {emptyMessage}
+          </p>
+        ) : null}
+
+        {showCreateButton ? (
+          <Button className="shrink-0" onClick={openCreateDialog}>
             <Plus className="size-4" />
-            {copy.createLabel}
+            {createLabel}
           </Button>
         ) : null}
       </div>
-
-      {hasNoTasks ? (
-        <p className="shrink-0 rounded-lg border border-dashed bg-muted/20 px-4 py-0 text-sm text-muted-foreground">
-          No tasks assigned yet. Create a personal task to get started.
-        </p>
-      ) : null}
 
       <BoardSection className="w-full min-w-0 overflow-hidden py-4 gap-2 ">
         <CardHeader className="min-w-0 shrink-0 gap-3">
@@ -132,7 +154,8 @@ export function TaskBoard({
         currentProfileId={currentProfileId}
         currentAccountType={currentAccountType}
         permissions={permissions}
-        personalOnly={isEmployeeView}
+        personalOnly={false}
+        canAssignTeamTasks={canAssignTeamTasks}
       />
 
       <TaskEditDialog

@@ -25,7 +25,7 @@ export const KANBAN_BOARD_SCROLL_ROW_CLASS =
 
 /** Column card shell: fixed header, internal scrolling body. */
 export const KANBAN_COLUMN_CARD_CLASS =
-  "flex h-[52vh] min-h-[220px]  w-full flex-col gap-0 overflow-hidden rounded-lg py-0 shadow-none md:h-[calc(100vh-305px)]"
+  "flex h-[55vh] min-h-[220px]  w-full flex-col gap-0 overflow-hidden rounded-lg py-0 shadow-none md:h-[calc(100vh-290px)]"
 
 /** Column body wrapper around the vertical ScrollArea. */
 export const KANBAN_COLUMN_BODY_CLASS = "min-h-0 flex-1 overflow-hidden"

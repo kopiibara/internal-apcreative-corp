@@ -8,7 +8,7 @@ export const KANBAN_STAGE_CONFIG = {
       "border-muted-foreground/30 bg-muted/40 text-muted-foreground",
     badgeClassName: "border-muted-foreground/30 bg-muted/40",
   },
-  "supervisor-approved": {
+  approved: {
     icon: "Clock",
     toneClassName:
       "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200",
@@ -32,12 +32,6 @@ export const KANBAN_STAGE_CONFIG = {
       "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
     badgeClassName: "border-red-500/30 bg-red-500/10",
   },
-  scheduled: {
-    icon: "CalendarClock",
-    toneClassName:
-      "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
-    badgeClassName: "border-violet-500/30 bg-violet-500/10",
-  },
   published: {
     icon: "CheckCheck",
     toneClassName:
@@ -55,22 +49,10 @@ export const KANBAN_STAGE_CONFIG = {
 
 const EMPLOYEE_KANBAN_STAGE_CONFIG = {
   pending: KANBAN_STAGE_CONFIG.pending,
-  "supervisor-review": {
-    icon: "Clock",
-    toneClassName:
-      "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-    badgeClassName: "border-sky-500/30 bg-sky-500/10",
-  },
-  "director-review": {
-    icon: "Clock",
-    toneClassName:
-      "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200",
-    badgeClassName: "border-amber-500/30 bg-amber-500/10",
-  },
   revision: KANBAN_STAGE_CONFIG.revision,
   rejected: KANBAN_STAGE_CONFIG.rejected,
+  approved: KANBAN_STAGE_CONFIG.approved,
   "ready-to-publish": KANBAN_STAGE_CONFIG["ready-to-publish"],
-  scheduled: KANBAN_STAGE_CONFIG.scheduled,
   published: KANBAN_STAGE_CONFIG.published,
 } satisfies Record<
   EmployeeApprovalKanbanColumnId,

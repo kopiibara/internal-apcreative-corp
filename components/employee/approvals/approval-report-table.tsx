@@ -164,7 +164,7 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
             status.
           </p>
         </div>
-        <Button onClick={openCreateDialog}>
+        <Button onClick={openCreateDialog} >
           <Plus className="size-4" />
           Create Approval Report
         </Button>
@@ -173,7 +173,6 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
       <Card>
         <CardHeader className="gap-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <CardTitle>My submissions</CardTitle>
             <Button variant="neutral" size="sm" onClick={resetContentReportFilters}>
               Reset Filters
             </Button>
@@ -374,6 +373,7 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
         <ContentReportFormDialog
           mode="create"
           open={isCreateDialogOpen}
+          brandOptions={[]}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               closeCreateDialog()
@@ -387,6 +387,7 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
           key={selectedContentReport.id}
           mode="edit"
           open={isEditDialogOpen}
+          brandOptions={[]}
           onOpenChange={(nextOpen) => {
             if (!nextOpen) {
               closeEditDialog()

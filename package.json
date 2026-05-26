@@ -13,7 +13,11 @@
     "meta:verify-schema": "tsx scripts/verify-meta-schema.ts",
     "meta:test-webhook": "tsx scripts/meta-test-webhook.ts",
     "db:seed-approval-kanban": "tsx scripts/seed-approval-kanban-demo.ts",
-    "db:clear-approval-kanban": "tsx scripts/clear-approval-kanban-demo.ts"
+    "db:clear-approval-kanban": "tsx scripts/clear-approval-kanban-demo.ts",
+    "db:test:clean": "tsx scripts/reset-testing-db.ts",
+    "db:test:seed": "tsx scripts/seed-testing-accounts.ts",
+    "release": "release-it",
+    "release:dry": "release-it --dry-run"
   },
   "dependencies": {
     "@dicebear/collection": "^9.4.2",
@@ -53,6 +57,7 @@
     "react-dom": "19.2.4",
     "react-is": "^19.2.4",
     "recharts": "^3.8.1",
+    "server-only": "^0.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "web-push": "^3.6.7",
@@ -60,6 +65,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@release-it/conventional-changelog": "^11.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
@@ -68,6 +74,7 @@
     "@types/web-push": "^3.6.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "release-it": "^20.0.1",
     "shadcn": "^4.7.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.1",

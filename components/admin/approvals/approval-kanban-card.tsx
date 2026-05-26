@@ -1,12 +1,24 @@
 "use client"
 
-import { Clock, ExternalLink, Paperclip, PenLine } from "lucide-react"
+import {
+  CalendarClock,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+  Paperclip,
+  PenLine,
+} from "lucide-react"
 
 import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { getApprovalDisplayStatus } from "@/lib/approvals/approval-kanban"
+import {
+  getRevisionAreaCount,
+  getRevisionSummaryLabel,
+} from "@/lib/approvals/approval-revision"
 import type { ContentReport } from "@/types/content-report"
 
 type ApprovalKanbanCardProps = {
@@ -24,16 +36,23 @@ function hasText(value: string | null) {
   return Boolean(value?.trim())
 }
 
+function getScheduledLabel(value: string | null) {
+  return value ? dateFormatter.format(new Date(value)) : "Scheduled"
+}
+
 export function ApprovalKanbanCard({
   report,
   onClick,
 }: ApprovalKanbanCardProps) {
   const hasSupervisorNote = hasText(report.supervisorNotes)
   const hasDirectorNote = hasText(report.directorNotes)
+  const displayStatus = getApprovalDisplayStatus(report)
+  const revisionSummary = getRevisionSummaryLabel(report)
+  const revisionItemCount = getRevisionAreaCount(report)
 
   return (
     <Card
-      className="cursor-pointer bg-white rounded-lg px-3 py-2 shadow-sm transition-colors hover:bg-muted"
+      className="cursor-pointer bg-card rounded-lg px-3 py-2 shadow-sm transition-colors hover:bg-muted"
       onClick={onClick}
     >
       <CardContent className="space-y-3 p-2">
@@ -85,9 +104,39 @@ export function ApprovalKanbanCard({
         <ApprovalStatusBadges
           supervisorStatus={report.supervisorStatus}
           directorStatus={report.directorStatus}
-          publishStatus={report.publishStatus}
+          publishStatus={displayStatus.publishStatus}
           compact
         />
+
+        {revisionItemCount > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="secondary" className="gap-1 text-[10px]">
+              Revision: {revisionItemCount} item{revisionItemCount === 1 ? "" : "s"}
+            </Badge>
+            {revisionSummary ? (
+              <Badge variant="outline" className="max-w-full truncate text-[10px]">
+                {revisionSummary}
+              </Badge>
+            ) : null}
+          </div>
+        ) : null}
+
+        {report.publishStatus === "Scheduled" || report.scheduledPublishedDate || report.publishingProofUrl ? (
+          <div className="flex flex-wrap gap-1.5">
+            {report.publishStatus === "Scheduled" || report.scheduledPublishedDate ? (
+              <Badge variant="secondary" className="gap-1">
+                <CalendarClock className="size-3" />
+                {getScheduledLabel(report.scheduledPublishedDate)}
+              </Badge>
+            ) : null}
+            {report.publishingProofUrl ? (
+              <Badge variant="secondary" className="gap-1">
+                <CheckCircle2 className="size-3" />
+                Proof: Submitted
+              </Badge>
+            ) : null}
+          </div>
+        ) : null}
 
         {hasSupervisorNote || hasDirectorNote ? (
           <div

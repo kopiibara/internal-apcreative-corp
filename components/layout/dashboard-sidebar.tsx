@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { authClient } from "@/lib/auth/auth-client"
+import { appVersion } from "@/lib/app-version"
 import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { useTheme } from "@/components/ui/theme-provider"
 import type { AccountType } from "@/app/admin/account-control/schema"
@@ -15,6 +16,7 @@ import { UserAvatar } from "@/components/shared/user-avatar"
 import {
     ChevronDown,
     ChevronsUpDown,
+    FileText,
     LogOut,
     Moon,
     Sun,
@@ -60,6 +62,8 @@ type SidebarUser = {
     accountType?: string
     roleSlugs?: string[]
     canAccessAdsCampaigns?: boolean
+    canAccessTaskBoard?: boolean
+    canAccessReminders?: boolean
     imageUrl?: string | null
 }
 
@@ -96,12 +100,15 @@ export function DashboardSidebar({
     const isCollapsed = !isMobile && state === "collapsed"
     const canSeeAccountControl =
         mode === "admin" &&
-        (user?.accountType === "FULL_STACK_DEVELOPER" ||
+        (user?.accountType === "DIRECTOR" ||
             user?.accountType === "SUPERVISOR" ||
-            user?.roleSlugs?.includes("supervisor") ||
-            user?.roleSlugs?.includes("full-stack-developer"))
+            user?.roleSlugs?.includes("director") ||
+            user?.roleSlugs?.includes("marketing-director") ||
+            user?.roleSlugs?.includes("supervisor"))
     const taskBadge = formatSidebarBadge(employeeActionableTaskCount)
     const canSeeAdsCampaigns = user?.canAccessAdsCampaigns === true
+    const canSeeTaskBoard = user?.canAccessTaskBoard === true
+    const canSeeReminders = user?.canAccessReminders !== false
     const groups =
         mode === "admin"
             ? adminGroups
@@ -123,18 +130,47 @@ export function DashboardSidebar({
                                 item.href !== "/employee/ads-campaigns" ||
                                 canSeeAdsCampaigns
                         )
-                        .map((item) =>
-                            item.title === "To-Do"
-                                ? {
-                                    ...item,
-                                    badge: taskBadge,
-                                    subItems: item.subItems?.map((subItem) =>
-                                        subItem.href === "/employee/to-do/tasks"
-                                            ? { ...subItem, badge: taskBadge }
-                                            : subItem
-                                    ),
-                                }
-                                : item
+                        .map((item) => {
+                            if (item.title !== "To-Do") {
+                                return item
+                            }
+
+                            const subItems = item.subItems
+                                ?.filter((subItem) => {
+                                    if (
+                                        subItem.href ===
+                                            "/employee/to-do/tasks" &&
+                                        !canSeeTaskBoard
+                                    ) {
+                                        return false
+                                    }
+
+                                    if (
+                                        subItem.href ===
+                                            "/employee/to-do/reminders" &&
+                                        !canSeeReminders
+                                    ) {
+                                        return false
+                                    }
+
+                                    return true
+                                })
+                                .map((subItem) =>
+                                    subItem.href === "/employee/to-do/tasks"
+                                        ? { ...subItem, badge: taskBadge }
+                                        : subItem
+                                )
+
+                            return {
+                                ...item,
+                                badge: canSeeTaskBoard ? taskBadge : undefined,
+                                subItems,
+                            }
+                        })
+                        .filter(
+                            (item) =>
+                                item.title !== "To-Do" ||
+                                (item.subItems?.length ?? 0) > 0
                         ),
                 }))
                 .filter((group) => group.items.length > 0)
@@ -555,6 +591,19 @@ export function DashboardSidebar({
                                             ? "Switch to light mode"
                                             : "Switch to dark mode"
                                         : "Switch theme"}
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem asChild>
+                                    <Link
+                                        href="/changelog"
+                                        className="flex cursor-pointer flex-row items-center gap-2"
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                        Changelog
+                                        <span className="ml-auto text-xs text-muted-foreground">
+                                            v{appVersion}
+                                        </span>
+                                    </Link>
                                 </DropdownMenuItem>
 
                                 <DropdownMenuSeparator />

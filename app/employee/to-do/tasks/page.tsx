@@ -1,28 +1,27 @@
 import { redirect } from "next/navigation"
 
 import { TaskBoard } from "@/components/to-do/task-board"
-import { getCurrentProfileContext } from "@/lib/auth/auth-session"
-import { canAccessEmployeeTaskPage } from "@/lib/tasks/employee-task-access"
+import { requireEmployee } from "@/lib/auth/auth-session"
+import { canAccessEmployeeToDoTaskBoard } from "@/lib/tasks/employee-task-access"
 import { loadEmployeeTaskBoardPageData } from "@/lib/tasks/task-board-page"
 
 export default async function EmployeeToDoTasksPage() {
-  const context = await getCurrentProfileContext()
+  const { profile } = await requireEmployee()
 
-  if (!context || context.profile.status !== "ACTIVE") {
+  if (profile.status !== "ACTIVE") {
     redirect("/login")
   }
 
-  const allowed = await canAccessEmployeeTaskPage(
-    context.profile.auth_user_id,
-    context.profile.account_type,
-    context.profile.id
+  const canAccessTaskBoard = await canAccessEmployeeToDoTaskBoard(
+    profile.auth_user_id,
+    profile.id
   )
 
-  if (!allowed) {
-    redirect("/employee/dashboard")
+  if (!canAccessTaskBoard) {
+    redirect("/employee/to-do/reminders")
   }
 
-  const pageData = await loadEmployeeTaskBoardPageData(context.profile)
+  const pageData = await loadEmployeeTaskBoardPageData(profile)
 
   return <TaskBoard {...pageData} />
 }

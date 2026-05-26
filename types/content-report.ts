@@ -20,6 +20,11 @@ export type ApprovalActivityLog = {
   createdAt: string;
 };
 
+export type ApprovalPublishingPermissions = {
+  canPublishNow: boolean;
+  canSchedulePublish: boolean;
+};
+
 export type ContentReport = {
   id: number;
   submittedByProfileId: number;
@@ -44,24 +49,54 @@ export type ContentReport = {
   directorReviewedAt: string | null;
   publishStatus: PublishStatus;
   scheduledPublishedDate: string | null;
+  publishingProofUrl: string | null;
+  publishingProofNote: string | null;
+  publishingProofSubmittedByName: string | null;
+  publishingProofSubmittedAt: string | null;
+  publishedByName: string | null;
+  publishedAt: string | null;
+  scheduledByName: string | null;
+  scheduledAt: string | null;
   remarksRevisionSummary: string | null;
   activityLogs: ApprovalActivityLog[];
+  /** Set server-side for brand officers on the employee approvals page. */
+  approvalPublishingPermissions?: ApprovalPublishingPermissions;
   createdAt: string;
   updatedAt: string;
 };
+
+/**
+ * Employees may edit/cancel their report until publishing ends the workflow.
+ * Stays editable after supervisor or director approval (including when only one
+ * has approved, or both are approved but not yet published).
+ */
+export function canEmployeeEditOwnReport(
+  report: {
+    submittedByProfileId: number;
+    supervisorStatus: ReviewStatus;
+    directorStatus: ReviewStatus;
+    publishStatus: PublishStatus;
+  },
+  profileId: number,
+) {
+  return (
+    report.submittedByProfileId === profileId && canEmployeeEditReport(report)
+  );
+}
 
 export function canEmployeeEditReport(report: {
   supervisorStatus: ReviewStatus;
   directorStatus: ReviewStatus;
   publishStatus: PublishStatus;
 }) {
-  return (
-    report.publishStatus !== "Published" &&
-    !(
-      report.supervisorStatus === "Approved" &&
-      report.directorStatus === "Approved"
-    )
-  );
+  if (
+    report.publishStatus === "Published" ||
+    report.publishStatus === "Cancelled"
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 export function canEditPublishingFields(report: {

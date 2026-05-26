@@ -31,7 +31,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { getApprovalKanbanStage } from "@/lib/approvals/approval-kanban"
+import {
+  getApprovalActionableCount,
+  getApprovalKanbanStage,
+  type ApprovalKanbanViewerContext,
+} from "@/lib/approvals/approval-kanban"
 import {
   filterApprovalReports,
   mergeApprovalReports,
@@ -39,15 +43,14 @@ import {
 import { getVisibleApprovalKanbanColumns } from "@/lib/approvals/approval-statuses"
 import type { AccountType } from "@/lib/auth/auth-session"
 import { cn } from "@/lib/utils"
+import { useApprovalPollingRefresh } from "@/hooks/use-approval-polling-refresh"
 import { useApprovalStore } from "@/stores/use-approval-store"
-import {
-  canEditPublishingFields,
-  type ContentReport,
-} from "@/types/content-report"
+import type { ContentReport } from "@/types/content-report"
 
 type ApprovalKanbanBoardProps = {
   reports: ContentReport[]
   accountType: AccountType
+  position?: string | null
   canSupervisorReview: boolean
   canDirectorReview: boolean
   canPublishUpdate: boolean
@@ -56,12 +59,13 @@ type ApprovalKanbanBoardProps = {
 
 function buildColumns(
   reports: ContentReport[],
-  columnsToShow: ReturnType<typeof getVisibleApprovalKanbanColumns>
+  columnsToShow: ReturnType<typeof getVisibleApprovalKanbanColumns>,
+  viewerContext: ApprovalKanbanViewerContext
 ) {
   return columnsToShow.reduce<Record<string, ContentReport[]>>(
     (columns, column) => {
       columns[column.id] = reports.filter(
-        (report) => getApprovalKanbanStage(report) === column.id
+        (report) => getApprovalKanbanStage(report, viewerContext) === column.id
       )
       return columns
     },
@@ -72,11 +76,13 @@ function buildColumns(
 export function ApprovalKanbanBoard({
   reports,
   accountType,
+  position,
   canSupervisorReview,
   canDirectorReview,
   canPublishUpdate,
   approvalId,
 }: ApprovalKanbanBoardProps) {
+  useApprovalPollingRefresh()
   const {
     activeView,
     searchQuery,
@@ -135,9 +141,25 @@ export function ApprovalKanbanBoard({
     [accountType, canDirectorReview, canPublishUpdate, canSupervisorReview]
   )
 
+  const viewerContext = useMemo(
+    () => ({
+      accountType,
+      position,
+      canSupervisorReview,
+      canDirectorReview,
+      canPublishUpdate,
+    }),
+    [accountType, canDirectorReview, canPublishUpdate, canSupervisorReview, position]
+  )
+
   const columns = useMemo(
-    () => buildColumns(filteredReports, visibleColumns),
-    [filteredReports, visibleColumns]
+    () => buildColumns(filteredReports, visibleColumns, viewerContext),
+    [filteredReports, visibleColumns, viewerContext]
+  )
+
+  const actionableCount = useMemo(
+    () => getApprovalActionableCount(filteredReports, viewerContext),
+    [filteredReports, viewerContext]
   )
 
   const boardSyncKey = useMemo(
@@ -166,44 +188,13 @@ export function ApprovalKanbanBoard({
       return
     }
 
-    const isDirectorCompletingRevision =
-      report.supervisorStatus === "Approved" &&
-      report.directorStatus === "Revision" &&
-      (overContainer === "supervisor-approved" || overContainer === "ready-to-publish")
-
-    if (
-      (overContainer === "pending" ||
-        (overContainer === "supervisor-approved" && !isDirectorCompletingRevision)) &&
-      !canSupervisorReview
-    ) {
-      toast.error("You do not have permission to update Supervisor Review.")
+    if (!canSupervisorReview && !canDirectorReview) {
+      toast.error("You do not have permission to update approval reviews.")
       return
     }
 
-    if (overContainer === "revision" || overContainer === "rejected") {
-      const isDirectorStage = report.supervisorStatus === "Approved"
-
-      if (isDirectorStage && !canDirectorReview) {
-        toast.error("You do not have permission to perform Director Review.")
-        return
-      }
-
-      if (!isDirectorStage && !canSupervisorReview) {
-        toast.error("You do not have permission to update Supervisor Review.")
-        return
-      }
-    }
-
-    if (overContainer === "ready-to-publish" && !canDirectorReview) {
-      toast.error("You do not have permission to perform Director Review.")
-      return
-    }
-
-    if (
-      (overContainer === "scheduled" || overContainer === "published") &&
-      (!canPublishUpdate || !canEditPublishingFields(report))
-    ) {
-      toast.error("You do not have permission to update Publishing.")
+    if (overContainer === "published") {
+      toast.error("Use the publishing form to mark an approval as Published.")
       return
     }
 
@@ -248,7 +239,14 @@ export function ApprovalKanbanBoard({
             className="w-auto shrink-0"
           >
             <TabsList>
-              <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
+              <TabsTrigger value="kanban">
+                Kanban Board
+                {actionableCount > 0 ? (
+                  <span className="ml-2 rounded-md border border-border bg-background px-1.5 text-xs">
+                    {actionableCount}
+                  </span>
+                ) : null}
+              </TabsTrigger>
               <TabsTrigger value="table">Table View</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -334,6 +332,7 @@ export function ApprovalKanbanBoard({
       <ApprovalDetailsSheet
         reports={reports}
         accountType={accountType}
+        position={position}
         canSupervisorReview={canSupervisorReview}
         canDirectorReview={canDirectorReview}
         canPublishUpdate={canPublishUpdate}

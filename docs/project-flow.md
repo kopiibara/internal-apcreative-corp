@@ -11,6 +11,18 @@
 → redirects by account_type
 ```
 
+## Automated Versioning and Changelog
+
+Use Conventional Commits so release tooling can determine version bumps:
+
+- `fix:` creates a patch release.
+- `feat:` creates a minor release.
+- `feat!:` or `BREAKING CHANGE` creates a major release.
+
+Run `npm run release:dry` to preview a release. Run `npm run release` to update
+the package version and generate `public/CHANGELOG.md`. The app displays the
+current version from `package.json`; do not hardcode it in UI.
+
 Redirects:
 
 ```txt
