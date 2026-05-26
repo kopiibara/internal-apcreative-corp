@@ -1,7 +1,9 @@
 import { StaffAccountabilityDashboard } from "@/components/admin/staff-accountability/staff-accountability-dashboard"
-import { getDailyReportFilterOptions } from "@/lib/daily-reports/daily-reports"
 import { requirePermission } from "@/lib/permissions"
-import { getStaffAccountabilityData } from "@/lib/tasks/tasks"
+import {
+  getStaffAccountabilityData,
+  getStaffAccountabilityFilterOptions,
+} from "@/lib/tasks/tasks"
 
 type StaffAccountabilityPageProps = {
   searchParams: Promise<{
@@ -54,7 +56,7 @@ export default async function StaffAccountabilityPage({
       brandId,
       employeeId,
     }),
-    getDailyReportFilterOptions(),
+    getStaffAccountabilityFilterOptions(),
   ])
 
   return (
