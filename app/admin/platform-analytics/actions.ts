@@ -12,13 +12,19 @@ import { query } from "@/lib/db";
 import { bootstrapMetaMonitoring } from "@/lib/meta/bootstrap";
 import { getMetaMonitoringDashboardData } from "@/lib/meta/monitoring-data";
 import { getPlatformAnalyticsDashboardData } from "@/lib/platform-analytics/get-dashboard-data";
-import type { AnalyticsPlatform, MetaScope } from "@/lib/platform-analytics/types";
+import type {
+  AnalyticsDateRange,
+  AnalyticsPlatform,
+  MetaScope,
+} from "@/lib/platform-analytics/types";
 import {
   runAllMetaSyncJobs,
   runMetaSyncJob,
 } from "@/lib/meta/sync";
+import { syncYouTubeAnalytics } from "@/lib/platform-analytics/youtube-sync";
 import type { MetaSyncType } from "@/lib/meta/types";
 import { can } from "@/lib/permissions";
+import { buildYouTubeOAuthUrl } from "@/lib/platform-analytics/youtube-client";
 
 export type MetaMonitoringActionResult<T = unknown> = {
   success: boolean;
@@ -82,6 +88,7 @@ export async function fetchPlatformAnalyticsAction(input?: {
   platform?: AnalyticsPlatform;
   accountId?: string | null;
   metaScope?: MetaScope;
+  dateRange?: AnalyticsDateRange;
 }): Promise<
   MetaMonitoringActionResult<
     Awaited<ReturnType<typeof getPlatformAnalyticsDashboardData>>
@@ -104,6 +111,7 @@ export async function fetchPlatformAnalyticsAction(input?: {
     platform: parsed.data.platform,
     accountId: parsed.data.accountId ?? null,
     metaScope: parsed.data.metaScope,
+    dateRange: parsed.data.dateRange,
   });
 
   return { success: true, message: "Platform analytics loaded.", data };
@@ -286,6 +294,96 @@ export async function triggerMetaSyncAction(
     return {
       success: false,
       message: error instanceof Error ? error.message : "Meta sync failed.",
+    };
+  }
+}
+
+export async function syncYouTubeAction(input?: {
+  accountId?: string | null;
+  dateRange?: AnalyticsDateRange;
+}) {
+  const authError = await authorizeMetaManage();
+  if (authError) {
+    return authError;
+  }
+
+  try {
+    const result = await syncYouTubeAnalytics({
+      accountId: input?.accountId ?? null,
+      dateRange: input?.dateRange,
+    });
+    revalidatePath("/admin/platform-analytics");
+
+    return {
+      success: true,
+      message: result.message,
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "YouTube sync failed.",
+    };
+  }
+}
+
+export async function disconnectYouTubeAction(input?: {
+  accountId?: string | null;
+}): Promise<MetaMonitoringActionResult> {
+  const authError = await authorizeMetaManage();
+  if (authError) {
+    return authError;
+  }
+
+  const accountId = input?.accountId ?? null;
+
+  try {
+    await query(
+      `
+      UPDATE platform_integration
+      SET
+        status = 'INACTIVE',
+        token_reference = NULL,
+        updated_at = now()
+      WHERE platform = 'YOUTUBE'
+        AND status IN ('ACTIVE', 'ERROR')
+        AND ($1::text IS NULL OR external_account_id = $1)
+      `,
+      [accountId],
+    );
+
+    revalidatePath("/admin/platform-analytics");
+
+    return {
+      success: true,
+      message: accountId
+        ? "YouTube account disconnected."
+        : "All YouTube accounts disconnected.",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "YouTube disconnect failed.",
+    };
+  }
+}
+
+export async function getYouTubeOAuthUrlAction(): Promise<
+  MetaMonitoringActionResult<{ url: string }>
+> {
+  const authError = await authorizeMetaManage();
+  if (authError) return authError;
+
+  try {
+    const state = "youtube_connect";
+    const url = buildYouTubeOAuthUrl(state);
+    return { success: true, message: "OAuth URL generated.", data: { url } };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Failed to build OAuth URL.",
     };
   }
 }
