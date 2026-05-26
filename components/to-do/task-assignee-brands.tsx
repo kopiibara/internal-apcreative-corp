@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import type { AssigneeBrandAccess } from "@/lib/tasks/tasks"
+import { cn } from "@/lib/utils"
 
 type TaskAssigneeBrandsProps = {
   brands: AssigneeBrandAccess[]
@@ -20,8 +21,8 @@ export function TaskAssigneeBrands({
 
   if (hasAllBrandsAccess) {
     return (
-      <div className={`flex flex-wrap gap-1 ${className ?? ""}`}>
-        <Badge variant="default" className="text-[10px]">
+      <div className={cn("flex max-w-full flex-wrap gap-1", className)}>
+        <Badge variant="default" className="max-w-full truncate text-[10px]">
           All brands
         </Badge>
       </div>
@@ -29,12 +30,12 @@ export function TaskAssigneeBrands({
   }
 
   return (
-    <div className={`flex flex-wrap gap-1 ${className ?? ""}`}>
+    <div className={cn("flex max-w-full flex-wrap gap-1", className)}>
       {brands.map((brand) => (
         <Badge
           key={brand.brandId}
           variant={brand.isPrimary ? "default" : "neutral"}
-          className="text-[10px]"
+          className="max-w-full truncate text-[10px]"
         >
           {brand.brandName}
           {brand.isPrimary ? " · Primary" : ""}
