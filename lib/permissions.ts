@@ -11,6 +11,7 @@ import {
   hasAdminPermissionBypass,
   isAdminAccountType,
 } from "@/lib/auth/account-type";
+import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import { query } from "@/lib/db";
 
 type PermissionProfileRow = {
@@ -120,14 +121,20 @@ export async function can(
       EXISTS (
         SELECT 1
         FROM user_brand_access uba
+        JOIN brand b ON b.id = uba.brand_id
         JOIN role_permission rp ON rp.role_id = uba.role_id
         WHERE uba.profile_id = $1
           AND uba.is_active = true
           AND rp.permission_id = $2
-          AND ($3::integer IS NULL OR uba.brand_id = $3)
+          AND b.is_active = true
+          AND (
+            $3::integer IS NULL
+            OR uba.brand_id = $3
+            OR b.slug = $4
+          )
       ) AS has_role_permission
     `,
-    [profile.id, permission.id, brandId ?? null],
+    [profile.id, permission.id, brandId ?? null, ALL_BRAND_SLUG],
   );
   const check = checkResult.rows[0];
 
