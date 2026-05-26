@@ -1,6 +1,6 @@
 import "server-only";
 
-import { google } from "googleapis";
+import { google } from "@/lib/platform-analytics/googleapis-runtime";
 
 export const YOUTUBE_ANALYTICS_SCOPE =
   "https://www.googleapis.com/auth/yt-analytics.readonly";

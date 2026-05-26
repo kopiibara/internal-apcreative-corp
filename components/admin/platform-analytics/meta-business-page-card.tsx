@@ -1,4 +1,15 @@
+import Link from "next/link"
+
+import {
+  MetaPostCaption,
+  MetaPostDate,
+  MetaPostEngagementStats,
+  MetaPostExternalLink,
+  MetaPostThumbnail,
+  MetaViewAllPostsButton,
+} from "@/components/admin/platform-analytics/meta/meta-post-shared"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -6,8 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { StatusBadge } from "@/components/shared/status-badge"
 import {
   formatMetaMetricDisplay,
   liveText,
@@ -74,8 +83,10 @@ function MetricCard({
   return (
     <Card className="border-border/80 bg-background/60">
       <CardHeader className="pb-2">
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-2xl leading-tight tabular-nums">{value}</CardTitle>
+        <CardDescription className="text-xs">{label}</CardDescription>
+        <CardTitle className="text-xl leading-tight tabular-nums sm:text-2xl">
+          {value}
+        </CardTitle>
       </CardHeader>
     </Card>
   )
@@ -87,18 +98,53 @@ function syncStatusTone(status: string): "ok" | "warn" | "neutral" {
   return "neutral"
 }
 
+function PostPreviewCard({
+  post,
+  badge,
+}: {
+  post: MetaBusinessPageDashboard["postPreview"]["topPosts"][number]
+  badge: string
+}) {
+  return (
+    <div className="flex gap-3 rounded-lg border border-border/80 bg-background/40 p-3">
+      <MetaPostThumbnail post={post} />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex items-center gap-2">
+          <Badge variant="neutral" className="text-[10px]">
+            {badge}
+          </Badge>
+          <MetaPostDate publishedAt={post.publishedAt} />
+        </div>
+        <MetaPostCaption message={post.message} className="line-clamp-2 text-sm" />
+        <MetaPostEngagementStats post={post} />
+      </div>
+    </div>
+  )
+}
+
 export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
   const connected = page.connectionStatus === "Connected"
   const m = page.metrics
+  const preview = page.postPreview
+  const topPost = preview.topPerforming
+
+  const topPerformingLabel =
+    preview.topPerformingState === "permission"
+      ? "Unavailable from current permission"
+      : preview.topPerformingState === "sync_failed"
+        ? "Sync failed"
+        : topPost
+          ? liveText(topPost.message?.slice(0, 80) ?? null)
+          : "No live data yet"
 
   return (
     <Card className="border-2 border-border bg-card/80 shadow-sm">
-      <CardHeader className="space-y-4 border-b border-border/80 pb-6">
+      <CardHeader className="space-y-5 border-b border-border/80 pb-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <CardTitle className="text-xl">{page.displayName}</CardTitle>
             <CardDescription>
-              Platform: {page.platformLabel}
+              {page.platformLabel} analytics summary
               {page.facebookPageId ? (
                 <span className="ml-2 font-mono text-xs">
                   · Page ID {page.facebookPageId}
@@ -107,21 +153,26 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
             </CardDescription>
             {page.pageName ? (
               <p className="text-sm text-muted-foreground">
-                Facebook page name: <strong>{page.pageName}</strong>
+                Facebook page: <strong>{page.pageName}</strong>
               </p>
             ) : null}
             {page.tokenResolutionHint ? (
-              <p className="text-sm text-muted-foreground">{page.tokenResolutionHint}</p>
+              <p className="text-sm text-muted-foreground">
+                {page.tokenResolutionHint}
+              </p>
             ) : null}
             <div className="flex flex-wrap gap-2">
               <Badge variant={connected ? "default" : "neutral"}>
-                Status: {page.connectionStatus}
+                Connection: {page.connectionStatus}
               </Badge>
               <Badge variant="neutral">
                 Facebook Page: {page.facebookPageStatus}
               </Badge>
               <Badge variant="neutral">
-                Instagram Account: {page.instagramStatus}
+                Instagram: {page.instagramStatus}
+              </Badge>
+              <Badge variant="neutral">
+                Webhook: {page.permissions.webhooks}
               </Badge>
             </div>
           </div>
@@ -153,14 +204,9 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
           />
         </div>
 
-        <div className="rounded-lg border bg-muted/30 p-4">
-          <h4 className="mb-3 text-sm font-semibold">Permission &amp; capability status</h4>
+        <div className="rounded-lg border bg-muted/20 p-4">
+          <h4 className="mb-3 text-sm font-semibold">Capabilities</h4>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            <StatusPill
-              label="Page access token"
-              value={page.permissions.pageAccessToken}
-              tone={capabilityTone(page.permissions.pageAccessToken)}
-            />
             <StatusPill
               label="Page summary"
               value={page.permissions.pageSummary}
@@ -176,24 +222,14 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
               value={page.permissions.insights}
               tone={capabilityTone(page.permissions.insights)}
             />
-            <StatusPill
-              label="Webhooks"
-              value={page.permissions.webhooks}
-              tone={capabilityTone(page.permissions.webhooks)}
-            />
-            <StatusPill
-              label="Ads"
-              value={page.permissions.ads}
-              tone="neutral"
-            />
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-8 pt-6">
         <section className="space-y-4">
-          <h3 className="text-base font-semibold">Metrics</h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <h3 className="text-base font-semibold">Performance overview</h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
               label="Total followers"
               value={formatMetaMetricDisplay(
@@ -224,15 +260,15 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
               )}
             />
             <MetricCard
-              label="Reactions"
+              label="Total reactions"
               value={formatMetaMetricDisplay(m.reactions, m.states.reactions)}
             />
             <MetricCard
-              label="Comments"
+              label="Total comments"
               value={formatMetaMetricDisplay(m.comments, m.states.comments)}
             />
             <MetricCard
-              label="Shares"
+              label="Total shares"
               value={formatMetaMetricDisplay(m.shares, m.states.shares)}
             />
             <MetricCard
@@ -241,7 +277,10 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
             />
             <MetricCard
               label="Impressions"
-              value={formatMetaMetricDisplay(m.impressions, m.states.impressions)}
+              value={formatMetaMetricDisplay(
+                m.impressions,
+                m.states.impressions
+              )}
             />
             <MetricCard
               label="Profile visits"
@@ -254,155 +293,91 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
               label="Link clicks"
               value={formatMetaMetricDisplay(m.linkClicks, m.states.linkClicks)}
             />
-            <MetricCard
-              label="Top performing post"
-              value={
-                m.states.topPerformingPost === "permission"
-                  ? "Unavailable from current permission"
-                  : m.states.topPerformingPost === "sync_failed"
-                    ? "Sync failed"
-                    : m.topPerformingPost
-                      ? liveText(m.topPerformingPost)
-                      : "No live data yet"
-              }
-            />
           </div>
         </section>
 
-        <section className="space-y-4">
-          <div>
-            <h3 className="text-base font-semibold">All posts</h3>
-            <p className="text-sm text-muted-foreground">
-              Facebook posts synced for {page.displayName}.
-            </p>
+        <section className="space-y-4 rounded-lg border border-border/80 bg-muted/10 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-base font-semibold">Top performing post</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Highest total engagement (reactions + comments + shares).
+              </p>
+            </div>
+            {m.topPerformingPostId ? (
+              <Button type="button" variant="neutral" size="sm" asChild>
+                <Link
+                  href={`/admin/platform-analytics/meta/posts?pageKey=${page.key}&postId=${m.topPerformingPostId}`}
+                >
+                  View details
+                </Link>
+              </Button>
+            ) : null}
           </div>
+          {topPost ? (
+            <div className="flex gap-3 rounded-lg border bg-background/50 p-3">
+              <MetaPostThumbnail post={topPost} className="h-20 w-20" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <MetaPostCaption message={topPost.message} className="line-clamp-3" />
+                <MetaPostEngagementStats post={topPost} />
+                <MetaPostExternalLink permalink={topPost.permalink} />
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{topPerformingLabel}</p>
+          )}
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-base font-semibold">Post performance preview</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {preview.totalSynced.toLocaleString("en-PH")} posts synced
+                {preview.lastPostsSyncAt
+                  ? ` · Last posts sync ${dateFormatter.format(new Date(preview.lastPostsSyncAt))}`
+                  : ""}
+              </p>
+            </div>
+            <MetaViewAllPostsButton pageKey={page.key} />
+          </div>
+
           {page.postsUnavailableMessage ? (
             <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
               {page.postsUnavailableMessage}
             </p>
           ) : null}
-          <ScrollArea className="w-full" scrollbars="horizontal">
-            <table className="w-full min-w-[1100px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 pr-4">Date</th>
-                  <th className="py-2 pr-4">Post preview</th>
-                  <th className="py-2 pr-4">Caption</th>
-                  <th className="py-2 pr-4">Reactions</th>
-                  <th className="py-2 pr-4">Comments</th>
-                  <th className="py-2 pr-4">Shares</th>
-                  <th className="py-2 pr-4">Engagement</th>
-                  <th className="py-2 pr-4">Post link</th>
-                </tr>
-              </thead>
-              <tbody>
-                {page.allPosts.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-muted-foreground">
-                      {page.postsUnavailableMessage
-                        ? "Posts could not be loaded."
-                        : page.postsSyncStatus === "Failed"
-                          ? "Sync failed — check token permissions and try Sync Posts again."
-                          : "No live data yet — run Sync Posts after connecting this page."}
-                    </td>
-                  </tr>
-                ) : (
-                  page.allPosts.map((post) => (
-                    <tr key={post.id} className="border-b align-top">
-                      <td className="whitespace-nowrap py-3 pr-4">
-                        {post.publishedAt
-                          ? dateFormatter.format(new Date(post.publishedAt))
-                          : "—"}
-                      </td>
-                      <td className="py-3 pr-4">
-                        {post.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={post.imageUrl}
-                            alt=""
-                            className="h-16 w-16 rounded-md border bg-muted object-cover"
-                          />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="max-w-xs py-3 pr-4">
-                        <span className="line-clamp-3">
-                          {post.message || "Untitled post"}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-4 tabular-nums">{post.reactions}</td>
-                      <td className="py-3 pr-4 tabular-nums">{post.comments}</td>
-                      <td className="py-3 pr-4 tabular-nums">{post.shares}</td>
-                      <td className="py-3 pr-4 tabular-nums">
-                        {post.engagementTotal}
-                      </td>
-                      <td className="py-3 pr-4">
-                        {post.permalink ? (
-                          <a
-                            href={post.permalink}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-primary underline-offset-4 hover:underline"
-                          >
-                            Open
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </ScrollArea>
-        </section>
 
-        <section className="space-y-4">
-          <h3 className="text-base font-semibold">Sync history</h3>
-          <ScrollArea className="w-full" scrollbars="horizontal">
-            <table className="w-full min-w-[720px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="py-2 pr-4">Job</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Records</th>
-                  <th className="py-2 pr-4">Started</th>
-                  <th className="py-2 pr-4">Error</th>
-                </tr>
-              </thead>
-              <tbody>
-                {page.recentSyncRuns.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-6 text-muted-foreground">
-                      No sync runs yet.
-                    </td>
-                  </tr>
-                ) : (
-                  page.recentSyncRuns.map((run) => (
-                    <tr key={run.id} className="border-b align-top">
-                      <td className="py-2 pr-4 font-mono text-xs">
-                        {run.sync_type}
-                      </td>
-                      <td className="py-2 pr-4">
-                        <StatusBadge status={run.status} />
-                      </td>
-                      <td className="py-2 pr-4 tabular-nums">
-                        {run.records_affected}
-                      </td>
-                      <td className="py-2 pr-4 whitespace-nowrap">
-                        {dateFormatter.format(new Date(run.started_at))}
-                      </td>
-                      <td className="max-w-sm py-2 pr-4 text-destructive">
-                        {run.error_log ?? "—"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </ScrollArea>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Top 3 performing
+              </h4>
+              {preview.topPosts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No live data yet</p>
+              ) : (
+                preview.topPosts.map((post, index) => (
+                  <PostPreviewCard
+                    key={post.id}
+                    post={post}
+                    badge={`#${index + 1}`}
+                  />
+                ))
+              )}
+            </div>
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Latest 3 posts
+              </h4>
+              {preview.latestPosts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No live data yet</p>
+              ) : (
+                preview.latestPosts.map((post) => (
+                  <PostPreviewCard key={post.id} post={post} badge="Latest" />
+                ))
+              )}
+            </div>
+          </div>
         </section>
       </CardContent>
     </Card>

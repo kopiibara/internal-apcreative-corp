@@ -1,6 +1,6 @@
 import "server-only";
 
-import { google, type youtubeAnalytics_v2 } from "googleapis";
+import { google } from "@/lib/platform-analytics/googleapis-runtime";
 import type { PoolClient } from "pg";
 
 import { query, transaction } from "@/lib/db";
@@ -123,11 +123,53 @@ function parseMetricNumber(value: unknown) {
   return 0;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function apiItems(data: Record<string, unknown>) {
+  return asArray(data.items).map(asRecord);
+}
+
+function apiColumnHeaders(
+  data: Record<string, unknown>,
+): AnalyticsColumnHeader[] {
+  return asArray(data.columnHeaders).map((header) => {
+    const record = asRecord(header);
+    return {
+      name: asString(record.name) || null,
+      dataType: asString(record.dataType) || null,
+    };
+  });
+}
+
+function apiRows(data: Record<string, unknown>) {
+  return asArray(data.rows).map((row) => {
+    const cells = asArray(row);
+    return cells.map((cell) =>
+      typeof cell === "string" || typeof cell === "number" ? cell : 0,
+    );
+  });
+}
+
+type AnalyticsColumnHeader = {
+  name?: string | null
+  dataType?: string | null
+}
+
 function toMetricMap(
-  headers:
-    | youtubeAnalytics_v2.Schema$ResultTableColumnHeader[]
-    | null
-    | undefined,
+  headers: AnalyticsColumnHeader[] | null | undefined,
   row: (string | number)[] | null | undefined,
 ) {
   const mapped: Record<string, number | string> = {};
@@ -199,17 +241,20 @@ async function fetchChannelIdentityFromOAuth(
     maxResults: 1,
   });
 
-  const item = response.data.items?.[0];
-  const channelId = item?.id?.trim() ?? "";
+  const item = apiItems(response.data)[0];
+  const channelId = asString(item?.id).trim();
 
   if (!channelId) {
     throw new Error("Could not resolve YouTube channel from OAuth account.");
   }
 
+  const snippet = asRecord(item?.snippet);
+  const statistics = asRecord(item?.statistics);
+
   return {
     channelId,
-    channelName: item?.snippet?.title?.trim() || "YouTube Channel",
-    subscribersTotal: parseMetricNumber(item?.statistics?.subscriberCount),
+    channelName: asString(snippet.title).trim() || "YouTube Channel",
+    subscribersTotal: parseMetricNumber(statistics.subscriberCount),
   } satisfies YouTubeChannelIdentity;
 }
 
@@ -219,8 +264,15 @@ export async function exchangeYouTubeOAuthCode(code: string) {
   const tokenResponse = await oauth.getToken(code);
   oauth.setCredentials(tokenResponse.tokens);
 
-  const refreshToken = tokenResponse.tokens.refresh_token ?? null;
-  const scopeSet = parseScopeSet(tokenResponse.tokens.scope);
+  const refreshToken =
+    typeof tokenResponse.tokens.refresh_token === "string"
+      ? tokenResponse.tokens.refresh_token
+      : null;
+  const scopeSet = parseScopeSet(
+    typeof tokenResponse.tokens.scope === "string"
+      ? tokenResponse.tokens.scope
+      : undefined,
+  );
   const channel = await fetchChannelIdentityFromOAuth(oauth);
 
   return { refreshToken, scopeSet, channel, tokens: tokenResponse.tokens };
@@ -289,10 +341,8 @@ async function fetchAnalyticsTotals(
       "views,comments,likes,shares,estimatedMinutesWatched,averageViewDuration,subscribersGained,subscribersLost",
   });
 
-  const mapped = toMetricMap(
-    response.data.columnHeaders,
-    response.data.rows?.[0] ?? undefined,
-  );
+  const data = response.data;
+  const mapped = toMetricMap(apiColumnHeaders(data), apiRows(data)[0]);
 
   return {
     views: parseMetricNumber(mapped.views),
@@ -323,10 +373,10 @@ async function fetchDailyAnalytics(
     sort: "day",
   });
 
-  const rows = response.data.rows ?? [];
-  const headers = response.data.columnHeaders;
+  const data = response.data;
+  const headers = apiColumnHeaders(data);
 
-  return rows
+  return apiRows(data)
     .map((row) => toMetricMap(headers, row))
     .map((row) => ({
       day: String(row.day ?? ""),
@@ -357,10 +407,10 @@ async function fetchTopVideos(
     maxResults: 10,
   });
 
-  const headers = response.data.columnHeaders;
-  const rows = response.data.rows ?? [];
+  const data = response.data;
+  const headers = apiColumnHeaders(data);
 
-  return rows
+  return apiRows(data)
     .map((row) => toMetricMap(headers, row))
     .map((row) => ({
       video: String(row.video ?? ""),
@@ -391,20 +441,23 @@ async function fetchVideoMetadata(
 
   const map = new Map<string, YouTubeVideoMeta>();
 
-  for (const item of response.data.items ?? []) {
-    const id = item.id?.trim();
+  for (const item of apiItems(response.data)) {
+    const id = asString(item.id).trim();
     if (!id) {
       continue;
     }
 
+    const snippet = asRecord(item.snippet);
+    const thumbnails = asRecord(snippet.thumbnails);
+    const medium = asRecord(thumbnails.medium);
+    const defaultThumb = asRecord(thumbnails.default);
+
     map.set(id, {
       id,
-      title: item.snippet?.title?.trim() || "Untitled video",
-      publishedAt: item.snippet?.publishedAt ?? null,
+      title: asString(snippet.title).trim() || "Untitled video",
+      publishedAt: asString(snippet.publishedAt) || null,
       thumbnailUrl:
-        item.snippet?.thumbnails?.medium?.url ??
-        item.snippet?.thumbnails?.default?.url ??
-        null,
+        asString(medium.url) || asString(defaultThumb.url) || null,
     });
   }
 
@@ -611,14 +664,15 @@ async function syncSingleYouTubeIntegration(
       maxResults: 1,
     });
 
-    const channel = channelResponse.data.items?.[0];
-    const channelId = channel?.id?.trim() || integration.external_account_id;
+    const channel = apiItems(channelResponse.data)[0];
+    const channelId =
+      asString(channel?.id).trim() || integration.external_account_id;
     const channelName =
-      channel?.snippet?.title?.trim() ||
+      asString(asRecord(channel?.snippet).title).trim() ||
       integration.account_name ||
       "YouTube Channel";
     const subscribersTotal = parseMetricNumber(
-      channel?.statistics?.subscriberCount,
+      asRecord(channel?.statistics).subscriberCount,
     );
 
     const totals = await fetchAnalyticsTotals(oauth, dateRange);
@@ -910,9 +964,9 @@ export async function getYouTubeLiveMetricMap(
     }),
   ]);
 
-  const channel = channelResponse.data.items?.[0];
+  const channel = apiItems(channelResponse.data)[0];
   const subscribersTotal = parseMetricNumber(
-    channel?.statistics?.subscriberCount,
+    asRecord(channel?.statistics).subscriberCount,
   );
   const subscribersNet = totals.subscribersGained - totals.subscribersLost;
 

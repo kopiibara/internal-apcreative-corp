@@ -304,7 +304,10 @@ export async function syncHourlyPostMetrics() {
             comments,
             shares,
             engagementRate,
-            JSON.stringify({ picture_url: post.full_picture ?? null }),
+            JSON.stringify({
+              picture_url: post.full_picture ?? null,
+              post_type: post.type ?? null,
+            }),
           ]
         )
 
