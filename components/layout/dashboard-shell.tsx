@@ -190,8 +190,8 @@ export function DashboardShell({
                         </div>
 
                         <div className="flex min-w-0 items-center gap-2">
-
-                            <Popover>
+                            {/* 
+                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button
                                         type="button"
@@ -227,6 +227,7 @@ export function DashboardShell({
                                     </div>
                                 </PopoverContent>
                             </Popover>
+                            */}
 
                             <Badge
                                 variant="neutral"
@@ -236,7 +237,7 @@ export function DashboardShell({
                             </Badge>
 
                             {/*
-                                   <Button
+                            <Button
                                 variant="neutral"
                                 size="sm"
                                 onClick={handleExport}

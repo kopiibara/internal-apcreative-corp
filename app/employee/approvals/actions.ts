@@ -465,6 +465,7 @@ export async function updateContentReport(
         content_report_id: number;
         actor_profile_id: number;
         actor_name: string;
+        actor_image_url: string | null;
         actor_account_type: string;
         actor_position: string | null;
         action: string;
@@ -480,6 +481,7 @@ export async function updateContentReport(
           aal.content_report_id,
           aal.actor_profile_id,
           actor.full_name AS actor_name,
+          actor_user.image AS actor_image_url,
           actor.account_type AS actor_account_type,
           actor.position AS actor_position,
           aal.action,
@@ -490,6 +492,7 @@ export async function updateContentReport(
           aal.created_at
         FROM approval_activity_log aal
         JOIN profile actor ON actor.id = aal.actor_profile_id
+        JOIN "user" actor_user ON actor_user.id = actor.auth_user_id
         WHERE aal.content_report_id = $1
         ORDER BY aal.created_at ASC
         `,
@@ -501,6 +504,7 @@ export async function updateContentReport(
         contentReportId: row.content_report_id,
         actorProfileId: row.actor_profile_id,
         actorName: row.actor_name,
+        actorImageUrl: row.actor_image_url,
         actorAccountType: row.actor_account_type,
         actorPosition: row.actor_position,
         action: row.action,

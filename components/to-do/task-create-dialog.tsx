@@ -77,6 +77,7 @@ export function TaskCreateDialog({
       id: currentProfileId,
       fullName: "Myself",
       email: "",
+      imageUrl: null,
       accountType: currentAccountType,
       status: "ACTIVE",
       brands: [],
@@ -266,6 +267,7 @@ export function TaskCreateDialog({
                           <UserAvatar
                             profileId={assignee.id}
                             name={assignee.fullName}
+                            imageUrl={assignee.imageUrl}
                             size="sm"
                           />
                           <span className="min-w-0 flex-1">
@@ -296,6 +298,7 @@ export function TaskCreateDialog({
                         <UserAvatar
                           profileId={assignee.id}
                           name={assignee.fullName}
+                          imageUrl={assignee.imageUrl}
                           size="sm"
                         />
                         {assignee.fullName}

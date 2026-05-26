@@ -100,6 +100,7 @@ export function AccountDetailsSheet({
                   profileId={account.id}
                   name={account.fullName}
                   email={account.email}
+                  imageUrl={account.imageUrl}
                   size="lg"
                 />
                 <span className="text-xl font-bold sm:text-2xl">

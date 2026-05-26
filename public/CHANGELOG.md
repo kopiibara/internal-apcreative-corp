@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.3.0](https://github.com/AP-Marketing/internal-apcreative/compare/0.2.0...0.3.0) (2026-05-26)
+
+
+### Features
+
+* added avatar change, added card view in account control ([0e3f2ca](https://github.com/AP-Marketing/internal-apcreative/commit/0e3f2caaa7911148a1682de61498974b5bb3bc3e))
+
 # 0.2.0 (2026-05-26)
 
 

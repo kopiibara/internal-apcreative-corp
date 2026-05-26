@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Search } from "lucide-react"
+import { LayoutGrid, List, Search } from "lucide-react"
 import { toast } from "sonner"
 import {
   type ColumnDef,
@@ -74,6 +74,8 @@ type AccountDataTableProps = {
   roles: RoleOption[]
 }
 
+type AccountViewMode = "table" | "cards"
+
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
@@ -117,7 +119,8 @@ function getAccountColumns(): ColumnDef<AccountListItem>[] {
             profileId={row.original.id}
             name={row.original.fullName}
             email={row.original.email}
-            size="sm"
+            imageUrl={row.original.imageUrl}
+            size="lg"
           />
           <div className="min-w-0 font-medium">{row.original.fullName}</div>
         </div>
@@ -213,6 +216,115 @@ function getAccountColumns(): ColumnDef<AccountListItem>[] {
   ]
 }
 
+function AccountBadgeList({
+  account,
+  mode,
+}: {
+  account: AccountListItem
+  mode: "brands" | "roles"
+}) {
+  if (account.brandAccess.length === 0) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        {mode === "brands" ? "No brands" : "No roles"}
+      </span>
+    )
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {account.brandAccess.map((access) => (
+        <Badge
+          key={`${mode}-${access.id}`}
+          variant={
+            mode === "brands"
+              ? access.isActive
+                ? "secondary"
+                : "neutral"
+              : "neutral"
+          }
+          className="max-w-full"
+        >
+          {mode === "brands"
+            ? `${access.brandName}${access.isPrimary ? " / Primary" : ""}`
+            : `${access.brandName}: ${access.roleName}`}
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
+function AccountInfoField({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="min-w-0 space-y-1">
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </p>
+      <div className="min-w-0 text-sm">{children}</div>
+    </div>
+  )
+}
+
+function AccountProfileCard({
+  account,
+  onOpenDetails,
+}: {
+  account: AccountListItem
+  onOpenDetails: (account: AccountListItem) => void
+}) {
+  return (
+    <Card
+      className="cursor-pointer rounded-lg border-2 border-border bg-background p-0 transition-colors hover:bg-muted/40"
+      onClick={() => onOpenDetails(account)}
+    >
+      <CardContent className="flex h-full min-w-0 flex-col gap-4 p-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <UserAvatar
+            profileId={account.id}
+            name={account.fullName}
+            email={account.email}
+            imageUrl={account.imageUrl}
+            size="lg"
+            className="size-14"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="break-words text-base font-bold leading-snug">
+              {account.fullName}
+            </p>
+            <p className="mt-1 truncate text-xs text-muted-foreground">
+              {account.email}
+            </p>
+          </div>
+          <div onClick={(event) => event.stopPropagation()}>
+            <AccountStatusMenu account={account} />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          <AccountTypeBadge accountType={account.accountType} />
+          <AccountStatusBadge status={account.status} />
+        </div>
+
+
+
+        <AccountInfoField label="Assigned Brands">
+          <AccountBadgeList account={account} mode="brands" />
+        </AccountInfoField>
+
+        <AccountInfoField label="Roles Per Brand">
+          <AccountBadgeList account={account} mode="roles" />
+        </AccountInfoField>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function AccountDataTable({
   accounts,
   brands,
@@ -220,6 +332,7 @@ export function AccountDataTable({
 }: AccountDataTableProps) {
   const router = useRouter()
   const [sorting, setSorting] = useState<SortingState>([])
+  const [viewMode, setViewMode] = useState<AccountViewMode>("table")
   const [isPending, startTransition] = useTransition()
   const {
     selectedAccount,
@@ -267,7 +380,7 @@ export function AccountDataTable({
         selectedStatusFilter === "all"
           ? account.status !== "DELETED"
           :
-        account.status === selectedStatusFilter
+          account.status === selectedStatusFilter
       const matchesAccountType =
         selectedAccountTypeFilter === "all" ||
         account.accountType === selectedAccountTypeFilter
@@ -342,9 +455,35 @@ export function AccountDataTable({
         <CardHeader className="gap-3">
           <div className="flex items-center justify-between gap-3">
             <CardTitle>Accounts</CardTitle>
-            {isPending ? (
-              <span className="text-xs text-muted-foreground">Updating...</span>
-            ) : null}
+            <div className="flex items-center gap-2">
+              {isPending ? (
+                <span className="hidden text-xs text-muted-foreground sm:inline">
+                  Updating...
+                </span>
+              ) : null}
+              <div className="flex ">
+                <Button
+                  type="button"
+                  variant={viewMode === "table" ? "default" : "ghost"}
+                  size="icon-sm"
+                  aria-label="Show table view"
+                  title="Table view"
+                  onClick={() => setViewMode("table")}
+                >
+                  <List className="size-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant={viewMode === "cards" ? "default" : "ghost"}
+                  size="icon-sm"
+                  aria-label="Show card view"
+                  title="Card view"
+                  onClick={() => setViewMode("cards")}
+                >
+                  <LayoutGrid className="size-4" />
+                </Button>
+              </div>
+            </div>
           </div>
 
           <ScrollArea className="w-full pb-2" scrollbars="horizontal">
@@ -439,64 +578,92 @@ export function AccountDataTable({
           </ScrollArea>
         </CardHeader>
 
-        <CardContent className="min-w-0 space-y-4">
-          <div className="w-full min-w-0 rounded-lg border">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id} className="whitespace-nowrap">
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={table.getAllColumns().length}
-                      className="h-24 text-center text-muted-foreground"
-                    >
-                      No accounts found.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      className="cursor-pointer"
-                      onClick={() => openDetailsSheet(row.original)}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          className="align-top"
-                          onClick={
-                            cell.column.id === "actions"
-                              ? (event) => event.stopPropagation()
-                              : undefined
-                          }
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
+        <CardContent className="min-h-0 min-w-0 space-y-4">
+          {viewMode === "table" ? (
+            <ScrollArea
+              className="h-[calc(100vh-24rem)] min-h-[320px] max-h-[620px] w-full rounded-lg border-2 border-border"
+              scrollbars="both"
+              viewportClassName="rounded-lg"
+            >
+              <Table className="min-w-[1600px] border-0">
+                <TableHeader className="sticky top-0 z-20 bg-card shadow-[0_2px_0_0_var(--border)]">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <TableHead key={header.id} className="whitespace-nowrap">
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                        </TableHead>
                       ))}
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {table.getRowModel().rows.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={table.getAllColumns().length}
+                        className="h-24 text-center text-muted-foreground"
+                      >
+                        No accounts found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        className="cursor-pointer"
+                        onClick={() => openDetailsSheet(row.original)}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className="align-top"
+                            onClick={
+                              cell.column.id === "actions"
+                                ? (event) => event.stopPropagation()
+                                : undefined
+                            }
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          ) : (
+            <ScrollArea
+              className="h-[calc(100vh-24rem)] min-h-[320px] max-h-[620px] w-full rounded-lg border-2 border-border bg-card"
+              scrollbars="vertical"
+              viewportClassName="rounded-lg"
+            >
+              {table.getRowModel().rows.length === 0 ? (
+                <div className="flex min-h-[280px] items-center justify-center p-4 text-sm text-muted-foreground">
+                  No accounts found.
+                </div>
+              ) : (
+                <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {table.getRowModel().rows.map((row) => (
+                    <AccountProfileCard
+                      key={row.id}
+                      account={row.original}
+                      onOpenDetails={openDetailsSheet}
+                    />
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          )}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">

@@ -67,6 +67,7 @@ export function TaskBoard({
     isCreateDialogOpen,
     isEditDialogOpen,
     selectedAssignment,
+    liveAssignments,
     assignmentPatches,
     openCreateDialog,
     closeCreateDialog,
@@ -77,11 +78,11 @@ export function TaskBoard({
 
   const currentAssignments = useMemo(
     () =>
-      assignments.map(
+      (liveAssignments ?? assignments).map(
         (assignment) =>
           assignmentPatches[assignment.assignmentId] ?? assignment
       ),
-    [assignments, assignmentPatches]
+    [assignments, assignmentPatches, liveAssignments]
   )
 
   const hasNoTasks = currentAssignments.length === 0
