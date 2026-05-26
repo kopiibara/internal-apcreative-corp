@@ -11,6 +11,7 @@ import {
   hasAdminPermissionBypass,
   isAdminAccountType,
 } from "@/lib/auth/account-type";
+import { isFullStackDeveloperDeniedPermission } from "@/lib/auth/full-stack-developer-access";
 import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import { query } from "@/lib/db";
 
@@ -75,6 +76,13 @@ export async function can(
   const profile = await getPermissionProfile(authUserId);
 
   if (!profile || profile.status !== "ACTIVE") {
+    return false;
+  }
+
+  if (
+    profile.account_type === "FULL_STACK_DEVELOPER" &&
+    isFullStackDeveloperDeniedPermission(permissionKey)
+  ) {
     return false;
   }
 
@@ -164,8 +172,7 @@ export async function canApprovalAction(
     if (
       profile.account_type === "DIRECTOR" ||
       profile.account_type === "MANAGER" ||
-      profile.account_type === "EXECUTIVE" ||
-      profile.account_type === "FULL_STACK_DEVELOPER"
+      profile.account_type === "EXECUTIVE"
     ) {
       return true;
     }
@@ -179,8 +186,7 @@ export async function canApprovalAction(
     if (
       profile.account_type === "DIRECTOR" ||
       profile.account_type === "MANAGER" ||
-      profile.account_type === "EXECUTIVE" ||
-      profile.account_type === "FULL_STACK_DEVELOPER"
+      profile.account_type === "EXECUTIVE"
     ) {
       return true;
     }
@@ -201,13 +207,16 @@ export async function canApprovalAction(
     if (
       profile.account_type === "SUPERVISOR" ||
       profile.account_type === "MANAGER" ||
-      profile.account_type === "EXECUTIVE" ||
-      profile.account_type === "FULL_STACK_DEVELOPER"
+      profile.account_type === "EXECUTIVE"
     ) {
       return true;
     }
 
     return hasRolePermission(profileId, permissionKey);
+  }
+
+  if (profile.account_type === "FULL_STACK_DEVELOPER") {
+    return false;
   }
 
   return can(authUserId, permissionKey);

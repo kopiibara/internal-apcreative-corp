@@ -146,14 +146,14 @@ export default async function AccountPage() {
     isAdmin
       ? [false, false, false]
       : await Promise.all([
-          canAccessEmployeeToDoTaskBoard(profile.auth_user_id, profile.id),
-          canAccessEmployeeTaskPage(
-            profile.auth_user_id,
-            profile.account_type,
-            profile.id,
-          ),
-          can(profile.auth_user_id, "ads_campaigns.view"),
-        ])
+        canAccessEmployeeToDoTaskBoard(profile.auth_user_id, profile.id),
+        canAccessEmployeeTaskPage(
+          profile.auth_user_id,
+          profile.account_type,
+          profile.id,
+        ),
+        can(profile.auth_user_id, "ads_campaigns.view"),
+      ])
   const actionableTaskCount =
     !isAdmin && canAccessTaskBoard
       ? await getEmployeeActionableTaskCount(profile.id)
@@ -190,7 +190,7 @@ export default async function AccountPage() {
           <Button asChild variant="neutral" className="shrink-0">
             <Link href={dashboardHref}>
               <ArrowLeft className="size-4" />
-              Dashboard
+              Back
             </Link>
           </Button>
         </div>
@@ -233,16 +233,33 @@ export default async function AccountPage() {
               value={profile.department ?? "Not set"}
             />
             <DetailRow
-              label="Phone"
-              value={profile.phone_number ?? "Not set"}
-            />
-            <DetailRow
-              label="First login"
-              value={formatDate(profile.first_login_completed_at)}
-            />
-            <DetailRow
-              label="Password changed"
-              value={formatDate(profile.password_changed_at)}
+              label="Role Access"
+              value={brandAccess.length > 0 ? (
+                <>
+                  {brandAccess.map((access) => (
+                    <div
+                      key={`${access.brand_slug}-${access.role_slug}`}
+
+                    >
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="break-words font-semibold">
+                            {access.brand_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {access.role_name}
+                          </p>
+                        </div>
+
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <div className="rounded-lg border-2 border-dashed border-border p-4 text-sm text-muted-foreground">
+                  No active brand access is assigned to this account.
+                </div>
+              )}
             />
           </CardContent>
         </Card>
@@ -254,46 +271,7 @@ export default async function AccountPage() {
           imageUrl={user.image ?? null}
         />
 
-        <Card className="rounded-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ShieldCheck className="size-5" />
-              Brand and Role Access
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {brandAccess.length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                {brandAccess.map((access) => (
-                  <div
-                    key={`${access.brand_slug}-${access.role_slug}`}
-                    className="rounded-lg border-2 border-border bg-background p-3"
-                  >
-                    <div className="flex min-w-0 items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="break-words font-semibold">
-                          {access.brand_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {access.role_name}
-                        </p>
-                      </div>
-                      {access.brand_slug === "all-brand" ? (
-                        <Badge>All brands</Badge>
-                      ) : access.is_primary ? (
-                        <Badge variant="secondary">Primary</Badge>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg border-2 border-dashed border-border p-4 text-sm text-muted-foreground">
-                No active brand access is assigned to this account.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
       </div>
     </DashboardShell>
   )
