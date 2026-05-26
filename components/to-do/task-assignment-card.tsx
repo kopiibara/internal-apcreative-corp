@@ -103,10 +103,10 @@ export function TaskAssignmentCard({
               <UserAvatar
                 profileId={assignment.assignedToProfileId}
                 name={assignment.assignedToName}
+                imageUrl={assignment.assignedToImageUrl}
                 size="sm"
               />
               <p className="min-w-0 break-words">
-                <span className="text-muted-foreground">Assignee:</span>{" "}
                 {assignment.assignedToName}
               </p>
             </div>

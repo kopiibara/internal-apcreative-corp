@@ -32,7 +32,7 @@ const diceBearAvatarSchema = z.object({
 const uploadedAvatarSchema = z.object({
   dataUrl: z
     .string()
-    .max(1_100_000, "Avatar image must be 1 MB or smaller.")
+    .max(1_400_000, "Avatar image must be 1 MB or smaller.")
     .refine(
       (value) =>
         /^data:image\/(png|jpe?g|webp|gif);base64,[a-zA-Z0-9+/=]+$/.test(value),

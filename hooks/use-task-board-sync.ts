@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
+import { getLiveTaskAssignments } from "@/app/admin/to-do/actions";
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks";
 import { useTaskStore } from "@/stores/use-task-store";
 
-const TASK_BOARD_POLL_INTERVAL_MS = 15_000;
+const TASK_BOARD_POLL_INTERVAL_MS = 5_000;
 
 type UseTaskBoardSyncOptions = {
   assignments: TaskAssignmentRecord[];
@@ -18,9 +18,15 @@ export function useTaskBoardSync({
   assignments,
   enablePolling = false,
 }: UseTaskBoardSyncOptions) {
-  const router = useRouter();
   const assignmentPatches = useTaskStore((state) => state.assignmentPatches);
   const clearAssignmentPatch = useTaskStore((state) => state.clearAssignmentPatch);
+  const syncTaskAssignmentsFromServer = useTaskStore(
+    (state) => state.syncTaskAssignmentsFromServer,
+  );
+
+  useEffect(() => {
+    syncTaskAssignmentsFromServer(assignments);
+  }, [assignments, syncTaskAssignmentsFromServer]);
 
   useEffect(() => {
     for (const assignment of assignments) {
@@ -44,24 +50,41 @@ export function useTaskBoardSync({
       return;
     }
 
-    const refreshBoard = () => {
+    let cancelled = false;
+    let isSyncing = false;
+
+    const syncBoard = async () => {
       if (document.visibilityState !== "visible") {
         return;
       }
 
-      router.refresh();
+      if (isSyncing) {
+        return;
+      }
+
+      isSyncing = true;
+
+      try {
+        const result = await getLiveTaskAssignments();
+
+        if (!cancelled && result.success && result.data?.assignments) {
+          syncTaskAssignmentsFromServer(result.data.assignments);
+        }
+      } finally {
+        isSyncing = false;
+      }
     };
 
-    const intervalId = window.setInterval(
-      refreshBoard,
-      TASK_BOARD_POLL_INTERVAL_MS,
-    );
+    syncBoard();
 
-    window.addEventListener("visibilitychange", refreshBoard);
+    const intervalId = window.setInterval(syncBoard, TASK_BOARD_POLL_INTERVAL_MS);
+
+    window.addEventListener("visibilitychange", syncBoard);
 
     return () => {
+      cancelled = true;
       window.clearInterval(intervalId);
-      window.removeEventListener("visibilitychange", refreshBoard);
+      window.removeEventListener("visibilitychange", syncBoard);
     };
-  }, [enablePolling, router]);
+  }, [enablePolling, syncTaskAssignmentsFromServer]);
 }

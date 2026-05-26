@@ -228,6 +228,7 @@ type DiscussionEntry = {
   id: string
   authorProfileId?: number
   authorName: string
+  authorImageUrl?: string | null
   authorRole: string
   at: string
   label: string
@@ -242,6 +243,7 @@ function buildDiscussionEntries(report: ContentReport): DiscussionEntry[] {
       id: "employee-comment",
       authorProfileId: report.submittedByProfileId,
       authorName: report.submittedByName,
+      authorImageUrl: report.submittedByImageUrl,
       authorRole: "Employee",
       at: report.dateSubmitted,
       label: "Employee comment",
@@ -296,6 +298,7 @@ function DiscussionCommentItem({ entry }: { entry: DiscussionEntry }) {
             <UserAvatar
               profileId={entry.authorProfileId}
               name={entry.authorName}
+              imageUrl={entry.authorImageUrl}
               size="sm"
             />
             <div className="flex flex-col gap-4 ">

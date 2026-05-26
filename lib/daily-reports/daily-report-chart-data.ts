@@ -19,6 +19,7 @@ export type EmployeeChartItem = {
   profileId: number;
   employeeName: string;
   email: string;
+  imageUrl: string | null;
   graded: number;
   done: number;
   pending: number;
@@ -62,6 +63,7 @@ export function toEmployeeChartItems(
     profileId: summary.profileId,
     employeeName: summary.fullName,
     email: summary.email,
+    imageUrl: summary.imageUrl,
     graded: summary.assignedGradedTasks,
     done: summary.doneGradedTasks,
     pending: summary.pendingTasks,

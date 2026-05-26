@@ -42,6 +42,8 @@ import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses";
 import { TASK_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
 import {
   getTaskAssignmentById,
+  getTaskAssignmentsForEmployee,
+  getTaskAssignmentsForViewer,
   type TaskAssignmentRecord,
 } from "@/lib/tasks/tasks";
 const ADMIN_TRANSITIONS: Record<TaskAssignmentStatus, TaskAssignmentStatus[]> =
@@ -61,6 +63,10 @@ export type ActionResult<T = unknown> = {
 
 type TaskAssignmentUpdateData = {
   updatedAssignment: TaskAssignmentRecord;
+};
+
+type TaskBoardLiveData = {
+  assignments: TaskAssignmentRecord[];
 };
 
 async function authorizeTaskAction(permissionKeys: string[]) {
@@ -106,6 +112,43 @@ function revalidateTaskRoutes() {
   for (const route of TASK_REVALIDATE_PATHS) {
     revalidatePath(route);
   }
+}
+
+export async function getLiveTaskAssignments(): Promise<
+  ActionResult<TaskBoardLiveData>
+> {
+  const authorization = await authorizeTaskAction(["tasks.view"]);
+
+  if (authorization.error) {
+    return authorization.error;
+  }
+
+  const rateLimitError = await rejectIfRateLimited({
+    bucket: "task:live-sync",
+    limit: 180,
+    windowMs: 10 * 60 * 1000,
+  });
+
+  if (rateLimitError) {
+    return {
+      success: false,
+      message: rateLimitError.message,
+    };
+  }
+
+  const { context } = authorization;
+  const assignments = isEmployeeAccountType(context.profile.account_type)
+    ? await getTaskAssignmentsForEmployee(context.profile.id)
+    : await getTaskAssignmentsForViewer({
+        profileId: context.profile.id,
+        canViewAll: await can(context.profile.auth_user_id, "tasks.view_all"),
+      });
+
+  return {
+    success: true,
+    message: "Task board synced.",
+    data: { assignments },
+  };
 }
 
 async function buildTaskAssignmentUpdateResult(

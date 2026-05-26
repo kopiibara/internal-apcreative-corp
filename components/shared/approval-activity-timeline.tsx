@@ -150,6 +150,7 @@ export function ApprovalActivityTimeline({
                 <UserAvatar
                   profileId={log.actorProfileId}
                   name={log.actorName}
+                  imageUrl={log.actorImageUrl}
                   size="sm"
                 />
                 <div className="min-w-0 flex-1 space-y-1">

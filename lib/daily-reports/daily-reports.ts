@@ -450,6 +450,7 @@ export async function getDailyReportData(
       profile_id: number;
       full_name: string;
       email: string;
+      image_url: string | null;
       status: TaskAssignmentStatus;
       priority: TaskPriority | null;
       due_date: Date | null;
@@ -460,6 +461,7 @@ export async function getDailyReportData(
         assignee.id AS profile_id,
         assignee.full_name,
         assignee.email,
+        assignee_user.image AS image_url,
         ta.status,
         t.priority,
         t.due_date,
@@ -467,6 +469,7 @@ export async function getDailyReportData(
       FROM task_assignment ta
       JOIN task t ON t.id = ta.task_id
       JOIN profile assignee ON assignee.id = ta.assigned_to_profile_id
+      JOIN "user" assignee_user ON assignee_user.id = assignee.auth_user_id
       WHERE t.task_type = 'GRADED'
         AND ${TASK_DAILY_SCOPE_SQL}
         AND ${TASK_BRAND_FILTER_SQL}
@@ -499,6 +502,7 @@ export async function getDailyReportData(
       profile_id: number;
       full_name: string;
       email: string;
+      image_url: string | null;
       supervisor_status: ReviewStatus;
       director_status: ReviewStatus;
     }>(
@@ -507,10 +511,12 @@ export async function getDailyReportData(
         submitter.id AS profile_id,
         submitter.full_name,
         submitter.email,
+        submitter_user.image AS image_url,
         cr.supervisor_status,
         cr.director_status
       FROM content_report cr
       JOIN profile submitter ON submitter.id = cr.submitted_by_profile_id
+      JOIN "user" submitter_user ON submitter_user.id = submitter.auth_user_id
       WHERE ${APPROVAL_DAILY_SCOPE_SQL}
         AND ($3::integer IS NULL OR cr.brand_id = $3)
         AND ($4::integer IS NULL OR cr.submitted_by_profile_id = $4)
@@ -711,6 +717,7 @@ export async function getDailyReportData(
       profileId: row.profile_id,
       fullName: row.full_name,
       email: row.email,
+      imageUrl: row.image_url,
       assignedGradedTasks: 0,
       doneGradedTasks: 0,
       pendingTasks: 0,
@@ -745,6 +752,7 @@ export async function getDailyReportData(
       profileId: row.profile_id,
       fullName: row.full_name,
       email: row.email,
+      imageUrl: row.image_url,
       assignedGradedTasks: 0,
       doneGradedTasks: 0,
       pendingTasks: 0,
