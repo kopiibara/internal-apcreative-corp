@@ -15,6 +15,10 @@ import type {
 } from "@/lib/tasks/task-type";
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses";
 import type { AccountType, ProfileStatus } from "@/lib/auth/auth-session";
+import {
+  getEffectiveBrandAccessForProfile,
+  profileHasAllBrandsAccess,
+} from "@/lib/brand-access/effective-brand-access";
 
 export type AssigneeBrandAccess = {
   brandId: number;
@@ -29,6 +33,7 @@ export type AssignableProfile = {
   accountType: AccountType;
   status: ProfileStatus;
   brands: AssigneeBrandAccess[];
+  hasAllBrandsAccess?: boolean;
 };
 
 export type StaffAccountabilityFilterInput = {
@@ -480,27 +485,40 @@ export async function getAssignableProfilesWithBrands(options?: {
           AND p.account_type = 'FULL_STACK_DEVELOPER'
           AND EXISTS (
             SELECT 1
-            FROM user_brand_access supervisor_access
-            WHERE supervisor_access.profile_id = $2
-              AND supervisor_access.is_active = true
-              AND supervisor_access.brand_id = uba.brand_id
+            FROM user_brand_access assignee_access
+            JOIN role assignee_role ON assignee_role.id = assignee_access.role_id
+            WHERE assignee_access.profile_id = p.id
+              AND assignee_access.is_active = true
+              AND assignee_role.slug = 'full-stack-developer'
           )
         )
       )
     GROUP BY p.id
     ORDER BY p.full_name ASC, p.id ASC
     `,
-    [includeSupervisorFullStack, options?.viewerProfileId ?? null],
+    [includeSupervisorFullStack],
   );
 
-  return result.rows.map((row) => ({
-    id: row.id,
-    fullName: row.full_name,
-    email: row.email,
-    accountType: row.account_type,
-    status: row.status,
-    brands: row.brands ?? [],
-  }));
+  return Promise.all(
+    result.rows.map(async (row) => {
+      const hasAllBrandsAccess = await profileHasAllBrandsAccess(row.id);
+      const effectiveBrands = await getEffectiveBrandAccessForProfile(row.id);
+
+      return {
+        id: row.id,
+        fullName: row.full_name,
+        email: row.email,
+        accountType: row.account_type,
+        status: row.status,
+        hasAllBrandsAccess,
+        brands: effectiveBrands.map((brand) => ({
+          brandId: brand.brandId,
+          brandName: brand.brandName,
+          isPrimary: brand.isPrimary,
+        })),
+      };
+    }),
+  );
 }
 
 export async function getGradedAssignmentPerformanceCounts(profileId: number) {

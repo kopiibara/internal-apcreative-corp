@@ -1,3 +1,4 @@
+import { getEffectiveBrandAccessForProfile } from "@/lib/brand-access/effective-brand-access"
 import { query } from "@/lib/db"
 import type { DailyReportBrandOption } from "@/lib/daily-reports/daily-report-types"
 
@@ -96,34 +97,19 @@ export async function getEmployeeDashboardBrandContext(
     return null
   }
 
-  const hasAllBrandAccess = assignments.some(
-    (assignment) => assignment.slug === ALL_BRAND_SLUG
-  )
-  const assignedRealBrands = assignments
-    .filter((assignment) => assignment.slug !== ALL_BRAND_SLUG)
-    .map((assignment) => ({
-      id: assignment.id,
-      name: assignment.name,
-    }))
+  const effectiveBrands = await getEffectiveBrandAccessForProfile(profileId)
+  const brands = effectiveBrands.map((brand) => ({
+    id: brand.brandId,
+    name: brand.brandName,
+  }))
   const requestedBrandId = parseDashboardBrandId(brandIdParam)
 
-  if (hasAllBrandAccess) {
-    const brands = await getActiveRealBrands()
-    const selection = resolveSelectedBrandId(requestedBrandId, brands)
-
-    return {
-      brands,
-      showBrandFilter: true,
-      ...selection,
-    }
-  }
-
-  if (assignedRealBrands.length === 0) {
+  if (brands.length === 0) {
     return null
   }
 
-  if (assignedRealBrands.length === 1) {
-    const [brand] = assignedRealBrands
+  if (brands.length === 1) {
+    const [brand] = brands
 
     return {
       brands: [],
@@ -134,10 +120,10 @@ export async function getEmployeeDashboardBrandContext(
     }
   }
 
-  const selection = resolveSelectedBrandId(requestedBrandId, assignedRealBrands)
+  const selection = resolveSelectedBrandId(requestedBrandId, brands)
 
   return {
-    brands: assignedRealBrands,
+    brands,
     showBrandFilter: true,
     ...selection,
   }

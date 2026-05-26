@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getEffectiveBrandAccessForProfile } from "@/lib/brand-access/effective-brand-access";
 import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import { query } from "@/lib/db";
 import type { ContentReportBrandOption } from "@/lib/content-report-brand-options";
@@ -245,7 +246,23 @@ export async function getBrandOfficerBrandContentReports(profileId: number) {
   const result = await query<ContentReportRow>(
     `
     ${contentReportSelect}
-    WHERE cr.brand_id IN (
+    WHERE (
+      EXISTS (
+        SELECT 1
+        FROM user_brand_access uba
+        JOIN role r ON r.id = uba.role_id
+        JOIN brand assigned_brand ON assigned_brand.id = uba.brand_id
+        WHERE uba.profile_id = $1
+          AND uba.is_active = true
+          AND assigned_brand.is_active = true
+          AND assigned_brand.slug = $2
+          AND r.slug = 'brand-officer'
+      )
+      AND cr.brand_id IN (
+        SELECT id FROM brand WHERE is_active = true AND slug <> $2
+      )
+    )
+    OR cr.brand_id IN (
         SELECT uba.brand_id
         FROM user_brand_access uba
         JOIN role r ON r.id = uba.role_id
@@ -347,28 +364,12 @@ export async function getPrimaryActiveBrandId(profileId: number) {
 }
 
 export async function getEmployeeContentReportBrandOptions(profileId: number) {
-  const result = await query<{
-    id: number;
-    name: string;
-    is_primary: boolean;
-  }>(
-    `
-    SELECT b.id, b.name, uba.is_primary
-    FROM user_brand_access uba
-    JOIN brand b ON b.id = uba.brand_id
-    WHERE uba.profile_id = $1
-      AND uba.is_active = true
-      AND b.is_active = true
-      AND b.slug <> $2
-    ORDER BY uba.is_primary DESC, b.name ASC, b.id ASC
-    `,
-    [profileId, ALL_BRAND_SLUG],
-  );
+  const brands = await getEffectiveBrandAccessForProfile(profileId);
 
-  return result.rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    isPrimary: row.is_primary,
+  return brands.map((brand) => ({
+    id: brand.brandId,
+    name: brand.brandName,
+    isPrimary: brand.isPrimary,
   })) satisfies ContentReportBrandOption[];
 }
 

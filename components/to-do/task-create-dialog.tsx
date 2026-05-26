@@ -274,6 +274,7 @@ export function TaskCreateDialog({
                             </span>
                             <TaskAssigneeBrands
                               brands={assignee.brands}
+                              hasAllBrandsAccess={assignee.hasAllBrandsAccess}
                               className="mt-1"
                             />
                           </span>
@@ -298,7 +299,11 @@ export function TaskCreateDialog({
                           size="sm"
                         />
                         {assignee.fullName}
-                        <TaskAssigneeBrands brands={assignee.brands} className="mt-1" />
+                        <TaskAssigneeBrands
+                          brands={assignee.brands}
+                          hasAllBrandsAccess={assignee.hasAllBrandsAccess}
+                          className="mt-1"
+                        />
                       </span>
 
                       <Button
