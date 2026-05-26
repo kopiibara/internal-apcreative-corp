@@ -5,14 +5,16 @@ import {
   getMetaAppSecret,
   getMetaCronSecret,
   getMetaWebhookVerifyToken,
-  getDefaultMetaPageAccessToken,
+  isMetaGraphApiConfigured,
   isMetaWebhookConfigured,
 } from "@/lib/meta/config"
+import { getActiveMetaPages, metaPages } from "@/lib/meta/pages-config"
 
 export type MetaIntegrationStatus = {
   webhookConfigured: boolean
   graphTokenConfigured: boolean
   cronConfigured: boolean
+  enabledPageCount: number
   connectedPageCount: number
   webhookEventCount: number
   snapshotCount: number
@@ -24,8 +26,9 @@ export type MetaIntegrationStatus = {
 
 export async function getMetaIntegrationStatus(): Promise<MetaIntegrationStatus> {
   const webhookConfigured = isMetaWebhookConfigured()
-  const graphTokenConfigured = Boolean(getDefaultMetaPageAccessToken())
+  const graphTokenConfigured = isMetaGraphApiConfigured()
   const cronConfigured = Boolean(getMetaCronSecret())
+  const enabledPageCount = getActiveMetaPages().length
 
   const [pages, events, snapshots, posts, lastSync] = await Promise.all([
     query<{ count: string }>(
@@ -61,6 +64,7 @@ export async function getMetaIntegrationStatus(): Promise<MetaIntegrationStatus>
 
   const needsBootstrap =
     graphTokenConfigured &&
+    enabledPageCount > 0 &&
     (connectedPageCount === 0 || (snapshotCount === 0 && postMetricsCount === 0))
 
   return {
@@ -68,6 +72,7 @@ export async function getMetaIntegrationStatus(): Promise<MetaIntegrationStatus>
       webhookConfigured && Boolean(getMetaWebhookVerifyToken()),
     graphTokenConfigured,
     cronConfigured,
+    enabledPageCount,
     connectedPageCount,
     webhookEventCount: Number(events.rows[0]?.count ?? 0),
     snapshotCount,
@@ -84,7 +89,14 @@ export function getMetaEnvChecklist() {
   return {
     verifyToken: Boolean(getMetaWebhookVerifyToken()),
     appSecret: Boolean(getMetaAppSecret()),
-    pageToken: Boolean(getDefaultMetaPageAccessToken()),
     cronSecret: Boolean(getMetaCronSecret()),
+    pages: metaPages.map((page) => ({
+      key: page.key,
+      name: page.name,
+      enabled: page.enabled,
+      pageIdConfigured: Boolean(page.pageId),
+      tokenConfigured: Boolean(page.accessToken),
+      ready: page.enabled && Boolean(page.pageId) && Boolean(page.accessToken),
+    })),
   }
 }

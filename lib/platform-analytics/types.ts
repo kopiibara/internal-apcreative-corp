@@ -125,6 +125,8 @@ export type PlatformConnectionStatus = {
   statusRows: StatusRow[]
 }
 
+export type MetaBusinessPageDashboard = import("@/lib/meta/page-analytics").MetaBusinessPageDashboard
+
 export type PlatformAnalyticsDashboardData = {
   platform: AnalyticsPlatform
   accountId: string | null
@@ -141,4 +143,5 @@ export type PlatformAnalyticsDashboardData = {
   syncHistory: SyncLogRow[]
   charts: PlatformChartConfig[]
   metaNeedsBootstrap: boolean
+  metaBusinessPages: MetaBusinessPageDashboard[]
 }

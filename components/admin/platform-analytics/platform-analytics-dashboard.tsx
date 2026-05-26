@@ -9,6 +9,7 @@ import {
   syncAllMetaMonitoringAction,
   triggerMetaSyncAction,
 } from "@/app/admin/platform-analytics/actions"
+import { MetaBusinessPageCard } from "@/components/admin/platform-analytics/meta-business-page-card"
 import { PlatformAnalyticsCharts } from "@/components/admin/platform-analytics/platform-analytics-charts"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { Badge } from "@/components/ui/badge"
@@ -30,7 +31,6 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  META_SCOPE_OPTIONS,
   PAGE_SUBTITLE,
   PAGE_TITLE,
   PLATFORM_NAV,
@@ -39,7 +39,6 @@ import {
 import type {
   AnalyticsPlatform,
   KpiMetric,
-  MetaScope,
   PlatformAnalyticsDashboardData,
   PlatformCode,
 } from "@/lib/platform-analytics/types"
@@ -101,7 +100,6 @@ export function PlatformAnalyticsDashboard({
   const [platform, setPlatform] = useState<AnalyticsPlatform>(
     initialData.platform === "META" ? "META" : initialData.platform
   )
-  const [metaScope, setMetaScope] = useState<MetaScope>("combined")
   const [accountId, setAccountId] = useState("all")
   const [isPending, startTransition] = useTransition()
 
@@ -118,18 +116,14 @@ export function PlatformAnalyticsDashboard({
     }
   }, [bootstrapMessage])
 
-  function reload(
-    nextPlatform?: AnalyticsPlatform,
-    nextAccount?: string,
-    nextScope?: MetaScope
-  ) {
+  function reload(nextPlatform?: AnalyticsPlatform, nextAccount?: string) {
     startTransition(async () => {
       const p = nextPlatform ?? platform
       const result = await fetchPlatformAnalyticsAction({
         platform: p,
         accountId:
           (nextAccount ?? accountId) === "all" ? null : (nextAccount ?? accountId),
-        metaScope: p === "META" ? (nextScope ?? metaScope) : "combined",
+        metaScope: "combined",
       })
       if (!result.success || !result.data) {
         toast.error(result.message)
@@ -145,11 +139,6 @@ export function PlatformAnalyticsDashboard({
     reload(next, "all")
   }
 
-  function handleMetaScopeChange(scope: MetaScope) {
-    setMetaScope(scope)
-    reload("META", accountId, scope)
-  }
-
   function handleBootstrap() {
     startTransition(async () => {
       const result = await bootstrapMetaMonitoringAction()
@@ -158,7 +147,7 @@ export function PlatformAnalyticsDashboard({
         return
       }
       toast.success(result.message)
-      reload("META", accountId, metaScope)
+      reload("META", accountId)
     })
   }
 
@@ -186,7 +175,13 @@ export function PlatformAnalyticsDashboard({
     })
   }
 
-  const tabs = PLATFORM_TABS[platformCode]
+  const tabs =
+    platform === "META"
+      ? [
+          { value: "logs", label: "Webhook Activity" },
+          { value: "sync", label: "Sync History" },
+        ]
+      : PLATFORM_TABS[platformCode]
 
   return (
     <div className="min-w-0 space-y-6">
@@ -246,25 +241,11 @@ export function PlatformAnalyticsDashboard({
             </p>
           </div>
 
-          {platform === "META" ? (
-            <div className="flex flex-wrap gap-1">
-              {META_SCOPE_OPTIONS.map((scope) => (
-                <Button
-                  key={scope.value}
-                  type="button"
-                  size="sm"
-                  variant={metaScope === scope.value ? "default" : "neutral"}
-                  disabled={isPending}
-                  onClick={() => handleMetaScopeChange(scope.value)}
-                >
-                  {scope.label}
-                </Button>
-              ))}
-            </div>
-          ) : null}
         </div>
 
-        <ConnectionStatusCard connection={data.connection} isDemo={data.isDemo} />
+        {platform !== "META" ? (
+          <ConnectionStatusCard connection={data.connection} isDemo={data.isDemo} />
+        ) : null}
 
         {!data.isDemo &&
         data.metaNeedsBootstrap &&
@@ -278,17 +259,38 @@ export function PlatformAnalyticsDashboard({
         ) : null}
       </section>
 
-      <KpiGrid metrics={data.overviewKpis} />
+      {platform === "META" ? (
+        <section className="space-y-6">
+          {data.metaBusinessPages.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                No Meta business pages are enabled. Set{" "}
+                <code className="text-xs">NEON_NIGHTS_META_ENABLED=true</code> and
+                configure the Page ID and access token.
+              </CardContent>
+            </Card>
+          ) : (
+            data.metaBusinessPages.map((page) => (
+              <MetaBusinessPageCard key={page.key} page={page} />
+            ))
+          )}
+        </section>
+      ) : (
+        <>
+          <KpiGrid metrics={data.overviewKpis} />
+          <PlatformAnalyticsCharts
+            charts={data.charts}
+            isDemo={data.isDemo}
+            emptyMessage={
+              data.isDemo
+                ? undefined
+                : "No live data yet — run sync after connecting Meta."
+            }
+          />
+        </>
+      )}
 
-      <PlatformAnalyticsCharts
-        charts={data.charts}
-        isDemo={data.isDemo}
-        emptyMessage={
-          data.isDemo ? undefined : "No live data yet — run sync after connecting Meta."
-        }
-      />
-
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue={platform === "META" ? "logs" : "overview"}>
         <TabsList className="flex h-auto flex-wrap gap-1">
           {tabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>
@@ -297,35 +299,39 @@ export function PlatformAnalyticsDashboard({
           ))}
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-4 pt-4">
-          <p className="text-sm text-muted-foreground">
-            Summary metrics are shown above. Use the other tabs for detailed tables
-            and logs.
-          </p>
-        </TabsContent>
+        {platform !== "META" ? (
+          <>
+            <TabsContent value="overview" className="space-y-4 pt-4">
+              <p className="text-sm text-muted-foreground">
+                Summary metrics are shown above. Use the other tabs for detailed
+                tables and logs.
+              </p>
+            </TabsContent>
 
-        <TabsContent value="content" className="pt-4">
-          {platform === "GOOGLE" ? (
-            <PlaceholderPanel message="Content performance is not applicable for Google Ads." />
-          ) : (
-            <ContentTable platform={platformCode} rows={data.contentPerformance} />
-          )}
-        </TabsContent>
+            <TabsContent value="content" className="pt-4">
+              {platform === "GOOGLE" ? (
+                <PlaceholderPanel message="Content performance is not applicable for Google Ads." />
+              ) : (
+                <ContentTable platform={platformCode} rows={data.contentPerformance} />
+              )}
+            </TabsContent>
 
-        <TabsContent value="audience" className="space-y-4 pt-4">
-          <KpiGrid metrics={data.audienceInsightKpis} />
-          {platform !== "GOOGLE" ? (
-            <GrowthTable rows={data.growthSnapshots} isDemo={data.isDemo} />
-          ) : null}
-        </TabsContent>
+            <TabsContent value="audience" className="space-y-4 pt-4">
+              <KpiGrid metrics={data.audienceInsightKpis} />
+              {platform !== "GOOGLE" ? (
+                <GrowthTable rows={data.growthSnapshots} isDemo={data.isDemo} />
+              ) : null}
+            </TabsContent>
 
-        <TabsContent value="engagement" className="space-y-4 pt-4">
-          {platform === "GOOGLE" ? (
-            <PlaceholderPanel message="Engagement metrics are not applicable for Google Ads." />
-          ) : (
-            <KpiGrid metrics={data.engagementKpis} />
-          )}
-        </TabsContent>
+            <TabsContent value="engagement" className="space-y-4 pt-4">
+              {platform === "GOOGLE" ? (
+                <PlaceholderPanel message="Engagement metrics are not applicable for Google Ads." />
+              ) : (
+                <KpiGrid metrics={data.engagementKpis} />
+              )}
+            </TabsContent>
+          </>
+        ) : null}
 
         <TabsContent value="campaigns" className="pt-4">
           <CampaignTable rows={data.campaignPerformance} />

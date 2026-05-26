@@ -7,9 +7,14 @@ import {
   fetchPageSummary,
   fetchPostInsights,
   fetchRecentPagePosts,
+  readPostReactionCount,
   PAGE_INSIGHT_METRICS,
   parseInsightValues,
 } from "@/lib/meta/graph-api"
+import {
+  getActiveMetaPagesForSync,
+  type MetaSyncPage,
+} from "@/lib/meta/pages-config"
 import type { MetaFacebookPageRow, MetaSyncType } from "@/lib/meta/types"
 
 async function startSyncRun(syncType: MetaSyncType, facebookPageId: string | null) {
@@ -45,7 +50,33 @@ async function finishSyncRun(
   )
 }
 
+async function ensureEnvMetaPagesRegistered(pages: MetaSyncPage[]) {
+  for (const page of pages) {
+    await query(
+      `
+      INSERT INTO meta_facebook_page (
+        facebook_page_id,
+        page_name,
+        access_token_env_key,
+        webhook_subscribed_fields
+      )
+      VALUES ($1, $2, $3, ARRAY['feed']::TEXT[])
+      ON CONFLICT (facebook_page_id)
+      DO UPDATE SET
+        page_name = EXCLUDED.page_name,
+        access_token_env_key = EXCLUDED.access_token_env_key,
+        is_active = true,
+        updated_at = now()
+      `,
+      [page.facebook_page_id, page.page_name, page.access_token_env_key]
+    )
+  }
+}
+
 export async function listActiveMetaFacebookPages() {
+  const envPages = getActiveMetaPagesForSync()
+  await ensureEnvMetaPagesRegistered(envPages)
+
   const result = await query<MetaFacebookPageRow>(
     `
     SELECT
@@ -59,11 +90,26 @@ export async function listActiveMetaFacebookPages() {
       last_synced_at
     FROM meta_facebook_page
     WHERE is_active = true
+      AND facebook_page_id = ANY($1::text[])
     ORDER BY page_name ASC
-    `
+    `,
+    [envPages.map((page) => page.facebook_page_id)]
   )
 
-  return result.rows
+  if (result.rows.length > 0) {
+    return result.rows
+  }
+
+  return envPages.map((page) => ({
+    id: 0,
+    facebook_page_id: page.facebook_page_id,
+    page_name: page.page_name,
+    brand_id: null,
+    access_token_env_key: page.access_token_env_key,
+    is_active: true,
+    webhook_subscribed_fields: ["feed"],
+    last_synced_at: null,
+  }))
 }
 
 export async function syncDailyPageSnapshots() {
@@ -153,11 +199,11 @@ export async function syncHourlyPostMetrics() {
 
     try {
       const summary = await fetchPageSummary(page)
-      const postsResponse = await fetchRecentPagePosts(page, 25)
+      const postsResponse = await fetchRecentPagePosts(page, 50)
       const posts = postsResponse.data ?? []
 
       for (const post of posts) {
-        const reactions = post.reactions?.summary?.total_count ?? 0
+        const reactions = readPostReactionCount(post)
         const comments = post.comments?.summary?.total_count ?? 0
         const shares = post.shares?.count ?? 0
         const engagementRate = calculateEngagementRate({
@@ -172,11 +218,14 @@ export async function syncHourlyPostMetrics() {
         try {
           const insightsResponse = await fetchPostInsights(post.id, page)
           postInsights = {
+            picture_url: post.full_picture ?? null,
             raw: insightsResponse.data,
             parsed: parseInsightValues(insightsResponse.data ?? []),
           }
         } catch {
-          postInsights = {}
+          postInsights = {
+            picture_url: post.full_picture ?? null,
+          }
         }
 
         await query(

@@ -11,3 +11,13 @@ export function liveText(value: string | null | undefined): string {
   }
   return value
 }
+
+export function formatMetaMetricValue(
+  value: number | null | undefined,
+  options?: { unavailable?: boolean }
+) {
+  if (options?.unavailable) {
+    return "Unavailable from current permission"
+  }
+  return liveMetric(value)
+}
