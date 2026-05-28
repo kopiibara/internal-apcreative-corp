@@ -295,7 +295,7 @@ export async function syncAllMetaMonitoringAction(): Promise<
 
 export async function triggerMetaSyncAction(
   syncType: MetaSyncType,
-  input?: { pageKey?: "neon-nights" | "pro-group" | "al-qaysar" },
+  input?: { pageKey?: string },
 ): Promise<MetaMonitoringActionResult<{ recordsAffected: number }>> {
   const authError = await authorizeMetaManage();
   if (authError) {
@@ -361,7 +361,7 @@ export async function triggerMetaSyncAction(
 }
 
 export async function syncMetaPageMonitoringAction(input: {
-  pageKey: "neon-nights" | "pro-group" | "al-qaysar";
+  pageKey: string;
 }): Promise<
   MetaMonitoringActionResult<{
     dailyPage: number;
@@ -526,7 +526,7 @@ export type MetaPostCommentView = {
 };
 
 export async function fetchMetaPostCommentsAction(input: {
-  pageKey: "neon-nights" | "pro-group" | "al-qaysar";
+  pageKey: string;
   postId: string;
 }): Promise<
   MetaMonitoringActionResult<{
