@@ -1,6 +1,6 @@
 "use client"
 
-import { type CSSProperties, useSyncExternalStore } from "react"
+import { type CSSProperties, useEffect, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { FileText, ExternalLink } from "lucide-react"
@@ -49,19 +49,9 @@ function updateDateTimeSnapshot() {
 
 function subscribeToDateTime(callback: () => void) {
     dateTimeSubscribers.add(callback)
-    updateDateTimeSnapshot()
-
-    if (dateTimeIntervalId === null) {
-        dateTimeIntervalId = window.setInterval(updateDateTimeSnapshot, 1000)
-    }
 
     return () => {
         dateTimeSubscribers.delete(callback)
-
-        if (dateTimeSubscribers.size === 0 && dateTimeIntervalId !== null) {
-            window.clearInterval(dateTimeIntervalId)
-            dateTimeIntervalId = null
-        }
     }
 }
 
@@ -147,6 +137,21 @@ export function DashboardShell({
         getDateTimeSnapshot,
         getServerDateTimeSnapshot
     )
+
+    useEffect(() => {
+        updateDateTimeSnapshot()
+
+        if (dateTimeIntervalId === null) {
+            dateTimeIntervalId = window.setInterval(updateDateTimeSnapshot, 1000)
+        }
+
+        return () => {
+            if (dateTimeIntervalId !== null) {
+                window.clearInterval(dateTimeIntervalId)
+                dateTimeIntervalId = null
+            }
+        }
+    }, [])
     const headerTitle =
         getTitleFromGroups(pathname, role === "admin" ? adminGroups : employeeGroups) ??
         title

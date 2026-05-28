@@ -4,7 +4,14 @@ export type PlatformCode = "META" | "TIKTOK" | "YOUTUBE" | "GOOGLE";
 
 export type MetaScope = "combined" | "facebook" | "instagram";
 
-export type AnalyticsDateRange = "7d" | "28d" | "90d" | "365d";
+export type AnalyticsDateRange =
+  | "today"
+  | "7d"
+  | "28d"
+  | "month"
+  | "90d"
+  | "365d"
+  | "custom";
 
 export type DataSourceType = "LIVE" | "API" | "WEBHOOK" | "DEMO";
 
@@ -126,6 +133,9 @@ export type PlatformConnectionStatus = {
   syncHealth: "OK" | "Needs sync" | "Failed" | "Demo";
   statusRows: StatusRow[];
 };
+
+export type MetaSourceSyncStatus =
+  import("@/lib/meta/page-analytics").MetaSourceSyncStatus;
 
 export type MetaBusinessPageDashboard =
   import("@/lib/meta/page-analytics").MetaBusinessPageDashboard;

@@ -3,7 +3,7 @@ import { z } from "zod"
 
 import { getMetaCronSecret } from "@/lib/meta/config"
 import { processUnprocessedWebhookEvents } from "@/lib/meta/webhook-events"
-import { runMetaSyncJob } from "@/lib/meta/sync"
+import { runMetaSyncJob, runMetaSyncJobForPage } from "@/lib/meta/sync"
 import type { MetaSyncType } from "@/lib/meta/types"
 
 export const runtime = "nodejs"
@@ -17,6 +17,7 @@ const cronSchema = z.object({
     "monthly_summary",
     "process_webhooks",
   ]),
+  pageId: z.string().trim().optional(),
 })
 
 function authorizeCron(request: Request) {
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const parsed = cronSchema.safeParse({
     job: url.searchParams.get("job") ?? "process_webhooks",
+    pageId: url.searchParams.get("pageId") ?? undefined,
   })
 
   if (!parsed.success) {
@@ -59,10 +61,16 @@ export async function GET(request: Request) {
       })
     }
 
-    const affected = await runMetaSyncJob(parsed.data.job as MetaSyncType)
+    const affected = parsed.data.pageId
+      ? await runMetaSyncJobForPage(
+          parsed.data.job as MetaSyncType,
+          parsed.data.pageId
+        )
+      : await runMetaSyncJob(parsed.data.job as MetaSyncType)
     return NextResponse.json({
       success: true,
       job: parsed.data.job,
+      pageId: parsed.data.pageId ?? null,
       recordsAffected: affected,
     })
   } catch (error) {

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import Link from "next/link"
 
 import {
@@ -21,13 +22,13 @@ import {
   formatMetaMetricDisplay,
   liveText,
 } from "@/lib/platform-analytics/format"
-import type { MetaBusinessPageDashboard } from "@/lib/platform-analytics/types"
+import { ClientDateTime } from "@/components/shared/client-date-time"
+import type { MetaMetricDisplayState } from "@/lib/platform-analytics/format"
+import type {
+  MetaBusinessPageDashboard,
+  MetaSourceSyncStatus,
+} from "@/lib/platform-analytics/types"
 import { cn } from "@/lib/utils"
-
-const dateFormatter = new Intl.DateTimeFormat("en-PH", {
-  dateStyle: "medium",
-  timeStyle: "short",
-})
 
 type MetaBusinessPageCardProps = {
   page: MetaBusinessPageDashboard
@@ -39,7 +40,7 @@ function StatusPill({
   tone = "neutral",
 }: {
   label: string
-  value: string
+  value: ReactNode
   tone?: "ok" | "warn" | "neutral"
 }) {
   return (
@@ -59,42 +60,87 @@ function StatusPill({
 }
 
 function capabilityTone(status: string): "ok" | "warn" | "neutral" {
-  if (status === "Available" || status === "Connected" || status === "OK") {
+  if (
+    status === "Available" ||
+    status === "Connected" ||
+    status === "OK"
+  ) {
     return "ok"
   }
   if (
     status === "Permission required" ||
     status === "Sync failed" ||
     status === "Expired" ||
-    status === "Missing"
+    status === "Missing" ||
+    status === "Invalid"
   ) {
     return "warn"
   }
   return "neutral"
 }
 
+function metricNote(state: MetaMetricDisplayState): string | null {
+  if (state === "permission") {
+    return "Unavailable from current permission"
+  }
+  if (state === "unavailable") {
+    return "Unavailable"
+  }
+  if (state === "sync_failed") {
+    return "Sync failed for this metric"
+  }
+  if (state === "no_data") {
+    return "No live data yet"
+  }
+  return null
+}
+
 function MetricCard({
   label,
   value,
+  state,
 }: {
   label: string
   value: string | number
+  state: MetaMetricDisplayState
 }) {
+  const note = metricNote(state)
+
   return (
-    <Card className="border-border/80 bg-background/60">
+    <Card className="border-2 border-border bg-background/60 shadow-sm">
       <CardHeader className="pb-2">
         <CardDescription className="text-xs">{label}</CardDescription>
         <CardTitle className="text-xl leading-tight tabular-nums sm:text-2xl">
           {value}
         </CardTitle>
+        {note ? (
+          <p className="text-xs text-muted-foreground">{note}</p>
+        ) : null}
       </CardHeader>
     </Card>
   )
 }
 
-function syncStatusTone(status: string): "ok" | "warn" | "neutral" {
-  if (status === "Success") return "ok"
-  if (status === "Failed") return "warn"
+function formatSourceSyncStatus(status: MetaSourceSyncStatus) {
+  switch (status) {
+    case "success":
+      return "Success"
+    case "partial":
+      return "Partial"
+    case "failed":
+      return "Failed"
+    case "missing_token":
+      return "Missing token"
+    case "no_data":
+    default:
+      return "No data"
+  }
+}
+
+function syncStatusTone(status: MetaSourceSyncStatus): "ok" | "warn" | "neutral" {
+  if (status === "success") return "ok"
+  if (status === "partial") return "neutral"
+  if (status === "failed" || status === "missing_token") return "warn"
   return "neutral"
 }
 
@@ -144,7 +190,7 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
           <div className="space-y-2">
             <CardTitle className="text-xl">{page.displayName}</CardTitle>
             <CardDescription>
-              {page.platformLabel} analytics summary
+              {page.platformLabel} analytics summary · {page.dateRangeLabel}
               {page.facebookPageId ? (
                 <span className="ml-2 font-mono text-xs">
                   · Page ID {page.facebookPageId}
@@ -187,19 +233,26 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
           <StatusPill
             label="Last sync"
             value={
-              page.lastSyncAt
-                ? dateFormatter.format(new Date(page.lastSyncAt))
-                : "Never"
+              page.lastSyncAt ? (
+                <ClientDateTime value={page.lastSyncAt} placeholder="Never" />
+              ) : (
+                "Never"
+              )
             }
           />
           <StatusPill
+            label="Page summary sync"
+            value={formatSourceSyncStatus(page.pageSummarySyncStatus)}
+            tone={syncStatusTone(page.pageSummarySyncStatus)}
+          />
+          <StatusPill
             label="Posts sync"
-            value={page.postsSyncStatus}
+            value={formatSourceSyncStatus(page.postsSyncStatus)}
             tone={syncStatusTone(page.postsSyncStatus)}
           />
           <StatusPill
             label="Insights sync"
-            value={page.insightsSyncStatus}
+            value={formatSourceSyncStatus(page.insightsSyncStatus)}
             tone={syncStatusTone(page.insightsSyncStatus)}
           />
         </div>
@@ -236,10 +289,12 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
                 m.totalFollowers,
                 m.states.totalFollowers
               )}
+              state={m.states.totalFollowers}
             />
             <MetricCard
               label="Facebook page likes"
               value={formatMetaMetricDisplay(m.pageLikes, m.states.pageLikes)}
+              state={m.states.pageLikes}
             />
             <MetricCard
               label="New followers"
@@ -247,10 +302,12 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
                 m.newFollowers,
                 m.states.newFollowers
               )}
+              state={m.states.newFollowers}
             />
             <MetricCard
               label="New likes"
               value={formatMetaMetricDisplay(m.newLikes, m.states.newLikes)}
+              state={m.states.newLikes}
             />
             <MetricCard
               label="Post engagements"
@@ -258,22 +315,27 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
                 m.postEngagements,
                 m.states.postEngagements
               )}
+              state={m.states.postEngagements}
             />
             <MetricCard
               label="Total reactions"
               value={formatMetaMetricDisplay(m.reactions, m.states.reactions)}
+              state={m.states.reactions}
             />
             <MetricCard
               label="Total comments"
               value={formatMetaMetricDisplay(m.comments, m.states.comments)}
+              state={m.states.comments}
             />
             <MetricCard
               label="Total shares"
               value={formatMetaMetricDisplay(m.shares, m.states.shares)}
+              state={m.states.shares}
             />
             <MetricCard
               label="Reach"
               value={formatMetaMetricDisplay(m.reach, m.states.reach)}
+              state={m.states.reach}
             />
             <MetricCard
               label="Impressions"
@@ -281,6 +343,7 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
                 m.impressions,
                 m.states.impressions
               )}
+              state={m.states.impressions}
             />
             <MetricCard
               label="Profile visits"
@@ -288,10 +351,12 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
                 m.profileVisits,
                 m.states.profileVisits
               )}
+              state={m.states.profileVisits}
             />
             <MetricCard
               label="Link clicks"
               value={formatMetaMetricDisplay(m.linkClicks, m.states.linkClicks)}
+              state={m.states.linkClicks}
             />
           </div>
         </section>
@@ -318,8 +383,15 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
             <div className="flex gap-3 rounded-lg border bg-background/50 p-3">
               <MetaPostThumbnail post={topPost} className="h-20 w-20" />
               <div className="min-w-0 flex-1 space-y-2">
+                <MetaPostDate publishedAt={topPost.publishedAt} />
                 <MetaPostCaption message={topPost.message} className="line-clamp-3" />
                 <MetaPostEngagementStats post={topPost} />
+                <p className="text-xs text-muted-foreground">
+                  Engagement score:{" "}
+                  <span className="font-medium text-foreground tabular-nums">
+                    {topPost.engagementTotal.toLocaleString("en-PH")}
+                  </span>
+                </p>
                 <MetaPostExternalLink permalink={topPost.permalink} />
               </div>
             </div>
@@ -334,9 +406,12 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
               <h3 className="text-base font-semibold">Post performance preview</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {preview.totalSynced.toLocaleString("en-PH")} posts synced
-                {preview.lastPostsSyncAt
-                  ? ` · Last posts sync ${dateFormatter.format(new Date(preview.lastPostsSyncAt))}`
-                  : ""}
+                {preview.lastPostsSyncAt ? (
+                  <>
+                    {" · Last posts sync "}
+                    <ClientDateTime value={preview.lastPostsSyncAt} />
+                  </>
+                ) : null}
               </p>
             </div>
             <MetaViewAllPostsButton pageKey={page.key} />

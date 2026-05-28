@@ -1,5 +1,14 @@
 import "server-only"
 
+import {
+  chunkInsightUnixWindows,
+  type InsightUnixWindow,
+} from "@/lib/meta/date-range"
+import {
+  mergeInsightTimeSeries,
+  parseInsightTimeSeries,
+  type InsightTimeSeries,
+} from "@/lib/meta/insights-aggregate"
 import { metaGraphFetch, metaGraphFetchSafe } from "@/lib/meta/meta-http"
 import { resolveEffectivePageAccessToken } from "@/lib/meta/page-token"
 import type { MetaFacebookPageRow } from "@/lib/meta/types"
@@ -18,17 +27,32 @@ export type DiscoveredFacebookPage = {
 /** Primary daily insights requested by product spec. */
 export const DAILY_PAGE_INSIGHT_METRICS = [
   "page_impressions",
+  "page_impressions_unique",
   "page_post_engagements",
-  "page_fans",
-  "page_follows",
+  "page_views_total",
+  "page_fan_adds",
+  "page_daily_follows",
+  "page_total_actions",
 ] as const
 
 /** Extra insights fetched when read_insights allows. */
 export const EXTENDED_PAGE_INSIGHT_METRICS = [
-  "page_impressions_unique",
-  "page_views_total",
   "page_engaged_users",
-  "page_fan_adds",
+  "page_fans",
+  "page_follows",
+] as const
+
+export const REACTION_PAGE_INSIGHT_METRICS = [
+  "page_actions_post_reactions_total",
+] as const
+
+export const REACTION_PAGE_INSIGHT_FALLBACK_METRICS = [
+  "page_actions_post_reactions_like_total",
+  "page_actions_post_reactions_love_total",
+  "page_actions_post_reactions_wow_total",
+  "page_actions_post_reactions_haha_total",
+  "page_actions_post_reactions_sorry_total",
+  "page_actions_post_reactions_anger_total",
 ] as const
 
 export const PAGE_INSIGHT_METRICS = [
@@ -80,8 +104,9 @@ export async function fetchPageSummary(
     followers_count?: number
     fan_count?: number
     link?: string
+    picture?: { data?: { url?: string } }
   }>(`/${page.facebook_page_id}`, token, {
-    fields: "id,name,fan_count,followers_count",
+    fields: "id,name,link,fan_count,followers_count,picture{url}",
   })
 }
 
@@ -95,21 +120,22 @@ export async function fetchPageSummarySafe(
     followers_count?: number
     fan_count?: number
     link?: string
+    picture?: { data?: { url?: string } }
   }>(`/${page.facebook_page_id}`, token, {
-    fields: "id,name,fan_count,followers_count",
+    fields: "id,name,link,fan_count,followers_count,picture{url}",
   })
 }
 
 function readPostReactionCount(post: GraphPost) {
   return (
-    post.likes?.summary?.total_count ??
     post.reactions?.summary?.total_count ??
+    post.likes?.summary?.total_count ??
     0
   )
 }
 
 const POST_FIELDS_ENGAGEMENT =
-  "id,message,created_time,permalink_url,full_picture,type,shares,likes.summary(true),comments.summary(true)"
+  "id,message,created_time,permalink_url,full_picture,type,shares,reactions.summary(true),comments.summary(true)"
 
 const POST_FIELDS_BASIC =
   "id,message,created_time,permalink_url,full_picture,type,shares"
@@ -178,42 +204,123 @@ export async function fetchRecentPagePosts(
 
 export { readPostReactionCount }
 
+type PageInsightsPayload = {
+  data: Array<{
+    name: string
+    title?: string
+    description?: string
+    period: string
+    values: Array<{ value: number | Record<string, number>; end_time?: string }>
+  }>
+}
+
 export async function fetchPageInsights(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
-  metricNames: readonly string[] = DAILY_PAGE_INSIGHT_METRICS
+  metricNames: readonly string[] = DAILY_PAGE_INSIGHT_METRICS,
+  window?: InsightUnixWindow
 ) {
   const token = await getPageToken(page)
 
-  return metaGraphFetch<{
-    data: Array<{
-      name: string
-      title?: string
-      description?: string
-      period: string
-      values: Array<{ value: number | Record<string, number>; end_time?: string }>
-    }>
-  }>(`/${page.facebook_page_id}/insights`, token, {
+  const params: Record<string, string> = {
     metric: metricNames.join(","),
     period: "day",
-  })
+  }
+
+  if (window) {
+    params.since = String(window.since)
+    params.until = String(window.until)
+  }
+
+  return metaGraphFetch<PageInsightsPayload>(
+    `/${page.facebook_page_id}/insights`,
+    token,
+    params
+  )
 }
 
 export async function fetchPageInsightsSafe(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
-  metricNames: readonly string[] = DAILY_PAGE_INSIGHT_METRICS
+  metricNames: readonly string[] = DAILY_PAGE_INSIGHT_METRICS,
+  window?: InsightUnixWindow
+) {
+  const token = await getPageToken(page)
+
+  const params: Record<string, string> = {
+    metric: metricNames.join(","),
+    period: "day",
+  }
+
+  if (window) {
+    params.since = String(window.since)
+    params.until = String(window.until)
+  }
+
+  return metaGraphFetchSafe<PageInsightsPayload>(
+    `/${page.facebook_page_id}/insights`,
+    token,
+    params
+  )
+}
+
+export async function fetchPageInsightsRangeSafe(
+  page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
+  metricNames: readonly string[],
+  sinceDate: Date,
+  untilDate: Date
+): Promise<{
+  ok: boolean
+  series: InsightTimeSeries
+  permissionDenied: boolean
+  error?: string
+}> {
+  const windows = chunkInsightUnixWindows(sinceDate, untilDate)
+  let series: InsightTimeSeries = {}
+  let permissionDenied = false
+  let lastError: string | undefined
+
+  for (const window of windows) {
+    const result = await fetchPageInsightsSafe(page, metricNames, window)
+    if (!result.ok) {
+      permissionDenied = permissionDenied || result.permissionDenied
+      lastError = result.error
+      if (result.permissionDenied) {
+        break
+      }
+      continue
+    }
+
+    series = mergeInsightTimeSeries(
+      series,
+      parseInsightTimeSeries(result.data.data ?? [])
+    )
+  }
+
+  const hasData = Object.keys(series).length > 0
+  if (hasData) {
+    return { ok: true, series, permissionDenied: false }
+  }
+
+  return {
+    ok: false,
+    series,
+    permissionDenied,
+    error: lastError ?? "Insights unavailable",
+  }
+}
+
+export async function fetchPostLinkClicksSafe(
+  postId: string,
+  page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">
 ) {
   const token = await getPageToken(page)
   return metaGraphFetchSafe<{
     data: Array<{
       name: string
-      title?: string
-      description?: string
-      period: string
-      values: Array<{ value: number | Record<string, number>; end_time?: string }>
+      values: Array<{ value: number | Record<string, number> }>
     }>
-  }>(`/${page.facebook_page_id}/insights`, token, {
-    metric: metricNames.join(","),
-    period: "day",
+  }>(`/${postId}/insights`, token, {
+    metric: "post_clicks,post_clicks_by_type",
+    period: "lifetime",
   })
 }
 

@@ -9,6 +9,7 @@ import {
 import { getMetaMonitoringDashboardData } from "@/lib/meta/monitoring-data"
 import type {
   ActivityLogRow,
+  AnalyticsDateRange,
   KpiMetric,
   PlatformAccount,
   PlatformConnectionStatus,
@@ -32,10 +33,19 @@ export type MetaPlatformSlice = {
 }
 
 export async function loadMetaPlatformSlice(
-  _accountId: string | null
+  _accountId: string | null,
+  options?: {
+    dateRange?: AnalyticsDateRange
+    customDateFrom?: string | null
+    customDateTo?: string | null
+  }
 ): Promise<MetaPlatformSlice> {
   const [metaBusinessPages, meta, integration] = await Promise.all([
-    getMetaBusinessPagesAnalytics(),
+    getMetaBusinessPagesAnalytics({
+      dateRange: options?.dateRange,
+      customDateFrom: options?.customDateFrom,
+      customDateTo: options?.customDateTo,
+    }),
     getMetaMonitoringDashboardData(null),
     getMetaIntegrationStatus(),
   ])

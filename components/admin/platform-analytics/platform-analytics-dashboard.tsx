@@ -7,6 +7,7 @@ import {
   bootstrapMetaMonitoringAction,
   disconnectYouTubeAction,
   fetchPlatformAnalyticsAction,
+  syncMetaPageMonitoringAction,
   syncAllMetaMonitoringAction,
   syncYouTubeAction,
   triggerMetaSyncAction,
@@ -23,7 +24,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   META_SCOPE_OPTIONS,
@@ -53,7 +56,18 @@ const dateFormatter = new Intl.DateTimeFormat("en-PH", {
   timeStyle: "short",
 });
 
-const ANALYTICS_DATE_RANGE_OPTIONS: Array<{
+const META_DATE_RANGE_OPTIONS: Array<{
+  value: AnalyticsDateRange;
+  label: string;
+}> = [
+  { value: "today", label: "Today" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "28d", label: "Last 28 days" },
+  { value: "month", label: "This month" },
+  { value: "custom", label: "Custom range" },
+];
+
+const YOUTUBE_DATE_RANGE_OPTIONS: Array<{
   value: AnalyticsDateRange;
   label: string;
 }> = [
@@ -106,8 +120,13 @@ export function PlatformAnalyticsDashboard({
     initialData.platform === "META" ? "META" : initialData.platform,
   );
   const [metaScope, setMetaScope] = useState<MetaScope>("combined");
+  const [metaPageKey, setMetaPageKey] = useState<
+    "neon-nights" | "pro-group" | "al-qaysar" | "all"
+  >("all");
   const [accountId, setAccountId] = useState("all");
   const [dateRange, setDateRange] = useState<AnalyticsDateRange>("28d");
+  const [customDateFrom, setCustomDateFrom] = useState("");
+  const [customDateTo, setCustomDateTo] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const platformCode = platform as PlatformCode;
@@ -129,15 +148,22 @@ export function PlatformAnalyticsDashboard({
     nextAccount?: string,
     nextScope?: MetaScope,
     nextDateRange?: AnalyticsDateRange,
+    nextCustomFrom?: string,
+    nextCustomTo?: string,
   ) {
     startTransition(async () => {
       const p = nextPlatform ?? platform;
       const selectedAccount = nextAccount ?? accountId;
+      const range = nextDateRange ?? dateRange;
       const result = await fetchPlatformAnalyticsAction({
         platform: p,
         accountId: selectedAccount === "all" ? null : selectedAccount,
         metaScope: p === "META" ? (nextScope ?? metaScope) : "combined",
-        dateRange: nextDateRange ?? dateRange,
+        dateRange: range,
+        customDateFrom:
+          range === "custom" ? (nextCustomFrom ?? customDateFrom) || null : null,
+        customDateTo:
+          range === "custom" ? (nextCustomTo ?? customDateTo) || null : null,
       });
 
       if (!result.success || !result.data) {
@@ -163,8 +189,16 @@ export function PlatformAnalyticsDashboard({
   function handleDateRangeChange(nextRange: AnalyticsDateRange) {
     setDateRange(nextRange);
 
+    if (nextRange !== "custom") {
+      if (platform === "META") {
+        reload(platform, accountId, metaScope, nextRange);
+        return;
+      }
+    } else if (platform === "META") {
+      return;
+    }
+
     if (platform !== "YOUTUBE") {
-      reload(platform, accountId, metaScope, nextRange);
       return;
     }
 
@@ -242,7 +276,10 @@ export function PlatformAnalyticsDashboard({
 
   function handleSyncAll() {
     startTransition(async () => {
-      const result = await syncAllMetaMonitoringAction();
+      const result =
+        platform === "META" && metaPageKey !== "all"
+          ? await syncMetaPageMonitoringAction({ pageKey: metaPageKey })
+          : await syncAllMetaMonitoringAction();
       if (!result.success) {
         toast.error(result.message);
         return;
@@ -256,7 +293,10 @@ export function PlatformAnalyticsDashboard({
     syncType: "hourly_posts" | "daily_page" | "daily_insights",
   ) {
     startTransition(async () => {
-      const result = await triggerMetaSyncAction(syncType);
+      const result =
+        platform === "META" && metaPageKey !== "all"
+          ? await triggerMetaSyncAction(syncType, { pageKey: metaPageKey })
+          : await triggerMetaSyncAction(syncType);
       if (!result.success) {
         toast.error(result.message);
         return;
@@ -306,21 +346,25 @@ export function PlatformAnalyticsDashboard({
           />
         </div>
 
-        {platform === "YOUTUBE" ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {ANALYTICS_DATE_RANGE_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                type="button"
-                size="sm"
-                variant={dateRange === option.value ? "default" : "neutral"}
-                disabled={isPending}
-                onClick={() => handleDateRangeChange(option.value)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
+        {platform === "META" || platform === "YOUTUBE" ? (
+          <AnalyticsDateRangeBar
+            options={
+              platform === "META"
+                ? META_DATE_RANGE_OPTIONS
+                : YOUTUBE_DATE_RANGE_OPTIONS
+            }
+            dateRange={dateRange}
+            customDateFrom={customDateFrom}
+            customDateTo={customDateTo}
+            isPending={isPending}
+            showCustom={platform === "META"}
+            onDateRangeChange={handleDateRangeChange}
+            onCustomDateFromChange={setCustomDateFrom}
+            onCustomDateToChange={setCustomDateTo}
+            onApplyCustom={() =>
+              reload(platform, accountId, metaScope, "custom", customDateFrom, customDateTo)
+            }
+          />
         ) : null}
 
         <div className="flex flex-wrap gap-1 border-b border-border pb-3">
@@ -378,6 +422,33 @@ export function PlatformAnalyticsDashboard({
           ) : null}
         </div>
 
+        {platform === "META" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">Sync target:</span>
+            <Button
+              type="button"
+              size="sm"
+              variant={metaPageKey === "all" ? "default" : "neutral"}
+              disabled={isPending}
+              onClick={() => setMetaPageKey("all")}
+            >
+              All enabled pages
+            </Button>
+            {data.metaBusinessPages.map((page) => (
+              <Button
+                key={page.key}
+                type="button"
+                size="sm"
+                variant={metaPageKey === page.key ? "default" : "neutral"}
+                disabled={isPending}
+                onClick={() => setMetaPageKey(page.key)}
+              >
+                {page.displayName}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+
         <ConnectionStatusCard
           connection={data.connection}
           isDemo={data.isDemo}
@@ -397,7 +468,9 @@ export function PlatformAnalyticsDashboard({
 
       {platform === "META" ? (
         <section className="space-y-6">
-          {data.metaBusinessPages.length === 0 ? (
+          {isPending ? (
+            <MetaAnalyticsLoadingSkeleton />
+          ) : data.metaBusinessPages.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
                 No Meta business pages are enabled. Set{" "}
@@ -406,9 +479,10 @@ export function PlatformAnalyticsDashboard({
               </CardContent>
             </Card>
           ) : (
-            data.metaBusinessPages.map((page) => (
-              <MetaBusinessPageCard key={page.key} page={page} />
-            ))
+            (metaPageKey === "all"
+              ? data.metaBusinessPages
+              : data.metaBusinessPages.filter((page) => page.key === metaPageKey)
+            ).map((page) => <MetaBusinessPageCard key={page.key} page={page} />)
           )}
         </section>
       ) : (
@@ -1082,6 +1156,108 @@ function StatusRow({
       >
         {detail ?? (ok ? "OK" : "Missing")}
       </span>
+    </div>
+  );
+}
+
+function AnalyticsDateRangeBar({
+  options,
+  dateRange,
+  customDateFrom,
+  customDateTo,
+  isPending,
+  showCustom,
+  onDateRangeChange,
+  onCustomDateFromChange,
+  onCustomDateToChange,
+  onApplyCustom,
+}: {
+  options: Array<{ value: AnalyticsDateRange; label: string }>;
+  dateRange: AnalyticsDateRange;
+  customDateFrom: string;
+  customDateTo: string;
+  isPending: boolean;
+  showCustom: boolean;
+  onDateRangeChange: (value: AnalyticsDateRange) => void;
+  onCustomDateFromChange: (value: string) => void;
+  onCustomDateToChange: (value: string) => void;
+  onApplyCustom: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {options.map((option) => (
+          <Button
+            key={option.value}
+            type="button"
+            size="sm"
+            variant={dateRange === option.value ? "default" : "neutral"}
+            disabled={isPending}
+            onClick={() => onDateRangeChange(option.value)}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+      {showCustom && dateRange === "custom" ? (
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">From</label>
+            <Input
+              type="date"
+              value={customDateFrom}
+              disabled={isPending}
+              onChange={(event) => onCustomDateFromChange(event.target.value)}
+              className="w-40"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">To</label>
+            <Input
+              type="date"
+              value={customDateTo}
+              disabled={isPending}
+              onChange={(event) => onCustomDateToChange(event.target.value)}
+              className="w-40"
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="default"
+            disabled={isPending || !customDateFrom || !customDateTo}
+            onClick={onApplyCustom}
+          >
+            Apply range
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MetaAnalyticsLoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      {[1, 2].map((key) => (
+        <Card key={key} className="border-2 border-border">
+          <CardHeader className="space-y-4">
+            <Skeleton className="h-7 w-56" />
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-12 w-full" />
+              ))}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <Skeleton key={index} className="h-20 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

@@ -9,13 +9,23 @@ export const analyticsPlatforms = [
 
 export const metaScopes = ["combined", "facebook", "instagram"] as const;
 
-export const analyticsDateRanges = ["7d", "28d", "90d", "365d"] as const;
+export const analyticsDateRanges = [
+  "today",
+  "7d",
+  "28d",
+  "month",
+  "90d",
+  "365d",
+  "custom",
+] as const;
 
 export const platformAnalyticsFiltersSchema = z.object({
   platform: z.enum(analyticsPlatforms).default("META"),
   accountId: z.string().trim().optional().nullable(),
   metaScope: z.enum(metaScopes).default("combined"),
   dateRange: z.enum(analyticsDateRanges).default("28d"),
+  customDateFrom: z.string().trim().optional().nullable(),
+  customDateTo: z.string().trim().optional().nullable(),
 });
 
 export const metaMonitoringFiltersSchema = z.object({
@@ -47,6 +57,27 @@ export const metaPostsFiltersSchema = z.object({
 export const metaPostCommentsSchema = z.object({
   pageKey: z.enum(["neon-nights", "pro-group", "al-qaysar"]),
   postId: z.string().trim().min(1),
+});
+
+export const metaPageKeys = [
+  "neon-nights",
+  "pro-group",
+  "al-qaysar",
+] as const;
+
+export const metaPageSyncSchema = z.object({
+  pageKey: z.enum(metaPageKeys),
+});
+
+export const metaPageJobSyncSchema = z.object({
+  pageKey: z.enum(metaPageKeys),
+  syncType: z.enum([
+    "hourly_posts",
+    "daily_page",
+    "daily_insights",
+    "weekly_summary",
+    "monthly_summary",
+  ]),
 });
 
 export const registerMetaPageSchema = z.object({
