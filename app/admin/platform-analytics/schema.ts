@@ -59,6 +59,27 @@ export const metaPostCommentsSchema = z.object({
   postId: z.string().trim().min(1),
 });
 
+export const metaPageKeys = [
+  "neon-nights",
+  "pro-group",
+  "al-qaysar",
+] as const;
+
+export const metaPageSyncSchema = z.object({
+  pageKey: z.enum(metaPageKeys),
+});
+
+export const metaPageJobSyncSchema = z.object({
+  pageKey: z.enum(metaPageKeys),
+  syncType: z.enum([
+    "hourly_posts",
+    "daily_page",
+    "daily_insights",
+    "weekly_summary",
+    "monthly_summary",
+  ]),
+});
+
 export const registerMetaPageSchema = z.object({
   facebookPageId: z.string().trim().min(1, "Facebook Page ID is required."),
   pageName: z.string().trim().min(1, "Page name is required."),

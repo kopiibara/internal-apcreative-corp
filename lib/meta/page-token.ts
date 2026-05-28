@@ -40,7 +40,7 @@ export async function resolveEffectivePageAccessToken(input: {
   const configured = resolveMetaPageAccessToken(input.accessTokenEnvKey)?.trim()
   if (!configured) {
     throw new Error(
-      "Meta Page access token is not configured. Set NEON_NIGHTS_META_PAGE_ACCESS_TOKEN to a Page access token (or a User token with pages_show_list)."
+      `Meta Page access token is not configured. Set ${input.accessTokenEnvKey ?? "the page access token env var"} to a Page access token (or a User token with pages_show_list).`
     )
   }
 
