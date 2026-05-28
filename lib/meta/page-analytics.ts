@@ -17,7 +17,7 @@ import {
   type ResolvedPageTokenSource,
 } from "@/lib/meta/page-token"
 import type { MetaPageConfig, MetaPageConfigKey } from "@/lib/meta/pages-config"
-import { getConfiguredMetaPages } from "@/lib/meta/pages-config"
+import { getEnabledMetaPages } from "@/lib/meta/pages-config"
 import type { MetaSyncRunSummary } from "@/lib/meta/monitoring-data"
 import type {
   MetaPageDailySnapshotRow,
@@ -968,9 +968,7 @@ export async function getMetaBusinessPagesAnalytics(input?: {
   customDateFrom?: string | null
   customDateTo?: string | null
 }): Promise<MetaBusinessPageDashboard[]> {
-  const pagesToDisplay = getConfiguredMetaPages().filter(
-    (page) => page.key !== "pro-group"
-  )
+  const pagesToDisplay = getEnabledMetaPages()
 
   const dateRange = input?.dateRange ?? "28d"
   const window = resolveMetaAnalyticsWindow(dateRange, {
