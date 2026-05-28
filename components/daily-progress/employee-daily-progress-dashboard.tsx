@@ -101,7 +101,7 @@ function ReportStatusCard({
 
       {report ? (
         <p className="mt-2 font-bold tabular-nums">
-          Net Points: {report.netPoints > 0 ? "+" : ""}
+          Daily Points: {report.netPoints > 0 ? "+" : ""}
           {report.netPoints}
         </p>
       ) : (
@@ -182,7 +182,7 @@ function DailyProgressHistory({
   }
 
   return (
-    <ScrollArea className="h-full min-h-0 pr-3" scrollbars="vertical">
+    <ScrollArea className="h-[60vh] pr-3" scrollbars="vertical">
       <div className="grid gap-3 pr-3">
         {reports.map((report) => {
           const status = getReportLabel(report);
@@ -231,7 +231,7 @@ function DailyProgressHistory({
 
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold">
                 <span className="rounded-lg border-2 border-border px-2 py-1">
-                  Net {report.netPoints > 0 ? "+" : ""}
+                  Points {report.netPoints > 0 ? "+" : ""}
                   {report.netPoints}
                 </span>
                 <span className="rounded-lg border-2 border-border px-2 py-1">
@@ -403,20 +403,19 @@ export function EmployeeDailyProgressDashboard({
         </p>
       </div>
 
-      <div className="grid min-w-0 items-stretch gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <Card className="flex min-h-[calc(100dvh-13rem)] min-w-0 flex-col shadow-none">
-          <CardHeader className="shrink-0">
+      <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <Card className="min-w-0 shadow-none">
+          <CardHeader>
             <CardTitle>Daily Progress History</CardTitle>
           </CardHeader>
-
-          <CardContent className="flex min-h-0 flex-1 flex-col">
-            <div className="flex min-h-0 flex-1 flex-col gap-4">
-              <aside className="grid shrink-0 gap-3 sm:grid-cols-2">
+          <CardContent>
+            <div className="grid gap-4">
+              <aside className="grid gap-3 sm:grid-cols-2">
                 <ReportStatusCard title="Today" report={todayReport} />
                 <ReportStatusCard title="Yesterday" report={yesterdayReport} />
               </aside>
 
-              <section className="min-h-0 min-w-0 flex-1">
+              <section className="min-w-0 space-y-3">
                 <DailyProgressHistory
                   reports={reports}
                   onReportClick={openReportDetails}
