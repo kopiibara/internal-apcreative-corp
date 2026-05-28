@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:create-executive": "tsx scripts/create-initial-executive.ts",
+    "db:create-executive-node": "tsx scripts/create-initial-executive-node.ts",
     "db:migrate": "tsx scripts/migrate.ts",
     "meta:register-page": "tsx scripts/meta-register-page.ts",
     "meta:verify-schema": "tsx scripts/verify-meta-schema.ts",
