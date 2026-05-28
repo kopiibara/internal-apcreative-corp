@@ -1,6 +1,7 @@
 import "server-only";
 
 import { query } from "@/lib/db";
+import { DAILY_PROGRESS_SCORING_START_DATE_KEY } from "@/lib/daily-progress-report/constants";
 import {
   buildTaskPerformanceCounts,
   calculateTaskPerformancePoints,
@@ -742,6 +743,13 @@ export async function getStaffAccountabilityData({
 }: StaffAccountabilityFilterInput = {}): Promise<StaffAccountabilityData> {
   const employeeParams = [brandId, employeeId] as const;
   const assignmentParams = [startDate, endDate, brandId, employeeId] as const;
+  const dailyProgressParams = [
+    startDate,
+    endDate,
+    brandId,
+    employeeId,
+    DAILY_PROGRESS_SCORING_START_DATE_KEY,
+  ] as const;
 
   const [
     employees,
@@ -907,6 +915,7 @@ export async function getStaffAccountabilityData({
       JOIN profile employee ON employee.id = dpr.profile_id
       WHERE employee.status = 'ACTIVE'
         AND employee.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
+        AND dpr.report_date >= $5::date
         AND (
           $1::timestamptz IS NULL
           OR (
@@ -924,7 +933,7 @@ export async function getStaffAccountabilityData({
         AND ($4::integer IS NULL OR dpr.profile_id = $4::integer)
       GROUP BY dpr.profile_id
       `,
-        [...assignmentParams],
+        [...dailyProgressParams],
       ),
     ]);
 
