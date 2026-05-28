@@ -79,20 +79,26 @@ export default async function AdminDailyProgressPage({
     return <EmployeeDailyProgressDashboard {...ownDailyProgressData} />;
   }
 
-  const data = await getAdminDailyProgressData({
-    startDate,
-    endDate,
-    brandId: parseOptionalId(params.brandId),
-    employeeId: parseOptionalId(params.employeeId),
-    status: params.status ?? null,
-    lateApprovalStatus: params.lateApprovalStatus ?? null,
-  });
+  const [data, ownDailyProgressData] = await Promise.all([
+    getAdminDailyProgressData({
+      startDate,
+      endDate,
+      brandId: parseOptionalId(params.brandId),
+      employeeId: parseOptionalId(params.employeeId),
+      status: params.status ?? null,
+      lateApprovalStatus: params.lateApprovalStatus ?? null,
+    }),
+    profile.account_type === "SUPERVISOR"
+      ? getOwnDailyProgressPageData(profile.id)
+      : Promise.resolve(null),
+  ]);
 
   return (
     <AdminDailyProgressDashboard
       reports={data.reports}
       summary={data.summary}
       targetDate={missedCheckerTargetDate}
+      ownDailyProgressData={ownDailyProgressData}
     />
   );
 }

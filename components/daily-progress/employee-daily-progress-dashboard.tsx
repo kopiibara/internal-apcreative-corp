@@ -514,7 +514,7 @@ export function EmployeeDailyProgressDashboard({
               />
 
               <div className="space-y-2">
-                <RequiredLabel required>Proof link</RequiredLabel>
+                <RequiredLabel>Proof link</RequiredLabel>
                 <Input
                   value={proofLink}
                   onChange={(event) => setProofLink(event.target.value)}
