@@ -11,6 +11,7 @@ import {
   fetchPageInsightsRangeSafe,
   fetchPageSummarySafe,
   fetchRecentPagePostsSafe,
+  META_POSTS_FETCH_LIMIT,
   readPostReactionCount,
 } from "@/lib/meta/graph-api"
 import { isMetaPermissionError } from "@/lib/meta/graph-errors"
@@ -344,11 +345,18 @@ export async function syncHourlyPostMetrics(facebookPageId?: string) {
     })
 
     try {
-      let postsResult = await fetchRecentPagePostsSafe(page, 100)
+      let postsResult = await fetchRecentPagePostsSafe(page, META_POSTS_FETCH_LIMIT)
 
       if (!postsResult.ok && postsResult.permissionDenied) {
         clearMetaPageTokenCache()
-        postsResult = await fetchRecentPagePostsSafe(page, 100)
+        postsResult = await fetchRecentPagePostsSafe(page, META_POSTS_FETCH_LIMIT)
+      }
+
+      if (
+        !postsResult.ok &&
+        /reduce the amount of data/i.test(postsResult.error ?? "")
+      ) {
+        postsResult = await fetchRecentPagePostsSafe(page, 5)
       }
 
       if (!postsResult.ok) {

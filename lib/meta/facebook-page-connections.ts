@@ -36,9 +36,9 @@ export function getFacebookPageConnections(): FacebookPageConnection[] {
     }))
 }
 
-/** Pages shown on Platform Analytics (Neon Nights + Al Qaysar when configured). */
+/** Pages shown on Platform Analytics when configured. */
 export function getFacebookPageConnectionsForDisplay(): FacebookPageConnection[] {
-  return getFacebookPageConnections().filter((page) => page.brandKey !== "pro-group")
+  return getFacebookPageConnections()
 }
 
 export function getFacebookPageConnectionByKey(brandKey: MetaPageConfigKey) {

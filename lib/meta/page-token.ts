@@ -104,6 +104,6 @@ export async function resolveEffectivePageAccessToken(input: {
 
   throw new Error(
     `Meta access token does not have access to Facebook Page ${input.facebookPageId}. ` +
-      `Use a Page access token from /me/accounts for this Page, or verify AL_QAYSAR_META_PAGE_ID / NEON_NIGHTS_META_PAGE_ID.`
+      `Use a Page access token from /me/accounts for this Page, and verify the brand META_PAGE_ID env var matches that page.`
   )
 }
