@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth/auth-session"
 import { query } from "@/lib/db"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
+import { can } from "@/lib/permissions"
 
 type RoleSlugRow = {
     slug: string
@@ -27,7 +28,13 @@ export default async function AdminLayout({
     children: React.ReactNode
 }) {
     const { profile, user } = await requireAdmin()
-    const roleSlugs = await getActiveRoleSlugs(profile.id)
+    const [roleSlugs, canAccessDailyProgress] = await Promise.all([
+        getActiveRoleSlugs(profile.id),
+        Promise.all([
+            can(profile.auth_user_id, "daily_progress.view_all"),
+            can(profile.auth_user_id, "daily_progress.manage"),
+        ]).then((checks) => checks.some(Boolean)),
+    ])
 
     return (
         <DashboardShell
@@ -39,6 +46,7 @@ export default async function AdminLayout({
                 email: profile.email,
                 accountType: profile.account_type,
                 roleSlugs,
+                canAccessDailyProgress,
                 imageUrl: user.image ?? null,
                 mustChangePassword: profile.must_change_password,
             }}

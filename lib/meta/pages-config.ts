@@ -72,8 +72,17 @@ function buildMetaPageConfig(
 
 export const metaPages: MetaPageConfig[] = metaPagesDefinition.map(buildMetaPageConfig)
 
+export function isMetaPageConfigured(page: MetaPageConfig) {
+  return Boolean(page.pageId && page.accessToken)
+}
+
+/** Pages with both Page ID and Page Access Token in env (sync + display). */
+export function getConfiguredMetaPages() {
+  return metaPages.filter(isMetaPageConfigured)
+}
+
 export function getActiveMetaPages() {
-  return metaPages.filter((page) => page.enabled)
+  return getConfiguredMetaPages()
 }
 
 export type MetaPageValidationIssue = {
@@ -140,7 +149,14 @@ export function getActiveMetaPagesForSync(): MetaSyncPage[] {
     throw new Error(`Meta page configuration is incomplete: ${summary}`)
   }
 
-  return getActiveMetaPages().map((page) => ({
+  const configured = getConfiguredMetaPages()
+  if (configured.length === 0) {
+    throw new Error(
+      "No Facebook pages are configured. Set PAGE_ID and PAGE_ACCESS_TOKEN for at least one brand (e.g. NEON_NIGHTS_META_PAGE_ID and NEON_NIGHTS_META_PAGE_ACCESS_TOKEN)."
+    )
+  }
+
+  return configured.map((page) => ({
     facebook_page_id: page.pageId,
     page_name: page.name,
     brand_slug: page.brandSlug,

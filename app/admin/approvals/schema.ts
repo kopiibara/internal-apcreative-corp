@@ -9,6 +9,7 @@ import {
   APPROVAL_STATUSES,
   PUBLISH_STATUSES,
 } from "@/lib/approvals/approval-statuses";
+import { richTextToPlainText } from "@/lib/rich-text/rich-text";
 
 const optionalDateSchema = z.preprocess((value) => {
   if (typeof value === "string") {
@@ -35,8 +36,9 @@ const revisionAreasSchema = z
 
 const revisionInstructionSchema = z
   .string()
-  .trim()
-  .min(1, "Add a clear revision instruction for the creator.");
+  .refine((value) => richTextToPlainText(value).length > 0, {
+    message: "Add a clear revision instruction for the creator.",
+  });
 
 const optionalRevisionAreasSchema = z.preprocess((value) => {
   if (!Array.isArray(value) || value.length === 0) {
@@ -47,11 +49,11 @@ const optionalRevisionAreasSchema = z.preprocess((value) => {
 }, revisionAreasSchema.optional());
 
 const optionalRevisionInstructionSchema = z.preprocess((value) => {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (typeof value !== "string" || richTextToPlainText(value).length === 0) {
     return undefined;
   }
 
-  return value.trim();
+  return value;
 }, revisionInstructionSchema.optional());
 
 const optionalNotesSchema = z.string().trim().optional();

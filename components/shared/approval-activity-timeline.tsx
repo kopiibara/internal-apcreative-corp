@@ -11,10 +11,12 @@ import {
 import { StatusBadge } from "@/components/shared/status-badge"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
+import { RichTextRenderer } from "@/components/ui/rich-text-renderer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { getApprovalRevisionAreaLabel } from "@/lib/approvals/approval-revision"
 import type { ApprovalRevisionAreaId } from "@/lib/approvals/approval-revision"
+import { richTextExcerpt } from "@/lib/rich-text/rich-text"
 import type { ApprovalActivityLog } from "@/types/content-report"
 
 type ApprovalActivityTimelineProps = {
@@ -180,10 +182,13 @@ export function ApprovalActivityTimeline({
                     </div>
                   ) : null}
                   {typeof log.metadata?.revisionInstruction === "string" ? (
-                    <p className="break-words">
-                      <span className="font-semibold">Instruction:</span>{" "}
-                      {log.metadata.revisionInstruction}
-                    </p>
+                    <div className="break-words">
+                      <p className="font-semibold">Instruction</p>
+                      <RichTextRenderer
+                        value={log.metadata.revisionInstruction}
+                        className="mt-1"
+                      />
+                    </div>
                   ) : null}
                 </div>
               ) : null}
@@ -194,9 +199,9 @@ export function ApprovalActivityTimeline({
                     <p key={field.label} className="break-words">
                       <span className="font-semibold">{field.label}:</span>{" "}
                       <span className="text-muted-foreground">
-                        {field.from || "Empty"}
+                        {richTextExcerpt(field.from, 80) || "Empty"}
                       </span>{" "}
-                      to <span>{field.to || "Empty"}</span>
+                      to <span>{richTextExcerpt(field.to, 80) || "Empty"}</span>
                     </p>
                   ))}
                 </div>

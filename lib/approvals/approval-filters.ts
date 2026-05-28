@@ -1,4 +1,5 @@
 import type { ContentReport } from "@/types/content-report";
+import { richTextToPlainText } from "@/lib/rich-text/rich-text";
 
 function approvalReviewStatusesMatch(a: ContentReport, b: ContentReport) {
   return (
@@ -112,8 +113,12 @@ export function filterApprovalReports(
       report.contentType.toLowerCase().includes(normalizedQuery) ||
       report.platform.toLowerCase().includes(normalizedQuery) ||
       (report.brandName ?? "").toLowerCase().includes(normalizedQuery) ||
-      (report.contentInspo ?? "").toLowerCase().includes(normalizedQuery) ||
-      (report.employeeComments ?? "").toLowerCase().includes(normalizedQuery);
+      richTextToPlainText(report.contentInspo)
+        .toLowerCase()
+        .includes(normalizedQuery) ||
+      richTextToPlainText(report.employeeComments)
+        .toLowerCase()
+        .includes(normalizedQuery);
 
     return (
       matchesSearch &&

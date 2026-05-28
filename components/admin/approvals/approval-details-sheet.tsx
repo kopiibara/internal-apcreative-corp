@@ -62,8 +62,8 @@ export function ApprovalDetailsSheet({
         }
       }}
     >
-      <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden px-4 sm:max-w-4xl! sm:w-[50vw]! xl:max-w-6xl!">
-        <SheetHeader className="shrink-0 pb-4">
+      <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden px-0 sm:max-w-4xl! sm:w-[50vw]! xl:max-w-6xl!">
+        <SheetHeader className="sticky top-0 z-20 shrink-0 border-b-2 border-border bg-background px-4 py-4">
           {resolvedApproval ? (
             <ApprovalSheetHeader
               report={resolvedApproval}
@@ -82,8 +82,12 @@ export function ApprovalDetailsSheet({
         </SheetHeader>
 
         {resolvedApproval ? (
-          <ScrollArea className="min-h-0 flex-1 pr-3" scrollbars="vertical">
-            <div className="space-y-4 pb-6">
+          <ScrollArea
+            className="min-h-0 flex-1"
+            viewportClassName="h-full"
+            scrollbars="vertical"
+          >
+            <div className="space-y-4 px-4 py-4 pr-6">
               <ApprovalDetailsGrid
                 main={
                   <>

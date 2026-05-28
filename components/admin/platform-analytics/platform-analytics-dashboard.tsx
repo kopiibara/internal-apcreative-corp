@@ -79,10 +79,7 @@ const YOUTUBE_DATE_RANGE_OPTIONS: Array<{
 
 const PLATFORM_TABS: Record<PlatformCode, { value: string; label: string }[]> =
   {
-    META: [
-      { value: "logs", label: "Webhook Activity" },
-      { value: "sync", label: "Sync History" },
-    ],
+    META: [{ value: "sync", label: "Sync History" }],
     TIKTOK: [
       { value: "overview", label: "Overview" },
       { value: "content", label: "Video Performance" },
@@ -500,7 +497,7 @@ export function PlatformAnalyticsDashboard({
         </>
       )}
 
-      <Tabs defaultValue={platform === "META" ? "logs" : "overview"}>
+      <Tabs defaultValue={platform === "META" ? "sync" : "overview"}>
         <TabsList className="flex h-auto flex-wrap gap-1">
           {tabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value}>
@@ -734,18 +731,11 @@ function ConnectionStatusCard({
         <CardTitle className="text-base">Platform connection status</CardTitle>
         <div className="flex flex-wrap gap-2 pt-1">
           <Badge variant={connection.apiConnected ? "default" : "neutral"}>
-            {connection.apiConnected ? "Connected" : "Not connected"}
+            {connection.apiConnected
+              ? "Facebook pages configured"
+              : "Not configured"}
           </Badge>
           {isDemo ? <DemoBadge /> : null}
-          {connection.webhookSupported ? (
-            <Badge
-              variant={connection.webhookConfigured ? "default" : "neutral"}
-            >
-              {connection.webhookConfigured
-                ? "Webhook ready"
-                : "Webhook pending"}
-            </Badge>
-          ) : null}
           <Badge variant="neutral">Sync: {connection.syncHealth}</Badge>
         </div>
       </CardHeader>

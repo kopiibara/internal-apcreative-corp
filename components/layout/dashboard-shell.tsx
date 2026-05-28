@@ -111,6 +111,7 @@ type DashboardUser = {
     canAccessAdsCampaigns?: boolean
     canAccessTaskBoard?: boolean
     canAccessReminders?: boolean
+    canAccessDailyProgress?: boolean
     imageUrl?: string | null
     mustChangePassword?: boolean
 }
@@ -180,6 +181,7 @@ export function DashboardShell({
                         canAccessAdsCampaigns: user.canAccessAdsCampaigns,
                         canAccessTaskBoard: user.canAccessTaskBoard,
                         canAccessReminders: user.canAccessReminders,
+                        canAccessDailyProgress: user.canAccessDailyProgress,
                         imageUrl: user.imageUrl,
                     }}
                 />

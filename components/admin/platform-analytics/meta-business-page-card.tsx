@@ -214,12 +214,6 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
               <Badge variant="neutral">
                 Facebook Page: {page.facebookPageStatus}
               </Badge>
-              <Badge variant="neutral">
-                Instagram: {page.instagramStatus}
-              </Badge>
-              <Badge variant="neutral">
-                Webhook: {page.permissions.webhooks}
-              </Badge>
             </div>
           </div>
         </div>
@@ -338,7 +332,7 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
               state={m.states.reach}
             />
             <MetricCard
-              label="Impressions"
+              label="Impressions / Views"
               value={formatMetaMetricDisplay(
                 m.impressions,
                 m.states.impressions

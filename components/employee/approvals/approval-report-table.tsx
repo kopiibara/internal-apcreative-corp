@@ -57,6 +57,7 @@ import {
   canEmployeeEditReport,
   type ContentReport,
 } from "@/types/content-report"
+import { richTextToPlainText } from "@/lib/rich-text/rich-text"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 
 type ContentReportTableProps = {
@@ -108,7 +109,9 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
         normalizedQuery.length === 0 ||
         report.caption.toLowerCase().includes(normalizedQuery) ||
         report.contentType.toLowerCase().includes(normalizedQuery) ||
-        (report.contentInspo ?? "").toLowerCase().includes(normalizedQuery)
+        richTextToPlainText(report.contentInspo)
+          .toLowerCase()
+          .includes(normalizedQuery)
 
       return (
         matchesSearch &&

@@ -53,7 +53,7 @@ export function ReminderCard({ reminder }: { reminder: ReminderRecord }) {
   return (
     <Card
       size="sm"
-      className="cursor-pointer rounded-lg py-2 transition-colors hover:bg-muted/40"
+      className="cursor-pointer rounded-lg py-2 transition-all hover:bg-muted/40 hover:-translate-y-0.5"
       onClick={() => openEditDialog(reminder)}
     >
       <CardContent className="space-y-3 p-3">

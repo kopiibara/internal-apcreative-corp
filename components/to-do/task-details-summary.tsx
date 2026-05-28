@@ -1,5 +1,6 @@
 import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { RichTextRenderer } from "@/components/ui/rich-text-renderer"
 import { Separator } from "@/components/ui/separator"
 import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
@@ -49,9 +50,11 @@ export function TaskDetailsSummary({
         <div className="space-y-2">
           <div>
             <p className="text-lg font-bold leading-snug">{assignment.title}</p>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              {assignment.description || "No task description provided."}
-            </p>
+            <RichTextRenderer
+              value={assignment.description}
+              emptyText="No task description provided."
+              className="mt-1 text-sm text-muted-foreground"
+            />
           </div>
           <div className="flex flex-wrap gap-1.5">
             <TaskTypeBadge taskType={assignment.taskType} />

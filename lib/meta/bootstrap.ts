@@ -2,9 +2,8 @@ import "server-only"
 
 import { query } from "@/lib/db"
 import {
-  getActiveMetaPages,
   getActiveMetaPagesForSync,
-  validateEnabledMetaPages,
+  getConfiguredMetaPages,
 } from "@/lib/meta/pages-config"
 import { fetchPageSummarySafe } from "@/lib/meta/graph-api"
 import { clearMetaPageTokenCache } from "@/lib/meta/page-token"
@@ -60,19 +59,12 @@ export async function registerConfiguredMetaPages() {
 }
 
 export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
-  const validation = validateEnabledMetaPages()
   const errors: string[] = []
+  const configuredPages = getConfiguredMetaPages()
 
-  if (!validation.valid) {
+  if (configuredPages.length === 0) {
     throw new Error(
-      validation.issues.map((issue) => issue.message).join(" ")
-    )
-  }
-
-  const activePages = getActiveMetaPages()
-  if (activePages.length === 0) {
-    throw new Error(
-      "No Meta pages are enabled. Set NEON_NIGHTS_META_ENABLED=true and configure its Page ID and access token."
+      "No Facebook pages are configured. Set PAGE_ID and PAGE_ACCESS_TOKEN env vars for Neon Nights and/or Al Qaysar."
     )
   }
 
@@ -80,7 +72,7 @@ export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
 
   clearMetaPageTokenCache()
 
-  for (const page of activePages) {
+  for (const page of configuredPages) {
     try {
       const summaryResult = await fetchPageSummarySafe({
         facebook_page_id: page.pageId,
@@ -92,6 +84,12 @@ export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
       }
 
       const summary = summaryResult.data
+      if (summary.id !== page.pageId) {
+        throw new Error(
+          `Page ID mismatch for ${page.displayName}: expected ${page.pageId}, got ${summary.id}.`
+        )
+      }
+
       registeredPages.push({
         id: summary.id,
         name: summary.name ?? page.name,
@@ -100,7 +98,7 @@ export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
       const message =
         error instanceof Error
           ? error.message
-          : `Failed to verify Meta page for ${page.name}.`
+          : `Failed to verify Facebook page for ${page.displayName}.`
       errors.push(message)
     }
   }
@@ -108,7 +106,7 @@ export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
   if (registeredPages.length === 0) {
     throw new Error(
       errors.join(" ") ||
-        "No enabled Meta pages could be verified. Check Page ID and access token values."
+        "No Facebook pages could be verified. Check Page ID and Page Access Token values."
     )
   }
 
@@ -116,27 +114,14 @@ export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
 
   let dailySnapshots = 0
   let postMetrics = 0
-  let dailyInsights = 0
 
   try {
     const syncResult = await runAllMetaSyncJobs()
     dailySnapshots = syncResult.dailyPage
     postMetrics = syncResult.hourlyPosts
-    dailyInsights = syncResult.dailyInsights
   } catch (error) {
     errors.push(
-      error instanceof Error ? error.message : "Meta sync failed."
-    )
-  }
-
-  if (
-    dailySnapshots === 0 &&
-    postMetrics === 0 &&
-    dailyInsights === 0 &&
-    errors.length === 0
-  ) {
-    errors.push(
-      "Pages were registered but sync returned no records. Check token permissions (read_insights, pages_read_engagement)."
+      error instanceof Error ? error.message : "Facebook analytics sync failed."
     )
   }
 

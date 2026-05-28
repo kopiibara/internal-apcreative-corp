@@ -20,7 +20,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { RequiredLabel } from "@/components/ui/required-label"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
   SelectContent,
@@ -96,28 +98,37 @@ export function ContentReportFormDialog({
 }: ContentReportFormDialogProps) {
   const router = useRouter()
   const isCreateMode = mode === "create"
+
   const formBrandOptions = useMemo(
     () => mergeContentReportBrandOptions(brandOptions, report),
     [brandOptions, report],
   )
+
   const [formState, setFormState] = useState<FormState>(() =>
     getInitialFormState(formBrandOptions, report),
   )
+
   const [isPending, startTransition] = useTransition()
+
   const canEditBrand =
     isCreateMode ||
     !report ||
-    (report.supervisorStatus === "Pending" && report.directorStatus === "Pending")
+    (report.supervisorStatus === "Pending" &&
+      report.directorStatus === "Pending")
+
   const showBrandSelect =
     (isCreateMode && formBrandOptions.length > 0) ||
     (formBrandOptions.length > 1 && canEditBrand)
+
   const showBrandReadOnly =
     (!showBrandSelect && formBrandOptions.length === 1 && !isCreateMode) ||
     (!canEditBrand && Boolean(report?.brandName))
+
   const openRevisionRequests =
     !isCreateMode && report
       ? getOpenRevisionRequestsFromLogs(report.activityLogs, report)
       : []
+
   const highlightedFields = getHighlightedRevisionFormFields(openRevisionRequests)
 
   function revisionFieldClass(field: ApprovalRevisionFormField) {
@@ -130,6 +141,7 @@ export function ContentReportFormDialog({
     if (nextOpen) {
       setFormState(getInitialFormState(formBrandOptions, report))
     }
+
     onOpenChange(nextOpen)
   }
 
@@ -165,6 +177,7 @@ export function ContentReportFormDialog({
         assetLink: formState.assetLink,
         employeeComments: formState.employeeComments,
       }
+
       const result = isCreateMode
         ? await createContentReport(payload)
         : await updateContentReport({
@@ -185,8 +198,8 @@ export function ContentReportFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="flex h-[calc(100dvh-2rem)] w-[95vw] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+        <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>
             {isCreateMode ? "Create Approval Report" : "Edit Approval Report"}
           </DialogTitle>
@@ -197,140 +210,151 @@ export function ContentReportFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {openRevisionRequests.length > 0 ? (
-            <div className="space-y-3 rounded-lg border-2 border-amber-600 bg-amber-50 p-4 text-sm text-amber-950">
-              <p className="font-semibold">Revision instructions</p>
-              {openRevisionRequests.map((request) => (
-                <div key={request.id} className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide">
-                    {request.roleLabel} feedback
-                  </p>
-                  <p className="whitespace-pre-wrap leading-relaxed">
-                    {request.instruction}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : null}
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <ScrollArea className="h-0 min-h-0 flex-1">
+            <div className="space-y-4 px-6 py-4 pr-7">
+              {openRevisionRequests.length > 0 ? (
+                <div className="space-y-3 rounded-lg border-2 border-amber-600 bg-amber-50 p-4 text-sm text-amber-950">
+                  <p className="font-semibold">Revision instructions</p>
 
-          {showBrandSelect ? (
-            <div className={cn("space-y-2", revisionFieldClass("brandId"))}>
-              <Label>Brand</Label>
-              <Select
-                value={formState.brandId || undefined}
-                onValueChange={(value) => updateField("brandId", value)}
-                disabled={isPending}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select brand" />
-                </SelectTrigger>
-                <SelectContent>
-                  {formBrandOptions.map((brand) => (
-                    <SelectItem key={brand.id} value={String(brand.id)}>
-                      {brand.name}
-                      {brand.isPrimary ? " (Primary)" : ""}
-                    </SelectItem>
+                  {openRevisionRequests.map((request) => (
+                    <div key={request.id} className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide">
+                        {request.roleLabel} feedback
+                      </p>
+                      <p className="whitespace-pre-wrap leading-relaxed">
+                        {request.instruction}
+                      </p>
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : showBrandReadOnly ? (
-            <div className={cn("space-y-2", revisionFieldClass("brandId"))}>
-              <Label>Brand</Label>
-              <Input
-                value={report?.brandName ?? formBrandOptions[0]?.name ?? ""}
-                disabled
-                readOnly
-              />
-              {!canEditBrand ? (
-                <p className="text-xs text-muted-foreground">
-                  Brand is locked after Supervisor or Director review starts.
-                </p>
+                </div>
               ) : null}
+
+              {showBrandSelect ? (
+                <div className={cn("space-y-2", revisionFieldClass("brandId"))}>
+                  <RequiredLabel required>Brand</RequiredLabel>
+                  <Select
+                    value={formState.brandId || undefined}
+                    onValueChange={(value) => updateField("brandId", value)}
+                    disabled={isPending}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select brand" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {formBrandOptions.map((brand) => (
+                        <SelectItem key={brand.id} value={String(brand.id)}>
+                          {brand.name}
+                          {brand.isPrimary ? " (Primary)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : showBrandReadOnly ? (
+                <div className={cn("space-y-2", revisionFieldClass("brandId"))}>
+                  <RequiredLabel>Brand</RequiredLabel>
+                  <Input
+                    value={report?.brandName ?? formBrandOptions[0]?.name ?? ""}
+                    disabled
+                    readOnly
+                  />
+
+                  {!canEditBrand ? (
+                    <p className="text-xs text-muted-foreground">
+                      Brand is locked after Supervisor or Director review starts.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className={cn("space-y-2", revisionFieldClass("contentType"))}>
+                <RequiredLabel required>Content Type</RequiredLabel>
+                <ContentTypeSelect
+                  value={formState.contentType}
+                  onValueChange={(value) => updateField("contentType", value)}
+                  disabled={isPending}
+                />
+              </div>
+
+              <div className={cn("space-y-2", revisionFieldClass("platform"))}>
+                <RequiredLabel required>Platform</RequiredLabel>
+                <Select
+                  value={formState.platform || undefined}
+                  onValueChange={(value) => updateField("platform", value)}
+                  disabled={isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select platform" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {platformOptions.map((platform) => (
+                      <SelectItem key={platform} value={platform}>
+                        {platform}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className={revisionFieldClass("contentInspo")}>
+                <RichTextEditor
+                  id={`${mode}-content-inspo`}
+                  label="Content Inspo"
+                  value={formState.contentInspo}
+                  onChange={(value) => updateField("contentInspo", value)}
+                  disabled={isPending}
+                  minHeight={130}
+                  placeholder="Add references, direction, or inspiration notes."
+                />
+              </div>
+
+              <div className={cn("space-y-2", revisionFieldClass("caption"))}>
+                <RequiredLabel htmlFor={`${mode}-caption`} required>
+                  Caption
+                </RequiredLabel>
+                <Textarea
+                  id={`${mode}-caption`}
+                  value={formState.caption}
+                  onChange={(event) =>
+                    updateField("caption", event.target.value)
+                  }
+                  disabled={isPending}
+                  required
+                />
+              </div>
+
+              <div className={cn("space-y-2", revisionFieldClass("assetLink"))}>
+                <RequiredLabel htmlFor={`${mode}-asset-link`} required>
+                  Asset Link
+                </RequiredLabel>
+                <Input
+                  id={`${mode}-asset-link`}
+                  value={formState.assetLink}
+                  onChange={(event) =>
+                    updateField("assetLink", event.target.value)
+                  }
+                  disabled={isPending}
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div className={revisionFieldClass("employeeComments")}>
+                <RichTextEditor
+                  id={`${mode}-employee-comments`}
+                  label="Employee Notes / Comments"
+                  value={formState.employeeComments}
+                  onChange={(value) => updateField("employeeComments", value)}
+                  disabled={isPending}
+                  minHeight={130}
+                  placeholder="Add context or notes for reviewers."
+                />
+              </div>
             </div>
-          ) : null}
+          </ScrollArea>
 
-          <div className={cn("space-y-2", revisionFieldClass("contentType"))}>
-            <Label>Content Type</Label>
-            <ContentTypeSelect
-              value={formState.contentType}
-              onValueChange={(value) => updateField("contentType", value)}
-              disabled={isPending}
-            />
-          </div>
-
-          <div className={cn("space-y-2", revisionFieldClass("platform"))}>
-            <Label>Platform</Label>
-            <Select
-              value={formState.platform || undefined}
-              onValueChange={(value) => updateField("platform", value)}
-              disabled={isPending}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select platform" />
-              </SelectTrigger>
-              <SelectContent>
-                {platformOptions.map((platform) => (
-                  <SelectItem key={platform} value={platform}>
-                    {platform}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className={cn("space-y-2", revisionFieldClass("contentInspo"))}>
-            <Label htmlFor={`${mode}-content-inspo`}>Content Inspo</Label>
-            <Textarea
-              id={`${mode}-content-inspo`}
-              value={formState.contentInspo}
-              onChange={(event) =>
-                updateField("contentInspo", event.target.value)
-              }
-              disabled={isPending}
-            />
-          </div>
-
-          <div className={cn("space-y-2", revisionFieldClass("caption"))}>
-            <Label htmlFor={`${mode}-caption`}>Caption</Label>
-            <Textarea
-              id={`${mode}-caption`}
-              value={formState.caption}
-              onChange={(event) => updateField("caption", event.target.value)}
-              disabled={isPending}
-              required
-            />
-          </div>
-
-          <div className={cn("space-y-2", revisionFieldClass("assetLink"))}>
-            <Label htmlFor={`${mode}-asset-link`}>Asset Link</Label>
-            <Input
-              id={`${mode}-asset-link`}
-              value={formState.assetLink}
-              onChange={(event) => updateField("assetLink", event.target.value)}
-              disabled={isPending}
-              placeholder="https://..."
-            />
-          </div>
-
-          <div className={cn("space-y-2", revisionFieldClass("employeeComments"))}>
-            <Label htmlFor={`${mode}-employee-comments`}>
-              Employee Notes / Comments
-            </Label>
-            <Textarea
-              id={`${mode}-employee-comments`}
-              value={formState.employeeComments}
-              onChange={(event) =>
-                updateField("employeeComments", event.target.value)
-              }
-              disabled={isPending}
-              maxLength={2000}
-            />
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="shrink-0 border-t px-6 py-4">
             <Button
               type="button"
               variant="neutral"

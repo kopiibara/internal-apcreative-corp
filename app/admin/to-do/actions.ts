@@ -23,6 +23,7 @@ import { can } from "@/lib/permissions";
 import { query, transaction } from "@/lib/db";
 import { assertSupervisorCanAssignTasksToUsers } from "@/lib/approvals/approval-permissions";
 import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
+import { normalizeRichTextForStorage } from "@/lib/rich-text/rich-text";
 import {
   sanitizeOptionalText,
   sanitizeRequiredText,
@@ -403,6 +404,9 @@ export async function createTask(input: unknown): Promise<ActionResult> {
 
   try {
     const dueDate = parseDueDate(parsed.data.dueDate);
+    const normalizedDescription = parsed.data.description
+      ? normalizeRichTextForStorage(parsed.data.description)
+      : null;
 
     await transaction(async (client) => {
       const taskResult = await client.query<{ id: number }>(
@@ -420,7 +424,7 @@ export async function createTask(input: unknown): Promise<ActionResult> {
         `,
         [
           sanitizeRequiredText(parsed.data.title, 200),
-          sanitizeOptionalText(parsed.data.description ?? null, 4000),
+          sanitizeOptionalText(normalizedDescription, 8000),
           taskType,
           parsed.data.priority ?? null,
           context.profile.id,
@@ -593,6 +597,11 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
   }
 
   try {
+    const normalizedDescription =
+      parsed.data.description === undefined || parsed.data.description === null
+        ? parsed.data.description
+        : normalizeRichTextForStorage(parsed.data.description);
+
     await transaction(async (client) => {
       await client.query(
         `
@@ -608,7 +617,7 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
         [
           parsed.data.taskId,
           parsed.data.title ?? null,
-          parsed.data.description ?? null,
+          normalizedDescription ?? null,
           nextDueDate,
           parsed.data.priority ?? null,
         ],
@@ -631,7 +640,7 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
             description:
               parsed.data.description === undefined
                 ? current?.description
-                : parsed.data.description,
+                : normalizedDescription,
             dueDate: nextDueDate,
             priority: parsed.data.priority ?? current?.priority,
           },
