@@ -4,7 +4,7 @@ import {
   getMetaPostByPostId,
   getMetaPostsPageData,
 } from "@/lib/meta/posts-analytics"
-import { getActiveMetaPages } from "@/lib/meta/pages-config"
+import { getActiveMetaPages, getMetaPageByKey } from "@/lib/meta/pages-config"
 import type { MetaPageConfigKey } from "@/lib/meta/pages-config"
 import { requirePermission } from "@/lib/permissions"
 
@@ -26,11 +26,15 @@ type MetaPostsPageProps = {
   }>
 }
 
-function parsePageKey(value: string | undefined): MetaPageConfigKey {
-  if (value === "pro-group" || value === "al-qaysar") {
-    return value
+function parsePageKey(
+  value: string | undefined,
+  fallback: MetaPageConfigKey
+): MetaPageConfigKey {
+  const candidate = (value ?? "").trim()
+  if (candidate && getMetaPageByKey(candidate)) {
+    return candidate
   }
-  return "neon-nights"
+  return fallback
 }
 
 function parsePageSize(value: string | undefined): 10 | 25 | 50 {
@@ -47,8 +51,9 @@ export default async function MetaPostsAnalyticsPage({
   await requirePermission("meta_monitoring.view")
 
   const params = await searchParams
-  const pageKey = parsePageKey(params.pageKey)
   const activePages = getActiveMetaPages()
+  const fallbackKey = activePages[0]?.key ?? "default"
+  const pageKey = parsePageKey(params.pageKey, fallbackKey)
 
   if (activePages.length === 0) {
     return (

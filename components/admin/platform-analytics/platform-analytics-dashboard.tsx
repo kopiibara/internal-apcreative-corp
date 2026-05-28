@@ -117,9 +117,7 @@ export function PlatformAnalyticsDashboard({
     initialData.platform === "META" ? "META" : initialData.platform,
   );
   const [metaScope, setMetaScope] = useState<MetaScope>("combined");
-  const [metaPageKey, setMetaPageKey] = useState<
-    "neon-nights" | "pro-group" | "al-qaysar" | "all"
-  >("all");
+  const [metaPageKey, setMetaPageKey] = useState<string>("all");
   const [accountId, setAccountId] = useState("all");
   const [dateRange, setDateRange] = useState<AnalyticsDateRange>("28d");
   const [customDateFrom, setCustomDateFrom] = useState("");
