@@ -182,7 +182,7 @@ function DailyProgressHistory({
   }
 
   return (
-    <ScrollArea className="h-[460px] pr-3" scrollbars="vertical">
+    <ScrollArea className="h-full min-h-0 pr-3" scrollbars="vertical">
       <div className="grid gap-3 pr-3">
         {reports.map((report) => {
           const status = getReportLabel(report);
@@ -403,178 +403,181 @@ export function EmployeeDailyProgressDashboard({
         </p>
       </div>
 
-      <Card className="shadow-none">
-        <CardHeader>
-          <CardTitle>Daily Progress History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
-            <aside className="flex h-full flex-col space-y-3">
-              <ReportStatusCard title="Today" report={todayReport} />
-              <ReportStatusCard title="Yesterday" report={yesterdayReport} />
-            </aside>
+      <div className="grid min-w-0 items-stretch gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <Card className="flex min-h-[calc(100dvh-13rem)] min-w-0 flex-col shadow-none">
+          <CardHeader className="shrink-0">
+            <CardTitle>Daily Progress History</CardTitle>
+          </CardHeader>
 
-            <section className="min-w-0 space-y-3">
-              <DailyProgressHistory
-                reports={reports}
-                onReportClick={openReportDetails}
-              />
-            </section>
-          </div>
-        </CardContent>
-      </Card>
+          <CardContent className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 flex-col gap-4">
+              <aside className="grid shrink-0 gap-3 sm:grid-cols-2">
+                <ReportStatusCard title="Today" report={todayReport} />
+                <ReportStatusCard title="Yesterday" report={yesterdayReport} />
+              </aside>
 
-      <Card className="shadow-none">
-        <CardHeader>
-          <CardTitle>Submit Progress</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-2 md:grid-cols-2">
-            <div className="space-y-2">
-              <RequiredLabel required>Report date</RequiredLabel>
-              <Select value={reportDate} onValueChange={handleReportDateChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {reportDateOptions.map((dateKey) => (
-                    <SelectItem key={dateKey} value={dateKey}>
-                      {dateKey === todayDateKey
-                        ? `Today (${dateKey})`
-                        : dateKey === yesterdayDateKey
-                          ? `Yesterday (${dateKey})`
-                          : dateKey}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <section className="min-h-0 min-w-0 flex-1">
+                <DailyProgressHistory
+                  reports={reports}
+                  onReportClick={openReportDetails}
+                />
+              </section>
+            </div>
+          </CardContent>
+        </Card>
 
-              {canEditSelectedReport ? (
-                <p className="text-xs font-semibold text-muted-foreground">
-                  Today&apos;s report is already submitted. You can edit it until
-                  the day ends.
-                </p>
-              ) : null}
+        <Card className="min-w-0 shadow-none">
+          <CardHeader>
+            <CardTitle>Submit Progress</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="space-y-2">
+                <RequiredLabel required>Report date</RequiredLabel>
+                <Select value={reportDate} onValueChange={handleReportDateChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reportDateOptions.map((dateKey) => (
+                      <SelectItem key={dateKey} value={dateKey}>
+                        {dateKey === todayDateKey
+                          ? `Today (${dateKey})`
+                          : dateKey === yesterdayDateKey
+                            ? `Yesterday (${dateKey})`
+                            : dateKey}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              {isSelectedPastReportLocked ? (
-                <p className="text-xs font-semibold text-destructive">
-                  This report is locked because it is no longer the same day.
-                </p>
-              ) : null}
+                {canEditSelectedReport ? (
+                  <p className="text-xs font-semibold text-muted-foreground">
+                    Today&apos;s report is already submitted. You can edit it until
+                    the day ends.
+                  </p>
+                ) : null}
+
+                {isSelectedPastReportLocked ? (
+                  <p className="text-xs font-semibold text-destructive">
+                    This report is locked because it is no longer the same day.
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-2">
+                <RequiredLabel>Brand</RequiredLabel>
+                <Select value={brandId} onValueChange={setBrandId}>
+                  <SelectTrigger disabled={isSelectedPastReportLocked}>
+                    <SelectValue placeholder="No brand selected" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No brand</SelectItem>
+                    {brands.map((brand) => (
+                      <SelectItem key={brand.id} value={String(brand.id)}>
+                        {brand.name}
+                        {brand.isPrimary ? " (Primary)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <RequiredLabel>Brand</RequiredLabel>
-              <Select value={brandId} onValueChange={setBrandId}>
-                <SelectTrigger disabled={isSelectedPastReportLocked}>
-                  <SelectValue placeholder="No brand selected" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No brand</SelectItem>
-                  {brands.map((brand) => (
-                    <SelectItem key={brand.id} value={String(brand.id)}>
-                      {brand.name}
-                      {brand.isPrimary ? " (Primary)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <RichTextEditor
-            id="daily-progress-summary"
-            label="Summary"
-            required
-            value={summary}
-            onChange={setSummary}
-            disabled={isSelectedPastReportLocked}
-            minHeight={180}
-            placeholder="What did you complete or move forward today?"
-          />
-
-          <div className="grid gap-4 md:grid-cols-2">
             <RichTextEditor
-              id="daily-progress-blockers"
-              label="Blockers"
-              value={blockers}
-              onChange={setBlockers}
+              id="daily-progress-summary"
+              label="Summary"
+              required
+              value={summary}
+              onChange={setSummary}
               disabled={isSelectedPastReportLocked}
-              minHeight={130}
-              placeholder="Optional"
+              minHeight={180}
+              placeholder="What did you complete or move forward today?"
             />
 
-            <div className="space-y-2">
-              <RequiredLabel required>Proof link</RequiredLabel>
-              <Input
-                value={proofLink}
-                onChange={(event) => setProofLink(event.target.value)}
+            <div className="grid gap-4 md:grid-cols-2">
+              <RichTextEditor
+                id="daily-progress-blockers"
+                label="Blockers"
+                value={blockers}
+                onChange={setBlockers}
                 disabled={isSelectedPastReportLocked}
-                placeholder="https://..."
+                minHeight={130}
+                placeholder="Optional"
               />
+
+              <div className="space-y-2">
+                <RequiredLabel required>Proof link</RequiredLabel>
+                <Input
+                  value={proofLink}
+                  onChange={(event) => setProofLink(event.target.value)}
+                  disabled={isSelectedPastReportLocked}
+                  placeholder="https://..."
+                />
+              </div>
             </div>
-          </div>
 
-          {isLateRequest ? (
-            <div className="space-y-2 rounded-lg border-2 border-border bg-yellow-100 p-3">
-              <RequiredLabel required>
-                Reason for previous-date report
-              </RequiredLabel>
+            {isLateRequest ? (
+              <div className="space-y-2 rounded-lg border-2 border-border bg-yellow-100 p-3">
+                <RequiredLabel required>
+                  Reason for previous-date report
+                </RequiredLabel>
 
-              <Select
-                value={lateReasonCategory}
-                onValueChange={(value) =>
-                  setLateReasonCategory(value as LateReasonCategory)
-                }
-                disabled={isSelectedPastReportLocked}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {LATE_REASON_OPTIONS.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Select
+                  value={lateReasonCategory}
+                  onValueChange={(value) =>
+                    setLateReasonCategory(value as LateReasonCategory)
+                  }
+                  disabled={isSelectedPastReportLocked}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LATE_REASON_OPTIONS.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-              {lateReasonCategory === "Others" ? (
-                <div className="space-y-2">
-                  <RequiredLabel required>Reason details</RequiredLabel>
-                  <Textarea
-                    value={lateReason}
-                    onChange={(event) => setLateReason(event.target.value)}
-                    disabled={isSelectedPastReportLocked}
-                    rows={3}
-                    placeholder="Add reason details."
-                  />
-                </div>
-              ) : null}
+                {lateReasonCategory === "Others" ? (
+                  <div className="space-y-2">
+                    <RequiredLabel required>Reason details</RequiredLabel>
+                    <Textarea
+                      value={lateReason}
+                      onChange={(event) => setLateReason(event.target.value)}
+                      disabled={isSelectedPastReportLocked}
+                      rows={3}
+                      placeholder="Add reason details."
+                    />
+                  </div>
+                ) : null}
 
-              <p className="text-xs font-semibold text-muted-foreground">
-                Previous-date reports require supervisor approval before points
-                are awarded.
-              </p>
-            </div>
-          ) : null}
+                <p className="text-xs font-semibold text-muted-foreground">
+                  Previous-date reports require supervisor approval before points
+                  are awarded.
+                </p>
+              </div>
+            ) : null}
 
-          <Button
-            type="button"
-            className="w-full gap-2 md:w-fit"
-            disabled={isPending || isSelectedPastReportLocked}
-            onClick={handleSubmit}
-          >
-            <Send className="size-4" />
-            {isPending
-              ? "Saving..."
-              : canEditSelectedReport
-                ? "Update Today's Report"
-                : "Submit Daily Progress Report"}
-          </Button>
-        </CardContent>
-      </Card>
+            <Button
+              type="button"
+              className="w-full gap-2 md:w-fit"
+              disabled={isPending || isSelectedPastReportLocked}
+              onClick={handleSubmit}
+            >
+              <Send className="size-4" />
+              {isPending
+                ? "Saving..."
+                : canEditSelectedReport
+                  ? "Update Today's Report"
+                  : "Submit Daily Progress Report"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
 
       <DailyProgressReportDetailsSheet
         report={selectedHistoryReport}
