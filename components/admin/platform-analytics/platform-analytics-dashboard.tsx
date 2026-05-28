@@ -479,9 +479,10 @@ export function PlatformAnalyticsDashboard({
               </CardContent>
             </Card>
           ) : (
-            data.metaBusinessPages.map((page) => (
-              <MetaBusinessPageCard key={page.key} page={page} />
-            ))
+            (metaPageKey === "all"
+              ? data.metaBusinessPages
+              : data.metaBusinessPages.filter((page) => page.key === metaPageKey)
+            ).map((page) => <MetaBusinessPageCard key={page.key} page={page} />)
           )}
         </section>
       ) : (
