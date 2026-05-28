@@ -1,16 +1,22 @@
+import Link from "next/link"
+
 import { MetaPostsAnalyticsDashboard } from "@/components/admin/platform-analytics/meta/meta-posts-analytics-dashboard"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   getMetaPostByPostId,
   getMetaPostsPageData,
 } from "@/lib/meta/posts-analytics"
-import { getActiveMetaPages, getMetaPageByKey } from "@/lib/meta/pages-config"
+import {
+  getConfiguredMetaPages,
+  getMetaPageByKey,
+} from "@/lib/meta/pages-config"
 import type { MetaPageConfigKey } from "@/lib/meta/pages-config"
 import { requirePermission } from "@/lib/permissions"
 
 export const metadata = {
   title: "Meta Posts Analytics",
-  description: "Facebook post-level analytics for Neon Nights Bar Club.",
+  description: "Facebook post-level analytics per enabled Meta business page.",
 }
 
 type MetaPostsPageProps = {
@@ -51,7 +57,7 @@ export default async function MetaPostsAnalyticsPage({
   await requirePermission("meta_monitoring.view")
 
   const params = await searchParams
-  const activePages = getActiveMetaPages()
+  const activePages = getConfiguredMetaPages()
   const fallbackKey = activePages[0]?.key ?? "default"
   const pageKey = parsePageKey(params.pageKey, fallbackKey)
 
@@ -59,9 +65,9 @@ export default async function MetaPostsAnalyticsPage({
     return (
       <Card>
         <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          No Meta business pages are enabled. Set{" "}
-          <code className="text-xs">NEON_NIGHTS_META_ENABLED=true</code> and
-          configure the Page ID and access token.
+          No Meta business pages are configured. Set{" "}
+          <code className="text-xs">PRO_GROUP_META_ENABLED=true</code> (or another
+          brand) with matching Page ID and Page Access Token.
         </CardContent>
       </Card>
     )
@@ -98,11 +104,31 @@ export default async function MetaPostsAnalyticsPage({
     : null
 
   return (
-    <MetaPostsAnalyticsDashboard
-      initialData={data}
-      pageKey={pageKey}
-      highlightPostId={params.postId ?? null}
-      highlightPost={highlightPost}
-    />
+    <div className="space-y-4">
+      {activePages.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">Branch:</span>
+          {activePages.map((page) => (
+            <Button
+              key={page.key}
+              type="button"
+              size="sm"
+              variant={page.key === pageKey ? "default" : "neutral"}
+              asChild
+            >
+              <Link href={`/admin/platform-analytics/meta/posts?pageKey=${page.key}`}>
+                {page.displayName}
+              </Link>
+            </Button>
+          ))}
+        </div>
+      ) : null}
+      <MetaPostsAnalyticsDashboard
+        initialData={data}
+        pageKey={pageKey}
+        highlightPostId={params.postId ?? null}
+        highlightPost={highlightPost}
+      />
+    </div>
   )
 }

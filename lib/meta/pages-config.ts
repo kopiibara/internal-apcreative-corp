@@ -198,16 +198,10 @@ export type MetaSyncPage = {
 }
 
 export function getActiveMetaPagesForSync(): MetaSyncPage[] {
-  const validation = validateEnabledMetaPages()
-  if (!validation.valid) {
-    const summary = validation.issues.map((issue) => issue.message).join("; ")
-    throw new Error(`Meta page configuration is incomplete: ${summary}`)
-  }
-
   const configured = getConfiguredMetaPages()
   if (configured.length === 0) {
     throw new Error(
-      "No Facebook pages are configured. Set PAGE_ID and PAGE_ACCESS_TOKEN for at least one brand (e.g. NEON_NIGHTS_META_PAGE_ID and NEON_NIGHTS_META_PAGE_ACCESS_TOKEN)."
+      "No Facebook pages are configured. Set PAGE_ID and PAGE_ACCESS_TOKEN for at least one enabled brand (e.g. NEON_NIGHTS_META_PAGE_ID, AL_QAYSAR_META_PAGE_ID, or PRO_GROUP_META_PAGE_ID)."
     )
   }
 

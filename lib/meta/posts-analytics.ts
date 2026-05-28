@@ -90,7 +90,7 @@ export async function getMetaPostsPageData(
   filters: MetaPostsListFilters
 ): Promise<MetaPostsPageData | null> {
   const config = getMetaPageByKey(filters.pageKey)
-  if (!config?.enabled || !config.pageId) {
+  if (!config?.enabled || !config.pageId || !config.accessToken) {
     return null
   }
 
