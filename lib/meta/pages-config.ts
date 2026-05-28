@@ -47,6 +47,7 @@ function discoverFacebookPagesFromEnv(): MetaFacebookPagesConfigEntry[] {
   for (const pageIdEnvKey of pageIdKeys) {
     const prefix = pageIdEnvKey.replace(/_META_PAGE_ID$/, "")
     const tokenEnvKey = `${prefix}_META_PAGE_ACCESS_TOKEN`
+    const enabledEnvKey = `${prefix}_META_ENABLED`
 
     if (!envKeys.includes(tokenEnvKey)) {
       continue
@@ -57,7 +58,7 @@ function discoverFacebookPagesFromEnv(): MetaFacebookPagesConfigEntry[] {
       brandName: titleCaseFromEnvPrefix(prefix),
       pageId: pageIdEnvKey,
       pageAccessToken: tokenEnvKey,
-      enabled: true,
+      enabled: process.env[enabledEnvKey] === "true",
     })
   }
 
@@ -96,12 +97,24 @@ function buildPageFromConfig(entry: MetaFacebookPagesConfigEntry): MetaPageConfi
 
   if (!pageIdEnvKey || !accessTokenEnvKey) return null
 
+  const inferredPrefix = pageIdEnvKey.replace(/_META_PAGE_ID$/, "")
+  const enabledEnvKey = `${inferredPrefix}_META_ENABLED`
+  const enabledFromEnv =
+    typeof process.env[enabledEnvKey] === "string"
+      ? process.env[enabledEnvKey] === "true"
+      : null
+
   return {
     key,
     name: entry.brandName.trim() || key,
     displayName: entry.brandName.trim() || key,
     brandSlug: key,
-    enabled: entry.enabled !== false,
+    enabled:
+      entry.enabled === false
+        ? false
+        : enabledFromEnv === null
+          ? true
+          : enabledFromEnv,
     pageId: readEnv(pageIdEnvKey),
     accessToken: readEnv(accessTokenEnvKey),
     pageIdEnvKey,
@@ -120,6 +133,11 @@ export function isMetaPageConfigured(page: MetaPageConfig) {
 /** Pages with both Page ID and Page Access Token in env (sync + display). */
 export function getConfiguredMetaPages() {
   return metaPages.filter(isMetaPageConfigured)
+}
+
+/** Pages enabled via config/env (may be missing credentials). */
+export function getEnabledMetaPages() {
+  return metaPages.filter((page) => page.enabled)
 }
 
 export function getActiveMetaPages() {
