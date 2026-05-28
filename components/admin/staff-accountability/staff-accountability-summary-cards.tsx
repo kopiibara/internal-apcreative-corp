@@ -63,24 +63,24 @@ export function StaffAccountabilitySummaryCards({
           tone="bg-background text-foreground"
         />
         <SummaryCard
-          label="02 / POINTS"
-          title="Total Team Points"
-          value={`${teamSummary.totalTeamPoints}`}
-          detail="Sum of employee task points"
+          label="02 / TASK POINTS"
+          title="Team Task Points"
+          value={`${teamSummary.totalTaskPoints}`}
+          detail="Completed graded task priority points"
           tone="bg-blue text-white"
         />
         <SummaryCard
-          label="03 / TASKS"
-          title="Total Completed Tasks"
-          value={`${teamSummary.totalCompletedTasks}/${teamSummary.totalAssignedTasks}`}
-          detail={`${formatStaffPercent(teamSummary.teamCompletionRate)} completed`}
+          label="03 / DAILY PROGRESS"
+          title="Team Daily Progress Net"
+          value={`${teamSummary.totalDailyProgressNetPoints}`}
+          detail={`${teamSummary.missedDailyProgressReports} missed reports`}
           tone="bg-cyan text-white"
         />
         <SummaryCard
-          label="04 / ATTENTION"
-          title="Needs Attention"
-          value={String(teamSummary.needsAttentionCount)}
-          detail="Pending, revision, and blocker tasks"
+          label="04 / TOTAL POINTS"
+          title="Team Total Points"
+          value={String(teamSummary.totalTeamPoints)}
+          detail={`${teamSummary.lateRequestsPendingApproval} late requests pending`}
           tone="bg-magenta text-white"
         />
       </div>

@@ -52,7 +52,7 @@ export function ApprovalKanbanCard({
 
   return (
     <Card
-      className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-2 transition-colors hover:bg-muted"
+      className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-2 hover:bg-muted hover:-translate-y-0.5 transition-all"
       onClick={onClick}
     >
       <CardContent className="min-w-0 space-y-2.5 px-3 py-1">

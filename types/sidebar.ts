@@ -3,6 +3,7 @@ import {
   Building2,
   CheckCircle2,
   FileText,
+  ClipboardList,
   Home,
   Megaphone,
   UsersRound,
@@ -100,6 +101,11 @@ export const adminGroups: SidebarGroupItem[] = [
           },
         ],
       },
+      {
+        title: "Daily Progress Report",
+        href: "/admin/daily-progress",
+        icon: ClipboardList,
+      },
     ],
   },
   {
@@ -142,6 +148,11 @@ export const employeeGroups: SidebarGroupItem[] = [
             href: "/employee/to-do/reminders",
           },
         ],
+      },
+      {
+        title: "Daily Progress Report",
+        href: "/employee/daily-progress",
+        icon: ClipboardList,
       },
       {
         title: "Ads Campaigns",

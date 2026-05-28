@@ -18,6 +18,7 @@ import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { richTextExcerpt } from "@/lib/rich-text/rich-text"
 import { isAssignmentCompletedOnTime } from "@/lib/tasks/task-type"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
@@ -84,7 +85,7 @@ export function TaskAssignmentCard({
   return (
     <>
       <Card
-        className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-3 transition-colors hover:bg-muted"
+        className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-3 transition-all hover:bg-muted hover:-translate-y-0.5"
         onClick={() => onOpenDetails?.(assignment)}
       >
         <CardContent className="min-w-0 space-y-2.5 px-4 py-2">
@@ -106,6 +107,11 @@ export function TaskAssignmentCard({
             <h1 className="line-clamp-2 min-w-0  font-bold leading-snug">
               {assignment.title}
             </h1>
+            {assignment.description ? (
+              <p className="line-clamp-2 text-xs text-muted-foreground">
+                {richTextExcerpt(assignment.description, 110)}
+              </p>
+            ) : null}
             <div className="flex max-w-full flex-wrap gap-1">
               <TaskTypeBadge taskType={assignment.taskType} />
               <TaskStatusBadge status={assignment.status} />

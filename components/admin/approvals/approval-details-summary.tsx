@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { RichTextRenderer } from "@/components/ui/rich-text-renderer"
 import { Separator } from "@/components/ui/separator"
 import type { ContentReport } from "@/types/content-report"
 
@@ -39,10 +40,16 @@ function DetailField({
   )
 }
 
-function LongText({ children }: { children: React.ReactNode }) {
+function LongText({
+  value,
+  emptyText,
+}: {
+  value: string | null | undefined
+  emptyText?: string
+}) {
   return (
     <div className="rounded-lg border bg-muted/20 p-3 text-sm leading-relaxed">
-      <p className="whitespace-pre-wrap break-words">{children}</p>
+      <RichTextRenderer value={value} emptyText={emptyText} />
     </div>
   )
 }
@@ -94,13 +101,16 @@ export function ApprovalDetailsSummary({ report }: ApprovalDetailsSummaryProps) 
 
         <div className="space-y-4">
           <DetailField label="Content Inspo">
-            <LongText>{report.contentInspo ?? "None"}</LongText>
+            <LongText value={report.contentInspo} emptyText="None" />
           </DetailField>
           <DetailField label="Full Caption">
-            <LongText>{report.caption}</LongText>
+            <LongText value={report.caption} />
           </DetailField>
           <DetailField label="Employee Notes / Comments">
-            <LongText>{report.employeeComments ?? "No employee comments"}</LongText>
+            <LongText
+              value={report.employeeComments}
+              emptyText="No employee comments"
+            />
           </DetailField>
         </div>
 
@@ -120,15 +130,13 @@ export function ApprovalDetailsSummary({ report }: ApprovalDetailsSummaryProps) 
 
         <div className="space-y-4">
           <DetailField label="Marketing Supervisor Notes">
-            <LongText>{report.supervisorNotes ?? "No notes"}</LongText>
+            <LongText value={report.supervisorNotes} emptyText="No notes" />
           </DetailField>
           <DetailField label="Director Notes">
-            <LongText>{report.directorNotes ?? "No notes"}</LongText>
+            <LongText value={report.directorNotes} emptyText="No notes" />
           </DetailField>
           <DetailField label="Remarks / Revision Summary">
-            <LongText>
-              {report.remarksRevisionSummary ?? "No remarks"}
-            </LongText>
+            <LongText value={report.remarksRevisionSummary} emptyText="No remarks" />
           </DetailField>
         </div>
       </CardContent>

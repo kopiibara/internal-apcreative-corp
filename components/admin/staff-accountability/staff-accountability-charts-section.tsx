@@ -100,7 +100,7 @@ export function StaffAccountabilityLeaderboard({
         ) : (
           <div className="overflow-hidden rounded-lg border-2 border-border bg-card">
             <ScrollArea className="w-full" scrollbars="horizontal">
-              <Table className="min-w-[760px]">
+              <Table className="min-w-[980px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-20">Rank</TableHead>
@@ -108,7 +108,9 @@ export function StaffAccountabilityLeaderboard({
                     <TableHead>Brand</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Completion</TableHead>
-                    <TableHead className="text-right">Points</TableHead>
+                    <TableHead className="text-right">Task Points</TableHead>
+                    <TableHead className="text-right">Daily Points</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -159,6 +161,12 @@ export function StaffAccountabilityLeaderboard({
                       </TableCell>
                       <TableCell className="text-right font-bold tabular-nums">
                         {employee.taskPoints} pts
+                      </TableCell>
+                      <TableCell className="text-right font-bold tabular-nums">
+                        {employee.dailyProgressNetPoints} pts
+                      </TableCell>
+                      <TableCell className="text-right font-black tabular-nums">
+                        {employee.totalPoints} pts
                       </TableCell>
                     </TableRow>
                   ))}

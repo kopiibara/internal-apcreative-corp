@@ -6,6 +6,7 @@ import {
   type ApprovalStatus,
   type PublishStatus as ApprovalPublishStatus,
 } from "@/lib/approvals/approval-statuses";
+import { richTextToPlainText } from "@/lib/rich-text/rich-text";
 
 export const contentTypes = [
   "Graphic",
@@ -65,7 +66,7 @@ export const createContentReportSchema = z.object({
   caption: z.string().trim().min(1, "Caption is required."),
   assetLink: optionalUrlSchema,
   employeeComments: optionalTextSchema.refine(
-    (value) => !value || value.length <= 2000,
+    (value) => !value || richTextToPlainText(value).length <= 2000,
     "Employee notes must be 2,000 characters or less.",
   ),
 });

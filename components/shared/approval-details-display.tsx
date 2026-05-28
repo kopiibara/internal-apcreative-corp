@@ -1,9 +1,10 @@
-import { Clock, ExternalLink } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 
 import { ApprovalActivityTimeline } from "@/components/shared/approval-activity-timeline"
 import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
+import { RichTextRenderer } from "@/components/ui/rich-text-renderer"
 import {
   Card,
   CardContent,
@@ -11,10 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import {
-  SheetDescription,
-  SheetTitle,
-} from "@/components/ui/sheet"
+import { SheetTitle } from "@/components/ui/sheet"
 import {
   getApprovalKanbanStage,
   getApprovalWorkflowStageLabel,
@@ -90,10 +88,16 @@ function DetailField({
   )
 }
 
-function LongText({ children }: { children: React.ReactNode }) {
+function LongText({
+  value,
+  emptyText,
+}: {
+  value: string | null | undefined
+  emptyText?: string
+}) {
   return (
     <div className="rounded-lg border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
-      <p className="whitespace-pre-wrap break-words">{children}</p>
+      <RichTextRenderer value={value} emptyText={emptyText} />
     </div>
   )
 }
@@ -198,7 +202,11 @@ export function ApprovalMainDetails({ report }: ApprovalMainDetailsProps) {
           </div>
 
           <p className="mt-1 text-sm text-muted-foreground">{captionPreview}</p>
-          <p className="text-sm text-foreground">{report.contentInspo}</p>
+          <RichTextRenderer
+            value={report.contentInspo}
+            emptyText="No content inspo provided."
+            className="text-sm text-foreground"
+          />
         </div>
 
         {report.assetLink ? (
@@ -312,9 +320,7 @@ function DiscussionCommentItem({ entry }: { entry: DiscussionEntry }) {
                 <span className="text-sm font-semibold text-muted-foreground">{entry.authorRole}</span>
               </div>
 
-              <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                {entry.body}
-              </p>
+              <RichTextRenderer value={entry.body} className="text-sm" />
             </div>
           </div>
           <span className="text-xs text-muted-foreground">
@@ -463,7 +469,7 @@ export function ApprovalMetadataPanel({ report }: ApprovalMetadataPanelProps) {
             </DetailField>
             {report.publishingProofNote ? (
               <DetailField label="Proof note">
-                <LongText>{report.publishingProofNote}</LongText>
+                <LongText value={report.publishingProofNote} />
               </DetailField>
             ) : null}
             {report.publishingProofSubmittedByName ? (

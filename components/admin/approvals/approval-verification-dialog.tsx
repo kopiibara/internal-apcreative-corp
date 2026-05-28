@@ -22,8 +22,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { RequiredLabel } from "@/components/ui/required-label"
 import { Textarea } from "@/components/ui/textarea"
 import type { ApprovalRevisionAreaId } from "@/lib/approvals/approval-revision"
+import {
+  normalizeRichTextForStorage,
+  richTextToPlainText,
+} from "@/lib/rich-text/rich-text"
 import {
   type ApprovalVerificationPayload,
   useApprovalStore,
@@ -123,7 +128,7 @@ function ApprovalVerificationDialogContent({
 
   const canConfirm = isRevisionRequest
     ? revisionAreas.length > 0 &&
-      revisionInstruction.trim().length > 0 &&
+      richTextToPlainText(revisionInstruction).length > 0 &&
       (!revisionAreas.includes("other") || otherExplanation.trim().length > 0) &&
       confirmationAccepted
     : notes.trim().length > 0 && confirmationAccepted
@@ -155,7 +160,7 @@ function ApprovalVerificationDialogContent({
         return
       }
 
-      if (!revisionInstruction.trim()) {
+      if (!richTextToPlainText(revisionInstruction)) {
         toast.error("Add a clear revision instruction for the creator.")
         return
       }
@@ -177,7 +182,7 @@ function ApprovalVerificationDialogContent({
     const revisionPayload = isRevisionRequest
       ? {
           revisionAreas,
-          revisionInstruction: revisionInstruction.trim(),
+          revisionInstruction: normalizeRichTextForStorage(revisionInstruction),
           otherExplanation: otherExplanation.trim() || undefined,
         }
       : {}
@@ -268,7 +273,9 @@ function ApprovalVerificationDialogContent({
           />
         ) : (
           <div className="space-y-2">
-            <Label htmlFor="approval-verification-notes">Notes / reason</Label>
+            <RequiredLabel htmlFor="approval-verification-notes" required>
+              Notes / reason
+            </RequiredLabel>
             <Textarea
               id="approval-verification-notes"
               value={notes}
