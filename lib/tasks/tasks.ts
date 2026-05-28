@@ -64,6 +64,16 @@ export type StaffAccountabilitySummary = {
   completionRate: number;
   adjustedCompletionRate: number;
   taskPoints: number;
+  dailyProgressSubmittedCount: number;
+  dailyProgressLatePendingCount: number;
+  dailyProgressLateApprovedCount: number;
+  dailyProgressLateRejectedCount: number;
+  dailyProgressMissedCount: number;
+  dailyProgressExcusedCount: number;
+  dailyProgressPoints: number;
+  dailyProgressDeductions: number;
+  dailyProgressNetPoints: number;
+  totalPoints: number;
   performanceLabel: "Excellent" | "Good" | "Needs Review" | "Critical";
 };
 
@@ -76,6 +86,12 @@ export type StaffAccountabilityTeamSummary = {
   totalBlockerTasks: number;
   teamCompletionRate: number;
   totalTeamPoints: number;
+  totalTaskPoints: number;
+  totalDailyProgressPoints: number;
+  totalDailyProgressDeductions: number;
+  totalDailyProgressNetPoints: number;
+  missedDailyProgressReports: number;
+  lateRequestsPendingApproval: number;
   needsAttentionCount: number;
 };
 
@@ -234,6 +250,19 @@ type StaffAccountabilityBrandApprovalRow = {
   supervisor_status: string;
   director_status: string;
   publish_status: string;
+};
+
+type StaffAccountabilityDailyProgressRow = {
+  profile_id: number;
+  submitted_count: number;
+  late_pending_count: number;
+  late_approved_count: number;
+  late_rejected_count: number;
+  missed_count: number;
+  excused_count: number;
+  points_awarded: number;
+  deductions: number;
+  net_points: number;
 };
 
 type ActivityLogJsonRow = {
@@ -668,12 +697,22 @@ function sortStaffAccountabilitySummaries(
   summaries: Omit<StaffAccountabilitySummary, "rank">[],
 ) {
   return [...summaries].sort((left, right) => {
-    if (right.taskPoints !== left.taskPoints) {
-      return right.taskPoints - left.taskPoints;
+    if (right.totalPoints !== left.totalPoints) {
+      return right.totalPoints - left.totalPoints;
     }
 
     if (right.completionRate !== left.completionRate) {
       return right.completionRate - left.completionRate;
+    }
+
+    if (
+      right.dailyProgressSubmittedCount !==
+      left.dailyProgressSubmittedCount
+    ) {
+      return (
+        right.dailyProgressSubmittedCount -
+        left.dailyProgressSubmittedCount
+      );
     }
 
     if (right.completedTasks !== left.completedTasks) {
@@ -704,7 +743,14 @@ export async function getStaffAccountabilityData({
   const employeeParams = [brandId, employeeId] as const;
   const assignmentParams = [startDate, endDate, brandId, employeeId] as const;
 
-  const [employees, assignments, brandRows, brandTaskRows, brandApprovalRows] =
+  const [
+    employees,
+    assignments,
+    brandRows,
+    brandTaskRows,
+    brandApprovalRows,
+    dailyProgressRows,
+  ] =
     await Promise.all([
       query<StaffAccountabilityEmployeeRow>(
         `
@@ -844,17 +890,61 @@ export async function getStaffAccountabilityData({
       `,
         [...assignmentParams],
       ),
+      query<StaffAccountabilityDailyProgressRow>(
+        `
+      SELECT
+        dpr.profile_id,
+        COUNT(*) FILTER (WHERE dpr.status = 'Submitted')::int AS submitted_count,
+        COUNT(*) FILTER (WHERE dpr.status = 'Late' AND dpr.late_approval_status = 'Pending')::int AS late_pending_count,
+        COUNT(*) FILTER (WHERE dpr.status = 'Late' AND dpr.late_approval_status = 'Approved')::int AS late_approved_count,
+        COUNT(*) FILTER (WHERE dpr.late_approval_status = 'Rejected')::int AS late_rejected_count,
+        COUNT(*) FILTER (WHERE dpr.status = 'Missed')::int AS missed_count,
+        COUNT(*) FILTER (WHERE dpr.status = 'Excused')::int AS excused_count,
+        COALESCE(SUM(dpr.points_awarded), 0)::int AS points_awarded,
+        COALESCE(SUM(dpr.deduction_applied), 0)::int AS deductions,
+        COALESCE(SUM(dpr.points_awarded - dpr.deduction_applied), 0)::int AS net_points
+      FROM daily_progress_report dpr
+      JOIN profile employee ON employee.id = dpr.profile_id
+      WHERE employee.status = 'ACTIVE'
+        AND employee.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
+        AND (
+          $1::timestamptz IS NULL
+          OR (
+            dpr.report_date >= $1::date
+            AND dpr.report_date < $2::date
+          )
+        )
+        AND ($3::integer IS NULL OR EXISTS (
+          SELECT 1
+          FROM user_brand_access uba
+          WHERE uba.profile_id = dpr.profile_id
+            AND uba.brand_id = $3::integer
+            AND uba.is_active = true
+        ))
+        AND ($4::integer IS NULL OR dpr.profile_id = $4::integer)
+      GROUP BY dpr.profile_id
+      `,
+        [...assignmentParams],
+      ),
     ]);
 
   const assignmentsByProfile = new Map<
     number,
     StaffAccountabilityAssignmentRow[]
   >();
+  const dailyProgressByProfile = new Map<
+    number,
+    StaffAccountabilityDailyProgressRow
+  >();
 
   for (const assignment of assignments.rows) {
     const existing = assignmentsByProfile.get(assignment.profile_id) ?? [];
     existing.push(assignment);
     assignmentsByProfile.set(assignment.profile_id, existing);
+  }
+
+  for (const dailyProgress of dailyProgressRows.rows) {
+    dailyProgressByProfile.set(dailyProgress.profile_id, dailyProgress);
   }
 
   const sortedSummaries = sortStaffAccountabilitySummaries(
@@ -874,6 +964,10 @@ export async function getStaffAccountabilityData({
       const pendingStatusTasks = employeeAssignments.filter(
         (assignment) => assignment.status === "PENDING",
       ).length;
+      const dailyProgress = dailyProgressByProfile.get(employee.id);
+      const dailyProgressPoints = Number(dailyProgress?.points_awarded ?? 0);
+      const dailyProgressDeductions = Number(dailyProgress?.deductions ?? 0);
+      const dailyProgressNetPoints = Number(dailyProgress?.net_points ?? 0);
 
       return {
         profileId: employee.id,
@@ -894,6 +988,24 @@ export async function getStaffAccountabilityData({
         completionRate: metrics.completionRate,
         adjustedCompletionRate: metrics.adjustedCompletionRate,
         taskPoints: metrics.taskPoints,
+        dailyProgressSubmittedCount: Number(
+          dailyProgress?.submitted_count ?? 0,
+        ),
+        dailyProgressLatePendingCount: Number(
+          dailyProgress?.late_pending_count ?? 0,
+        ),
+        dailyProgressLateApprovedCount: Number(
+          dailyProgress?.late_approved_count ?? 0,
+        ),
+        dailyProgressLateRejectedCount: Number(
+          dailyProgress?.late_rejected_count ?? 0,
+        ),
+        dailyProgressMissedCount: Number(dailyProgress?.missed_count ?? 0),
+        dailyProgressExcusedCount: Number(dailyProgress?.excused_count ?? 0),
+        dailyProgressPoints,
+        dailyProgressDeductions,
+        dailyProgressNetPoints,
+        totalPoints: metrics.taskPoints + dailyProgressNetPoints,
         performanceLabel: getPerformanceLabel(metrics.completionRate),
       };
     }),
@@ -915,7 +1027,19 @@ export async function getStaffAccountabilityData({
       totalRevisionTasks: summary.totalRevisionTasks + employee.revisionTasks,
       totalBlockerTasks: summary.totalBlockerTasks + employee.blockerTasks,
       teamCompletionRate: 0,
-      totalTeamPoints: summary.totalTeamPoints + employee.taskPoints,
+      totalTeamPoints: summary.totalTeamPoints + employee.totalPoints,
+      totalTaskPoints: summary.totalTaskPoints + employee.taskPoints,
+      totalDailyProgressPoints:
+        summary.totalDailyProgressPoints + employee.dailyProgressPoints,
+      totalDailyProgressDeductions:
+        summary.totalDailyProgressDeductions + employee.dailyProgressDeductions,
+      totalDailyProgressNetPoints:
+        summary.totalDailyProgressNetPoints + employee.dailyProgressNetPoints,
+      missedDailyProgressReports:
+        summary.missedDailyProgressReports + employee.dailyProgressMissedCount,
+      lateRequestsPendingApproval:
+        summary.lateRequestsPendingApproval +
+        employee.dailyProgressLatePendingCount,
       needsAttentionCount:
         summary.needsAttentionCount +
         employee.pendingTasks +
@@ -931,6 +1055,12 @@ export async function getStaffAccountabilityData({
       totalBlockerTasks: 0,
       teamCompletionRate: 0,
       totalTeamPoints: 0,
+      totalTaskPoints: 0,
+      totalDailyProgressPoints: 0,
+      totalDailyProgressDeductions: 0,
+      totalDailyProgressNetPoints: 0,
+      missedDailyProgressReports: 0,
+      lateRequestsPendingApproval: 0,
       needsAttentionCount: 0,
     },
   );

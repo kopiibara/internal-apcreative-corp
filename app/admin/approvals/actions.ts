@@ -24,6 +24,10 @@ import {
   type ApprovalRevisionAreaId,
   type ApprovalRevisionRole,
 } from "@/lib/approvals/approval-revision";
+import {
+  normalizeRichTextForStorage,
+  richTextToPlainText,
+} from "@/lib/rich-text/rich-text";
 
 import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
 
@@ -195,8 +199,9 @@ function formatRevisionActivityNotes(input: {
   const otherLine = input.otherExplanation?.trim()
     ? `\nOther details: ${input.otherExplanation.trim()}`
     : "";
+  const instructionText = richTextToPlainText(input.revisionInstruction);
 
-  return `Areas:\n- ${areaLabels.join("\n- ")}\nInstruction:\n${input.revisionInstruction.trim()}${otherLine}`;
+  return `Areas:\n- ${areaLabels.join("\n- ")}\nInstruction:\n${instructionText}${otherLine}`;
 }
 
 async function logRevisionRequested({
@@ -220,10 +225,12 @@ async function logRevisionRequested({
   otherExplanation?: string | null;
   source: string;
 }) {
+  const storedRevisionInstruction =
+    normalizeRichTextForStorage(revisionInstruction);
   const metadata = buildRevisionRequestMetadata({
     revisionRole,
     revisionAreas,
-    revisionInstruction,
+    revisionInstruction: storedRevisionInstruction,
     otherExplanation,
   });
 
@@ -236,7 +243,7 @@ async function logRevisionRequested({
     toStatus: "Revision",
     notes: formatRevisionActivityNotes({
       revisionAreas,
-      revisionInstruction,
+      revisionInstruction: storedRevisionInstruction,
       otherExplanation,
     }),
     metadata: {

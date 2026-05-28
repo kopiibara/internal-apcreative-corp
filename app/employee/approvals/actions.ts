@@ -29,6 +29,7 @@ import {
   buildRevisionAddressedMetadata,
   getOpenRevisionRequestsFromLogs,
 } from "@/lib/approvals/approval-revision";
+import { normalizeRichTextForStorage } from "@/lib/rich-text/rich-text";
 
 import { APPROVAL_REVALIDATE_PATHS } from "@/lib/dashboard/dashboard-revalidate-paths";
 
@@ -274,6 +275,13 @@ export async function createContentReport(
   }
 
   try {
+    const normalizedContentInspo = parsed.data.contentInspo
+      ? normalizeRichTextForStorage(parsed.data.contentInspo)
+      : null;
+    const normalizedEmployeeComments = parsed.data.employeeComments
+      ? normalizeRichTextForStorage(parsed.data.employeeComments)
+      : null;
+
     await query(
       `
       WITH inserted_report AS (
@@ -314,10 +322,10 @@ export async function createContentReport(
         brandId,
         parsed.data.contentType,
         parsed.data.platform,
-        parsed.data.contentInspo,
+        normalizedContentInspo,
         parsed.data.caption,
         parsed.data.assetLink,
-        parsed.data.employeeComments,
+        normalizedEmployeeComments,
       ],
     );
 
@@ -446,14 +454,20 @@ export async function updateContentReport(
     };
   }
 
+  const normalizedContentInspo = parsed.data.contentInspo
+    ? normalizeRichTextForStorage(parsed.data.contentInspo)
+    : null;
+  const normalizedEmployeeComments = parsed.data.employeeComments
+    ? normalizeRichTextForStorage(parsed.data.employeeComments)
+    : null;
   const changedFields = getChangedApprovalFields(report, {
     brandId,
     contentType: parsed.data.contentType,
     platform: parsed.data.platform,
-    contentInspo: parsed.data.contentInspo,
+    contentInspo: normalizedContentInspo,
     caption: parsed.data.caption,
     assetLink: parsed.data.assetLink,
-    employeeComments: parsed.data.employeeComments,
+    employeeComments: normalizedEmployeeComments,
   });
   const hadSupervisorRevision = report.supervisor_status === "Revision";
   const hadDirectorRevision = report.director_status === "Revision";
@@ -547,10 +561,10 @@ export async function updateContentReport(
           brandId,
           parsed.data.contentType,
           parsed.data.platform,
-          parsed.data.contentInspo,
+          normalizedContentInspo,
           parsed.data.caption,
           parsed.data.assetLink,
-          parsed.data.employeeComments,
+          normalizedEmployeeComments,
           hadSupervisorRevision,
           hadDirectorRevision,
         ],

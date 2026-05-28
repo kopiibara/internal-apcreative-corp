@@ -16,7 +16,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { RequiredLabel } from "@/components/ui/required-label"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import {
   Select,
   SelectContent,
@@ -24,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { TASK_PRIORITIES } from "@/lib/tasks/task-type"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
@@ -90,7 +90,9 @@ function TaskEditDialogContent({
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="edit-task-title">Title</Label>
+          <RequiredLabel htmlFor="edit-task-title" required>
+            Title
+          </RequiredLabel>
           <Input
             id="edit-task-title"
             value={title}
@@ -100,22 +102,20 @@ function TaskEditDialogContent({
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="edit-task-description">Description</Label>
-          <Textarea
-            id="edit-task-description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            disabled={isPending || isDone}
-            className="min-h-24"
-          />
-        </div>
+        <RichTextEditor
+          id="edit-task-description"
+          label="Description"
+          value={description}
+          onChange={setDescription}
+          disabled={isPending || isDone}
+          minHeight={140}
+          placeholder="Add task context, instructions, links, or checklist items."
+        />
 
         <div className="space-y-2">
-          <Label>
+          <RequiredLabel required={assignment.taskType === "GRADED"}>
             Due date
-            {assignment.taskType === "GRADED" ? " (required)" : ""}
-          </Label>
+          </RequiredLabel>
           <DateTimePicker
             value={dueDate}
             onChange={setDueDate}
@@ -124,7 +124,7 @@ function TaskEditDialogContent({
         </div>
 
         <div className="space-y-2">
-          <Label>Priority</Label>
+          <RequiredLabel>Priority</RequiredLabel>
           <Select
             value={priority}
             onValueChange={setPriority}

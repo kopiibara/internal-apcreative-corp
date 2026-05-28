@@ -61,6 +61,7 @@ type SidebarUser = {
     canAccessAdsCampaigns?: boolean
     canAccessTaskBoard?: boolean
     canAccessReminders?: boolean
+    canAccessDailyProgress?: boolean
     imageUrl?: string | null
 }
 
@@ -106,6 +107,10 @@ export function DashboardSidebar({
     const canSeeAdsCampaigns = user?.canAccessAdsCampaigns === true
     const canSeeTaskBoard = user?.canAccessTaskBoard === true
     const canSeeReminders = user?.canAccessReminders !== false
+    const canSeeDailyProgress =
+        mode === "admin"
+            ? user?.canAccessDailyProgress !== false
+            : user?.canAccessDailyProgress === true
     const groups =
         mode === "admin"
             ? adminGroups
@@ -113,8 +118,10 @@ export function DashboardSidebar({
                     ...group,
                     items: group.items.filter(
                         (item) =>
-                            item.href !== "/admin/account-control" ||
-                            canSeeAccountControl
+                            (item.href !== "/admin/account-control" ||
+                                canSeeAccountControl) &&
+                            (item.href !== "/admin/daily-progress" ||
+                                canSeeDailyProgress)
                     ),
                 }))
                 .filter((group) => group.items.length > 0)
@@ -126,6 +133,11 @@ export function DashboardSidebar({
                             (item) =>
                                 item.href !== "/employee/ads-campaigns" ||
                                 canSeeAdsCampaigns
+                        )
+                        .filter(
+                            (item) =>
+                                item.href !== "/employee/daily-progress" ||
+                                canSeeDailyProgress
                         )
                         .map((item) => {
                             if (item.title !== "To-Do") {

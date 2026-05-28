@@ -21,7 +21,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { RequiredLabel } from "@/components/ui/required-label"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import {
   Popover,
   PopoverContent,
@@ -34,7 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { AccountType } from "@/lib/auth/account-type"
 import { determineTaskType, TASK_PRIORITIES } from "@/lib/tasks/task-type"
@@ -189,7 +189,9 @@ export function TaskCreateDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="task-title">Title</Label>
+            <RequiredLabel htmlFor="task-title" required>
+              Title
+            </RequiredLabel>
             <Input
               id="task-title"
               value={title}
@@ -199,20 +201,21 @@ export function TaskCreateDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="task-description">Description</Label>
-            <Textarea
-              id="task-description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              disabled={isPending}
-              className="min-h-24"
-            />
-          </div>
+          <RichTextEditor
+            id="task-description"
+            label="Description"
+            value={description}
+            onChange={setDescription}
+            disabled={isPending}
+            minHeight={140}
+            placeholder="Add task context, instructions, links, or checklist items."
+          />
 
           {!personalOnly ? (
             <div className="space-y-2">
-              <Label>Assign to ({selectedAssigneeIds.length} selected)</Label>
+              <RequiredLabel required>
+                Assign to ({selectedAssigneeIds.length} selected)
+              </RequiredLabel>
               <Popover
                 open={assigneePickerOpen}
                 onOpenChange={setAssigneePickerOpen}
@@ -327,9 +330,9 @@ export function TaskCreateDialog({
           ) : null}
 
           <div className="space-y-2">
-            <Label>
-              Due date{requiresDueDate ? " (required for graded tasks)" : ""}
-            </Label>
+            <RequiredLabel required={requiresDueDate}>
+              Due date
+            </RequiredLabel>
             <DateTimePicker
               value={dueDate}
               onChange={setDueDate}
@@ -338,7 +341,7 @@ export function TaskCreateDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Priority</Label>
+            <RequiredLabel>Priority</RequiredLabel>
             <Select value={priority} onValueChange={setPriority} disabled={isPending}>
               <SelectTrigger>
                 <SelectValue placeholder="Optional priority" />

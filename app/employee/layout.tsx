@@ -13,7 +13,12 @@ export default async function EmployeeLayout({
     children: React.ReactNode
 }) {
     const { profile, user } = await requireEmployee()
-    const [canAccessTaskBoard, canAccessReminders, canAccessAdsCampaigns] =
+    const [
+        canAccessTaskBoard,
+        canAccessReminders,
+        canAccessAdsCampaigns,
+        canAccessDailyProgress,
+    ] =
         await Promise.all([
             canAccessEmployeeToDoTaskBoard(
                 profile.auth_user_id,
@@ -25,6 +30,10 @@ export default async function EmployeeLayout({
                 profile.id
             ),
             can(profile.auth_user_id, "ads_campaigns.view"),
+            Promise.all([
+                can(profile.auth_user_id, "daily_progress.submit"),
+                can(profile.auth_user_id, "daily_progress.view_own"),
+            ]).then((checks) => checks.some(Boolean)),
         ])
     const actionableTaskCount = canAccessTaskBoard
         ? await getEmployeeActionableTaskCount(profile.id)
@@ -43,6 +52,7 @@ export default async function EmployeeLayout({
                 canAccessAdsCampaigns,
                 canAccessTaskBoard,
                 canAccessReminders,
+                canAccessDailyProgress,
                 imageUrl: user.image ?? null,
                 mustChangePassword: profile.must_change_password,
             }}

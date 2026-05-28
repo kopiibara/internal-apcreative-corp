@@ -2,6 +2,8 @@
 
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { RequiredLabel } from "@/components/ui/required-label"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { Textarea } from "@/components/ui/textarea"
 import {
   APPROVAL_REVISION_AREA_LABELS,
@@ -47,7 +49,7 @@ export function ApprovalRevisionRequestFields({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Revision areas</Label>
+        <RequiredLabel required>Revision areas</RequiredLabel>
         <p className="text-xs text-muted-foreground">
           Select every part of this request that needs to be updated.
         </p>
@@ -82,7 +84,9 @@ export function ApprovalRevisionRequestFields({
 
       {showOtherExplanation ? (
         <div className="space-y-2">
-          <Label htmlFor={`revision-other-${report.id}`}>Other details</Label>
+          <RequiredLabel htmlFor={`revision-other-${report.id}`} required>
+            Other details
+          </RequiredLabel>
           <Textarea
             id={`revision-other-${report.id}`}
             value={otherExplanation}
@@ -95,20 +99,16 @@ export function ApprovalRevisionRequestFields({
         </div>
       ) : null}
 
-      <div className="space-y-2">
-        <Label htmlFor={`revision-instruction-${report.id}`}>
-          Revision instruction
-        </Label>
-        <Textarea
-          id={`revision-instruction-${report.id}`}
-          value={revisionInstruction}
-          onChange={(event) => onRevisionInstructionChange(event.target.value)}
-          disabled={disabled}
-          className="min-h-28"
-          placeholder="Explain what the creator should change."
-          required
-        />
-      </div>
+      <RichTextEditor
+        id={`revision-instruction-${report.id}`}
+        label="Revision instruction"
+        required
+        value={revisionInstruction}
+        onChange={onRevisionInstructionChange}
+        disabled={disabled}
+        minHeight={140}
+        placeholder="Explain what the creator should change."
+      />
     </div>
   )
 }
