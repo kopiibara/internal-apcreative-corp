@@ -45,7 +45,7 @@ const metaPagesDefinition = [
   {
     key: "al-qaysar" as const,
     name: "Al Qaysar",
-    displayName: "Al Qaysar",
+    displayName: "Al Qaysar Restaurant and Cafe",
     brandSlug: "al-qaysar",
     enabledEnvKey: "AL_QAYSAR_META_ENABLED",
     pageIdEnvKey: "AL_QAYSAR_META_PAGE_ID",
@@ -128,6 +128,7 @@ export function getMetaPageByFacebookPageId(pageId: string) {
 export type MetaSyncPage = {
   facebook_page_id: string
   page_name: string
+  brand_slug: string
   access_token_env_key: string
   config_key: MetaPageConfigKey
 }
@@ -142,6 +143,7 @@ export function getActiveMetaPagesForSync(): MetaSyncPage[] {
   return getActiveMetaPages().map((page) => ({
     facebook_page_id: page.pageId,
     page_name: page.name,
+    brand_slug: page.brandSlug,
     access_token_env_key: page.accessTokenEnvKey,
     config_key: page.key,
   }))

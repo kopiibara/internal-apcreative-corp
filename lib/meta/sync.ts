@@ -20,17 +20,36 @@ import {
   type MetaSyncPage,
 } from "@/lib/meta/pages-config"
 import { clearMetaPageTokenCache } from "@/lib/meta/page-token"
-import { logMetaSyncEvent } from "@/lib/meta/sync-logger"
+import {
+  logMetaSyncEvent,
+  resolveMetaSyncLogContext,
+} from "@/lib/meta/sync-logger"
 import type { MetaFacebookPageRow, MetaSyncType } from "@/lib/meta/types"
 
 async function startSyncRun(syncType: MetaSyncType, facebookPageId: string | null) {
   const result = await query<{ id: number }>(
     `
-    INSERT INTO meta_sync_run (sync_type, facebook_page_id, status)
-    VALUES ($1, $2, 'STARTED')
+    INSERT INTO meta_sync_run (sync_type, facebook_page_id, brand_id, status)
+    VALUES ($1, $2, $3, 'STARTED')
     RETURNING id
     `,
-    [syncType, facebookPageId]
+    [syncType, facebookPageId, null]
+  )
+
+  return result.rows[0]?.id
+}
+
+async function startSyncRunForPage(
+  syncType: MetaSyncType,
+  page: Pick<MetaFacebookPageRow, "facebook_page_id" | "brand_id">
+) {
+  const result = await query<{ id: number }>(
+    `
+    INSERT INTO meta_sync_run (sync_type, facebook_page_id, brand_id, status)
+    VALUES ($1, $2, $3, 'STARTED')
+    RETURNING id
+    `,
+    [syncType, page.facebook_page_id, page.brand_id ?? null]
   )
 
   return result.rows[0]?.id
@@ -58,28 +77,40 @@ async function finishSyncRun(
 
 async function ensureEnvMetaPagesRegistered(pages: MetaSyncPage[]) {
   for (const page of pages) {
+    const brand = await query<{ id: number }>(
+      `SELECT id FROM brand WHERE slug = $1 LIMIT 1`,
+      [page.brand_slug]
+    )
+
     await query(
       `
       INSERT INTO meta_facebook_page (
         facebook_page_id,
         page_name,
+        brand_id,
         access_token_env_key,
         webhook_subscribed_fields
       )
-      VALUES ($1, $2, $3, ARRAY['feed']::TEXT[])
+      VALUES ($1, $2, $3, $4, ARRAY['feed']::TEXT[])
       ON CONFLICT (facebook_page_id)
       DO UPDATE SET
         page_name = EXCLUDED.page_name,
+        brand_id = EXCLUDED.brand_id,
         access_token_env_key = EXCLUDED.access_token_env_key,
         is_active = true,
         updated_at = now()
       `,
-      [page.facebook_page_id, page.page_name, page.access_token_env_key]
+      [
+        page.facebook_page_id,
+        page.page_name,
+        brand.rows[0]?.id ?? null,
+        page.access_token_env_key,
+      ]
     )
   }
 }
 
-export async function listActiveMetaFacebookPages() {
+export async function listActiveMetaFacebookPages(facebookPageId?: string) {
   const envPages = getActiveMetaPagesForSync()
   await ensureEnvMetaPagesRegistered(envPages)
 
@@ -97,9 +128,10 @@ export async function listActiveMetaFacebookPages() {
     FROM meta_facebook_page
     WHERE is_active = true
       AND facebook_page_id = ANY($1::text[])
+      AND ($2::text IS NULL OR facebook_page_id = $2::text)
     ORDER BY page_name ASC
     `,
-    [envPages.map((page) => page.facebook_page_id)]
+    [envPages.map((page) => page.facebook_page_id), facebookPageId ?? null]
   )
 
   if (result.rows.length > 0) {
@@ -156,24 +188,34 @@ async function mergeSnapshotMetrics(
 }
 
 /** Page name, likes, followers — no posts or insights. */
-export async function syncDailyPageSnapshots() {
+export async function syncDailyPageSnapshots(facebookPageId?: string) {
   clearMetaPageTokenCache()
-  const pages = await listActiveMetaFacebookPages()
+  const pages = await listActiveMetaFacebookPages(facebookPageId)
   let affected = 0
 
   for (const page of pages) {
-    const runId = await startSyncRun("daily_page", page.facebook_page_id)
+    const runId = await startSyncRunForPage("daily_page", page)
+    const logBase = resolveMetaSyncLogContext(page, "daily_page")
+    const startedAt = new Date().toISOString()
+
+    logMetaSyncEvent({
+      ...logBase,
+      source: "page_summary",
+      status: "started",
+      startedAt,
+    })
 
     try {
       const summaryResult = await fetchPageSummarySafe(page)
 
       if (!summaryResult.ok) {
         logMetaSyncEvent({
+          ...logBase,
           source: "page_summary",
-          facebookPageId: page.facebook_page_id,
-          brandId: page.brand_id,
           status: "failed",
           errorMessage: summaryResult.error,
+          startedAt,
+          finishedAt: new Date().toISOString(),
         })
         throw new Error(summaryResult.error)
       }
@@ -182,11 +224,12 @@ export async function syncDailyPageSnapshots() {
       const snapshotDate = new Date().toISOString().slice(0, 10)
 
       logMetaSyncEvent({
+        ...logBase,
         source: "page_summary",
-        facebookPageId: page.facebook_page_id,
-        brandId: page.brand_id,
         status: "success",
         recordsAffected: 1,
+        startedAt,
+        finishedAt: new Date().toISOString(),
       })
 
       const metrics = await mergeSnapshotMetrics(page.facebook_page_id, snapshotDate, {
@@ -200,20 +243,23 @@ export async function syncDailyPageSnapshots() {
         `
         INSERT INTO meta_page_daily_snapshot (
           facebook_page_id,
+          brand_id,
           snapshot_date,
           followers_count,
           page_likes,
           metrics
         )
-        VALUES ($1, $2::date, $3, $4, $5::jsonb)
+        VALUES ($1, $2, $3::date, $4, $5, $6::jsonb)
         ON CONFLICT (facebook_page_id, snapshot_date)
         DO UPDATE SET
+          brand_id = COALESCE(EXCLUDED.brand_id, meta_page_daily_snapshot.brand_id),
           followers_count = EXCLUDED.followers_count,
           page_likes = EXCLUDED.page_likes,
           metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
         `,
         [
           page.facebook_page_id,
+          page.brand_id ?? null,
           snapshotDate,
           summary.followers_count ?? null,
           summary.fan_count ?? null,
@@ -251,13 +297,22 @@ export async function syncDailyPageSnapshots() {
 }
 
 /** Post list with reactions, comments, shares — no per-post insights calls. */
-export async function syncHourlyPostMetrics() {
+export async function syncHourlyPostMetrics(facebookPageId?: string) {
   clearMetaPageTokenCache()
-  const pages = await listActiveMetaFacebookPages()
+  const pages = await listActiveMetaFacebookPages(facebookPageId)
   let affected = 0
 
   for (const page of pages) {
-    const runId = await startSyncRun("hourly_posts", page.facebook_page_id)
+    const runId = await startSyncRunForPage("hourly_posts", page)
+    const logBase = resolveMetaSyncLogContext(page, "hourly_posts")
+    const startedAt = new Date().toISOString()
+
+    logMetaSyncEvent({
+      ...logBase,
+      source: "posts",
+      status: "started",
+      startedAt,
+    })
 
     try {
       let postsResult = await fetchRecentPagePostsSafe(page, 100)
@@ -269,22 +324,24 @@ export async function syncHourlyPostMetrics() {
 
       if (!postsResult.ok) {
         logMetaSyncEvent({
+          ...logBase,
           source: "posts",
-          facebookPageId: page.facebook_page_id,
-          brandId: page.brand_id,
           status: "failed",
           errorMessage: postsResult.error,
+          startedAt,
+          finishedAt: new Date().toISOString(),
         })
         throw new Error(postsResult.error)
       }
 
       const posts = postsResult.data.data ?? []
       logMetaSyncEvent({
+        ...logBase,
         source: "posts",
-        facebookPageId: page.facebook_page_id,
-        brandId: page.brand_id,
         status: "success",
         recordsAffected: posts.length,
+        startedAt,
+        finishedAt: new Date().toISOString(),
       })
       const followers = await getLatestFollowersForPage(page.facebook_page_id)
 
@@ -303,6 +360,7 @@ export async function syncHourlyPostMetrics() {
           `
           INSERT INTO meta_post_metrics (
             facebook_page_id,
+            brand_id,
             post_id,
             message,
             permalink,
@@ -315,9 +373,10 @@ export async function syncHourlyPostMetrics() {
             last_synced_at,
             updated_at
           )
-          VALUES ($1, $2, $3, $4, $5::timestamptz, $6, $7, $8, $9, $10::jsonb, now(), now())
+          VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $7, $8, $9, $10, $11::jsonb, now(), now())
           ON CONFLICT (facebook_page_id, post_id)
           DO UPDATE SET
+            brand_id = COALESCE(EXCLUDED.brand_id, meta_post_metrics.brand_id),
             message = EXCLUDED.message,
             permalink = EXCLUDED.permalink,
             published_at = EXCLUDED.published_at,
@@ -331,6 +390,7 @@ export async function syncHourlyPostMetrics() {
           `,
           [
             page.facebook_page_id,
+            page.brand_id ?? null,
             post.id,
             post.message ?? null,
             post.permalink_url ?? null,
@@ -403,6 +463,7 @@ export async function syncHourlyPostMetrics() {
 
 async function upsertDailyInsightSnapshots(
   facebookPageId: string,
+  brandId: number | null,
   series: InsightTimeSeries,
   extraPayload: Record<string, unknown>
 ) {
@@ -419,15 +480,17 @@ async function upsertDailyInsightSnapshots(
       `
       INSERT INTO meta_page_daily_snapshot (
         facebook_page_id,
+        brand_id,
         snapshot_date,
         metrics
       )
-      VALUES ($1, $2::date, $3::jsonb)
+      VALUES ($1, $2, $3::date, $4::jsonb)
       ON CONFLICT (facebook_page_id, snapshot_date)
       DO UPDATE SET
+        brand_id = COALESCE(EXCLUDED.brand_id, meta_page_daily_snapshot.brand_id),
         metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
       `,
-      [facebookPageId, snapshotDate, JSON.stringify(metrics)]
+      [facebookPageId, brandId, snapshotDate, JSON.stringify(metrics)]
     )
     rows += 1
   }
@@ -463,14 +526,24 @@ const INSIGHT_METRIC_GROUPS = [
 ] as const
 
 /** Page insights: reach, impressions, engagements — requires read_insights. */
-export async function syncDailyInsights() {
+export async function syncDailyInsights(facebookPageId?: string) {
   clearMetaPageTokenCache()
-  const pages = await listActiveMetaFacebookPages()
+  const pages = await listActiveMetaFacebookPages(facebookPageId)
   let affected = 0
   const window = resolveMetaAnalyticsWindow("90d")
 
   for (const page of pages) {
     const runId = await startSyncRun("daily_insights", page.facebook_page_id)
+    const logBase = resolveMetaSyncLogContext(page, "daily_insights")
+    const startedAt = new Date().toISOString()
+
+    logMetaSyncEvent({
+      ...logBase,
+      source: "insights",
+      status: "started",
+      startedAt,
+      dateRange: `${window.since}..${window.until}`,
+    })
 
     try {
       const snapshotDate = new Date().toISOString().slice(0, 10)
@@ -494,13 +567,13 @@ export async function syncDailyInsights() {
           if (result.ok && Object.keys(result.series).length > 0) {
             groupSeries = mergeInsightTimeSeries(groupSeries ?? {}, result.series)
             logMetaSyncEvent({
+              ...logBase,
               source: "insights",
-              facebookPageId: page.facebook_page_id,
-              brandId: page.brand_id,
               dateRange: `${window.since}..${window.until}`,
               metric: metricName,
               status: "success",
               recordsAffected: Object.keys(result.series).length,
+              startedAt,
             })
             break
           }
@@ -510,13 +583,13 @@ export async function syncDailyInsights() {
             metricErrors[`${group.key}:${metricName}`] =
               result.error ?? "Insights metric unavailable"
             logMetaSyncEvent({
+              ...logBase,
               source: "insights",
-              facebookPageId: page.facebook_page_id,
-              brandId: page.brand_id,
               dateRange: `${window.since}..${window.until}`,
               metric: metricName,
               status: "failed",
               errorMessage: result.error,
+              startedAt,
             })
           }
         }
@@ -542,6 +615,7 @@ export async function syncDailyInsights() {
       if (anySuccess) {
         const rowsWritten = await upsertDailyInsightSnapshots(
           page.facebook_page_id,
+          page.brand_id ?? null,
           series,
           {
             insights_permission_denied: Boolean(insightsPayload.insights_permission_denied),
@@ -561,24 +635,27 @@ export async function syncDailyInsights() {
           `
           INSERT INTO meta_page_daily_snapshot (
             facebook_page_id,
+            brand_id,
             snapshot_date,
             metrics
           )
-          VALUES ($1, $2::date, $3::jsonb)
+          VALUES ($1, $2, $3::date, $4::jsonb)
           ON CONFLICT (facebook_page_id, snapshot_date)
           DO UPDATE SET
+            brand_id = COALESCE(EXCLUDED.brand_id, meta_page_daily_snapshot.brand_id),
             metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
           `,
-          [page.facebook_page_id, snapshotDate, JSON.stringify(metrics)]
+          [page.facebook_page_id, page.brand_id ?? null, snapshotDate, JSON.stringify(metrics)]
         )
 
         logMetaSyncEvent({
+          ...logBase,
           source: "insights",
-          facebookPageId: page.facebook_page_id,
-          brandId: page.brand_id,
           dateRange: `${window.since}..${window.until}`,
           status: anyFailure ? "partial" : "success",
           recordsAffected: rowsWritten,
+          startedAt,
+          finishedAt: new Date().toISOString(),
         })
 
         if (runId) {
@@ -601,24 +678,27 @@ export async function syncDailyInsights() {
           `
           INSERT INTO meta_page_daily_snapshot (
             facebook_page_id,
+            brand_id,
             snapshot_date,
             metrics
           )
-          VALUES ($1, $2::date, $3::jsonb)
+          VALUES ($1, $2, $3::date, $4::jsonb)
           ON CONFLICT (facebook_page_id, snapshot_date)
           DO UPDATE SET
+            brand_id = COALESCE(EXCLUDED.brand_id, meta_page_daily_snapshot.brand_id),
             metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
           `,
-          [page.facebook_page_id, snapshotDate, JSON.stringify(metrics)]
+          [page.facebook_page_id, page.brand_id ?? null, snapshotDate, JSON.stringify(metrics)]
         )
 
         logMetaSyncEvent({
+          ...logBase,
           source: "insights",
-          facebookPageId: page.facebook_page_id,
-          brandId: page.brand_id,
           dateRange: `${window.since}..${window.until}`,
           status: "failed",
           errorMessage: JSON.stringify(metricErrors),
+          startedAt,
+          finishedAt: new Date().toISOString(),
         })
 
         if (runId) {
@@ -679,15 +759,17 @@ export async function syncDailyInsights() {
           `
           INSERT INTO meta_page_daily_snapshot (
             facebook_page_id,
+            brand_id,
             snapshot_date,
             metrics
           )
-          VALUES ($1, $2::date, $3::jsonb)
+          VALUES ($1, $2, $3::date, $4::jsonb)
           ON CONFLICT (facebook_page_id, snapshot_date)
           DO UPDATE SET
+            brand_id = COALESCE(EXCLUDED.brand_id, meta_page_daily_snapshot.brand_id),
             metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
           `,
-          [page.facebook_page_id, snapshotDate, JSON.stringify(linkMetrics)]
+          [page.facebook_page_id, page.brand_id ?? null, snapshotDate, JSON.stringify(linkMetrics)]
         )
       }
     } catch (error) {
@@ -718,10 +800,37 @@ export async function runMetaSyncJob(syncType: MetaSyncType) {
   }
 }
 
+export async function runMetaSyncJobForPage(
+  syncType: MetaSyncType,
+  facebookPageId: string
+) {
+  switch (syncType) {
+    case "hourly_posts":
+      return syncHourlyPostMetrics(facebookPageId)
+    case "daily_page":
+      return syncDailyPageSnapshots(facebookPageId)
+    case "daily_insights":
+      return syncDailyInsights(facebookPageId)
+    case "weekly_summary":
+    case "monthly_summary":
+      return syncDailyPageSnapshots(facebookPageId)
+    default:
+      return 0
+  }
+}
+
 export async function runAllMetaSyncJobs() {
   const dailyPage = await syncDailyPageSnapshots()
   const hourlyPosts = await syncHourlyPostMetrics()
   const dailyInsights = await syncDailyInsights()
+
+  return { dailyPage, hourlyPosts, dailyInsights }
+}
+
+export async function runAllMetaSyncJobsForPage(facebookPageId: string) {
+  const dailyPage = await syncDailyPageSnapshots(facebookPageId)
+  const hourlyPosts = await syncHourlyPostMetrics(facebookPageId)
+  const dailyInsights = await syncDailyInsights(facebookPageId)
 
   return { dailyPage, hourlyPosts, dailyInsights }
 }

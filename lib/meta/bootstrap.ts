@@ -23,23 +23,35 @@ export async function registerConfiguredMetaPages() {
   let registeredCount = 0
 
   for (const page of pages) {
+    const brand = await query<{ id: number }>(
+      `SELECT id FROM brand WHERE slug = $1 LIMIT 1`,
+      [page.brand_slug]
+    )
+
     await query(
       `
       INSERT INTO meta_facebook_page (
         facebook_page_id,
         page_name,
+        brand_id,
         access_token_env_key,
         webhook_subscribed_fields
       )
-      VALUES ($1, $2, $3, ARRAY['feed']::TEXT[])
+      VALUES ($1, $2, $3, $4, ARRAY['feed']::TEXT[])
       ON CONFLICT (facebook_page_id)
       DO UPDATE SET
         page_name = EXCLUDED.page_name,
+        brand_id = EXCLUDED.brand_id,
         access_token_env_key = EXCLUDED.access_token_env_key,
         is_active = true,
         updated_at = now()
       `,
-      [page.facebook_page_id, page.page_name, page.access_token_env_key]
+      [
+        page.facebook_page_id,
+        page.page_name,
+        brand.rows[0]?.id ?? null,
+        page.access_token_env_key,
+      ]
     )
     registeredCount += 1
   }

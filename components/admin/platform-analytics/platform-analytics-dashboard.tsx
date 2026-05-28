@@ -7,6 +7,7 @@ import {
   bootstrapMetaMonitoringAction,
   disconnectYouTubeAction,
   fetchPlatformAnalyticsAction,
+  syncMetaPageMonitoringAction,
   syncAllMetaMonitoringAction,
   syncYouTubeAction,
   triggerMetaSyncAction,
@@ -119,6 +120,9 @@ export function PlatformAnalyticsDashboard({
     initialData.platform === "META" ? "META" : initialData.platform,
   );
   const [metaScope, setMetaScope] = useState<MetaScope>("combined");
+  const [metaPageKey, setMetaPageKey] = useState<
+    "neon-nights" | "pro-group" | "al-qaysar" | "all"
+  >("all");
   const [accountId, setAccountId] = useState("all");
   const [dateRange, setDateRange] = useState<AnalyticsDateRange>("28d");
   const [customDateFrom, setCustomDateFrom] = useState("");
@@ -272,7 +276,10 @@ export function PlatformAnalyticsDashboard({
 
   function handleSyncAll() {
     startTransition(async () => {
-      const result = await syncAllMetaMonitoringAction();
+      const result =
+        platform === "META" && metaPageKey !== "all"
+          ? await syncMetaPageMonitoringAction({ pageKey: metaPageKey })
+          : await syncAllMetaMonitoringAction();
       if (!result.success) {
         toast.error(result.message);
         return;
@@ -286,7 +293,10 @@ export function PlatformAnalyticsDashboard({
     syncType: "hourly_posts" | "daily_page" | "daily_insights",
   ) {
     startTransition(async () => {
-      const result = await triggerMetaSyncAction(syncType);
+      const result =
+        platform === "META" && metaPageKey !== "all"
+          ? await triggerMetaSyncAction(syncType, { pageKey: metaPageKey })
+          : await triggerMetaSyncAction(syncType);
       if (!result.success) {
         toast.error(result.message);
         return;
@@ -411,6 +421,33 @@ export function PlatformAnalyticsDashboard({
             </div>
           ) : null}
         </div>
+
+        {platform === "META" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">Sync target:</span>
+            <Button
+              type="button"
+              size="sm"
+              variant={metaPageKey === "all" ? "default" : "neutral"}
+              disabled={isPending}
+              onClick={() => setMetaPageKey("all")}
+            >
+              All enabled pages
+            </Button>
+            {data.metaBusinessPages.map((page) => (
+              <Button
+                key={page.key}
+                type="button"
+                size="sm"
+                variant={metaPageKey === page.key ? "default" : "neutral"}
+                disabled={isPending}
+                onClick={() => setMetaPageKey(page.key)}
+              >
+                {page.displayName}
+              </Button>
+            ))}
+          </div>
+        ) : null}
 
         <ConnectionStatusCard
           connection={data.connection}

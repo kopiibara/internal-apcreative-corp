@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import {
   metaMonitoringFiltersSchema,
+  metaPageJobSyncSchema,
+  metaPageSyncSchema,
   metaPostCommentsSchema,
   metaPostsFiltersSchema,
   platformAnalyticsFiltersSchema,
@@ -28,7 +30,9 @@ import type {
 } from "@/lib/platform-analytics/types";
 import {
   runAllMetaSyncJobs,
+  runAllMetaSyncJobsForPage,
   runMetaSyncJob,
+  runMetaSyncJobForPage,
 } from "@/lib/meta/sync";
 import { syncYouTubeAnalytics } from "@/lib/platform-analytics/youtube-sync";
 import type { MetaSyncType } from "@/lib/meta/types";
@@ -291,10 +295,52 @@ export async function syncAllMetaMonitoringAction(): Promise<
 
 export async function triggerMetaSyncAction(
   syncType: MetaSyncType,
+  input?: { pageKey?: "neon-nights" | "pro-group" | "al-qaysar" },
 ): Promise<MetaMonitoringActionResult<{ recordsAffected: number }>> {
   const authError = await authorizeMetaManage();
   if (authError) {
     return authError;
+  }
+
+  if (input?.pageKey) {
+    const parsed = metaPageJobSyncSchema.safeParse({
+      pageKey: input.pageKey,
+      syncType,
+    });
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: "Invalid Meta page sync request.",
+      };
+    }
+
+    const config = getMetaPageByKey(parsed.data.pageKey);
+    if (!config?.enabled || !config.pageId) {
+      return {
+        success: false,
+        message: `${config?.displayName ?? "Meta page"} is not enabled or configured.`,
+      };
+    }
+
+    try {
+      const recordsAffected = await runMetaSyncJobForPage(
+        parsed.data.syncType,
+        config.pageId,
+      );
+      revalidatePath("/admin/platform-analytics");
+      revalidatePath("/admin/platform-analytics/meta/posts");
+      return {
+        success: true,
+        message: `${config.displayName}: ${syncType} sync completed.`,
+        data: { recordsAffected },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Meta page sync failed.",
+      };
+    }
   }
 
   try {
@@ -303,13 +349,62 @@ export async function triggerMetaSyncAction(
     revalidatePath("/admin/platform-analytics/meta/posts");
     return {
       success: true,
-      message: `${syncType} sync completed.`,
+      message: `${syncType} sync completed for all enabled pages.`,
       data: { recordsAffected },
     };
   } catch (error) {
     return {
       success: false,
       message: error instanceof Error ? error.message : "Meta sync failed.",
+    };
+  }
+}
+
+export async function syncMetaPageMonitoringAction(input: {
+  pageKey: "neon-nights" | "pro-group" | "al-qaysar";
+}): Promise<
+  MetaMonitoringActionResult<{
+    dailyPage: number;
+    hourlyPosts: number;
+    dailyInsights: number;
+  }>
+> {
+  const authError = await authorizeMetaManage();
+  if (authError) {
+    return authError;
+  }
+
+  const parsed = metaPageSyncSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: "Invalid Meta page sync request.",
+    };
+  }
+
+  const config = getMetaPageByKey(parsed.data.pageKey);
+  if (!config?.enabled || !config.pageId) {
+    return {
+      success: false,
+      message: `${config?.displayName ?? "Meta page"} is not enabled or configured.`,
+    };
+  }
+
+  try {
+    const result = await runAllMetaSyncJobsForPage(config.pageId);
+    revalidatePath("/admin/platform-analytics");
+    revalidatePath("/admin/platform-analytics/meta/posts");
+
+    return {
+      success: true,
+      message: `${config.displayName} sync finished: daily_page=${result.dailyPage}, hourly_posts=${result.hourlyPosts}, daily_insights=${result.dailyInsights}.`,
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "Meta page sync failed.",
     };
   }
 }
