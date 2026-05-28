@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft, ShieldCheck } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 
 import { AvatarSettings } from "@/components/account/avatar-settings"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
@@ -84,19 +84,6 @@ function formatAccountType(accountType: AccountType) {
     .join(" ")
 }
 
-function formatDate(value: Date | null) {
-  if (!value) {
-    return "Not recorded"
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(value)
-}
 
 function getProfileStatusBadgeClassName(status: string) {
   if (status === "ACTIVE") {
@@ -128,7 +115,7 @@ function DetailRow({
   return (
     <div className="min-w-0 rounded-lg border-2 border-border bg-background px-3 py-2">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <div className="mt-1 min-w-0 break-words text-sm font-semibold">
+      <div className="mt-1 min-w-0 wrap-break-word text-sm font-semibold">
         {value}
       </div>
     </div>
@@ -205,10 +192,10 @@ export default async function AccountPage() {
               size="lg"
             />
             <div className="min-w-0 flex-1">
-              <CardTitle className="break-words text-xl">
+              <CardTitle className="wrap-break-word text-xl">
                 {profile.full_name}
               </CardTitle>
-              <p className="mt-1 break-words text-sm text-muted-foreground">
+              <p className="mt-1 wrap-break-word text-sm text-muted-foreground">
                 {profile.email}
               </p>
             </div>
@@ -243,7 +230,7 @@ export default async function AccountPage() {
                     >
                       <div className="flex min-w-0 items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="break-words font-semibold">
+                          <p className="wrap-break-word font-semibold">
                             {access.brand_name}
                           </p>
                           <p className="text-xs text-muted-foreground">
