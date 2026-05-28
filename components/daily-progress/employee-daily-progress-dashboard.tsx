@@ -93,7 +93,7 @@ function ReportStatusCard({
   const status = getReportLabel(report);
 
   return (
-    <div className="min-w-0 rounded-lg border-2 border-border bg-white p-4 text-sm">
+    <div className="min-w-0 rounded-lg border-2 border-border bg-white dark:bg-gray-900 p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-bold">{title}</p>
         <DailyProgressStatusBadge label={status.label} tone={status.tone} />
@@ -207,7 +207,7 @@ function DailyProgressHistory({
               onClick={() => onReportClick(report)}
               onKeyDown={(event) => handleCardKeyDown(event, report)}
               className={cn(
-                "min-w-0 rounded-lg border-2 border-border bg-white p-4 text-left transition",
+                "min-w-0 rounded-lg border-2 border-border bg-white dark:bg-gray-900 p-4 text-left transition",
                 "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/30",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isVisuallyDisabled && "opacity-70 grayscale-[0.2]",
@@ -505,7 +505,7 @@ export function EmployeeDailyProgressDashboard({
             />
 
             <div className="space-y-2">
-              <RequiredLabel>Proof link</RequiredLabel>
+              <RequiredLabel required>Proof link</RequiredLabel>
               <Input
                 value={proofLink}
                 onChange={(event) => setProofLink(event.target.value)}

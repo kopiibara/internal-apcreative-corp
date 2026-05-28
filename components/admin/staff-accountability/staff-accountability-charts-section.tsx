@@ -98,7 +98,7 @@ export function StaffAccountabilityLeaderboard({
             No graded task data found for the active filters.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-lg border-2 border-border bg-card">
+          <div className="overflow-hidden rounded-lg border-2 border-border ">
             <ScrollArea className="w-full" scrollbars="horizontal">
               <Table className="min-w-[980px]">
                 <TableHeader>
@@ -113,7 +113,7 @@ export function StaffAccountabilityLeaderboard({
                     <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="bg-white dark:bg-gray-900">
                   {topFive.map((employee) => (
                     <TableRow key={employee.profileId}>
                       <TableCell>
@@ -505,7 +505,7 @@ export function StaffAccountabilityBrandSummary({ data }: { data: StaffAccountab
                     <TableHead>Rejected</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="bg-white dark:bg-gray-900">
                   {data.brandSummaries.length === 0 ? (
                     <TableRow>
                       <TableCell
