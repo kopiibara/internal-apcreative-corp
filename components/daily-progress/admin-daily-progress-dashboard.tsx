@@ -5,6 +5,7 @@ import {
   useState,
   useTransition,
   type KeyboardEvent,
+  type SyntheticEvent,
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -78,6 +79,7 @@ type AdminDailyProgressDashboardProps = {
 };
 
 type StatusFilter = "all" | "Submitted" | "Late Pending" | "Missed";
+type ReviewDecision = "Approved" | "Rejected";
 
 const STATUS_COLUMNS: {
   key: StatusFilter;
@@ -104,19 +106,24 @@ const STATUS_COLUMNS: {
 function SummaryCard({
   label,
   value,
+  tone,
 }: {
   label: string;
   value: string | number;
+  tone: string;
 }) {
   return (
-    <Card className="min-h-28 shadow-none">
+    <Card className={cn(
+      "min-h-[150px] min-w-0 justify-between overflow-hidden px-0 py-4 md:min-h-[190px] ",
+      tone,
+    )}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+        <CardTitle className="text-xs font-bold uppercase tracking-[0.16em]" >
           {label}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-black tabular-nums">{value}</p>
+        <h1 className="text-5xl font-black tabular-nums">{value}</h1>
       </CardContent>
     </Card>
   );
@@ -226,10 +233,12 @@ function DailyProgressKanbanCard({
   report,
   muted = false,
   onClick,
+  children,
 }: {
   report: DailyProgressReportRecord;
   muted?: boolean;
   onClick?: () => void;
+  children?: React.ReactNode;
 }) {
   const isClickable = Boolean(onClick);
 
@@ -255,7 +264,7 @@ function DailyProgressKanbanCard({
       }}
       onKeyDown={handleKeyDown}
       className={cn(
-        "rounded-lg border-2 border-border bg-background p-3 text-left transition",
+        "rounded-lg border-2 border-border  bg-white dark:bg-gray-900 p-3 text-left transition",
         isClickable &&
         "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         muted && "opacity-70 grayscale-[0.2]",
@@ -276,7 +285,170 @@ function DailyProgressKanbanCard({
         fallback={report.excusedReason}
         compact
       />
+
+      {children ? <div className="mt-3">{children}</div> : null}
     </article>
+  );
+}
+
+function DailyProgressKanbanReviewActions({
+  report,
+  reviewNotes,
+  awardPoints,
+  activeDecision,
+  isPending,
+  onStartReview,
+  onCancelReview,
+  onReviewNotesChange,
+  onAwardPointsChange,
+  onReview,
+}: {
+  report: DailyProgressReportRecord;
+  reviewNotes: string;
+  awardPoints: string;
+  activeDecision?: ReviewDecision;
+  isPending: boolean;
+  onStartReview: (reportId: number, decision: ReviewDecision) => void;
+  onCancelReview: (reportId: number) => void;
+  onReviewNotesChange: (reportId: number, value: string) => void;
+  onAwardPointsChange: (reportId: number, value: string) => void;
+  onReview: (reportId: number, decision: ReviewDecision) => void;
+}) {
+  function stopCardEvent(event: SyntheticEvent) {
+    event.stopPropagation();
+  }
+
+  if (!activeDecision) {
+    return (
+      <div
+        className="space-y-2 rounded-lg border-2 border-border bg-muted/20 p-2"
+        onClick={stopCardEvent}
+        onPointerDown={stopCardEvent}
+        onKeyDown={stopCardEvent}
+      >
+        <p className="text-xs text-muted-foreground">
+          Reason: {report.lateReason || "-"}
+        </p>
+
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 gap-1 text-xs"
+            disabled={isPending}
+            onClick={(event) => {
+              event.stopPropagation();
+              onStartReview(report.id, "Approved");
+            }}
+          >
+            <Check className="size-3" />
+            Approve
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="destructive"
+            className="h-8 gap-1 text-xs"
+            disabled={isPending}
+            onClick={(event) => {
+              event.stopPropagation();
+              onStartReview(report.id, "Rejected");
+            }}
+          >
+            <X className="size-3" />
+            Reject
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const isApproving = activeDecision === "Approved";
+
+  return (
+    <div
+      className="space-y-2 rounded-lg border-2 border-border bg-muted/20 p-2"
+      onClick={stopCardEvent}
+      onPointerDown={stopCardEvent}
+      onKeyDown={stopCardEvent}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold">
+          {isApproving ? "Approve late report" : "Reject late report"}
+        </p>
+
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-7 px-2 text-xs"
+          disabled={isPending}
+          onClick={(event) => {
+            event.stopPropagation();
+            onCancelReview(report.id);
+          }}
+        >
+          Back
+        </Button>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Reason: {report.lateReason || "-"}
+      </p>
+
+      <Textarea
+        value={reviewNotes}
+        onChange={(event) => onReviewNotesChange(report.id, event.target.value)}
+        disabled={isPending}
+        rows={2}
+        placeholder="Review note"
+        className="min-h-16 text-xs"
+      />
+
+      {isApproving ? (
+        <Select
+          value={awardPoints}
+          onValueChange={(value) => onAwardPointsChange(report.id, value)}
+          disabled={isPending}
+        >
+          <SelectTrigger aria-label="Points awarded" className="h-9 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: 11 }, (_, points) => (
+              <SelectItem key={points} value={String(points)}>
+                Award {points} pts
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : null}
+
+      <Button
+        type="button"
+        size="sm"
+        variant={isApproving ? "default" : "destructive"}
+        className="h-8 w-full gap-1 text-xs"
+        disabled={isPending}
+        onClick={(event) => {
+          event.stopPropagation();
+          onReview(report.id, activeDecision);
+        }}
+      >
+        {isApproving ? (
+          <>
+            <Check className="size-3" />
+            Confirm Approval
+          </>
+        ) : (
+          <>
+            <X className="size-3" />
+            Confirm Rejection
+          </>
+        )}
+      </Button>
+    </div>
   );
 }
 
@@ -340,6 +512,10 @@ export function AdminDailyProgressDashboard({
   const [awardPointsById, setAwardPointsById] = useState<Record<number, string>>(
     {},
   );
+
+  const [reviewDecisionById, setReviewDecisionById] = useState<
+    Record<number, ReviewDecision | undefined>
+  >({});
 
   const [activeView, setActiveView] = useState<"kanban" | "table">("kanban");
   const [missedDate, setMissedDate] = useState(targetDate);
@@ -414,7 +590,8 @@ export function AdminDailyProgressDashboard({
       filteredReports
         .map(
           (report) =>
-            `${report.id}:${report.status}:${report.lateApprovalStatus ?? "none"}`,
+            `${report.id}:${report.status}:${report.lateApprovalStatus ?? "none"
+            }`,
         )
         .join("|"),
     [filteredReports],
@@ -449,7 +626,56 @@ export function AdminDailyProgressDashboard({
     }
   }
 
-  function handleReview(reportId: number, decision: "Approved" | "Rejected") {
+  function startReviewDraft(reportId: number, decision: ReviewDecision) {
+    setReviewDecisionById((current) => ({
+      ...current,
+      [reportId]: decision,
+    }));
+  }
+
+  function cancelReviewDraft(reportId: number) {
+    setReviewDecisionById((current) => {
+      const next = { ...current };
+      delete next[reportId];
+      return next;
+    });
+  }
+
+  function updateReviewNotes(reportId: number, value: string) {
+    setReviewNotesById((current) => ({
+      ...current,
+      [reportId]: value,
+    }));
+  }
+
+  function updateAwardPoints(reportId: number, value: string) {
+    setAwardPointsById((current) => ({
+      ...current,
+      [reportId]: value,
+    }));
+  }
+
+  function clearReviewDraft(reportId: number) {
+    setReviewDecisionById((current) => {
+      const next = { ...current };
+      delete next[reportId];
+      return next;
+    });
+
+    setReviewNotesById((current) => {
+      const next = { ...current };
+      delete next[reportId];
+      return next;
+    });
+
+    setAwardPointsById((current) => {
+      const next = { ...current };
+      delete next[reportId];
+      return next;
+    });
+  }
+
+  function handleReview(reportId: number, decision: ReviewDecision) {
     startTransition(async () => {
       const result = await reviewLateDailyProgressReport({
         reportId,
@@ -463,6 +689,8 @@ export function AdminDailyProgressDashboard({
 
       if (result.success) {
         toast.success(result.message);
+        clearReviewDraft(reportId);
+        router.refresh();
       } else {
         toast.error(result.message);
       }
@@ -516,6 +744,7 @@ export function AdminDailyProgressDashboard({
 
       if (result.success) {
         toast.success(result.message);
+        clearReviewDraft(report.id);
         router.refresh();
       } else {
         toast.error(result.message);
@@ -531,6 +760,7 @@ export function AdminDailyProgressDashboard({
 
       if (result.success) {
         toast.success(result.message);
+        router.refresh();
       } else {
         toast.error(result.message);
       }
@@ -582,13 +812,18 @@ export function AdminDailyProgressDashboard({
         <SummaryCard
           label="Required Employees"
           value={visibleSummary.requiredEmployees}
+          tone="bg-background text-foreground"
+
         />
-        <SummaryCard label="Submitted" value={visibleSummary.submittedCount} />
+        <SummaryCard label="Submitted" value={visibleSummary.submittedCount} tone="bg-blue text-white"
+        />
         <SummaryCard
           label="Late Pending"
           value={visibleSummary.latePendingCount}
+          tone="bg-cyan text-white"
         />
-        <SummaryCard label="Missed" value={visibleSummary.missedCount} />
+        <SummaryCard label="Missed" value={visibleSummary.missedCount} tone="bg-magenta text-white"
+        />
       </div>
 
       <Card className="shadow-none">
@@ -705,7 +940,20 @@ export function AdminDailyProgressDashboard({
                                 report={report}
                                 muted={isPending}
                                 onClick={() => openReportDetails(report)}
-                              />
+                              >
+                                <DailyProgressKanbanReviewActions
+                                  report={report}
+                                  reviewNotes={reviewNotesById[report.id] ?? ""}
+                                  awardPoints={awardPointsById[report.id] ?? "5"}
+                                  activeDecision={reviewDecisionById[report.id]}
+                                  isPending={isPending}
+                                  onStartReview={startReviewDraft}
+                                  onCancelReview={cancelReviewDraft}
+                                  onReviewNotesChange={updateReviewNotes}
+                                  onAwardPointsChange={updateAwardPoints}
+                                  onReview={handleReview}
+                                />
+                              </DailyProgressKanbanCard>
                             </KanbanItemHandle>
                           </KanbanItem>
                         );
@@ -824,10 +1072,10 @@ export function AdminDailyProgressDashboard({
                                   <Textarea
                                     value={reviewNotesById[report.id] ?? ""}
                                     onChange={(event) =>
-                                      setReviewNotesById((current) => ({
-                                        ...current,
-                                        [report.id]: event.target.value,
-                                      }))
+                                      updateReviewNotes(
+                                        report.id,
+                                        event.target.value,
+                                      )
                                     }
                                     rows={2}
                                     placeholder="Review note"
@@ -836,10 +1084,7 @@ export function AdminDailyProgressDashboard({
                                   <Select
                                     value={awardPointsById[report.id] ?? "5"}
                                     onValueChange={(value) =>
-                                      setAwardPointsById((current) => ({
-                                        ...current,
-                                        [report.id]: value,
-                                      }))
+                                      updateAwardPoints(report.id, value)
                                     }
                                   >
                                     <SelectTrigger aria-label="Points awarded">

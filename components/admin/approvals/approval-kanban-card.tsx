@@ -52,7 +52,7 @@ export function ApprovalKanbanCard({
 
   return (
     <Card
-      className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-2 hover:bg-muted hover:-translate-y-0.5 transition-all"
+      className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg  px-0 py-2 hover:bg-muted hover:-translate-y-0.5 transition-all bg-white dark:bg-gray-900"
       onClick={onClick}
     >
       <CardContent className="min-w-0 space-y-2.5 px-3 py-1">
@@ -72,7 +72,7 @@ export function ApprovalKanbanCard({
           </p>
         </div>
         <div className="flex flex-row gap-2">
-          <Badge className="bg-gray-200">
+          <Badge className="bg-gray-200 dark:bg-gray-800">
             <Clock /> {dateFormatter.format(new Date(report.dateSubmitted))}
           </Badge>
 
