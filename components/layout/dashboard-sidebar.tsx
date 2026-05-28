@@ -148,7 +148,7 @@ export function DashboardSidebar({
                                 ?.filter((subItem) => {
                                     if (
                                         subItem.href ===
-                                            "/employee/to-do/tasks" &&
+                                        "/employee/to-do/tasks" &&
                                         !canSeeTaskBoard
                                     ) {
                                         return false
@@ -156,7 +156,7 @@ export function DashboardSidebar({
 
                                     if (
                                         subItem.href ===
-                                            "/employee/to-do/reminders" &&
+                                        "/employee/to-do/reminders" &&
                                         !canSeeReminders
                                     ) {
                                         return false
@@ -513,7 +513,7 @@ export function DashboardSidebar({
                                                             <span>{item.title}</span>
                                                             {item.badge ? (
                                                                 <Badge
-                                                                    variant="secondary"
+                                                                    variant="default"
                                                                     className="ml-auto rounded-full"
                                                                 >
                                                                     {item.badge}

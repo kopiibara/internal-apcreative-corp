@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { ExternalLink, Pencil, Trash2 } from "lucide-react"
+import { ExternalLink, Pencil, Trash2, } from "lucide-react"
 import { toast } from "sonner"
 
 import { deleteTask } from "@/app/admin/to-do/actions"
@@ -85,7 +85,7 @@ export function TaskAssignmentCard({
   return (
     <>
       <Card
-        className="w-full max-w-full cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-3 transition-all hover:bg-muted hover:-translate-y-0.5"
+        className="w-full max-w-full cursor-pointer dark:bg-gray-900 overflow-hidden rounded-lg bg-white px-0 py-3 transition-all hover:bg-muted hover:-translate-y-0.5"
         onClick={() => onOpenDetails?.(assignment)}
       >
         <CardContent className="min-w-0 space-y-2.5 px-4 py-2">

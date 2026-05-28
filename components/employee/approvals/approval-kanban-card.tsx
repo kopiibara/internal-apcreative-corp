@@ -47,7 +47,7 @@ export function EmployeeApprovalKanbanCard({
 
   return (
     <Card
-      className="cursor-pointer rounded-lg bg-white py-2 transition-colors hover:bg-muted"
+      className="cursor-pointer rounded-lg bg-white dark:bg-gray-900 py-2 transition-colors hover:bg-muted"
       onClick={() => onOpenDetails(report)}
     >
       <CardContent className="space-y-3 px-4 py-1">

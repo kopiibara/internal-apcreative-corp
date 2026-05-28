@@ -42,6 +42,28 @@ type RichTextEditorProps = {
   name?: string
 }
 
+type ToolbarState = {
+  bold: boolean
+  italic: boolean
+  underline: boolean
+  headingOne: boolean
+  headingTwo: boolean
+  bulletedList: boolean
+  numberedList: boolean
+  link: boolean
+}
+
+const emptyToolbarState: ToolbarState = {
+  bold: false,
+  italic: false,
+  underline: false,
+  headingOne: false,
+  headingTwo: false,
+  bulletedList: false,
+  numberedList: false,
+  link: false,
+}
+
 const blockTags: Record<string, RichTextElement["type"]> = {
   H1: "heading-one",
   H2: "heading-two",
@@ -131,6 +153,7 @@ function collectTextNodes(node: Node, marks: Omit<RichTextLeaf, "text"> = {}) {
     }
 
     const tag = child.tagName
+
     const nextMarks = {
       ...marks,
       bold: marks.bold || tag === "B" || tag === "STRONG",
@@ -177,6 +200,7 @@ function elementToNode(element: Element): RichTextNode {
 
 function htmlToSerializedValue(element: HTMLElement) {
   const children = Array.from(element.children)
+
   const content =
     children.length > 0
       ? children.map(elementToNode)
@@ -185,15 +209,66 @@ function htmlToSerializedValue(element: HTMLElement) {
   return serializeRichTextContent(content)
 }
 
+function getSelectionElement() {
+  const selection = window.getSelection()
+
+  if (!selection || selection.rangeCount === 0) {
+    return null
+  }
+
+  const node = selection.anchorNode
+
+  if (!node) {
+    return null
+  }
+
+  return node.nodeType === Node.ELEMENT_NODE
+    ? (node as HTMLElement)
+    : node.parentElement
+}
+
+function isSelectionInsideEditor(editor: HTMLElement) {
+  const selection = window.getSelection()
+
+  if (!selection || selection.rangeCount === 0) {
+    return false
+  }
+
+  const node = selection.anchorNode
+
+  return Boolean(node && editor.contains(node))
+}
+
+function getActiveToolbarState(editor: HTMLElement): ToolbarState {
+  if (!isSelectionInsideEditor(editor)) {
+    return emptyToolbarState
+  }
+
+  const element = getSelectionElement()
+
+  return {
+    bold: document.queryCommandState("bold"),
+    italic: document.queryCommandState("italic"),
+    underline: document.queryCommandState("underline"),
+    headingOne: Boolean(element?.closest("h1")),
+    headingTwo: Boolean(element?.closest("h2")),
+    bulletedList: Boolean(element?.closest("ul")),
+    numberedList: Boolean(element?.closest("ol")),
+    link: Boolean(element?.closest("a")),
+  }
+}
+
 function ToolbarButton({
   label,
   children,
   disabled,
+  active = false,
   onClick,
 }: {
   label: string
   children: React.ReactNode
   disabled?: boolean
+  active?: boolean
   onClick: () => void
 }) {
   return (
@@ -202,11 +277,17 @@ function ToolbarButton({
       variant="ghost"
       size="icon-sm"
       aria-label={label}
+      aria-pressed={active}
       title={label}
       disabled={disabled}
       onMouseDown={(event) => event.preventDefault()}
       onClick={onClick}
-      className="size-8 shrink-0 rounded-md border border-transparent shadow-none hover:border-border hover:bg-white"
+      className={cn(
+        "size-8 shrink-0 rounded-md border border-transparent shadow-none",
+        "hover:border-border hover:bg-white",
+        active &&
+        "border-border bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+      )}
     >
       {children}
     </Button>
@@ -231,6 +312,21 @@ export function RichTextEditor({
   const lastValueRef = React.useRef<string>("")
   const isDisabled = disabled || readOnly
 
+  const [isFocused, setIsFocused] = React.useState(false)
+  const [toolbarState, setToolbarState] =
+    React.useState<ToolbarState>(emptyToolbarState)
+
+  const updateToolbarState = React.useCallback(() => {
+    const editor = editorRef.current
+
+    if (!editor || isDisabled) {
+      setToolbarState(emptyToolbarState)
+      return
+    }
+
+    setToolbarState(getActiveToolbarState(editor))
+  }, [isDisabled])
+
   React.useEffect(() => {
     const editor = editorRef.current
 
@@ -242,6 +338,27 @@ export function RichTextEditor({
     lastValueRef.current = value
   }, [value])
 
+  React.useEffect(() => {
+    function handleSelectionChange() {
+      const editor = editorRef.current
+
+      if (!editor) {
+        return
+      }
+
+      if (isSelectionInsideEditor(editor)) {
+        setIsFocused(true)
+        updateToolbarState()
+      }
+    }
+
+    document.addEventListener("selectionchange", handleSelectionChange)
+
+    return () => {
+      document.removeEventListener("selectionchange", handleSelectionChange)
+    }
+  }, [updateToolbarState])
+
   function emitChange() {
     const editor = editorRef.current
 
@@ -252,6 +369,7 @@ export function RichTextEditor({
     const nextValue = htmlToSerializedValue(editor)
     lastValueRef.current = nextValue
     onChange(nextValue)
+    requestAnimationFrame(updateToolbarState)
   }
 
   function command(name: string, commandValue?: string) {
@@ -262,9 +380,14 @@ export function RichTextEditor({
     editorRef.current?.focus()
     document.execCommand(name, false, commandValue)
     emitChange()
+    updateToolbarState()
   }
 
   function createLink() {
+    if (isDisabled) {
+      return
+    }
+
     const url = window.prompt("Paste a link")
 
     if (!url) {
@@ -274,6 +397,17 @@ export function RichTextEditor({
     command("createLink", url)
   }
 
+  function handleFocus() {
+    setIsFocused(true)
+    updateToolbarState()
+  }
+
+  function handleBlur() {
+    setIsFocused(false)
+    setToolbarState(emptyToolbarState)
+    onChange(normalizeRichTextForStorage(lastValueRef.current || value))
+  }
+
   return (
     <div className={cn("space-y-2", className)}>
       {label ? (
@@ -281,46 +415,114 @@ export function RichTextEditor({
           {label}
         </RequiredLabel>
       ) : null}
+
       <div
         className={cn(
-          "overflow-hidden rounded-lg border-2 border-border bg-background",
+          "overflow-hidden rounded-lg border-2 border-border bg-background transition",
           error && "border-destructive",
+          isFocused &&
+          !error &&
+          "border-primary ring-2 ring-primary/25",
           isDisabled && "opacity-70",
         )}
       >
-        <div className="flex flex-wrap items-center gap-1 border-b-2 border-border bg-secondary-background px-2 py-1">
-          <ToolbarButton label="Bold" disabled={isDisabled} onClick={() => command("bold")}>
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-1 border-b-2 border-border bg-secondary-background px-2 py-1 transition",
+            isFocused && "bg-primary/10",
+          )}
+        >
+          <ToolbarButton
+            label="Bold"
+            disabled={isDisabled}
+            active={toolbarState.bold}
+            onClick={() => command("bold")}
+          >
             <Bold className="size-4" />
           </ToolbarButton>
-          <ToolbarButton label="Italic" disabled={isDisabled} onClick={() => command("italic")}>
+
+          <ToolbarButton
+            label="Italic"
+            disabled={isDisabled}
+            active={toolbarState.italic}
+            onClick={() => command("italic")}
+          >
             <Italic className="size-4" />
           </ToolbarButton>
-          <ToolbarButton label="Underline" disabled={isDisabled} onClick={() => command("underline")}>
+
+          <ToolbarButton
+            label="Underline"
+            disabled={isDisabled}
+            active={toolbarState.underline}
+            onClick={() => command("underline")}
+          >
             <Underline className="size-4" />
           </ToolbarButton>
-          <ToolbarButton label="Heading 1" disabled={isDisabled} onClick={() => command("formatBlock", "h1")}>
+
+          <ToolbarButton
+            label="Heading 1"
+            disabled={isDisabled}
+            active={toolbarState.headingOne}
+            onClick={() => command("formatBlock", "h1")}
+          >
             <Heading1 className="size-4" />
           </ToolbarButton>
-          <ToolbarButton label="Heading 2" disabled={isDisabled} onClick={() => command("formatBlock", "h2")}>
+
+          <ToolbarButton
+            label="Heading 2"
+            disabled={isDisabled}
+            active={toolbarState.headingTwo}
+            onClick={() => command("formatBlock", "h2")}
+          >
             <Heading2 className="size-4" />
           </ToolbarButton>
-          <ToolbarButton label="Bullet list" disabled={isDisabled} onClick={() => command("insertUnorderedList")}>
+
+          <ToolbarButton
+            label="Bullet list"
+            disabled={isDisabled}
+            active={toolbarState.bulletedList}
+            onClick={() => command("insertUnorderedList")}
+          >
             <List className="size-4" />
           </ToolbarButton>
-          <ToolbarButton label="Numbered list" disabled={isDisabled} onClick={() => command("insertOrderedList")}>
+
+          <ToolbarButton
+            label="Numbered list"
+            disabled={isDisabled}
+            active={toolbarState.numberedList}
+            onClick={() => command("insertOrderedList")}
+          >
             <ListOrdered className="size-4" />
           </ToolbarButton>
-          <ToolbarButton label="Link" disabled={isDisabled} onClick={createLink}>
+
+          <ToolbarButton
+            label="Link"
+            disabled={isDisabled}
+            active={toolbarState.link}
+            onClick={createLink}
+          >
             <Link className="size-4" />
           </ToolbarButton>
+
           <span className="mx-1 h-5 w-px bg-border" />
-          <ToolbarButton label="Undo" disabled={isDisabled} onClick={() => command("undo")}>
+
+          <ToolbarButton
+            label="Undo"
+            disabled={isDisabled}
+            onClick={() => command("undo")}
+          >
             <Undo2 className="size-4" />
           </ToolbarButton>
-          <ToolbarButton label="Redo" disabled={isDisabled} onClick={() => command("redo")}>
+
+          <ToolbarButton
+            label="Redo"
+            disabled={isDisabled}
+            onClick={() => command("redo")}
+          >
             <Redo2 className="size-4" />
           </ToolbarButton>
         </div>
+
         <div className="relative">
           <div
             ref={editorRef}
@@ -332,12 +534,19 @@ export function RichTextEditor({
             contentEditable={!isDisabled}
             suppressContentEditableWarning
             data-placeholder={placeholder}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             onInput={emitChange}
-            onBlur={() => onChange(normalizeRichTextForStorage(value))}
+            onKeyUp={updateToolbarState}
+            onMouseUp={updateToolbarState}
             className={cn(
               "prose-none min-h-[var(--rich-text-min-height)] w-full px-3 py-3 text-sm leading-relaxed outline-none",
               "empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]",
-              "[&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-4 [&_h1]:text-lg [&_h1]:font-black [&_h2]:text-base [&_h2]:font-black [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5",
+              "[&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-4",
+              "[&_h1]:text-lg [&_h1]:font-black",
+              "[&_h2]:text-base [&_h2]:font-black",
+              "[&_ol]:list-decimal [&_ol]:pl-5",
+              "[&_ul]:list-disc [&_ul]:pl-5",
             )}
             style={
               {
@@ -345,6 +554,7 @@ export function RichTextEditor({
               } as React.CSSProperties
             }
           />
+
           {name ? (
             <input
               type="hidden"
@@ -354,7 +564,10 @@ export function RichTextEditor({
           ) : null}
         </div>
       </div>
-      {error ? <p className="text-xs font-medium text-destructive">{error}</p> : null}
+
+      {error ? (
+        <p className="text-xs font-medium text-destructive">{error}</p>
+      ) : null}
     </div>
   )
 }
