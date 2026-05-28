@@ -11,6 +11,10 @@ import {
   toDateKey,
 } from "@/lib/daily-progress-report/daily-progress-report";
 import {
+  DAILY_PROGRESS_SCORING_START_DATE_KEY,
+  isBeforeDailyProgressScoringStart,
+} from "@/lib/daily-progress-report/constants";
+import {
   calculateDailyProgressPoints,
   getDailyProgressExcuseReason,
   isWeekendPH,
@@ -90,6 +94,13 @@ export async function submitDailyProgressReport(
 
   const todayDateKey = formatDateKeyInPhilippines(new Date());
   const reportDateKey = toDateKey(parsed.data.reportDate);
+
+  if (isBeforeDailyProgressScoringStart(reportDateKey)) {
+    return {
+      success: false,
+      message: `Daily Progress scoring starts on ${DAILY_PROGRESS_SCORING_START_DATE_KEY}. Previous dates are not required.`,
+    };
+  }
 
   if (reportDateKey > todayDateKey) {
     return { success: false, message: "Future reports are not allowed." };

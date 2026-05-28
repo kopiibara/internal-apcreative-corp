@@ -4,6 +4,10 @@ import type { PoolClient } from "pg";
 
 import { query, transaction } from "@/lib/db";
 import {
+  clampDailyProgressStartDate,
+  isBeforeDailyProgressScoringStart,
+} from "@/lib/daily-progress-report/constants";
+import {
   calculateDailyProgressPoints,
   getDailyProgressExcuseReason,
   getDailyProgressNetPoints,
@@ -231,7 +235,9 @@ export async function getDailyProgressBrandOptions(profileId: number) {
 export async function getOwnDailyProgressPageData(profileId: number) {
   const todayDateKey = formatDateKeyInPhilippines(new Date());
   const yesterdayDateKey = getYesterdayDateKeyInPhilippines();
-  const historyStartDateKey = getPreviousDateKeyInPhilippines(13);
+  const historyStartDateKey = clampDailyProgressStartDate(
+    getPreviousDateKeyInPhilippines(13),
+  );
   const [reports, brands] = await Promise.all([
     query<DailyProgressReportRow>(
       `
@@ -273,11 +279,13 @@ export async function getDailyProgressReportById(reportId: number) {
 export async function getAdminDailyProgressData(
   filters: DailyProgressAdminFilters,
 ) {
-  const { start } = getPhilippineDayBounds(filters.startDate);
-  const { end } = getPhilippineDayBounds(filters.endDate);
+  const startDate = clampDailyProgressStartDate(filters.startDate);
+  const endDate = clampDailyProgressStartDate(filters.endDate);
+  const { start } = getPhilippineDayBounds(startDate);
+  const { end } = getPhilippineDayBounds(endDate);
   const params = [
-    filters.startDate,
-    filters.endDate,
+    startDate,
+    endDate,
     filters.brandId ?? null,
     filters.employeeId ?? null,
     filters.status && filters.status !== "all" ? filters.status : null,
@@ -370,6 +378,10 @@ export async function upsertMissedDailyProgressForDate({
   targetDateKey: string;
   actorProfileId?: number | null;
 }) {
+  if (isBeforeDailyProgressScoringStart(targetDateKey)) {
+    return { createdMissed: 0, createdExcused: 0, skipped: 0 };
+  }
+
   const parsedDate = new Date(`${targetDateKey}T12:00:00+08:00`);
 
   if (isWeekendPH(parsedDate)) {

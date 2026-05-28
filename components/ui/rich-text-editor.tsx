@@ -495,14 +495,6 @@ export function RichTextEditor({
             <ListOrdered className="size-4" />
           </ToolbarButton>
 
-          <ToolbarButton
-            label="Link"
-            disabled={isDisabled}
-            active={toolbarState.link}
-            onClick={createLink}
-          >
-            <Link className="size-4" />
-          </ToolbarButton>
 
           <span className="mx-1 h-5 w-px bg-border" />
 
