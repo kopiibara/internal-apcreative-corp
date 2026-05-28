@@ -30,18 +30,52 @@ type MetaFacebookPagesConfigEntry = {
   enabled?: boolean
 }
 
+function titleCaseFromEnvPrefix(prefix: string) {
+  return prefix
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function discoverFacebookPagesFromEnv(): MetaFacebookPagesConfigEntry[] {
+  const envKeys = Object.keys(process.env)
+  const pageIdKeys = envKeys.filter((key) => key.endsWith("_META_PAGE_ID"))
+
+  const entries: MetaFacebookPagesConfigEntry[] = []
+
+  for (const pageIdEnvKey of pageIdKeys) {
+    const prefix = pageIdEnvKey.replace(/_META_PAGE_ID$/, "")
+    const tokenEnvKey = `${prefix}_META_PAGE_ACCESS_TOKEN`
+
+    if (!envKeys.includes(tokenEnvKey)) {
+      continue
+    }
+
+    entries.push({
+      brandKey: normalizeBrandKey(prefix),
+      brandName: titleCaseFromEnvPrefix(prefix),
+      pageId: pageIdEnvKey,
+      pageAccessToken: tokenEnvKey,
+      enabled: true,
+    })
+  }
+
+  return entries
+}
+
 function readFacebookPagesConfig(): MetaFacebookPagesConfigEntry[] {
   const raw = process.env.META_FACEBOOK_PAGES_CONFIG?.trim()
-  if (!raw) return []
+  if (!raw) return discoverFacebookPagesFromEnv()
 
   try {
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) {
-      return []
+      return discoverFacebookPagesFromEnv()
     }
     return parsed as MetaFacebookPagesConfigEntry[]
   } catch {
-    return []
+    return discoverFacebookPagesFromEnv()
   }
 }
 
