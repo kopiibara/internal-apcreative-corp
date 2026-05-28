@@ -334,7 +334,7 @@ export async function getAdminDailyProgressData(
       SELECT COUNT(DISTINCT p.id)::int AS count
       FROM profile p
       WHERE p.status = 'ACTIVE'
-        AND p.account_type IN ('CLIENT', 'EMPLOYEE', 'FULL_STACK_DEVELOPER')
+        AND p.account_type IN ('CLIENT', 'EMPLOYEE', 'SUPERVISOR', 'FULL_STACK_DEVELOPER')
         AND ($1::integer IS NULL OR EXISTS (
           SELECT 1
           FROM user_brand_access uba
@@ -393,7 +393,7 @@ export async function upsertMissedDailyProgressForDate({
     SELECT id
     FROM profile
     WHERE status = 'ACTIVE'
-      AND account_type IN ('CLIENT', 'EMPLOYEE', 'FULL_STACK_DEVELOPER')
+      AND account_type IN ('CLIENT', 'EMPLOYEE', 'SUPERVISOR', 'FULL_STACK_DEVELOPER')
     ORDER BY id ASC
     `,
   );

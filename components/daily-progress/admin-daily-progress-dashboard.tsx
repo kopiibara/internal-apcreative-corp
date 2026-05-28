@@ -9,7 +9,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ExternalLink, Play, X } from "lucide-react";
+import { Check, ExternalLink, FilePlus2, Play, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -18,6 +18,10 @@ import {
 } from "@/app/admin/daily-progress/actions";
 import { DailyProgressReportDetailsSheet } from "@/components/daily-progress/daily-progress-report-details-sheet";
 import { DailyProgressStatusBadge } from "@/components/daily-progress/daily-progress-status-badge";
+import {
+  EmployeeDailyProgressDashboard,
+  type EmployeeDailyProgressDashboardProps,
+} from "@/components/daily-progress/employee-daily-progress-dashboard";
 import {
   KanbanBoardShell,
   KANBAN_BOARD_SCROLL_ROW_CLASS,
@@ -77,6 +81,7 @@ type AdminDailyProgressDashboardProps = {
   reports: DailyProgressReportRecord[];
   summary: DailyProgressSummary;
   targetDate: string;
+  ownDailyProgressData?: EmployeeDailyProgressDashboardProps | null;
 };
 
 type StatusFilter = "all" | "Submitted" | "Late Pending" | "Missed";
@@ -503,6 +508,7 @@ export function AdminDailyProgressDashboard({
   reports,
   summary,
   targetDate,
+  ownDailyProgressData,
 }: AdminDailyProgressDashboardProps) {
   const router = useRouter();
 
@@ -523,6 +529,7 @@ export function AdminDailyProgressDashboard({
   const [employeeFilter, setEmployeeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [dateFilter, setDateFilter] = useState("all");
+  const [showOwnProgressForm, setShowOwnProgressForm] = useState(false);
   const [selectedReport, setSelectedReport] =
     useState<DailyProgressReportRecord | null>(null);
   const [isDetailsSheetOpen, setIsDetailsSheetOpen] = useState(false);
@@ -808,12 +815,28 @@ export function AdminDailyProgressDashboard({
             <Play className="size-4" />
             Run Checker
           </Button>
+
+          {ownDailyProgressData ? (
+            <Button
+              type="button"
+              variant="default"
+              className="gap-2"
+              onClick={() => setShowOwnProgressForm((current) => !current)}
+            >
+              <FilePlus2 className="size-4" />
+              {showOwnProgressForm ? "Hide My Report" : "Add My Report"}
+            </Button>
+          ) : null}
         </div>
       </div>
 
+      {ownDailyProgressData && showOwnProgressForm ? (
+        <EmployeeDailyProgressDashboard {...ownDailyProgressData} />
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard
-          label="Required Employees"
+          label="Required Staff"
           value={visibleSummary.requiredEmployees}
           tone="bg-background text-foreground"
 
@@ -837,7 +860,7 @@ export function AdminDailyProgressDashboard({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All employees</SelectItem>
+                <SelectItem value="all">All staff</SelectItem>
                 {employeeOptions.map(([profileId, employeeName]) => (
                   <SelectItem key={profileId} value={String(profileId)}>
                     {employeeName}

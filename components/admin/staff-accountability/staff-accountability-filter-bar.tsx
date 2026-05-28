@@ -96,13 +96,13 @@ export function StaffAccountabilityFilterBar({
           onValueChange={(value) => updateFilter("employeeId", value)}
         >
           <SelectTrigger
-            aria-label="Filter by employee"
+            aria-label="Filter by staff"
             className="h-9 w-fit min-w-[170px] rounded-full"
           >
-            <SelectValue placeholder="All employees" />
+            <SelectValue placeholder="All staff" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All employees</SelectItem>
+            <SelectItem value="all">All staff</SelectItem>
             {employees.map((employee) => (
               <SelectItem key={employee.id} value={String(employee.id)}>
                 {employee.fullName}
