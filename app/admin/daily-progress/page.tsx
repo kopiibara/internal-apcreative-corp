@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 
 import { AdminDailyProgressDashboard } from "@/components/daily-progress/admin-daily-progress-dashboard";
+import { EmployeeDailyProgressDashboard } from "@/components/daily-progress/employee-daily-progress-dashboard";
 import { requireAdmin } from "@/lib/auth/auth-session";
 import { can } from "@/lib/permissions";
+import { clampDailyProgressStartDate } from "@/lib/daily-progress-report/constants";
 import {
   getAdminDailyProgressData,
+  getOwnDailyProgressPageData,
   getYesterdayDateKeyInPhilippines,
 } from "@/lib/daily-progress-report/daily-progress-report";
 import { getTodayDateKeyInPhilippines } from "@/lib/daily-reports/daily-report-filters";
@@ -57,10 +60,25 @@ export default async function AdminDailyProgressPage({
 
   const params = await searchParams;
   const fallbackEndDate = getTodayDateKeyInPhilippines();
-  const fallbackStartDate = getRecentStartDateKey(fallbackEndDate, 13);
-  const missedCheckerTargetDate = getYesterdayDateKeyInPhilippines();
-  const startDate = parseDateKey(params.startDate, fallbackStartDate);
-  const endDate = parseDateKey(params.endDate, fallbackEndDate);
+  const fallbackStartDate = clampDailyProgressStartDate(
+    getRecentStartDateKey(fallbackEndDate, 13),
+  );
+  const missedCheckerTargetDate = clampDailyProgressStartDate(
+    getYesterdayDateKeyInPhilippines(),
+  );
+  const startDate = clampDailyProgressStartDate(
+    parseDateKey(params.startDate, fallbackStartDate),
+  );
+  const endDate = clampDailyProgressStartDate(
+    parseDateKey(params.endDate, fallbackEndDate),
+  );
+
+  if (profile.account_type === "FULL_STACK_DEVELOPER") {
+    const ownDailyProgressData = await getOwnDailyProgressPageData(profile.id);
+
+    return <EmployeeDailyProgressDashboard {...ownDailyProgressData} />;
+  }
+
   const data = await getAdminDailyProgressData({
     startDate,
     endDate,

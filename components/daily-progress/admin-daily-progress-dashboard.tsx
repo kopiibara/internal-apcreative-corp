@@ -70,6 +70,7 @@ import type {
   DailyProgressReportRecord,
   DailyProgressSummary,
 } from "@/lib/daily-progress-report/daily-progress-report";
+import { DAILY_PROGRESS_SCORING_START_DATE_KEY } from "@/lib/daily-progress-report/constants";
 import { cn } from "@/lib/utils";
 
 type AdminDailyProgressDashboardProps = {
@@ -174,7 +175,7 @@ function getRecentDateOptions(anchorDateKey: string, days = 14) {
     return new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Manila",
     }).format(date);
-  });
+  }).filter((dateKey) => dateKey >= DAILY_PROGRESS_SCORING_START_DATE_KEY);
 }
 
 function DailyProgressSummaryPreview({
@@ -547,7 +548,9 @@ export function AdminDailyProgressDashboard({
   const reportDateOptions = useMemo(() => {
     const dates = new Set([
       ...recentDateOptions,
-      ...reports.map((report) => report.reportDate),
+      ...reports
+        .map((report) => report.reportDate)
+        .filter((dateKey) => dateKey >= DAILY_PROGRESS_SCORING_START_DATE_KEY),
     ]);
 
     return [...dates].sort((left, right) => right.localeCompare(left));

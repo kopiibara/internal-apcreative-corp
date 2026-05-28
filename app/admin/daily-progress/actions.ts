@@ -14,6 +14,10 @@ import {
   getYesterdayDateKeyInPhilippines,
   upsertMissedDailyProgressForDate,
 } from "@/lib/daily-progress-report/daily-progress-report";
+import {
+  DAILY_PROGRESS_SCORING_START_DATE_KEY,
+  isBeforeDailyProgressScoringStart,
+} from "@/lib/daily-progress-report/constants";
 import { calculateDailyProgressPoints } from "@/lib/daily-progress-report/scoring";
 import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
 import {
@@ -192,6 +196,14 @@ export async function markMissedDailyProgressReports(
 
   const targetDateKey =
     parsed.data.targetDate ?? getYesterdayDateKeyInPhilippines();
+
+  if (isBeforeDailyProgressScoringStart(targetDateKey)) {
+    return {
+      success: true,
+      message: `Daily Progress scoring starts on ${DAILY_PROGRESS_SCORING_START_DATE_KEY}. No missed deductions were created for ${targetDateKey}.`,
+      data: { createdMissed: 0, createdExcused: 0, skipped: 0 },
+    };
+  }
 
   await query("SELECT 1");
   const result = await upsertMissedDailyProgressForDate({

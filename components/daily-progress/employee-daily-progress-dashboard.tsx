@@ -32,10 +32,11 @@ import type {
   DailyProgressBrandOption,
   DailyProgressReportRecord,
 } from "@/lib/daily-progress-report/daily-progress-report";
+import { DAILY_PROGRESS_SCORING_START_DATE_KEY } from "@/lib/daily-progress-report/constants";
 import { richTextExcerpt } from "@/lib/rich-text/rich-text";
 import { cn } from "@/lib/utils";
 
-type EmployeeDailyProgressDashboardProps = {
+export type EmployeeDailyProgressDashboardProps = {
   todayDateKey: string;
   yesterdayDateKey: string;
   historyStartDateKey: string;
@@ -111,7 +112,7 @@ function ReportStatusCard({
   );
 }
 
-function getRecentDateOptions(todayDateKey: string, days = 14) {
+function getRecentDateOptions(todayDateKey: string, startDateKey: string, days = 14) {
   const anchorDate = new Date(`${todayDateKey}T12:00:00+08:00`);
 
   return Array.from({ length: days }, (_, index) => {
@@ -121,7 +122,7 @@ function getRecentDateOptions(todayDateKey: string, days = 14) {
     return new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Manila",
     }).format(date);
-  });
+  }).filter((dateKey) => dateKey >= startDateKey);
 }
 
 function DailyProgressSummaryPreview({
@@ -287,6 +288,7 @@ function DailyProgressHistory({
 export function EmployeeDailyProgressDashboard({
   todayDateKey,
   yesterdayDateKey,
+  historyStartDateKey,
   brands,
   reports,
 }: EmployeeDailyProgressDashboardProps) {
@@ -306,8 +308,14 @@ export function EmployeeDailyProgressDashboard({
   const [isPending, startTransition] = useTransition();
 
   const reportDateOptions = useMemo(
-    () => getRecentDateOptions(todayDateKey),
-    [todayDateKey],
+    () =>
+      getRecentDateOptions(
+        todayDateKey,
+        historyStartDateKey > DAILY_PROGRESS_SCORING_START_DATE_KEY
+          ? historyStartDateKey
+          : DAILY_PROGRESS_SCORING_START_DATE_KEY,
+      ),
+    [historyStartDateKey, todayDateKey],
   );
 
   const todayReport = useMemo(
