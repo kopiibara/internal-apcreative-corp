@@ -4,10 +4,7 @@
 CREATE TABLE IF NOT EXISTS profile (
   id SERIAL PRIMARY KEY,
 
-  auth_user_id TEXT NOT NULL UNIQUE
-    REFERENCES "user"(id)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE,
+  auth_user_id TEXT NOT NULL UNIQUE,
 
   account_type TEXT NOT NULL CHECK (
     account_type IN (
