@@ -43,7 +43,7 @@ export const metaPostsSortOptions = [
 export const metaPostsPageSizes = [10, 25, 50] as const;
 
 export const metaPostsFiltersSchema = z.object({
-  pageKey: z.enum(["neon-nights", "pro-group", "al-qaysar"]).default("neon-nights"),
+  pageKey: z.string().trim().min(1).default("all"),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z
     .union([z.literal(10), z.literal(25), z.literal(50)])
@@ -55,22 +55,16 @@ export const metaPostsFiltersSchema = z.object({
 });
 
 export const metaPostCommentsSchema = z.object({
-  pageKey: z.enum(["neon-nights", "pro-group", "al-qaysar"]),
+  pageKey: z.string().trim().min(1),
   postId: z.string().trim().min(1),
 });
 
-export const metaPageKeys = [
-  "neon-nights",
-  "pro-group",
-  "al-qaysar",
-] as const;
-
 export const metaPageSyncSchema = z.object({
-  pageKey: z.enum(metaPageKeys),
+  pageKey: z.string().trim().min(1),
 });
 
 export const metaPageJobSyncSchema = z.object({
-  pageKey: z.enum(metaPageKeys),
+  pageKey: z.string().trim().min(1),
   syncType: z.enum([
     "hourly_posts",
     "daily_page",
