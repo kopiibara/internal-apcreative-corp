@@ -282,7 +282,7 @@ type ActivityLogJsonRow = {
 };
 
 const STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL =
-  "('CLIENT', 'EMPLOYEE', 'FULL_STACK_DEVELOPER')";
+  "('CLIENT', 'EMPLOYEE', 'SUPERVISOR', 'FULL_STACK_DEVELOPER')";
 
 const ASSIGNMENT_SELECT = `
   SELECT
@@ -885,7 +885,7 @@ export async function getStaffAccountabilityData({
       JOIN profile submitter ON submitter.id = cr.submitted_by_profile_id
       JOIN brand b ON b.id = cr.brand_id AND b.is_active = true
       WHERE submitter.status = 'ACTIVE'
-        AND submitter.account_type IN ('CLIENT', 'EMPLOYEE')
+        AND submitter.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
         AND (
           $1::timestamptz IS NULL
           OR (

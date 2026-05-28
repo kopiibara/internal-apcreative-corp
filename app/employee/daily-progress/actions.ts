@@ -52,10 +52,12 @@ export async function submitDailyProgressReport(
     return { success: false, message: "Your account is not active." };
   }
 
-  if (
-    !isEmployeeAccountType(context.profile.account_type) &&
-    context.profile.account_type !== "FULL_STACK_DEVELOPER"
-  ) {
+  const canSubmitOwnProgress =
+    isEmployeeAccountType(context.profile.account_type) ||
+    context.profile.account_type === "FULL_STACK_DEVELOPER" ||
+    context.profile.account_type === "SUPERVISOR";
+
+  if (!canSubmitOwnProgress) {
     return {
       success: false,
       message: "Use the admin Daily Progress page for management actions.",
