@@ -75,6 +75,12 @@ export async function resolveEffectivePageAccessToken(input: {
       tokenCache.set(key, resolved)
       return resolved
     }
+
+    throw new Error(
+      `Meta access token does not have access to Facebook Page ${input.facebookPageId}. ` +
+        `Double-check the Page ID and ensure the token was generated for this Page ` +
+        `or is a User token with pages_show_list that can resolve a Page token.`
+    )
   }
 
   const resolved: ResolvedPageToken = {
