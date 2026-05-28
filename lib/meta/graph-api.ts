@@ -135,10 +135,10 @@ function readPostReactionCount(post: GraphPost) {
 }
 
 const POST_FIELDS_ENGAGEMENT =
-  "id,message,created_time,permalink_url,full_picture,type,shares,reactions.summary(true),comments.summary(true)"
+  "id,message,created_time,permalink_url,full_picture,shares,reactions.summary(true),comments.summary(true)"
 
 const POST_FIELDS_BASIC =
-  "id,message,created_time,permalink_url,full_picture,type,shares"
+  "id,message,created_time,permalink_url,full_picture,shares"
 
 const POST_COMMENT_FIELDS =
   "id,message,created_time,like_count,comment_count,permalink_url,from{name}"
@@ -374,4 +374,4 @@ export async function fetchPostCommentsSafe(
 }
 
 export const POSTS_PERMISSION_MESSAGE =
-  "Posts unavailable from current permission/token. Use a Neon Nights Page access token (from /me/accounts) with pages_read_engagement and pages_read_user_content, or paste a User token that has pages_show_list so we can resolve the Page token automatically."
+  "Posts unavailable from current permission/token. Use a Page access token (from /me/accounts) with pages_read_engagement and pages_read_user_content for this Page ID."

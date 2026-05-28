@@ -43,15 +43,12 @@ export function getDefaultMetaPageAccessToken() {
   return process.env.META_PAGE_ACCESS_TOKEN ?? ""
 }
 
+/** Returns only the token from the given env var. Never falls back to legacy META_PAGE_ACCESS_TOKEN. */
 export function resolveMetaPageAccessToken(envKey?: string | null) {
-  if (envKey) {
-    const token = process.env[envKey]?.trim()
-    if (token) {
-      return token
-    }
+  if (!envKey) {
+    return ""
   }
-
-  return getDefaultMetaPageAccessToken()
+  return process.env[envKey]?.trim() ?? ""
 }
 
 export function isMetaWebhookConfigured() {
@@ -59,10 +56,5 @@ export function isMetaWebhookConfigured() {
 }
 
 export function isMetaGraphApiConfigured() {
-  const { valid } = validateEnabledMetaPages()
-  if (valid && getActiveMetaPages().length > 0) {
-    return true
-  }
-
-  return Boolean(getDefaultMetaPageAccessToken())
+  return getActiveMetaPages().length > 0
 }

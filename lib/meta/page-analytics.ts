@@ -5,7 +5,6 @@ import {
   getMetaIntegrationStatus,
   getMetaEnvChecklist,
 } from "@/lib/meta/connection-status"
-import { isMetaWebhookConfigured } from "@/lib/meta/config"
 import { resolveMetaAnalyticsWindow } from "@/lib/meta/date-range"
 import { classifyMetaGraphError } from "@/lib/meta/graph-errors"
 import { POSTS_PERMISSION_MESSAGE } from "@/lib/meta/graph-api"
@@ -18,7 +17,7 @@ import {
   type ResolvedPageTokenSource,
 } from "@/lib/meta/page-token"
 import type { MetaPageConfig, MetaPageConfigKey } from "@/lib/meta/pages-config"
-import { metaPages } from "@/lib/meta/pages-config"
+import { getConfiguredMetaPages } from "@/lib/meta/pages-config"
 import type { MetaSyncRunSummary } from "@/lib/meta/monitoring-data"
 import type {
   MetaPageDailySnapshotRow,
@@ -276,6 +275,13 @@ function runIndicatesTokenInvalid(run: MetaSyncRunSummary | undefined) {
     return false
   }
   return classifyMetaGraphError(new Error(run.error_log)).tokenInvalid
+}
+
+function runIndicatesApplicationDeleted(run: MetaSyncRunSummary | undefined) {
+  if (!run?.error_log) {
+    return false
+  }
+  return classifyMetaGraphError(new Error(run.error_log)).applicationDeleted
 }
 
 function resolveSourceSyncStatus(input: {
@@ -593,16 +599,12 @@ async function loadPageAnalytics(
     return Boolean(parsed && Object.keys(parsed).length > 0)
   })
 
-  const linkClicksMetric = snapshots.rows.find((row) => {
-    const metrics = row.metrics as Record<string, unknown> | undefined
-    return metrics?.link_clicks_available === true
-  })
-  const linkClicksFromSnapshot =
-    typeof (linkClicksMetric?.metrics as Record<string, unknown>)
-      ?.link_clicks_total === "number"
-      ? ((linkClicksMetric?.metrics as Record<string, unknown>)
-          .link_clicks_total as number)
-      : null
+  const linkClicksFromInsights = sumParsedMetricsInSnapshots(
+    snapshots.rows,
+    "page_total_actions",
+    window.since,
+    window.until
+  )
 
   const reactions = Number(postTotals.rows[0]?.reactions ?? 0)
   const comments = Number(postTotals.rows[0]?.comments ?? 0)
@@ -646,17 +648,20 @@ async function loadPageAnalytics(
 
   const pageSummaryTokenFailed =
     runIndicatesTokenExpired(dailyPageRun) ||
-    runIndicatesTokenInvalid(dailyPageRun)
+    runIndicatesTokenInvalid(dailyPageRun) ||
+    runIndicatesApplicationDeleted(dailyPageRun)
 
   const pageAccessTokenStatus = !pageChecklist.tokenConfigured
     ? "Missing"
     : pageSummarySyncStatus === "success" || pageSummarySyncStatus === "partial"
       ? "OK"
-      : pageSummaryTokenFailed && runIndicatesTokenExpired(dailyPageRun)
-        ? "Expired"
-        : pageSummaryTokenFailed && runIndicatesTokenInvalid(dailyPageRun)
-          ? "Invalid"
-          : "OK"
+      : runIndicatesApplicationDeleted(dailyPageRun)
+        ? "Invalid"
+        : pageSummaryTokenFailed && runIndicatesTokenExpired(dailyPageRun)
+          ? "Expired"
+          : pageSummaryTokenFailed && runIndicatesTokenInvalid(dailyPageRun)
+            ? "Invalid"
+            : "OK"
 
   const tokenReady = pageChecklist.ready
   const hasDbPage = dbPage.rows.length > 0
@@ -684,7 +689,7 @@ async function loadPageAnalytics(
           insightsSyncStatus === "success" || insightsSyncStatus === "partial",
           pageConnected
         ),
-    webhooks: isMetaWebhookConfigured() ? "Connected" : "Not connected",
+    webhooks: "Not connected",
     ads: "Not connected",
   }
 
@@ -753,7 +758,7 @@ async function loadPageAnalytics(
       reach,
       impressions,
       profileVisits,
-      linkClicks: linkClicksFromSnapshot,
+      linkClicks: linkClicksFromInsights,
       topPerformingPost: topPost?.message
         ? topPost.message.slice(0, 80)
         : null,
@@ -824,9 +829,11 @@ async function loadPageAnalytics(
           permissionDenied: insightsPermissionDenied,
           metricAttempted: insightsMetricAttempted,
         }),
-        linkClicks: metricState({
-          value: linkClicksFromSnapshot,
+        linkClicks: insightMetricState({
+          value: linkClicksFromInsights,
           sourceStatus: insightsSyncStatus,
+          permissionDenied: insightsPermissionDenied,
+          metricAttempted: insightsMetricAttempted,
         }),
         topPerformingPost: metricState({
           value: topPost ? 1 : null,
@@ -910,10 +917,10 @@ function buildUnconfiguredPageDashboard(
       pageSummary: "Not connected yet",
       posts: "Not connected yet",
       insights: "Not connected yet",
-      webhooks: isMetaWebhookConfigured() ? "Connected" : "Not connected",
-      ads: "Not connected",
-    },
-    metrics: {
+    webhooks: "Not connected",
+    ads: "Not connected",
+  },
+  metrics: {
       totalFollowers: null,
       pageLikes: null,
       newFollowers: null,
@@ -961,9 +968,9 @@ export async function getMetaBusinessPagesAnalytics(input?: {
   customDateFrom?: string | null
   customDateTo?: string | null
 }): Promise<MetaBusinessPageDashboard[]> {
-  const pagesToDisplay = metaPages
-    .filter((page) => page.key !== "pro-group")
-    .filter((page) => page.enabled || Boolean(page.pageId) || Boolean(page.accessToken))
+  const pagesToDisplay = getConfiguredMetaPages().filter(
+    (page) => page.key !== "pro-group"
+  )
 
   const dateRange = input?.dateRange ?? "28d"
   const window = resolveMetaAnalyticsWindow(dateRange, {

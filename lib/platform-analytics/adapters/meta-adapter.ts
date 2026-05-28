@@ -1,12 +1,13 @@
 import "server-only"
 
+import { query } from "@/lib/db"
 import { getMetaIntegrationStatus } from "@/lib/meta/connection-status"
-import { getMetaAppSecret, isMetaWebhookConfigured } from "@/lib/meta/config"
+import { getConfiguredMetaPages } from "@/lib/meta/pages-config"
 import {
   getMetaBusinessPagesAnalytics,
   type MetaBusinessPageDashboard,
 } from "@/lib/meta/page-analytics"
-import { getMetaMonitoringDashboardData } from "@/lib/meta/monitoring-data"
+import type { MetaSyncRunSummary } from "@/lib/meta/monitoring-data"
 import type {
   ActivityLogRow,
   AnalyticsDateRange,
@@ -40,18 +41,38 @@ export async function loadMetaPlatformSlice(
     customDateTo?: string | null
   }
 ): Promise<MetaPlatformSlice> {
-  const [metaBusinessPages, meta, integration] = await Promise.all([
+  const [metaBusinessPages, integration] = await Promise.all([
     getMetaBusinessPagesAnalytics({
       dateRange: options?.dateRange,
       customDateFrom: options?.customDateFrom,
       customDateTo: options?.customDateTo,
     }),
-    getMetaMonitoringDashboardData(null),
     getMetaIntegrationStatus(),
   ])
 
-  const webhookOk = isMetaWebhookConfigured()
-  const appSecretOk = Boolean(getMetaAppSecret())
+  const pageIds = getConfiguredMetaPages().map((page) => page.pageId)
+
+  const syncRunsResult =
+    pageIds.length > 0
+      ? await query<MetaSyncRunSummary>(
+          `
+    SELECT
+      id,
+      sync_type,
+      facebook_page_id,
+      status,
+      started_at,
+      finished_at,
+      records_affected,
+      error_log
+    FROM meta_sync_run
+    WHERE facebook_page_id = ANY($1::text[])
+    ORDER BY started_at DESC
+    LIMIT 100
+    `,
+          [pageIds]
+        )
+      : { rows: [] as MetaSyncRunSummary[] }
 
   const accounts: PlatformAccount[] = metaBusinessPages
     .filter((page) => page.facebookPageId)
@@ -69,8 +90,8 @@ export async function loadMetaPlatformSlice(
     platform: "META",
     isDemo: false,
     apiConnected: integration.graphTokenConfigured,
-    webhookSupported: true,
-    webhookConfigured: integration.webhookConfigured,
+    webhookSupported: false,
+    webhookConfigured: false,
     cronConfigured: integration.cronConfigured,
     connectedAccountsCount: metaBusinessPages.filter(
       (page) => page.connectionStatus === "Connected"
@@ -85,39 +106,25 @@ export async function loadMetaPlatformSlice(
         : "OK",
     statusRows: [
       {
-        label: "Enabled business pages",
+        label: "Configured Facebook pages",
         ok: metaBusinessPages.length > 0,
         detail: String(metaBusinessPages.length),
       },
       {
-        label: "Webhook status",
-        ok: webhookOk,
-        detail: webhookOk ? "Verified" : "Not connected",
+        label: "Pages with stored data",
+        ok:
+          integration.snapshotCount > 0 || integration.postMetricsCount > 0,
+        detail: `${integration.snapshotCount} snapshots · ${integration.postMetricsCount} posts`,
       },
       {
-        label: "App secret status",
-        ok: appSecretOk,
-        detail: appSecretOk ? "Configured" : "Missing",
-      },
-      {
-        label: "Cron status",
+        label: "Scheduled sync (cron)",
         ok: integration.cronConfigured,
-        detail: integration.cronConfigured ? "OK" : "Missing",
+        detail: integration.cronConfigured ? "OK" : "Not configured",
       },
     ],
   }
 
-  const activityLogs: ActivityLogRow[] = meta.recentEvents.map((event) => ({
-    id: event.id,
-    platform: "META",
-    eventType: event.event_type ?? event.field_name ?? "event",
-    status: event.processing_status,
-    receivedAt: new Date(event.received_at).toISOString(),
-    summary: `Account ${event.page_id ?? "—"} · Post ${event.post_id ?? "—"}`,
-    isDemo: false,
-  }))
-
-  const syncHistory: SyncLogRow[] = meta.recentSyncRuns.map((run) => ({
+  const syncHistory: SyncLogRow[] = syncRunsResult.rows.map((run) => ({
     id: run.id,
     platform: "META",
     syncType: run.sync_type,
@@ -139,7 +146,7 @@ export async function loadMetaPlatformSlice(
     growthSnapshots: [],
     contentPerformance: [],
     campaignPerformance: [],
-    activityLogs,
+    activityLogs: [],
     syncHistory,
     charts: [],
     metaNeedsBootstrap: integration.needsBootstrap,
