@@ -1,12 +1,10 @@
 import "server-only"
 
 import { resolveMetaPageAccessToken } from "@/lib/meta/config"
+import { classifyMetaGraphError } from "@/lib/meta/graph-errors"
 import { metaGraphFetchSafe } from "@/lib/meta/meta-http"
 
-export type ResolvedPageTokenSource =
-  | "env_page_token"
-  | "env_user_token_resolved"
-  | "env_fallback"
+export type ResolvedPageTokenSource = "env_page_token" | "env_user_token_resolved"
 
 export type ResolvedPageToken = {
   token: string
@@ -23,9 +21,29 @@ export function clearMetaPageTokenCache() {
   tokenCache.clear()
 }
 
+function throwTokenResolutionError(message: string): never {
+  const info = classifyMetaGraphError(new Error(message))
+  if (info.applicationDeleted) {
+    throw new Error(
+      "Meta application has been deleted. Update the Page Access Token in environment variables with a token from your current Meta app."
+    )
+  }
+  if (info.tokenExpired) {
+    throw new Error(
+      "Meta Page access token has expired. Generate a new Page access token and update the environment variable."
+    )
+  }
+  if (info.tokenInvalid) {
+    throw new Error(
+      "Meta Page access token is invalid. Use a Page access token from /me/accounts for this Page ID."
+    )
+  }
+  throw new Error(message)
+}
+
 /**
- * Returns a Page access token suitable for /{page-id}/posts and /insights.
- * If the env value is a User token, resolves the matching Page token via /me/accounts.
+ * Resolves a Page access token for Graph API calls.
+ * Prefers a direct Page token from env; otherwise resolves via /me/accounts (pages_show_list).
  */
 export async function resolveEffectivePageAccessToken(input: {
   facebookPageId: string
@@ -40,7 +58,7 @@ export async function resolveEffectivePageAccessToken(input: {
   const configured = resolveMetaPageAccessToken(input.accessTokenEnvKey)?.trim()
   if (!configured) {
     throw new Error(
-      `Meta Page access token is not configured. Set ${input.accessTokenEnvKey ?? "the page access token env var"} to a Page access token (or a User token with pages_show_list).`
+      `Meta Page access token is not configured. Set ${input.accessTokenEnvKey ?? "the page access token env var"} to a Page access token from /me/accounts.`
     )
   }
 
@@ -48,7 +66,11 @@ export async function resolveEffectivePageAccessToken(input: {
     fields: "id",
   })
 
-  if (me.ok && me.data.id === input.facebookPageId) {
+  if (!me.ok) {
+    throwTokenResolutionError(me.error)
+  }
+
+  if (me.data.id === input.facebookPageId) {
     const resolved: ResolvedPageToken = {
       token: configured,
       source: "env_page_token",
@@ -60,33 +82,28 @@ export async function resolveEffectivePageAccessToken(input: {
   const accounts = await metaGraphFetchSafe<{
     data: Array<{ id: string; name?: string; access_token?: string }>
   }>("/me/accounts", configured, {
-    fields: "id,name,access_token,tasks",
+    fields: "id,name,access_token",
   })
 
-  if (accounts.ok) {
-    const match = accounts.data.data?.find(
-      (account) => account.id === input.facebookPageId
-    )
-    if (match?.access_token) {
-      const resolved: ResolvedPageToken = {
-        token: match.access_token,
-        source: "env_user_token_resolved",
-      }
-      tokenCache.set(key, resolved)
-      return resolved
+  if (!accounts.ok) {
+    throwTokenResolutionError(accounts.error)
+  }
+
+  const match = accounts.data.data?.find(
+    (account) => account.id === input.facebookPageId
+  )
+
+  if (match?.access_token) {
+    const resolved: ResolvedPageToken = {
+      token: match.access_token,
+      source: "env_user_token_resolved",
     }
-
-    throw new Error(
-      `Meta access token does not have access to Facebook Page ${input.facebookPageId}. ` +
-        `Double-check the Page ID and ensure the token was generated for this Page ` +
-        `or is a User token with pages_show_list that can resolve a Page token.`
-    )
+    tokenCache.set(key, resolved)
+    return resolved
   }
 
-  const resolved: ResolvedPageToken = {
-    token: configured,
-    source: "env_fallback",
-  }
-  tokenCache.set(key, resolved)
-  return resolved
+  throw new Error(
+    `Meta access token does not have access to Facebook Page ${input.facebookPageId}. ` +
+      `Use a Page access token from /me/accounts for this Page, or verify AL_QAYSAR_META_PAGE_ID / NEON_NIGHTS_META_PAGE_ID.`
+  )
 }

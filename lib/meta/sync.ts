@@ -10,7 +10,6 @@ import {
   calculateEngagementRate,
   fetchPageInsightsRangeSafe,
   fetchPageSummarySafe,
-  fetchPostLinkClicksSafe,
   fetchRecentPagePostsSafe,
   readPostReactionCount,
 } from "@/lib/meta/graph-api"
@@ -75,6 +74,22 @@ async function finishSyncRun(
   )
 }
 
+async function deactivateStaleMetaPages(activePageIds: string[]) {
+  if (activePageIds.length === 0) {
+    return
+  }
+
+  await query(
+    `
+    UPDATE meta_facebook_page
+    SET is_active = false, updated_at = now()
+    WHERE is_active = true
+      AND NOT (facebook_page_id = ANY($1::text[]))
+    `,
+    [activePageIds]
+  )
+}
+
 async function ensureEnvMetaPagesRegistered(pages: MetaSyncPage[]) {
   for (const page of pages) {
     const brand = await query<{ id: number }>(
@@ -112,6 +127,7 @@ async function ensureEnvMetaPagesRegistered(pages: MetaSyncPage[]) {
 
 export async function listActiveMetaFacebookPages(facebookPageId?: string) {
   const envPages = getActiveMetaPagesForSync()
+  await deactivateStaleMetaPages(envPages.map((page) => page.facebook_page_id))
   await ensureEnvMetaPagesRegistered(envPages)
 
   const result = await query<MetaFacebookPageRow>(
@@ -206,6 +222,19 @@ export async function syncDailyPageSnapshots(facebookPageId?: string) {
     })
 
     try {
+      const validation = await validatePageConnection(page)
+      if (!validation.ok) {
+        logMetaSyncEvent({
+          ...logBase,
+          source: "page_summary",
+          status: "failed",
+          errorMessage: validation.error,
+          startedAt,
+          finishedAt: new Date().toISOString(),
+        })
+        throw new Error(validation.error)
+      }
+
       const summaryResult = await fetchPageSummarySafe(page)
 
       if (!summaryResult.ok) {
@@ -505,7 +534,7 @@ const INSIGHT_METRIC_GROUPS = [
   },
   {
     key: "impressions",
-    metrics: ["page_impressions"] as const,
+    metrics: ["page_impressions", "page_posts_impressions"] as const,
   },
   {
     key: "post_engagements",
@@ -523,7 +552,29 @@ const INSIGHT_METRIC_GROUPS = [
     key: "new_followers",
     metrics: ["page_daily_follows", "page_daily_follows_unique"] as const,
   },
+  {
+    key: "link_clicks",
+    metrics: ["page_total_actions"] as const,
+  },
 ] as const
+
+async function validatePageConnection(
+  page: MetaFacebookPageRow
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const summaryResult = await fetchPageSummarySafe(page)
+  if (!summaryResult.ok) {
+    return { ok: false, error: summaryResult.error }
+  }
+
+  if (summaryResult.data.id !== page.facebook_page_id) {
+    return {
+      ok: false,
+      error: `Page ID mismatch: API returned ${summaryResult.data.id}, expected ${page.facebook_page_id}.`,
+    }
+  }
+
+  return { ok: true }
+}
 
 /** Page insights: reach, impressions, engagements — requires read_insights. */
 export async function syncDailyInsights(facebookPageId?: string) {
@@ -533,7 +584,7 @@ export async function syncDailyInsights(facebookPageId?: string) {
   const window = resolveMetaAnalyticsWindow("90d")
 
   for (const page of pages) {
-    const runId = await startSyncRun("daily_insights", page.facebook_page_id)
+    const runId = await startSyncRunForPage("daily_insights", page)
     const logBase = resolveMetaSyncLogContext(page, "daily_insights")
     const startedAt = new Date().toISOString()
 
@@ -713,65 +764,6 @@ export async function syncDailyInsights(facebookPageId?: string) {
         }
       }
 
-      const topPosts = await query<{ post_id: string }>(
-        `
-        SELECT post_id
-        FROM meta_post_metrics
-        WHERE facebook_page_id = $1
-        ORDER BY reactions_count + comments_count + shares_count DESC
-        LIMIT 5
-        `,
-        [page.facebook_page_id]
-      )
-
-      let linkClicksTotal = 0
-      let linkClicksFound = false
-
-      for (const row of topPosts.rows) {
-        const clicks = await fetchPostLinkClicksSafe(row.post_id, page)
-        if (!clicks.ok) {
-          continue
-        }
-
-        for (const metric of clicks.data.data ?? []) {
-          if (metric.name !== "post_clicks") {
-            continue
-          }
-          const latest = metric.values[metric.values.length - 1]
-          if (typeof latest?.value === "number") {
-            linkClicksTotal += latest.value
-            linkClicksFound = true
-          }
-        }
-      }
-
-      if (linkClicksFound) {
-        const linkMetrics = await mergeSnapshotMetrics(
-          page.facebook_page_id,
-          snapshotDate,
-          {
-            link_clicks_total: linkClicksTotal,
-            link_clicks_available: true,
-          }
-        )
-
-        await query(
-          `
-          INSERT INTO meta_page_daily_snapshot (
-            facebook_page_id,
-            brand_id,
-            snapshot_date,
-            metrics
-          )
-          VALUES ($1, $2, $3::date, $4::jsonb)
-          ON CONFLICT (facebook_page_id, snapshot_date)
-          DO UPDATE SET
-            brand_id = COALESCE(EXCLUDED.brand_id, meta_page_daily_snapshot.brand_id),
-            metrics = meta_page_daily_snapshot.metrics || EXCLUDED.metrics
-          `,
-          [page.facebook_page_id, page.brand_id ?? null, snapshotDate, JSON.stringify(linkMetrics)]
-        )
-      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Daily insights sync failed"

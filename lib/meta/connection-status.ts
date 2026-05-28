@@ -1,22 +1,14 @@
 import "server-only"
 
 import { query } from "@/lib/db"
-import {
-  getMetaAppSecret,
-  getMetaCronSecret,
-  getMetaWebhookVerifyToken,
-  isMetaGraphApiConfigured,
-  isMetaWebhookConfigured,
-} from "@/lib/meta/config"
-import { getActiveMetaPages, metaPages } from "@/lib/meta/pages-config"
+import { getMetaCronSecret } from "@/lib/meta/config"
+import { getConfiguredMetaPages } from "@/lib/meta/pages-config"
 
 export type MetaIntegrationStatus = {
-  webhookConfigured: boolean
   graphTokenConfigured: boolean
   cronConfigured: boolean
   enabledPageCount: number
   connectedPageCount: number
-  webhookEventCount: number
   snapshotCount: number
   postMetricsCount: number
   lastSyncAt: string | null
@@ -25,22 +17,45 @@ export type MetaIntegrationStatus = {
 }
 
 export async function getMetaIntegrationStatus(): Promise<MetaIntegrationStatus> {
-  const webhookConfigured = isMetaWebhookConfigured()
-  const graphTokenConfigured = isMetaGraphApiConfigured()
   const cronConfigured = Boolean(getMetaCronSecret())
-  const enabledPageCount = getActiveMetaPages().length
+  const configuredPages = getConfiguredMetaPages()
+  const enabledPageCount = configuredPages.length
+  const pageIds = configuredPages.map((page) => page.pageId)
 
-  const [pages, events, snapshots, posts, lastSync] = await Promise.all([
+  const [pages, snapshots, posts, lastSync] = await Promise.all([
     query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM meta_facebook_page WHERE is_active = true`
+      pageIds.length > 0
+        ? `
+    SELECT COUNT(*)::text AS count
+    FROM meta_facebook_page
+    WHERE is_active = true AND facebook_page_id = ANY($1::text[])
+    `
+        : `SELECT '0'::text AS count`,
+      pageIds.length > 0 ? [pageIds] : []
     ),
-    query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM meta_webhook_event`),
     query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM meta_page_daily_snapshot`
+      pageIds.length > 0
+        ? `
+    SELECT COUNT(*)::text AS count
+    FROM meta_page_daily_snapshot
+    WHERE facebook_page_id = ANY($1::text[])
+    `
+        : `SELECT '0'::text AS count`,
+      pageIds.length > 0 ? [pageIds] : []
     ),
-    query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM meta_post_metrics`),
+    query<{ count: string }>(
+      pageIds.length > 0
+        ? `
+    SELECT COUNT(*)::text AS count
+    FROM meta_post_metrics
+    WHERE facebook_page_id = ANY($1::text[])
+    `
+        : `SELECT '0'::text AS count`,
+      pageIds.length > 0 ? [pageIds] : []
+    ),
     query<{ last_synced_at: Date | null; error_log: string | null }>(
-      `
+      pageIds.length > 0
+        ? `
       SELECT p.last_synced_at, r.error_log
       FROM meta_facebook_page p
       LEFT JOIN LATERAL (
@@ -52,9 +67,12 @@ export async function getMetaIntegrationStatus(): Promise<MetaIntegrationStatus>
         LIMIT 1
       ) r ON true
       WHERE p.is_active = true
+        AND p.facebook_page_id = ANY($1::text[])
       ORDER BY p.last_synced_at DESC NULLS LAST
       LIMIT 1
       `
+        : `SELECT NULL::timestamptz AS last_synced_at, NULL::text AS error_log`,
+      pageIds.length > 0 ? [pageIds] : []
     ),
   ])
 
@@ -63,18 +81,14 @@ export async function getMetaIntegrationStatus(): Promise<MetaIntegrationStatus>
   const postMetricsCount = Number(posts.rows[0]?.count ?? 0)
 
   const needsBootstrap =
-    graphTokenConfigured &&
     enabledPageCount > 0 &&
     (connectedPageCount === 0 || (snapshotCount === 0 && postMetricsCount === 0))
 
   return {
-    webhookConfigured:
-      webhookConfigured && Boolean(getMetaWebhookVerifyToken()),
-    graphTokenConfigured,
+    graphTokenConfigured: enabledPageCount > 0,
     cronConfigured,
     enabledPageCount,
     connectedPageCount,
-    webhookEventCount: Number(events.rows[0]?.count ?? 0),
     snapshotCount,
     postMetricsCount,
     lastSyncAt: lastSync.rows[0]?.last_synced_at
@@ -86,17 +100,16 @@ export async function getMetaIntegrationStatus(): Promise<MetaIntegrationStatus>
 }
 
 export function getMetaEnvChecklist() {
+  const pages = getConfiguredMetaPages()
+
   return {
-    verifyToken: Boolean(getMetaWebhookVerifyToken()),
-    appSecret: Boolean(getMetaAppSecret()),
-    cronSecret: Boolean(getMetaCronSecret()),
-    pages: metaPages.map((page) => ({
+    pages: pages.map((page) => ({
       key: page.key,
       name: page.name,
       enabled: page.enabled,
       pageIdConfigured: Boolean(page.pageId),
       tokenConfigured: Boolean(page.accessToken),
-      ready: page.enabled && Boolean(page.pageId) && Boolean(page.accessToken),
+      ready: Boolean(page.pageId && page.accessToken),
     })),
   }
 }
