@@ -2,9 +2,11 @@ import type {
   DailyBrandSummary,
   DailyEmployeeSummary,
 } from "@/lib/daily-reports/daily-report-types";
+import { truncateChartLabel } from "@/lib/chart-layout";
 
 export type BrandChartItem = {
   brandName: string;
+  chartLabel: string;
   graded: number;
   done: number;
   pending: number;
@@ -32,19 +34,12 @@ export type EmployeeChartItem = {
   chartLabel: string;
 };
 
-function truncateLabel(value: string, maxLength = 14) {
-  if (value.length <= maxLength) {
-    return value;
-  }
-
-  return `${value.slice(0, maxLength - 1)}…`;
-}
-
 export function toBrandChartItems(
   summaries: DailyBrandSummary[],
 ): BrandChartItem[] {
   return summaries.map((summary) => ({
     brandName: summary.brandName,
+    chartLabel: truncateChartLabel(summary.brandName),
     graded: summary.gradedTotal,
     done: summary.gradedDone,
     pending: summary.pendingTasks,
@@ -73,6 +68,6 @@ export function toEmployeeChartItems(
     approved: summary.approvalsApproved,
     completionRate: summary.gradedCompletionRate,
     taskPoints: summary.taskPoints,
-    chartLabel: truncateLabel(summary.fullName),
+    chartLabel: truncateChartLabel(summary.fullName),
   }));
 }

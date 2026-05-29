@@ -97,6 +97,7 @@ export default async function AdminDailyProgressPage({
     <AdminDailyProgressDashboard
       reports={data.reports}
       summary={data.summary}
+      boardDate={endDate}
       targetDate={missedCheckerTargetDate}
       ownDailyProgressData={ownDailyProgressData}
     />
