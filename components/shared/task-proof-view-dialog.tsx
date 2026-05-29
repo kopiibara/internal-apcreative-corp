@@ -3,11 +3,13 @@
 import { TaskProofDisplay } from "@/components/shared/task-proof-display"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import type { ProofSubmitType } from "@/lib/proof/proof-types"
 import type { TaskProofType } from "@/lib/tasks/task-type"
 type TaskProofViewDialogProps = {
   open: boolean
@@ -18,7 +20,7 @@ type TaskProofViewDialogProps = {
   taskTitle?: string | null
 }
 
-function proofDialogTitle(proofType: TaskProofType | null) {
+function proofDialogTitle(proofType: TaskProofType | ProofSubmitType | null) {
   if (proofType === "IMAGE") return "Image proof"
   return "Task proof"
 }
@@ -33,19 +35,21 @@ export function TaskProofViewDialog({
 }: TaskProofViewDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>{proofDialogTitle(proofType)}</DialogTitle>
           {taskTitle ? (
             <DialogDescription>{taskTitle}</DialogDescription>
           ) : null}
         </DialogHeader>
-        <TaskProofDisplay
-          proofType={proofType}
-          proofUrl={proofUrl}
-          proofNote={proofNote}
-          mediaClassName="max-h-[min(70vh,640px)]"
-        />
+        <DialogBody>
+          <TaskProofDisplay
+            proofType={proofType}
+            proofUrl={proofUrl}
+            proofNote={proofNote}
+            mediaClassName="max-h-[min(60dvh,640px)]"
+          />
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

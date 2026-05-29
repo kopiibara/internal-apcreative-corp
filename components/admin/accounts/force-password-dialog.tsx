@@ -8,6 +8,7 @@ import { forceChangeAccountPassword } from "@/app/admin/account-control/actions"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -90,7 +91,11 @@ export function ForcePasswordDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <DialogBody className="space-y-4">
           <label className="flex items-center gap-2 rounded-lg border-2 border-black p-3 text-sm font-medium">
             <Checkbox
               checked={requirePasswordChange}
@@ -112,6 +117,7 @@ export function ForcePasswordDialog({
               disabled={isPending}
             />
           </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button

@@ -3,22 +3,23 @@
 import { ExternalLink } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  isHttpProofUrl,
-  isTaskProofDataUrl,
-} from "@/lib/tasks/task-proof-media"
+import { isHttpProofUrl, isProofDataUrl } from "@/lib/proof/proof-media"
+import type { ProofSubmitType } from "@/lib/proof/proof-types"
 import type { TaskProofType } from "@/lib/tasks/task-type"
 import { cn } from "@/lib/utils"
 
 type TaskProofDisplayProps = {
-  proofType: TaskProofType | null
+  proofType: TaskProofType | ProofSubmitType | null
   proofUrl: string | null
   proofNote?: string | null
   className?: string
   mediaClassName?: string
 }
 
-function isImageProof(proofType: TaskProofType | null, proofUrl: string) {
+function isImageProof(
+  proofType: TaskProofType | ProofSubmitType | null,
+  proofUrl: string,
+) {
   return (
     proofType === "IMAGE" ||
     proofUrl.startsWith("data:image/") ||
@@ -53,7 +54,7 @@ export function TaskProofDisplay({
                 mediaClassName,
               )}
             />
-          ) : isHttpProofUrl(proofUrl) || !isTaskProofDataUrl(proofUrl) ? (
+          ) : isHttpProofUrl(proofUrl) || !isProofDataUrl(proofUrl) ? (
             <Button type="button" size="sm" variant="neutral" asChild>
               <a href={proofUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="size-3" />

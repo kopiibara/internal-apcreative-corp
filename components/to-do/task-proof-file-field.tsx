@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { readFileAsDataUrl } from "@/lib/files/read-as-data-url"
 import {
-  TASK_PROOF_IMAGE_ACCEPT,
-  validateTaskProofFile,
-} from "@/lib/tasks/task-proof-media"
+  PROOF_IMAGE_ACCEPT,
+  validateProofFile,
+} from "@/lib/proof/proof-media"
 
 type TaskProofFileFieldProps = {
   value: string
@@ -33,7 +33,7 @@ export function TaskProofFileField({
       return
     }
 
-    const validationError = validateTaskProofFile(file)
+    const validationError = validateProofFile(file)
 
     if (validationError) {
       toast.error(validationError)
@@ -71,7 +71,7 @@ export function TaskProofFileField({
         id="task-proof-image-file"
         ref={inputRef}
         type="file"
-        accept={TASK_PROOF_IMAGE_ACCEPT}
+        accept={PROOF_IMAGE_ACCEPT}
         disabled={disabled}
         onChange={(event) => {
           void handleFileChange(event.target.files?.[0])

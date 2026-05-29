@@ -9,6 +9,7 @@ import type { BrandFormInput } from "@/app/admin/brands/schema"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -144,7 +145,11 @@ export function BrandFormDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          onSubmit={handleSubmit}
+        >
+          <DialogBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor={`${mode}-brand-name`}>Brand Name</Label>
             <Input
@@ -215,6 +220,7 @@ export function BrandFormDialog({
               </SelectContent>
             </Select>
           </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button

@@ -34,8 +34,12 @@ type ApprovalAccessReport = {
 export function requirePublishingProofBeforePublished(report: {
   publishStatus?: string;
   publishingProofUrl?: string | null;
+  publishingProofNote?: string | null;
 }) {
-  return report.publishStatus !== "Published" || Boolean(report.publishingProofUrl);
+  return (
+    report.publishStatus !== "Published" ||
+    Boolean(report.publishingProofUrl?.trim() || report.publishingProofNote?.trim())
+  );
 }
 
 export function isApprovalReadyForPublishing(report: {

@@ -25,6 +25,7 @@ import {
 } from "@/lib/approvals/approval-permissions";
 import { isEmployeeAccountType } from "@/lib/auth/account-type";
 import { insertApprovalActivityLog } from "@/lib/approvals/approval-activity-log";
+import { normalizeProofSubmission } from "@/lib/proof/normalize-proof-submission";
 import {
   buildRevisionAddressedMetadata,
   getOpenRevisionRequestsFromLogs,
@@ -775,6 +776,12 @@ export async function publishContentReportNow(
     return { success: false, message: rateLimit.message };
   }
 
+  const { proofUrl, proofNote } = normalizeProofSubmission(
+    parsed.data.proofType,
+    parsed.data.proofUrl,
+    parsed.data.proofNote,
+  );
+
   try {
     await transaction(async (client) => {
       const currentResult = await client.query<ReportOwnershipRow>(
@@ -828,12 +835,7 @@ export async function publishContentReportNow(
           updated_at = now()
         WHERE id = $1
         `,
-        [
-          parsed.data.reportId,
-          parsed.data.proofUrl,
-          parsed.data.proofNote,
-          context.profile.id,
-        ],
+        [parsed.data.reportId, proofUrl, proofNote, context.profile.id],
       );
 
       await insertApprovalActivityLog({
@@ -843,9 +845,9 @@ export async function publishContentReportNow(
         action: "publishing_proof_submitted",
         fromStatus: current.publish_status,
         toStatus: "Published",
-        notes: parsed.data.proofNote ?? parsed.data.proofUrl,
+        notes: proofNote ?? proofUrl ?? "Publishing proof submitted.",
         metadata: {
-          proofUrl: parsed.data.proofUrl,
+          proofUrl,
           source: "brand_officer_publish_now",
         },
       });
@@ -859,7 +861,7 @@ export async function publishContentReportNow(
         toStatus: "Published",
         notes: "Brand Officer published the request. Proof submitted.",
         metadata: {
-          proofUrl: parsed.data.proofUrl,
+          proofUrl,
           source: "brand_officer_publish_now",
         },
       });
@@ -913,6 +915,21 @@ export async function scheduleContentReportPublishing(
     return { success: false, message: rateLimit.message };
   }
 
+  const hasScheduleProofInput =
+    parsed.data.proofType === "NOTE"
+      ? Boolean(parsed.data.proofNote?.trim())
+      : Boolean(parsed.data.proofUrl?.trim() || parsed.data.proofNote?.trim());
+  const scheduleProof = hasScheduleProofInput
+    ? normalizeProofSubmission(
+        parsed.data.proofType,
+        parsed.data.proofUrl ?? "",
+        parsed.data.proofNote,
+      )
+    : { proofUrl: null, proofNote: null };
+  const hasScheduleProof = Boolean(
+    scheduleProof.proofUrl || scheduleProof.proofNote,
+  );
+
   try {
     await transaction(async (client) => {
       const currentResult = await client.query<ReportOwnershipRow>(
@@ -962,14 +979,16 @@ export async function scheduleContentReportPublishing(
           publishing_proof_url = COALESCE($4, publishing_proof_url),
           publishing_proof_note = COALESCE($5, publishing_proof_note),
           publishing_proof_submitted_by_profile_id = CASE
-            WHEN $4::text IS NULL THEN publishing_proof_submitted_by_profile_id
+            WHEN $4::text IS NULL AND $5::text IS NULL
+              THEN publishing_proof_submitted_by_profile_id
             ELSE $3
           END,
           publishing_proof_submitted_at = CASE
-            WHEN $4::text IS NULL THEN publishing_proof_submitted_at
+            WHEN $4::text IS NULL AND $5::text IS NULL
+              THEN publishing_proof_submitted_at
             ELSE now()
           END,
-          remarks_revision_summary = COALESCE($5, remarks_revision_summary),
+          remarks_revision_summary = COALESCE($6, remarks_revision_summary),
           updated_at = now()
         WHERE id = $1
         `,
@@ -977,7 +996,8 @@ export async function scheduleContentReportPublishing(
           parsed.data.reportId,
           parsed.data.scheduledPublishedDate,
           context.profile.id,
-          parsed.data.proofUrl,
+          scheduleProof.proofUrl,
+          scheduleProof.proofNote,
           parsed.data.notes,
         ],
       );
@@ -993,12 +1013,12 @@ export async function scheduleContentReportPublishing(
         metadata: {
           scheduledPublishedDate:
             parsed.data.scheduledPublishedDate.toISOString(),
-          proofUrl: parsed.data.proofUrl,
+          proofUrl: scheduleProof.proofUrl,
           source: "brand_officer_schedule_publish",
         },
       });
 
-      if (parsed.data.proofUrl) {
+      if (hasScheduleProof) {
         await insertApprovalActivityLog({
           client,
           reportId: parsed.data.reportId,
@@ -1006,9 +1026,12 @@ export async function scheduleContentReportPublishing(
           action: "publishing_proof_submitted",
           fromStatus: current.publish_status,
           toStatus: "Scheduled",
-          notes: parsed.data.notes ?? parsed.data.proofUrl,
+          notes:
+            scheduleProof.proofNote ??
+            scheduleProof.proofUrl ??
+            "Publishing proof submitted.",
           metadata: {
-            proofUrl: parsed.data.proofUrl,
+            proofUrl: scheduleProof.proofUrl,
             source: "brand_officer_schedule_publish",
           },
         });

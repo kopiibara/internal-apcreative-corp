@@ -8,6 +8,7 @@ import { reportTaskBlocker } from "@/app/admin/to-do/actions"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -80,7 +81,11 @@ export function ReportBlockerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <DialogBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="blocker-note">Blocker notes</Label>
             <Textarea
@@ -92,6 +97,7 @@ export function ReportBlockerDialog({
               required
             />
           </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button

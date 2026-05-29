@@ -57,7 +57,7 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-[130] grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border-2 border-border p-6 shadow-[var(--shadow-hard-sm)] duration-200 sm:max-w-lg",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-[130] flex max-h-[90dvh] min-h-0 w-full max-w-[calc(100%-2rem)] min-w-0 translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden rounded-lg border-2 border-border p-0 shadow-[var(--shadow-hard-sm)] duration-200 sm:max-w-lg",
           className,
         )}
         {...props}
@@ -73,7 +73,10 @@ function AlertDialogHeader({
   return (
     <div
       data-slot="alert-dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+      className={cn(
+        "flex shrink-0 flex-col gap-2 border-b-2 border-border px-6 py-4 text-center sm:text-left",
+        className,
+      )}
       {...props}
     />
   )
@@ -87,7 +90,7 @@ function AlertDialogFooter({
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-3 sm:flex-row sm:justify-end",
+        "flex shrink-0 flex-col-reverse gap-3 border-t-2 border-border px-6 py-4 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}
