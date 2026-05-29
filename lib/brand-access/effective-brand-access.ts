@@ -147,6 +147,12 @@ export async function getEffectiveBrandAccessForProfile(
     }));
 }
 
+/** True when the profile has at least one effective real-brand assignment. */
+export async function profileHasAssignedBrandAccess(profileId: number) {
+  const brands = await getEffectiveBrandAccessForProfile(profileId);
+  return brands.length > 0;
+}
+
 export async function profileHasAccessToBrand(
   profileId: number,
   brandId: number,
