@@ -13,6 +13,7 @@ import {
   requireAuth,
   type AccountType,
 } from "@/lib/auth/auth-session"
+import { canViewPlatformAnalytics } from "@/lib/platform-analytics/access"
 import { query } from "@/lib/db"
 import {
   canAccessEmployeeTaskPage,
@@ -129,18 +130,43 @@ export default async function AccountPage() {
   const brandAccess = await getBrandAccess(profile.id)
   const dashboardHref = isAdmin ? "/admin/dashboard" : "/employee/dashboard"
 
-  const [canAccessTaskBoard, canAccessReminders, canAccessAdsCampaigns] =
-    isAdmin
-      ? [false, false, false]
-      : await Promise.all([
-        canAccessEmployeeToDoTaskBoard(profile.auth_user_id, profile.id),
-        canAccessEmployeeTaskPage(
-          profile.auth_user_id,
-          profile.account_type,
-          profile.id,
-        ),
-        can(profile.auth_user_id, "ads_campaigns.view"),
-      ])
+  let canAccessTaskBoard = false
+  let canAccessReminders = false
+  let canAccessAdsCampaigns = false
+  let canAccessDailyProgress = false
+  let canAccessPlatformAnalytics = false
+
+  if (isAdmin) {
+    canAccessDailyProgress = await Promise.all([
+      can(profile.auth_user_id, "daily_progress.view_all"),
+      can(profile.auth_user_id, "daily_progress.manage"),
+    ]).then((checks) => checks.some(Boolean))
+  } else {
+    ;[
+      canAccessTaskBoard,
+      canAccessReminders,
+      canAccessAdsCampaigns,
+      canAccessDailyProgress,
+      canAccessPlatformAnalytics,
+    ] = await Promise.all([
+      canAccessEmployeeToDoTaskBoard(profile.auth_user_id, profile.id),
+      canAccessEmployeeTaskPage(
+        profile.auth_user_id,
+        profile.account_type,
+        profile.id,
+      ),
+      can(profile.auth_user_id, "ads_campaigns.view"),
+      Promise.all([
+        can(profile.auth_user_id, "daily_progress.submit"),
+        can(profile.auth_user_id, "daily_progress.view_own"),
+      ]).then((checks) => checks.some(Boolean)),
+      canViewPlatformAnalytics(
+        profile.auth_user_id,
+        profile.id,
+        profile.account_type,
+      ),
+    ])
+  }
   const actionableTaskCount =
     profile.account_type === "FULL_STACK_DEVELOPER"
       ? await getEmployeeActionableTaskCount(profile.id)
@@ -162,6 +188,8 @@ export default async function AccountPage() {
         canAccessAdsCampaigns,
         canAccessTaskBoard,
         canAccessReminders,
+        canAccessDailyProgress,
+        canAccessPlatformAnalytics,
         imageUrl: user.image ?? null,
         mustChangePassword: profile.must_change_password,
       }}
