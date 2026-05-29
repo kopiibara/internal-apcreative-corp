@@ -10,6 +10,10 @@ import {
   metaAccountIdFromFilter,
 } from "@/lib/platform-analytics/adapters/meta-adapter";
 import {
+  loadTikTokPlatformSlice,
+  tiktokBrandIdFromFilter,
+} from "@/lib/platform-analytics/adapters/tiktok-adapter";
+import {
   loadYouTubePlatformSlice,
   youtubeAccountIdFromFilter,
 } from "@/lib/platform-analytics/adapters/youtube-adapter";
@@ -56,6 +60,23 @@ export async function getPlatformAnalyticsDashboardData(input?: {
         accountId,
         ...youtube,
         metaBusinessPages: [],
+        tiktokBrandAnalytics: [],
+      };
+
+      return brandScope
+        ? applyBrandScopeToDashboardData(data, brandScope)
+        : data;
+    }
+
+    if (platform === "TIKTOK") {
+      const tiktok = await loadTikTokPlatformSlice({
+        profileId: input?.profileId ?? null,
+        brandId: tiktokBrandIdFromFilter(accountId),
+      });
+      const data = {
+        platform,
+        accountId,
+        ...tiktok,
       };
 
       return brandScope
@@ -81,6 +102,7 @@ export async function getPlatformAnalyticsDashboardData(input?: {
       charts: getDemoCharts(platform),
       metaNeedsBootstrap: false,
       metaBusinessPages: [],
+      tiktokBrandAnalytics: [],
     };
 
     return brandScope ? applyBrandScopeToDashboardData(data, brandScope) : data;
@@ -109,11 +131,12 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     charts: meta.charts,
     metaNeedsBootstrap: meta.metaNeedsBootstrap,
     metaBusinessPages: meta.metaBusinessPages,
+    tiktokBrandAnalytics: [],
   };
 
   return brandScope ? applyBrandScopeToDashboardData(data, brandScope) : data;
 }
 
 export function isDemoPlatform(platform: PlatformCode) {
-  return platform !== "META";
+  return platform === "GOOGLE";
 }

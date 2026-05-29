@@ -67,9 +67,9 @@ export type ContentPerformanceRow = {
   title: string;
   publishedAt: string | null;
   views: number | null;
-  likes: number;
-  comments: number;
-  shares: number;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
   engagementRate: string | null;
   impressions: number | null;
   engaged: number | null;
@@ -140,6 +140,9 @@ export type MetaSourceSyncStatus =
 export type MetaBusinessPageDashboard =
   import("@/lib/meta/page-analytics").MetaBusinessPageDashboard;
 
+export type TikTokBrandDashboard =
+  import("@/lib/tiktok/dashboard-types").TikTokBrandDashboard;
+
 export type PlatformAnalyticsDashboardData = {
   platform: AnalyticsPlatform;
   accountId: string | null;
@@ -157,4 +160,5 @@ export type PlatformAnalyticsDashboardData = {
   charts: PlatformChartConfig[];
   metaNeedsBootstrap: boolean;
   metaBusinessPages: MetaBusinessPageDashboard[];
+  tiktokBrandAnalytics: TikTokBrandDashboard[];
 };
