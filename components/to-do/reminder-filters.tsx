@@ -34,7 +34,7 @@ export function ReminderFilters() {
 
   return (
     <ScrollArea className="w-full pb-2" scrollbars="horizontal">
-      <div className="flex w-max min-w-full items-center gap-2 pr-3">
+      <div className="flex w-max min-w-full items-center gap-2 p-1">
         <div className="relative min-w-[260px] md:min-w-[320px]">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input

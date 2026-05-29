@@ -5,17 +5,11 @@ import type {
   ReviewStatus,
 } from "@/app/employee/approvals/schema";
 
-export type ApprovalPublishingPermissions = {
-  canPublishNow: boolean;
-  canSchedulePublish: boolean;
-};
-
 export type ApprovalActivityLog = {
   id: number;
   contentReportId: number;
   actorProfileId: number;
   actorName: string;
-  actorImageUrl?: string | null;
   actorAccountType: string;
   actorPosition: string | null;
   action: string;
@@ -24,6 +18,11 @@ export type ApprovalActivityLog = {
   notes: string;
   metadata: Record<string, unknown> | null;
   createdAt: string;
+};
+
+export type ApprovalPublishingPermissions = {
+  canPublishNow: boolean;
+  canSchedulePublish: boolean;
 };
 
 export type ContentReport = {
@@ -66,7 +65,6 @@ export type ContentReport = {
   scheduledAt: string | null;
 
   remarksRevisionSummary: string | null;
-  approvalPublishingPermissions?: ApprovalPublishingPermissions;
   activityLogs: ApprovalActivityLog[];
 
   createdAt: string;
@@ -84,21 +82,6 @@ export function canEmployeeEditReport(report: {
       report.supervisorStatus === "Approved" &&
       report.directorStatus === "Approved"
     )
-  );
-}
-
-export function canEmployeeEditOwnReport(
-  report: {
-    submittedByProfileId: number;
-    supervisorStatus: ReviewStatus;
-    directorStatus: ReviewStatus;
-    publishStatus: PublishStatus;
-  },
-  currentProfileId: number,
-) {
-  return (
-    report.submittedByProfileId === currentProfileId &&
-    canEmployeeEditReport(report)
   );
 }
 

@@ -35,6 +35,11 @@ import {
 import { KanbanColumnHeader } from "@/components/shared/kanban-column-header";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import {
+  DATA_TABLE_BODY_CLASS,
+  DATA_TABLE_HEADER_CLASS,
+  DataTableScrollArea,
+} from "@/components/shared/data-table-scroll-area";
+import {
   Kanban,
   KanbanBoard,
   KanbanColumn,
@@ -1023,10 +1028,9 @@ export function AdminDailyProgressDashboard({
             </CardHeader>
 
             <CardContent>
-              <div className="overflow-hidden rounded-lg border-2 border-border">
-                <ScrollArea className="w-full" scrollbars="horizontal">
-                  <Table className="min-w-[1180px]">
-                    <TableHeader>
+              <DataTableScrollArea>
+                <Table className="min-w-[1180px] border-0">
+                  <TableHeader className={DATA_TABLE_HEADER_CLASS}>
                       <TableRow>
                         <TableHead>Employee</TableHead>
                         <TableHead>Brand</TableHead>
@@ -1041,7 +1045,7 @@ export function AdminDailyProgressDashboard({
                       </TableRow>
                     </TableHeader>
 
-                    <TableBody>
+                    <TableBody className={DATA_TABLE_BODY_CLASS}>
                       {filteredReports.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={10} className="h-24 text-center">
@@ -1191,8 +1195,7 @@ export function AdminDailyProgressDashboard({
                       )}
                     </TableBody>
                   </Table>
-                </ScrollArea>
-              </div>
+              </DataTableScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
