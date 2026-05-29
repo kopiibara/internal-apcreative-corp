@@ -17,6 +17,7 @@ import {
 import { isMetaPermissionError } from "@/lib/meta/graph-errors"
 import {
   getActiveMetaPagesForSync,
+  normalizeFacebookPageId,
   type MetaSyncPage,
 } from "@/lib/meta/pages-config"
 import { clearMetaPageTokenCache } from "@/lib/meta/page-token"
@@ -574,10 +575,13 @@ async function validatePageConnection(
     return { ok: false, error: summaryResult.error }
   }
 
-  if (summaryResult.data.id !== page.facebook_page_id) {
+  const expectedPageId = normalizeFacebookPageId(page.facebook_page_id)
+  const apiPageId = normalizeFacebookPageId(summaryResult.data.id)
+
+  if (apiPageId !== expectedPageId) {
     return {
       ok: false,
-      error: `Page ID mismatch: API returned ${summaryResult.data.id}, expected ${page.facebook_page_id}.`,
+      error: `Page ID mismatch: API returned ${summaryResult.data.id}, expected ${page.facebook_page_id}. Check ${page.access_token_env_key ?? "META_PAGE_ID"} and ${page.access_token_env_key ?? "META_PAGE_ACCESS_TOKEN"} belong to the same Facebook Page.`,
     }
   }
 

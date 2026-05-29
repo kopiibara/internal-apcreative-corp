@@ -14,8 +14,37 @@ export type MetaPageConfig = {
   accessTokenEnvKey: string
 }
 
+function stripEnvQuotes(value: string) {
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+  return trimmed
+}
+
 function readEnv(name: string) {
-  return process.env[name]?.trim() ?? ""
+  const raw = process.env[name]
+  if (raw == null) {
+    return ""
+  }
+  return stripEnvQuotes(raw)
+}
+
+function isEnvTrue(name: string) {
+  return readEnv(name).toLowerCase() === "true"
+}
+
+/** Numeric Facebook Page IDs only (strips accidental URLs or spaces from Vercel). */
+export function normalizeFacebookPageId(value: string) {
+  const trimmed = stripEnvQuotes(value).trim()
+  if (!trimmed) {
+    return ""
+  }
+  const digitsOnly = trimmed.replace(/\D/g, "")
+  return digitsOnly || trimmed
 }
 
 function normalizeBrandKey(value: string) {
@@ -58,7 +87,7 @@ function discoverFacebookPagesFromEnv(): MetaFacebookPagesConfigEntry[] {
       brandName: titleCaseFromEnvPrefix(prefix),
       pageId: pageIdEnvKey,
       pageAccessToken: tokenEnvKey,
-      enabled: process.env[enabledEnvKey] === "true",
+      enabled: isEnvTrue(enabledEnvKey),
     })
   }
 
@@ -66,17 +95,26 @@ function discoverFacebookPagesFromEnv(): MetaFacebookPagesConfigEntry[] {
 }
 
 function readFacebookPagesConfig(): MetaFacebookPagesConfigEntry[] {
-  const raw = process.env.META_FACEBOOK_PAGES_CONFIG?.trim()
-  if (!raw) return discoverFacebookPagesFromEnv()
+  const discovered = discoverFacebookPagesFromEnv()
+
+  // Per-brand Vercel vars (AL_QAYSAR_META_*, PRO_GROUP_META_*, etc.) win over JSON config.
+  if (discovered.length > 0) {
+    return discovered
+  }
+
+  const raw = readEnv("META_FACEBOOK_PAGES_CONFIG")
+  if (!raw) {
+    return discovered
+  }
 
   try {
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) {
-      return discoverFacebookPagesFromEnv()
+      return discovered
     }
     return parsed as MetaFacebookPagesConfigEntry[]
   } catch {
-    return discoverFacebookPagesFromEnv()
+    return discovered
   }
 }
 
@@ -99,10 +137,9 @@ function buildPageFromConfig(entry: MetaFacebookPagesConfigEntry): MetaPageConfi
 
   const inferredPrefix = pageIdEnvKey.replace(/_META_PAGE_ID$/, "")
   const enabledEnvKey = `${inferredPrefix}_META_ENABLED`
-  const enabledFromEnv =
-    typeof process.env[enabledEnvKey] === "string"
-      ? process.env[enabledEnvKey] === "true"
-      : null
+  const enabledFromEnv = process.env[enabledEnvKey]
+    ? isEnvTrue(enabledEnvKey)
+    : null
 
   return {
     key,
@@ -115,7 +152,7 @@ function buildPageFromConfig(entry: MetaFacebookPagesConfigEntry): MetaPageConfi
         : enabledFromEnv === null
           ? true
           : enabledFromEnv,
-    pageId: readEnv(pageIdEnvKey),
+    pageId: normalizeFacebookPageId(readEnv(pageIdEnvKey)),
     accessToken: readEnv(accessTokenEnvKey),
     pageIdEnvKey,
     accessTokenEnvKey,
@@ -186,7 +223,27 @@ export function getMetaPageByKey(key: MetaPageConfigKey) {
 }
 
 export function getMetaPageByFacebookPageId(pageId: string) {
-  return metaPages.find((page) => page.pageId === pageId)
+  const normalized = normalizeFacebookPageId(pageId)
+  return metaPages.find(
+    (page) =>
+      page.pageId === pageId ||
+      page.pageId === normalized ||
+      normalizeFacebookPageId(page.pageId) === normalized,
+  )
+}
+
+/** Server diagnostics — which brands env vars resolved (no secrets). */
+export function getMetaPagesEnvDiagnostics() {
+  return metaPages.map((page) => ({
+    key: page.key,
+    displayName: page.displayName,
+    enabled: page.enabled,
+    pageIdEnvKey: page.pageIdEnvKey,
+    accessTokenEnvKey: page.accessTokenEnvKey,
+    pageIdConfigured: Boolean(page.pageId),
+    tokenConfigured: Boolean(page.accessToken),
+    ready: isMetaPageConfigured(page),
+  }))
 }
 
 export type MetaSyncPage = {
@@ -206,7 +263,7 @@ export function getActiveMetaPagesForSync(): MetaSyncPage[] {
   }
 
   return configured.map((page) => ({
-    facebook_page_id: page.pageId,
+    facebook_page_id: normalizeFacebookPageId(page.pageId),
     page_name: page.name,
     brand_slug: page.brandSlug,
     access_token_env_key: page.accessTokenEnvKey,
