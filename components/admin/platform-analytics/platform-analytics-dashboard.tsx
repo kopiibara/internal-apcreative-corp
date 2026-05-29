@@ -45,7 +45,6 @@ import type {
 } from "@/lib/platform-analytics/types";
 import type { PlatformAnalyticsBrandScopeUi } from "@/lib/platform-analytics/brand-scope";
 import { FilterBadge } from "@/components/shared/filter-badge";
-import { FilterBadgeGroup } from "@/components/shared/filter-badge-group";
 import { cn } from "@/lib/utils";
 
 type PlatformAnalyticsDashboardProps = {
@@ -65,52 +64,52 @@ const META_DATE_RANGE_OPTIONS: Array<{
   value: AnalyticsDateRange;
   label: string;
 }> = [
-  { value: "today", label: "Today" },
-  { value: "7d", label: "Last 7 days" },
-  { value: "28d", label: "Last 28 days" },
-  { value: "month", label: "This month" },
-  { value: "custom", label: "Custom range" },
-];
+    { value: "today", label: "Today" },
+    { value: "7d", label: "Last 7 days" },
+    { value: "28d", label: "Last 28 days" },
+    { value: "month", label: "This month" },
+    { value: "custom", label: "Custom range" },
+  ];
 
 const YOUTUBE_DATE_RANGE_OPTIONS: Array<{
   value: AnalyticsDateRange;
   label: string;
 }> = [
-  { value: "7d", label: "Last 7 days" },
-  { value: "28d", label: "Last 28 days" },
-  { value: "90d", label: "Last 90 days" },
-  { value: "365d", label: "Last 365 days" },
-];
+    { value: "7d", label: "Last 7 days" },
+    { value: "28d", label: "Last 28 days" },
+    { value: "90d", label: "Last 90 days" },
+    { value: "365d", label: "Last 365 days" },
+  ];
 
 const PLATFORM_TABS: Record<PlatformCode, { value: string; label: string }[]> =
-  {
-    META: [{ value: "sync", label: "Sync History" }],
-    TIKTOK: [
-      { value: "overview", label: "Overview" },
-      { value: "content", label: "Video Performance" },
-      { value: "audience", label: "Audience Insights" },
-      { value: "engagement", label: "Engagement" },
-      { value: "logs", label: "Webhook Activity" },
-      { value: "sync", label: "Sync History" },
-    ],
-    YOUTUBE: [
-      { value: "overview", label: "Overview" },
-      { value: "content", label: "Video Performance" },
-      { value: "audience", label: "Audience Growth" },
-      { value: "engagement", label: "Engagement" },
-      { value: "logs", label: "Webhook Activity" },
-      { value: "sync", label: "Sync History" },
-    ],
-    GOOGLE: [
-      { value: "overview", label: "Overview" },
-      { value: "campaigns", label: "Campaign Performance" },
-      { value: "adgroups", label: "Ad Group Performance" },
-      { value: "keywords", label: "Keywords" },
-      { value: "conversions", label: "Conversion Tracking" },
-      { value: "logs", label: "Webhook Activity" },
-      { value: "sync", label: "Sync History" },
-    ],
-  };
+{
+  META: [{ value: "sync", label: "Sync History" }],
+  TIKTOK: [
+    { value: "overview", label: "Overview" },
+    { value: "content", label: "Video Performance" },
+    { value: "audience", label: "Audience Insights" },
+    { value: "engagement", label: "Engagement" },
+    { value: "logs", label: "Webhook Activity" },
+    { value: "sync", label: "Sync History" },
+  ],
+  YOUTUBE: [
+    { value: "overview", label: "Overview" },
+    { value: "content", label: "Video Performance" },
+    { value: "audience", label: "Audience Growth" },
+    { value: "engagement", label: "Engagement" },
+    { value: "logs", label: "Webhook Activity" },
+    { value: "sync", label: "Sync History" },
+  ],
+  GOOGLE: [
+    { value: "overview", label: "Overview" },
+    { value: "campaigns", label: "Campaign Performance" },
+    { value: "adgroups", label: "Ad Group Performance" },
+    { value: "keywords", label: "Keywords" },
+    { value: "conversions", label: "Conversion Tracking" },
+    { value: "logs", label: "Webhook Activity" },
+    { value: "sync", label: "Sync History" },
+  ],
+};
 
 export function PlatformAnalyticsDashboard({
   initialData,
@@ -316,49 +315,24 @@ export function PlatformAnalyticsDashboard({
     });
   }
 
+  const dateRangeOptions =
+    platform === "META"
+      ? META_DATE_RANGE_OPTIONS
+      : platform === "YOUTUBE"
+        ? YOUTUBE_DATE_RANGE_OPTIONS
+        : null;
+
   return (
-    <div className="min-w-0 space-y-6">
-      <header className="space-y-4">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <header className="shrink-0 space-y-4 pb-2">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
+          <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-normal">
               {PAGE_TITLE}
             </h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               {PAGE_SUBTITLE}
             </p>
-            {brandScopeUi.hasAllBrandsAccess ? (
-              <FilterBadgeGroup
-                label="Brands"
-                className="mt-3 min-w-0"
-                scrollable={false}
-              >
-                <FilterBadge
-                  active
-                  type="button"
-                  className="pointer-events-none"
-                >
-                  All brands
-                </FilterBadge>
-              </FilterBadgeGroup>
-            ) : brandScopeUi.assignedBrandNames.length > 0 ? (
-              <FilterBadgeGroup
-                label="Your brands"
-                className="mt-3 min-w-0"
-                scrollable={brandScopeUi.assignedBrandNames.length > 3}
-              >
-                {brandScopeUi.assignedBrandNames.map((brandName) => (
-                  <FilterBadge
-                    key={brandName}
-                    active
-                    type="button"
-                    className="pointer-events-none"
-                  >
-                    {brandName}
-                  </FilterBadge>
-                ))}
-              </FilterBadgeGroup>
-            ) : null}
           </div>
           <PlatformActions
             platform={platform}
@@ -388,43 +362,39 @@ export function PlatformAnalyticsDashboard({
           />
         </div>
 
-        {platform === "META" || platform === "YOUTUBE" ? (
-          <AnalyticsDateRangeBar
-            options={
-              platform === "META"
-                ? META_DATE_RANGE_OPTIONS
-                : YOUTUBE_DATE_RANGE_OPTIONS
-            }
-            dateRange={dateRange}
+        <PlatformAnalyticsFilterBar
+          brandScopeUi={brandScopeUi}
+          platform={platform}
+          dateRange={dateRange}
+          dateRangeOptions={dateRangeOptions}
+          isPending={isPending}
+          onPlatformChange={handlePlatformChange}
+          onDateRangeChange={handleDateRangeChange}
+        />
+
+        {platform === "META" && dateRange === "custom" ? (
+          <AnalyticsCustomDateRange
             customDateFrom={customDateFrom}
             customDateTo={customDateTo}
             isPending={isPending}
-            showCustom={platform === "META"}
-            onDateRangeChange={handleDateRangeChange}
             onCustomDateFromChange={setCustomDateFrom}
             onCustomDateToChange={setCustomDateTo}
             onApplyCustom={() =>
-              reload(platform, accountId, metaScope, "custom", customDateFrom, customDateTo)
+              reload(
+                platform,
+                accountId,
+                metaScope,
+                "custom",
+                customDateFrom,
+                customDateTo,
+              )
             }
           />
         ) : null}
-
-        <div className="flex flex-wrap gap-1 border-b border-border pb-3">
-          {PLATFORM_NAV.map((item) => (
-            <Button
-              key={item.value}
-              type="button"
-              size="sm"
-              variant={platform === item.value ? "default" : "neutral"}
-              disabled={isPending}
-              onClick={() => handlePlatformChange(item.value)}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </div>
       </header>
 
+      <ScrollArea className="min-h-0 flex-1" scrollbars="vertical">
+        <div className="min-w-0 space-y-6 pr-2 pb-4">
       <section className="space-y-4 rounded-lg border border-border bg-card/40 p-4 sm:p-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -499,9 +469,9 @@ export function PlatformAnalyticsDashboard({
         />
 
         {!data.isDemo &&
-        data.metaNeedsBootstrap &&
-        canManage &&
-        platform === "META" ? (
+          data.metaNeedsBootstrap &&
+          canManage &&
+          platform === "META" ? (
           <p className="text-sm text-muted-foreground">
             Connect Meta to start syncing analytics. Use{" "}
             <strong>Connect Meta</strong> above after setting environment
@@ -634,6 +604,8 @@ export function PlatformAnalyticsDashboard({
           <SyncHistoryTable rows={data.syncHistory} />
         </TabsContent>
       </Tabs>
+        </div>
+      </ScrollArea>
     </div>
   );
 }
@@ -1216,78 +1188,156 @@ function StatusRow({
   );
 }
 
-function AnalyticsDateRangeBar({
-  options,
+function FilterBarSeparator() {
+  return (
+    <span
+      className="shrink-0 px-0.5 text-sm font-semibold text-muted-foreground"
+      aria-hidden
+    >
+      |
+    </span>
+  );
+}
+
+function PlatformAnalyticsFilterBar({
+  brandScopeUi,
+  platform,
   dateRange,
+  dateRangeOptions,
+  isPending,
+  onPlatformChange,
+  onDateRangeChange,
+}: {
+  brandScopeUi: PlatformAnalyticsBrandScopeUi;
+  platform: AnalyticsPlatform;
+  dateRange: AnalyticsDateRange;
+  dateRangeOptions: Array<{ value: AnalyticsDateRange; label: string }> | null;
+  isPending: boolean;
+  onPlatformChange: (platform: AnalyticsPlatform) => void;
+  onDateRangeChange: (range: AnalyticsDateRange) => void;
+}) {
+  const hasBrandFilters =
+    brandScopeUi.hasAllBrandsAccess ||
+    brandScopeUi.assignedBrandNames.length > 0;
+
+  return (
+    <ScrollArea className="w-full min-w-0" scrollbars="horizontal">
+      <div className="flex w-max min-w-full items-center gap-2 pb-1 pr-3">
+        {hasBrandFilters ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {brandScopeUi.hasAllBrandsAccess ? (
+              <FilterBadge
+                active
+                type="button"
+                className="pointer-events-none"
+              >
+                All brands
+              </FilterBadge>
+            ) : (
+              brandScopeUi.assignedBrandNames.map((brandName) => (
+                <FilterBadge
+                  key={brandName}
+                  active
+                  type="button"
+                  className="pointer-events-none"
+                >
+                  {brandName}
+                </FilterBadge>
+              ))
+            )}
+          </div>
+        ) : null}
+
+        {dateRangeOptions && dateRangeOptions.length > 0 ? (
+          <>
+            {hasBrandFilters ? <FilterBarSeparator /> : null}
+            <div className="flex shrink-0 items-center gap-2">
+              {dateRangeOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={dateRange === option.value ? "default" : "neutral"}
+                  disabled={isPending}
+                  onClick={() => onDateRangeChange(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {hasBrandFilters ||
+        (dateRangeOptions && dateRangeOptions.length > 0) ? (
+          <FilterBarSeparator />
+        ) : null}
+
+        <div className="flex shrink-0 items-center gap-2">
+          {PLATFORM_NAV.map((item) => (
+            <Button
+              key={item.value}
+              type="button"
+              size="sm"
+              variant={platform === item.value ? "default" : "neutral"}
+              disabled={isPending}
+              onClick={() => onPlatformChange(item.value)}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </ScrollArea>
+  );
+}
+
+function AnalyticsCustomDateRange({
   customDateFrom,
   customDateTo,
   isPending,
-  showCustom,
-  onDateRangeChange,
   onCustomDateFromChange,
   onCustomDateToChange,
   onApplyCustom,
 }: {
-  options: Array<{ value: AnalyticsDateRange; label: string }>;
-  dateRange: AnalyticsDateRange;
   customDateFrom: string;
   customDateTo: string;
   isPending: boolean;
-  showCustom: boolean;
-  onDateRangeChange: (value: AnalyticsDateRange) => void;
   onCustomDateFromChange: (value: string) => void;
   onCustomDateToChange: (value: string) => void;
   onApplyCustom: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {options.map((option) => (
-          <Button
-            key={option.value}
-            type="button"
-            size="sm"
-            variant={dateRange === option.value ? "default" : "neutral"}
-            disabled={isPending}
-            onClick={() => onDateRangeChange(option.value)}
-          >
-            {option.label}
-          </Button>
-        ))}
+    <div className="flex flex-wrap items-end gap-2">
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">From</label>
+        <Input
+          type="date"
+          value={customDateFrom}
+          disabled={isPending}
+          onChange={(event) => onCustomDateFromChange(event.target.value)}
+          className="w-40"
+        />
       </div>
-      {showCustom && dateRange === "custom" ? (
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">From</label>
-            <Input
-              type="date"
-              value={customDateFrom}
-              disabled={isPending}
-              onChange={(event) => onCustomDateFromChange(event.target.value)}
-              className="w-40"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs text-muted-foreground">To</label>
-            <Input
-              type="date"
-              value={customDateTo}
-              disabled={isPending}
-              onChange={(event) => onCustomDateToChange(event.target.value)}
-              className="w-40"
-            />
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="default"
-            disabled={isPending || !customDateFrom || !customDateTo}
-            onClick={onApplyCustom}
-          >
-            Apply range
-          </Button>
-        </div>
-      ) : null}
+      <div className="space-y-1">
+        <label className="text-xs text-muted-foreground">To</label>
+        <Input
+          type="date"
+          value={customDateTo}
+          disabled={isPending}
+          onChange={(event) => onCustomDateToChange(event.target.value)}
+          className="w-40"
+        />
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="default"
+        disabled={isPending || !customDateFrom || !customDateTo}
+        onClick={onApplyCustom}
+      >
+        Apply range
+      </Button>
     </div>
   );
 }
