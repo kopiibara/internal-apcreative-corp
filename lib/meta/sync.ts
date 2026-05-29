@@ -92,31 +92,12 @@ async function deactivateStaleMetaPages(activePageIds: string[]) {
   )
 }
 
-async function resolveBrandIdForMetaPage(brandSlug: string) {
-  const normalized = brandSlug.trim().toLowerCase().replace(/[_\s]+/g, "-")
-  const brand = await query<{ id: number }>(
-    `
-    SELECT id
-    FROM brand
-    WHERE is_active = true
-      AND (
-        slug = $1
-        OR slug = $2
-        OR REPLACE(slug, '_', '-') = $2
-        OR REPLACE(slug, '-', '_') = REPLACE($2, '-', '_')
-      )
-    ORDER BY id ASC
-    LIMIT 1
-    `,
-    [brandSlug, normalized],
-  )
-
-  return brand.rows[0]?.id ?? null
-}
-
 async function ensureEnvMetaPagesRegistered(pages: MetaSyncPage[]) {
   for (const page of pages) {
-    const brandId = await resolveBrandIdForMetaPage(page.brand_slug)
+    const brand = await query<{ id: number }>(
+      `SELECT id FROM brand WHERE slug = $1 LIMIT 1`,
+      [page.brand_slug]
+    )
 
     await query(
       `
@@ -137,9 +118,9 @@ async function ensureEnvMetaPagesRegistered(pages: MetaSyncPage[]) {
         updated_at = now()
       `,
       [
-        normalizeFacebookPageId(page.facebook_page_id),
+        page.facebook_page_id,
         page.page_name,
-        brandId,
+        brand.rows[0]?.id ?? null,
         page.access_token_env_key,
       ]
     )
@@ -600,7 +581,7 @@ async function validatePageConnection(
   if (apiPageId !== expectedPageId) {
     return {
       ok: false,
-      error: `Page ID mismatch: API returned ${summaryResult.data.id}, expected ${page.facebook_page_id}. Check ${page.access_token_env_key ?? "the page token env var"} points to this Page ID.`,
+      error: `Page ID mismatch: API returned ${summaryResult.data.id}, expected ${page.facebook_page_id}. Check ${page.access_token_env_key ?? "META_PAGE_ID"} and ${page.access_token_env_key ?? "META_PAGE_ACCESS_TOKEN"} belong to the same Facebook Page.`,
     }
   }
 

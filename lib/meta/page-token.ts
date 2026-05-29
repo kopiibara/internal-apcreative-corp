@@ -31,7 +31,7 @@ function throwTokenResolutionError(message: string): never {
   }
   if (info.tokenExpired) {
     throw new Error(
-      "Meta Page access token has expired. Generate a new Page access token and update the environment variable."
+      "Meta Page access token has expired or the Facebook session ended. In Graph API Explorer, generate a new long-lived Page access token and update the matching *_META_PAGE_ACCESS_TOKEN in Vercel, then redeploy."
     )
   }
   if (info.tokenInvalid) {
