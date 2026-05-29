@@ -122,7 +122,9 @@ export function derivePositionFromRoles(roles: RoleRecord[]): string | null {
 
 /** Active admin-side profiles bypass role-based permission SQL checks. */
 export function hasAdminPermissionBypass(accountType: AccountType) {
-  return isAdminAccountType(accountType);
+  return (
+    isAdminAccountType(accountType) && accountType !== "FULL_STACK_DEVELOPER"
+  );
 }
 
 export function isAdminAccountType(accountType: AccountType) {

@@ -16,7 +16,12 @@ import { BoardSection } from "@/components/shared/board-section"
 import {
   KanbanBoardShell,
   KanbanColumnsRow,
+  KANBAN_BOARD_CONTENT_CLASS,
+  KANBAN_BOARD_PAGE_CLASS,
   KANBAN_BOARD_SCROLL_ROW_CLASS,
+  KANBAN_BOARD_SECTION_CLASS,
+  KANBAN_BOARD_TAB_PANEL_CLASS,
+  KANBAN_BOARD_TABS_CLASS,
 } from "@/components/shared/kanban-board-scroll"
 import {
   AlertDialog,
@@ -157,13 +162,13 @@ export function EmployeeApprovalKanbanBoard({
   )
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
+    <div className={KANBAN_BOARD_PAGE_CLASS}>
       <Tabs
         value={activeView}
         onValueChange={(value) => setActiveView(value as "kanban" | "table")}
-        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        className={KANBAN_BOARD_TABS_CLASS}
       >
-        <BoardSection className="w-full min-w-0 flex-1 overflow-hidden pb-1 gap-2">
+        <BoardSection className={KANBAN_BOARD_SECTION_CLASS}>
           <CardHeader className="min-w-0 shrink-0 gap-3">
             <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle className="shrink-0 text-card-foreground">
@@ -204,8 +209,8 @@ export function EmployeeApprovalKanbanBoard({
             <EmployeeApprovalFilters reports={reports} />
           </CardHeader>
 
-          <TabsContent value="kanban" className="mt-0 min-w-0 overflow-hidden">
-            <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
+          <TabsContent value="kanban" className={KANBAN_BOARD_TAB_PANEL_CLASS}>
+            <CardContent className={KANBAN_BOARD_CONTENT_CLASS}>
               <KanbanBoardShell>
                 <KanbanColumnsRow className={employeeBoardRowClass}>
                   {EMPLOYEE_APPROVAL_KANBAN_COLUMNS.map((column) => (
@@ -219,6 +224,7 @@ export function EmployeeApprovalKanbanBoard({
                         <EmployeeApprovalKanbanCard
                           key={report.id}
                           report={report}
+                          currentProfileId={currentProfileId}
                           onOpenDetails={openDetailsSheet}
                         />
                       ))}
@@ -229,8 +235,11 @@ export function EmployeeApprovalKanbanBoard({
             </CardContent>
           </TabsContent>
 
-          <TabsContent value="table" className="mt-0 min-w-0 overflow-hidden">
-            <CardContent className="min-w-0">
+          <TabsContent
+            value="table"
+            className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden"
+          >
+            <CardContent className="min-h-0 min-w-0 flex-1 overflow-hidden">
               <EmployeeApprovalTableView
                 reports={filteredReports}
                 currentProfileId={currentProfileId}

@@ -325,15 +325,25 @@ export function PlatformAnalyticsDashboard({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <header className="shrink-0 space-y-4 pb-2">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-normal">
-              {PAGE_TITLE}
-            </h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              {PAGE_SUBTITLE}
-            </p>
-          </div>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-normal">
+            {PAGE_TITLE}
+          </h1>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+            {PAGE_SUBTITLE}
+          </p>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+          <PlatformAnalyticsFilterBar
+            brandScopeUi={brandScopeUi}
+            platform={platform}
+            dateRange={dateRange}
+            dateRangeOptions={dateRangeOptions}
+            isPending={isPending}
+            onPlatformChange={handlePlatformChange}
+            onDateRangeChange={handleDateRangeChange}
+          />
           <PlatformActions
             platform={platform}
             isConnected={data.connection.apiConnected}
@@ -361,16 +371,6 @@ export function PlatformAnalyticsDashboard({
             }
           />
         </div>
-
-        <PlatformAnalyticsFilterBar
-          brandScopeUi={brandScopeUi}
-          platform={platform}
-          dateRange={dateRange}
-          dateRangeOptions={dateRangeOptions}
-          isPending={isPending}
-          onPlatformChange={handlePlatformChange}
-          onDateRangeChange={handleDateRangeChange}
-        />
 
         {platform === "META" && dateRange === "custom" ? (
           <AnalyticsCustomDateRange
@@ -610,6 +610,9 @@ export function PlatformAnalyticsDashboard({
   );
 }
 
+const PLATFORM_ACTIONS_ROW_CLASS =
+  "flex shrink-0 flex-wrap items-center justify-end gap-2";
+
 function PlatformActions({
   platform,
   isConnected,
@@ -639,7 +642,7 @@ function PlatformActions({
 
   if (platform === "META") {
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className={PLATFORM_ACTIONS_ROW_CLASS}>
         <Button
           type="button"
           variant="default"
@@ -686,7 +689,7 @@ function PlatformActions({
 
   if (platform === "TIKTOK") {
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className={PLATFORM_ACTIONS_ROW_CLASS}>
         <Button type="button" variant="neutral" disabled>
           Connect TikTok
         </Button>
@@ -702,7 +705,7 @@ function PlatformActions({
 
   if (platform === "YOUTUBE") {
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className={PLATFORM_ACTIONS_ROW_CLASS}>
         <Button
           type="button"
           variant={isConnected ? "neutral" : "default"}
@@ -742,7 +745,7 @@ function PlatformActions({
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={PLATFORM_ACTIONS_ROW_CLASS}>
       <Button type="button" variant="neutral" disabled>
         Connect Google Ads
       </Button>
@@ -1221,8 +1224,8 @@ function PlatformAnalyticsFilterBar({
     brandScopeUi.assignedBrandNames.length > 0;
 
   return (
-    <ScrollArea className="w-full min-w-0" scrollbars="horizontal">
-      <div className="flex w-max min-w-full items-center gap-2 pb-1 pr-3">
+    <ScrollArea className="min-w-0 w-full flex-1" scrollbars="horizontal">
+      <div className="flex w-max min-w-0 items-center gap-2 pb-1 pr-2">
         {hasBrandFilters ? (
           <div className="flex shrink-0 items-center gap-2">
             {brandScopeUi.hasAllBrandsAccess ? (

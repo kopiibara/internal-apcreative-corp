@@ -24,14 +24,19 @@ import {
 } from "@/components/daily-progress/employee-daily-progress-dashboard";
 import {
   KanbanBoardShell,
+  KANBAN_BOARD_CONTENT_CLASS,
   KANBAN_BOARD_SCROLL_ROW_CLASS,
+  KANBAN_BOARD_SECTION_CLASS,
+  KANBAN_BOARD_TAB_PANEL_CLASS,
   KANBAN_COLUMN_BODY_CLASS,
   KANBAN_COLUMN_CARD_CLASS,
+  KANBAN_COLUMN_EMPTY_BODY_CLASS,
   KANBAN_COLUMN_FIT_CLASS,
-  KANBAN_COLUMN_LIST_CLASS,
   KANBAN_COLUMN_VIEWPORT_CLASS,
   KANBAN_OVERLAY_CLASS,
+  kanbanColumnListClass,
 } from "@/components/shared/kanban-board-scroll";
+import { BoardSection } from "@/components/shared/board-section";
 import { KanbanColumnHeader } from "@/components/shared/kanban-column-header";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import {
@@ -498,13 +503,11 @@ function DailyProgressKanbanColumn({
   badgeClassName: string;
   children: React.ReactNode;
 }) {
-  const listClassName = cn(
-    KANBAN_COLUMN_LIST_CLASS,
-    count === 0 && "items-center justify-center",
-  );
+  const listClassName = kanbanColumnListClass(count);
+  const isEmpty = count === 0;
 
   return (
-    <KanbanColumn value={id} className={cn(KANBAN_COLUMN_FIT_CLASS, "h-auto")}>
+    <KanbanColumn value={id} className={KANBAN_COLUMN_FIT_CLASS}>
       <Card className={KANBAN_COLUMN_CARD_CLASS}>
         <KanbanColumnHeader
           title={title}
@@ -512,12 +515,12 @@ function DailyProgressKanbanColumn({
           countClassName={badgeClassName}
         />
         <ScrollArea
-          className={KANBAN_COLUMN_BODY_CLASS}
+          className={isEmpty ? KANBAN_COLUMN_EMPTY_BODY_CLASS : KANBAN_COLUMN_BODY_CLASS}
           viewportClassName={KANBAN_COLUMN_VIEWPORT_CLASS}
           scrollbars="vertical"
         >
           <KanbanColumnContent value={id} className={listClassName}>
-            {count === 0 ? (
+            {isEmpty ? (
               <p className="text-center text-xs text-muted-foreground">
                 No reports here.
               </p>
@@ -935,13 +938,16 @@ export function AdminDailyProgressDashboard({
       <Tabs
         value={activeView}
         onValueChange={(value) => setActiveView(value as "kanban" | "table")}
+        className="flex min-h-[min(70vh,calc(100vh-16rem))] flex-col"
       >
-        <TabsList>
+        <TabsList className="shrink-0">
           <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
           <TabsTrigger value="table">Table View</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="kanban" className="mt-4 min-w-0 overflow-hidden">
+        <TabsContent value="kanban" className={cn(KANBAN_BOARD_TAB_PANEL_CLASS, "mt-4")}>
+          <BoardSection className={cn(KANBAN_BOARD_SECTION_CLASS, "flex-1 border-0 py-0 shadow-none")}>
+            <CardContent className={KANBAN_BOARD_CONTENT_CLASS}>
           <KanbanBoardShell>
             <Kanban
               key={boardSyncKey}
@@ -1019,6 +1025,8 @@ export function AdminDailyProgressDashboard({
               <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
             </Kanban>
           </KanbanBoardShell>
+            </CardContent>
+          </BoardSection>
         </TabsContent>
 
         <TabsContent value="table" className="mt-4 min-w-0 overflow-hidden">

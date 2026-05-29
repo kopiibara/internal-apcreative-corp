@@ -36,7 +36,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  canEmployeeEditReport,
   canEditPublishingFields,
   type ContentReport,
 } from "@/types/content-report"

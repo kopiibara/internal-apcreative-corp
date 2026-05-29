@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 import { submitTaskProof } from "@/app/admin/to-do/actions"
+import { TaskProofFileField } from "@/components/to-do/task-proof-file-field"
+import { TaskProofDisplay } from "@/components/shared/task-proof-display"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -24,7 +26,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { TASK_PROOF_TYPES } from "@/lib/tasks/task-type"
+import {
+  TASK_PROOF_SUBMIT_TYPES,
+  type TaskProofSubmitType,
+} from "@/lib/tasks/task-type"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
 
@@ -44,9 +49,25 @@ export function TaskProofDialog({
     (state) => state.updateTaskAssignmentInStore
   )
   const [isPending, startTransition] = useTransition()
-  const [proofType, setProofType] = useState<string>("LINK")
+  const [proofType, setProofType] = useState<TaskProofSubmitType>("LINK")
   const [proofUrl, setProofUrl] = useState("")
   const [proofNote, setProofNote] = useState("")
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    setProofType("LINK")
+    setProofUrl("")
+    setProofNote("")
+  }, [open, assignment?.assignmentId])
+
+  function handleProofTypeChange(nextType: TaskProofSubmitType) {
+    setProofType(nextType)
+    setProofUrl("")
+    setProofNote("")
+  }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -58,7 +79,7 @@ export function TaskProofDialog({
     startTransition(async () => {
       const result = await submitTaskProof({
         assignmentId: assignment.assignmentId,
-        proofType: proofType as (typeof TASK_PROOF_TYPES)[number],
+        proofType,
         proofUrl: proofUrl.trim(),
         proofNote: proofNote.trim(),
       })
@@ -69,8 +90,6 @@ export function TaskProofDialog({
           updateTaskAssignmentInStore(result.data.updatedAssignment)
         }
         onOpenChange(false)
-        setProofUrl("")
-        setProofNote("")
         router.refresh()
         return
       }
@@ -78,6 +97,13 @@ export function TaskProofDialog({
       toast.error(result.message)
     })
   }
+
+  const canSubmit =
+    proofType === "NOTE"
+      ? proofNote.trim().length > 0
+      : proofType === "LINK"
+        ? proofUrl.trim().length > 0
+        : proofUrl.trim().length > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -93,29 +119,24 @@ export function TaskProofDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Proof type</Label>
-            <Select value={proofType} onValueChange={setProofType} disabled={isPending}>
+            <Select
+              value={proofType}
+              onValueChange={(value) =>
+                handleProofTypeChange(value as TaskProofSubmitType)
+              }
+              disabled={isPending}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {TASK_PROOF_TYPES.map((type) => (
-                  <SelectItem
-                    key={type}
-                    value={type}
-                    disabled={type === "IMAGE" || type === "VIDEO"}
-                  >
-                    {type === "IMAGE" || type === "VIDEO"
-                      ? `${type} (unavailable)`
-                      : type}
+                {TASK_PROOF_SUBMIT_TYPES.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {proofType === "IMAGE" || proofType === "VIDEO" ? (
-              <p className="text-xs text-muted-foreground">
-                File upload is not available yet. Please use LINK or NOTE for now.
-              </p>
-            ) : null}
           </div>
 
           {proofType === "LINK" ? (
@@ -129,6 +150,24 @@ export function TaskProofDialog({
                 disabled={isPending}
               />
             </div>
+          ) : null}
+
+          {proofType === "IMAGE" ? (
+            <>
+              <TaskProofFileField
+                value={proofUrl}
+                disabled={isPending}
+                onChange={setProofUrl}
+                onClear={() => setProofUrl("")}
+              />
+              {proofUrl ? (
+                <TaskProofDisplay
+                  proofType={proofType}
+                  proofUrl={proofUrl}
+                  mediaClassName="max-h-40"
+                />
+              ) : null}
+            </>
           ) : null}
 
           {proofType === "NOTE" ? (
@@ -153,12 +192,7 @@ export function TaskProofDialog({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={
-                isPending || proofType === "IMAGE" || proofType === "VIDEO"
-              }
-            >
+            <Button type="submit" disabled={isPending || !canSubmit}>
               {isPending ? "Submitting..." : "Submit Proof"}
             </Button>
           </DialogFooter>

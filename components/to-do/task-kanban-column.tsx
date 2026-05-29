@@ -6,15 +6,15 @@ import { KanbanColumnHeader } from "@/components/shared/kanban-column-header"
 import {
   KANBAN_COLUMN_BODY_CLASS,
   KANBAN_COLUMN_CARD_CLASS,
+  KANBAN_COLUMN_EMPTY_BODY_CLASS,
   KANBAN_COLUMN_FIT_CLASS,
-  KANBAN_COLUMN_LIST_CLASS,
   KANBAN_COLUMN_VIEWPORT_CLASS,
+  kanbanColumnListClass,
 } from "@/components/shared/kanban-board-scroll"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { getTaskKanbanStageConfig } from "@/lib/tasks/task-kanban-status"
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-type"
-import { cn } from "@/lib/utils"
 
 type TaskKanbanColumnProps = {
   id: TaskAssignmentStatus
@@ -40,19 +40,16 @@ export function TaskKanbanColumn({
   children,
 }: TaskKanbanColumnProps) {
   const config = getTaskKanbanStageConfig(id)
-  const listClassName = cn(
-    KANBAN_COLUMN_LIST_CLASS,
-    count === 0 && "items-center justify-center"
-  )
+  const listClassName = kanbanColumnListClass(count)
+  const isEmpty = count === 0
 
-  const listBody =
-    count === 0 ? (
-      <p className="text-center text-xs text-muted-foreground">
-        {EMPTY_COLUMN_MESSAGES[id]}
-      </p>
-    ) : (
-      children
-    )
+  const listBody = isEmpty ? (
+    <p className="text-center text-xs text-muted-foreground">
+      {EMPTY_COLUMN_MESSAGES[id]}
+    </p>
+  ) : (
+    children
+  )
 
   const content = (
     <Card className={KANBAN_COLUMN_CARD_CLASS}>
@@ -62,7 +59,7 @@ export function TaskKanbanColumn({
         countClassName={config.badgeClassName}
       />
       <ScrollArea
-        className={KANBAN_COLUMN_BODY_CLASS}
+        className={isEmpty ? KANBAN_COLUMN_EMPTY_BODY_CLASS : KANBAN_COLUMN_BODY_CLASS}
         viewportClassName={KANBAN_COLUMN_VIEWPORT_CLASS}
         scrollbars="vertical"
       >
@@ -79,7 +76,7 @@ export function TaskKanbanColumn({
 
   if (enableDrag) {
     return (
-      <KanbanColumn value={id} className={cn(KANBAN_COLUMN_FIT_CLASS, "h-auto")}>
+      <KanbanColumn value={id} className={KANBAN_COLUMN_FIT_CLASS}>
         {content}
       </KanbanColumn>
     )

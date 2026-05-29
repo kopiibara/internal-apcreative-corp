@@ -7,6 +7,11 @@ import { ReminderFilters } from "@/components/to-do/reminder-filters"
 import { ReminderFormDialog } from "@/components/to-do/reminder-form-dialog"
 import { ReminderKanbanBoard } from "@/components/to-do/reminder-kanban-board"
 import { BoardSection } from "@/components/shared/board-section"
+import {
+  KANBAN_BOARD_CONTENT_CLASS,
+  KANBAN_BOARD_PAGE_CLASS,
+  KANBAN_BOARD_SECTION_CLASS,
+} from "@/components/shared/kanban-board-scroll"
 import { Button } from "@/components/ui/button"
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { richTextToPlainText } from "@/lib/rich-text/rich-text"
@@ -95,8 +100,8 @@ export function ReminderBoard({ reminders }: ReminderBoardProps) {
   ])
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <BoardSection className="w-full min-w-0 overflow-hidden pb-1 gap-2">
+    <div className={KANBAN_BOARD_PAGE_CLASS}>
+      <BoardSection className={KANBAN_BOARD_SECTION_CLASS}>
         <CardHeader className="min-w-0 shrink-0 gap-3">
           <div className="flex items-center justify-between gap-3">
             <CardTitle className="text-card-foreground">Reminder board</CardTitle>
@@ -107,7 +112,7 @@ export function ReminderBoard({ reminders }: ReminderBoardProps) {
           </div>
           <ReminderFilters />
         </CardHeader>
-        <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
+        <CardContent className={KANBAN_BOARD_CONTENT_CLASS}>
           <ReminderKanbanBoard reminders={filteredReminders} />
         </CardContent>
       </BoardSection>

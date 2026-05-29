@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { TASK_PRIORITIES, TASK_PROOF_TYPES } from "@/lib/tasks/task-type";
+import {
+  TASK_PROOF_IMAGE_DATA_URL_MAX_LENGTH,
+  validateTaskProofUrl,
+} from "@/lib/tasks/task-proof-media";
+import { TASK_PRIORITIES, TASK_PROOF_SUBMIT_TYPES } from "@/lib/tasks/task-type";
 import { TASK_STATUSES } from "@/lib/tasks/task-statuses";
 
 const optionalText = z
@@ -53,46 +57,32 @@ export const deleteTaskSchema = z.object({
 export const submitTaskProofSchema = z
   .object({
     assignmentId: z.coerce.number().int().positive(),
-    proofType: z.enum(TASK_PROOF_TYPES),
-    proofUrl: proofText(2000),
+    proofType: z.enum(TASK_PROOF_SUBMIT_TYPES),
+    proofUrl: z.preprocess(
+      (value) => (value === null || value === undefined ? "" : value),
+      z.string().trim().max(TASK_PROOF_IMAGE_DATA_URL_MAX_LENGTH),
+    ),
     proofNote: proofText(5000),
   })
   .superRefine((value, context) => {
-    if (value.proofType === "LINK") {
-      if (!value.proofUrl) {
+    if (value.proofType === "NOTE") {
+      if (!value.proofNote) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "Please add a valid proof link.",
-          path: ["proofUrl"],
+          message: "Please add proof notes before submitting.",
+          path: ["proofNote"],
         });
-        return;
       }
 
-      try {
-        new URL(value.proofUrl);
-      } catch {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Please add a valid proof link.",
-          path: ["proofUrl"],
-        });
-      }
       return;
     }
 
-    if (value.proofType === "NOTE" && !value.proofNote) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Please add proof notes before submitting.",
-        path: ["proofNote"],
-      });
-      return;
-    }
+    const proofUrlError = validateTaskProofUrl(value.proofType, value.proofUrl);
 
-    if (value.proofType === "IMAGE" || value.proofType === "VIDEO") {
+    if (proofUrlError) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "File upload is not available yet. Please use a link or note.",
+        message: proofUrlError,
         path: ["proofUrl"],
       });
     }

@@ -12,91 +12,94 @@ export type StatusBadgeType =
   | "default"
 
 const UNKNOWN_BADGE_CLASS =
-  "border-border bg-muted/40 text-muted-foreground"
+  "border-border bg-muted text-muted-foreground"
 
+/** Solid fill + matching border; high-contrast label text. */
 const STATUS_COLOR_MAP: Record<string, string> = {
   PENDING:
-    "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200",
+    "border-amber-600 bg-amber-500 text-white dark:border-amber-500 dark:bg-amber-600",
   APPROVED:
-    "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+    "border-emerald-700 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-700",
   REJECTED:
-    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
   REVISION:
-    "border-orange-500 bg-orange-100 text-orange-950 dark:bg-orange-950/40 dark:text-orange-200",
+    "border-orange-600 bg-orange-500 text-white dark:border-orange-500 dark:bg-orange-600",
   SCHEDULED:
-    "border-violet-600 bg-violet-100 text-violet-900 dark:bg-violet-950/40 dark:text-violet-200",
+    "border-violet-700 bg-violet-600 text-white dark:border-violet-600 dark:bg-violet-700",
   PUBLISHED:
-    "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+    "border-emerald-700 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-700",
   CANCELLED:
-    "border-red-500 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
-  DRAFT: "border-border bg-muted/50 text-muted-foreground",
-  ASSIGNED: "border-border bg-muted/40 text-muted-foreground",
+    "border-red-600 bg-red-500 text-white dark:border-red-500 dark:bg-red-600",
+  DRAFT: "border-border bg-zinc-300 text-zinc-900 dark:bg-zinc-600 dark:text-zinc-50",
+  ASSIGNED: "border-border bg-zinc-300 text-zinc-900 dark:bg-zinc-600 dark:text-zinc-50",
   BLOCKER:
-    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
   DONE:
-    "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+    "border-emerald-700 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-700",
   DUE:
-    "border-orange-500 bg-orange-100 text-orange-950 dark:bg-orange-950/40 dark:text-orange-200",
-  ARCHIVED: "border-border bg-muted/50 text-muted-foreground",
+    "border-orange-600 bg-orange-500 text-white dark:border-orange-500 dark:bg-orange-600",
+  ARCHIVED: "border-border bg-zinc-400 text-zinc-900 dark:bg-zinc-600 dark:text-zinc-50",
   ACTIVE:
-    "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
-  INACTIVE: "border-border bg-muted/50 text-muted-foreground",
+    "border-emerald-700 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-700",
+  INACTIVE: "border-border bg-zinc-300 text-zinc-900 dark:bg-zinc-600 dark:text-zinc-50",
   INVITED:
-    "border-cyan-600 bg-cyan-100 text-cyan-950 dark:bg-cyan-950/40 dark:text-cyan-200",
-  DISABLED: "border-border bg-muted/50 text-muted-foreground",
+    "border-cyan-700 bg-cyan-600 text-white dark:border-cyan-600 dark:bg-cyan-700",
+  DISABLED: "border-border bg-zinc-300 text-zinc-700 dark:bg-zinc-600 dark:text-zinc-300",
   DELETED:
-    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
   SUSPENDED:
-    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
   PAUSED:
-    "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200",
-  ENDED: "border-border bg-muted/50 text-muted-foreground",
+    "border-amber-600 bg-amber-500 text-white dark:border-amber-500 dark:bg-amber-600",
+  ENDED: "border-border bg-zinc-400 text-zinc-900 dark:bg-zinc-600 dark:text-zinc-50",
   MISSING:
-    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
   SUBMITTED:
-    "border-cyan-600 bg-cyan-100 text-cyan-950 dark:bg-cyan-950/40 dark:text-cyan-200",
+    "border-cyan-700 bg-cyan-600 text-white dark:border-cyan-600 dark:bg-cyan-700",
   CONFIRMED:
-    "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+    "border-emerald-700 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-700",
   ON_TIME:
-    "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+    "border-emerald-700 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-700",
   LATE:
-    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
   LOW:
-    "border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200",
+    "border-emerald-600 bg-emerald-500 text-white dark:border-emerald-500 dark:bg-emerald-600",
   MEDIUM:
-    "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200",
+    "border-amber-600 bg-amber-500 text-white dark:border-amber-500 dark:bg-amber-600",
   HIGH:
-    "border-orange-500 bg-orange-100 text-orange-950 dark:bg-orange-950/40 dark:text-orange-200",
+    "border-orange-600 bg-orange-500 text-white dark:border-orange-500 dark:bg-orange-600",
   URGENT:
-    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
   OVERDUE:
-    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
   PROCESSING:
-    "border-cyan-600 bg-cyan-100 text-cyan-950 dark:bg-cyan-950/40 dark:text-cyan-200",
+    "border-cyan-700 bg-cyan-600 text-white dark:border-cyan-600 dark:bg-cyan-700",
   PROCESSED:
-    "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+    "border-emerald-700 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-700",
   FAILED:
-    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
   EXCELLENT:
-    "border-emerald-600 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
+    "border-emerald-700 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-700",
   GOOD:
-    "border-cyan-600 bg-cyan-100 text-cyan-950 dark:bg-cyan-950/40 dark:text-cyan-200",
+    "border-cyan-700 bg-cyan-600 text-white dark:border-cyan-600 dark:bg-cyan-700",
   NEEDS_REVIEW:
-    "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200",
+    "border-amber-600 bg-amber-500 text-white dark:border-amber-500 dark:bg-amber-600",
   CRITICAL:
-    "border-red-600 bg-red-100 text-red-900 dark:bg-red-950/40 dark:text-red-200",
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
   UNKNOWN: UNKNOWN_BADGE_CLASS,
   GRADED:
-    "border-violet-600 bg-violet-100 text-violet-900 dark:bg-violet-950/40 dark:text-violet-200",
-  NON_GRADED: "border-border bg-muted/50 text-muted-foreground",
+    "border-violet-700 bg-violet-600 text-white dark:border-violet-600 dark:bg-violet-700",
+  NON_GRADED: "border-border bg-zinc-300 text-zinc-900 dark:bg-zinc-600 dark:text-zinc-50",
   APPROVAL:
-    "border-violet-600 bg-violet-100 text-violet-900 dark:bg-violet-950/40 dark:text-violet-200",
+    "border-violet-700 bg-violet-600 text-white dark:border-violet-600 dark:bg-violet-700",
   TASK:
-    "border-cyan-600 bg-cyan-100 text-cyan-950 dark:bg-cyan-950/40 dark:text-cyan-200",
+    "border-cyan-700 bg-cyan-600 text-white dark:border-cyan-600 dark:bg-cyan-700",
   BRAND:
-    "border-blue-600 bg-blue-100 text-blue-950 dark:bg-blue-950/40 dark:text-blue-200",
+    "border-blue-700 bg-blue-600 text-white dark:border-blue-600 dark:bg-blue-700",
   EMPLOYEE:
-    "border-orange-500 bg-orange-100 text-orange-950 dark:bg-orange-950/40 dark:text-orange-200",
+    "border-orange-600 bg-orange-500 text-white dark:border-orange-500 dark:bg-orange-600",
+  READY_TO_PUBLISH:
+    "border-violet-700 bg-violet-600 text-white dark:border-violet-600 dark:bg-violet-700",
 }
 
 const TYPE_ALIASES: Record<StatusBadgeType, Record<string, string>> = {
@@ -129,21 +132,21 @@ const TYPE_COLOR_OVERRIDES: Partial<
 > = {
   task: {
     PENDING:
-      "border-cyan-600 bg-cyan-100 text-cyan-950 dark:bg-cyan-950/40 dark:text-cyan-200",
+      "border-cyan-700 bg-cyan-600 text-white dark:border-cyan-600 dark:bg-cyan-700",
   },
   reminder: {
     PENDING:
-      "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200",
+      "border-amber-600 bg-amber-500 text-white dark:border-amber-500 dark:bg-amber-600",
     DUE:
-      "border-orange-500 bg-orange-100 text-orange-950 dark:bg-orange-950/40 dark:text-orange-200",
+      "border-orange-600 bg-orange-500 text-white dark:border-orange-500 dark:bg-orange-600",
   },
   publish: {
     PENDING:
-      "border-amber-500 bg-amber-100 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200",
+      "border-amber-600 bg-amber-500 text-white dark:border-amber-500 dark:bg-amber-600",
   },
   proof: {
     PENDING:
-      "border-cyan-600 bg-cyan-100 text-cyan-950 dark:bg-cyan-950/40 dark:text-cyan-200",
+      "border-cyan-700 bg-cyan-600 text-white dark:border-cyan-600 dark:bg-cyan-700",
   },
 }
 
@@ -163,6 +166,7 @@ const EXPLICIT_LABELS: Record<string, string> = {
   MISSING_PROOF: "Missing proof",
   BLOCKER_REPORTED: "Blocker reported",
   NEEDS_REVIEW: "Needs Review",
+  READY_TO_PUBLISH: "Ready to Publish",
 }
 
 export function normalizeStatus(status: string | null | undefined) {

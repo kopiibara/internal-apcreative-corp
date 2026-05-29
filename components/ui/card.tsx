@@ -12,7 +12,7 @@ function Card({ className, size = "default", ...props }: CardProps) {
       data-slot="card"
       className={cn(
         "flex flex-col rounded-lg border-2 border-border bg-background text-foreground shadow-[var(--shadow-hard-sm)] font-base",
-        size === "sm" ? "gap-4 py-4" : "gap-6 py-6",
+        size === "sm" ? "gap-4 py-4" : "gap-4 py-4",
         className,
       )}
       {...props}

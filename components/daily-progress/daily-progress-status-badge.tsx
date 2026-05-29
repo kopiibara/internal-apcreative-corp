@@ -7,11 +7,11 @@ type DailyProgressStatusBadgeProps = {
 };
 
 const toneClass = {
-  green: "border-green-700 bg-green-100 text-green-900",
-  yellow: "border-yellow-700 bg-yellow-100 text-yellow-950",
-  red: "border-red-700 bg-red-100 text-red-900",
-  blue: "border-blue bg-cyan/20 text-blue",
-  neutral: "border-border bg-background text-foreground",
+  green: "border-green-700 bg-green-600 text-white",
+  yellow: "border-amber-600 bg-amber-500 text-white",
+  red: "border-red-700 bg-red-600 text-white",
+  blue: "border-cyan-700 bg-cyan-600 text-white",
+  neutral: "border-border bg-zinc-300 text-zinc-900 dark:bg-zinc-600 dark:text-zinc-50",
 };
 
 export function DailyProgressStatusBadge({
@@ -20,8 +20,8 @@ export function DailyProgressStatusBadge({
 }: DailyProgressStatusBadgeProps) {
   return (
     <Badge
-      variant="outline"
-      className={cn("rounded-lg border-2 px-2 py-1 font-bold", toneClass[tone])}
+      variant="status"
+      className={cn("rounded-lg px-2 py-1 font-bold", toneClass[tone])}
     >
       {label}
     </Badge>
