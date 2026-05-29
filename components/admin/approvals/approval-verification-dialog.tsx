@@ -128,9 +128,9 @@ function ApprovalVerificationDialogContent({
 
   const canConfirm = isRevisionRequest
     ? revisionAreas.length > 0 &&
-      richTextToPlainText(revisionInstruction).length > 0 &&
-      (!revisionAreas.includes("other") || otherExplanation.trim().length > 0) &&
-      confirmationAccepted
+    richTextToPlainText(revisionInstruction).length > 0 &&
+    (!revisionAreas.includes("other") || otherExplanation.trim().length > 0) &&
+    confirmationAccepted
     : notes.trim().length > 0 && confirmationAccepted
 
   const actionSummary =
@@ -181,47 +181,47 @@ function ApprovalVerificationDialogContent({
 
     const revisionPayload = isRevisionRequest
       ? {
-          revisionAreas,
-          revisionInstruction: normalizeRichTextForStorage(revisionInstruction),
-          otherExplanation: otherExplanation.trim() || undefined,
-        }
+        revisionAreas,
+        revisionInstruction: normalizeRichTextForStorage(revisionInstruction),
+        otherExplanation: otherExplanation.trim() || undefined,
+      }
       : {}
 
     startTransition(async () => {
       const result =
         payload.type === "supervisor"
           ? await updateSupervisorReview({
+            reportId: payload.report.id,
+            supervisorStatus: payload.supervisorStatus,
+            supervisorNotes: isRevisionRequest ? undefined : notes,
+            confirmationAccepted,
+            ...revisionPayload,
+          })
+          : payload.type === "director"
+            ? await updateDirectorReview({
               reportId: payload.report.id,
-              supervisorStatus: payload.supervisorStatus,
-              supervisorNotes: isRevisionRequest ? undefined : notes,
+              directorStatus: payload.directorStatus,
+              directorNotes: isRevisionRequest ? undefined : notes,
               confirmationAccepted,
               ...revisionPayload,
             })
-          : payload.type === "director"
-            ? await updateDirectorReview({
+            : payload.type === "publishing"
+              ? await updatePublishingInfo({
                 reportId: payload.report.id,
-                directorStatus: payload.directorStatus,
-                directorNotes: isRevisionRequest ? undefined : notes,
+                publishStatus: payload.publishStatus,
+                scheduledPublishedDate: payload.scheduledPublishedDate,
+                proofUrl: payload.proofUrl,
+                remarksRevisionSummary: notes,
+                confirmationAccepted,
+              })
+              : await updateApprovalKanbanColumn({
+                reportId: payload.report.id,
+                fromColumn: payload.fromColumn,
+                toColumn: payload.toColumn,
+                notes: isRevisionRequest ? undefined : notes,
                 confirmationAccepted,
                 ...revisionPayload,
               })
-            : payload.type === "publishing"
-              ? await updatePublishingInfo({
-                  reportId: payload.report.id,
-                  publishStatus: payload.publishStatus,
-                  scheduledPublishedDate: payload.scheduledPublishedDate,
-                  proofUrl: payload.proofUrl,
-                  remarksRevisionSummary: notes,
-                  confirmationAccepted,
-                })
-              : await updateApprovalKanbanColumn({
-                  reportId: payload.report.id,
-                  fromColumn: payload.fromColumn,
-                  toColumn: payload.toColumn,
-                  notes: isRevisionRequest ? undefined : notes,
-                  confirmationAccepted,
-                  ...revisionPayload,
-                })
 
       if (result.success) {
         toast.success(result.message)
@@ -251,12 +251,7 @@ function ApprovalVerificationDialogContent({
         <DialogTitle>
           {isRevisionRequest ? "Request Revision" : "Approval Verification"}
         </DialogTitle>
-        <DialogDescription>
-          {isRevisionRequest
-            ? "Select the areas that need revision and explain what the creator should change. This feedback is stored separately from general comments."
-            : "Please add a note and confirm this approval update. The action will be recorded under your authenticated account."}
-          {actionSummary ? ` ${actionSummary}` : ""}
-        </DialogDescription>
+
       </DialogHeader>
 
       <form onSubmit={handleSubmit} className="space-y-4">

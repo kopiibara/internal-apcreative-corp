@@ -2,16 +2,19 @@ import {
   buildTaskPerformanceCounts,
   calculateTaskPriorityPoints,
   calculateTaskPerformancePoints,
+  getLateSubmissionDeductionForAssignment,
   getTaskPointsFromCompletionRate,
 } from "@/lib/performance-scoring";
-import { isAssignmentCompletedOnTime } from "@/lib/tasks/task-type";
+import { isAssignmentSubmittedOnTime } from "@/lib/tasks/task-type";
 import type { TaskPriority } from "@/lib/tasks/task-type";
 
 export type GradedAssignmentMetricInput = {
   status: string;
   priority: TaskPriority | null;
   dueDate: string | null;
+  submittedAt: string | null;
   completedAt: string | null;
+  taskType?: string;
 };
 
 export function computeSimpleCompletionRate(done: number, total: number) {
@@ -36,13 +39,17 @@ export function countGradedAssignmentMetrics(
   let completedOnTime = 0;
   let completedLate = 0;
   let completedTaskPriorityPoints = 0;
+  let lateTaskDeductionPoints = 0;
+  let lateSubmissionCount = 0;
+  let lateSubmissionMinutesTotal = 0;
 
   for (const assignment of assignments) {
     if (assignment.status === "DONE") {
       done += 1;
       completedTaskPriorityPoints += calculateTaskPriorityPoints(assignment);
-      const onTime = isAssignmentCompletedOnTime(
-        assignment.completedAt,
+
+      const onTime = isAssignmentSubmittedOnTime(
+        assignment.submittedAt,
         assignment.dueDate,
       );
 
@@ -50,6 +57,19 @@ export function countGradedAssignmentMetrics(
         completedOnTime += 1;
       } else if (onTime === false) {
         completedLate += 1;
+      }
+
+      const lateSubmission = getLateSubmissionDeductionForAssignment({
+        taskType: assignment.taskType ?? "GRADED",
+        status: assignment.status,
+        dueDate: assignment.dueDate,
+        submittedAt: assignment.submittedAt,
+      });
+
+      if (lateSubmission.deductionPoints > 0) {
+        lateSubmissionCount += 1;
+        lateSubmissionMinutesTotal += lateSubmission.lateMinutes;
+        lateTaskDeductionPoints += lateSubmission.deductionPoints;
       }
     } else if (assignment.status === "BLOCKER") {
       blockers += 1;
@@ -69,6 +89,9 @@ export function countGradedAssignmentMetrics(
       completedOnTimeTasks: completedOnTime,
       completedLateTasks: completedLate,
       completedTaskPriorityPoints,
+      lateTaskDeductionPoints,
+      lateSubmissionCount,
+      lateSubmissionMinutesTotal,
     }),
   );
 
@@ -80,8 +103,12 @@ export function countGradedAssignmentMetrics(
     revisions,
     completionRate: computeSimpleCompletionRate(done, total),
     adjustedCompletionRate: performance.adjustedCompletionRate,
-    taskPoints: performance.taskPoints,
     completedTaskPriorityPoints,
+    grossTaskPoints: performance.grossTaskPoints,
+    lateTaskDeductionPoints: performance.lateTaskDeductionPoints,
+    taskPoints: performance.taskPoints,
+    lateSubmissionCount: performance.lateSubmissionCount,
+    lateSubmissionMinutesTotal: performance.lateSubmissionMinutesTotal,
     completedOnTime,
     completedLate,
   };

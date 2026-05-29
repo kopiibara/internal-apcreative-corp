@@ -17,10 +17,13 @@ import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
 import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
+import { ButtonGroup } from "@/components/ui/button-group"
 import { Card, CardContent } from "@/components/ui/card"
 import { richTextExcerpt } from "@/lib/rich-text/rich-text"
-import { isAssignmentCompletedOnTime } from "@/lib/tasks/task-type"
+import { getTaskLateSubmissionDisplay } from "@/lib/tasks/task-late-submission"
+import { isAssignmentSubmittedOnTime } from "@/lib/tasks/task-type"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
+import { cn } from "@/lib/utils"
 import { useTaskStore } from "@/stores/use-task-store"
 
 type TaskAssignmentCardProps = {
@@ -54,15 +57,26 @@ export function TaskAssignmentCard({
   const [doneDialogOpen, setDoneDialogOpen] = useState(false)
   const openEditDialog = useTaskStore((state) => state.openEditDialog)
 
-  const onTimeStatus = isAssignmentCompletedOnTime(
-    assignment.completedAt,
-    assignment.dueDate
+  const onTimeStatus = isAssignmentSubmittedOnTime(
+    assignment.submittedAt,
+    assignment.dueDate,
   )
+  const lateSubmissionDisplay =
+    assignment.taskType === "GRADED"
+      ? getTaskLateSubmissionDisplay({
+          taskType: assignment.taskType,
+          status: assignment.status,
+          dueDate: assignment.dueDate,
+          submittedAt: assignment.submittedAt,
+        })
+      : null
   const isAssignee = assignment.assignedToProfileId === currentProfileId
   const canEditTask =
     assignment.status !== "DONE" &&
     (permissions.canManageAll ||
       assignment.createdByProfileId === currentProfileId)
+  const canDeleteTask = canEditTask && permissions.canDelete
+  const canUpdateTask = canEditTask && permissions.canUpdate
   const canReviewTask = permissions.canReview && !isAssignee
   const hasProof =
     Boolean(assignment.proofUrl) || Boolean(assignment.proofNote)
@@ -89,26 +103,12 @@ export function TaskAssignmentCard({
         onClick={() => onOpenDetails?.(assignment)}
       >
         <CardContent className="min-w-0 space-y-2.5 px-4 py-2">
-          {showAssignee ? (
-            <div className="flex min-w-0 items-center gap-2 text-xs">
-              <UserAvatar
-                profileId={assignment.assignedToProfileId}
-                name={assignment.assignedToName}
-                imageUrl={assignment.assignedToImageUrl}
-                size="sm"
-              />
-              <p className="min-w-0 break-words">
-                {assignment.assignedToName}
-              </p>
-            </div>
-          ) : null}
           <div className="flex min-w-0 flex-col gap-1.5">
-
-            <h1 className="line-clamp-2 min-w-0  font-bold leading-snug">
+            <h1 className="line-clamp-2 min-w-0 font-bold leading-snug">
               {assignment.title}
             </h1>
             {assignment.description ? (
-              <p className="line-clamp-2 text-xs text-muted-foreground">
+              <p className="line-clamp-2 text-sm text-muted-foreground">
                 {richTextExcerpt(assignment.description, 110)}
               </p>
             ) : null}
@@ -119,19 +119,22 @@ export function TaskAssignmentCard({
             </div>
           </div>
 
-          <p className="text-xs">
-            <span className="text-muted-foreground">Assigned to:</span>{" "}
-            <span className="font-medium"> {assignment.assignedToName}</span>
-          </p>
+          {!showAssignee ? (
+            <p className="text-xs">
+              <span className="text-muted-foreground">Assigned to:</span>{" "}
+              <span className="font-medium">{assignment.assignedToName}</span>
+            </p>
+          ) : null}
           <p className="text-xs">
             <span className="text-muted-foreground">Created by:</span>{" "}
             <span className="font-medium"> {assignment.createdByName}</span>
           </p>
           <p className="text-xs">
             <span className="text-muted-foreground">Due:</span>{" "}
-            <span className="font-medium">  {assignment.dueDate
-              ? dateFormatter.format(new Date(assignment.dueDate))
-              : "â€”"}
+            <span className="font-medium">
+              {assignment.dueDate
+                ? dateFormatter.format(new Date(assignment.dueDate))
+                : "—"}
             </span>
           </p>
           {assignment.priority ? (
@@ -165,6 +168,12 @@ export function TaskAssignmentCard({
               type="proof"
               size="sm"
             />
+          ) : null}
+
+          {lateSubmissionDisplay ? (
+            <div className="rounded-lg border-2 border-border bg-muted/40 px-2.5 py-2 text-xs font-semibold leading-snug">
+              {lateSubmissionDisplay.summaryLabel}
+            </div>
           ) : null}
 
           <div
@@ -228,33 +237,59 @@ export function TaskAssignmentCard({
                 </a>
               </Button>
             ) : null}
-
-            {canEditTask && permissions.canUpdate ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="neutral"
-                onClick={() => openEditDialog(assignment)}
-                disabled={isPending}
-              >
-                <Pencil className="size-3" />
-                Edit
-              </Button>
-            ) : null}
-
-            {canEditTask && permissions.canDelete ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isPending}
-              >
-                <Trash2 className="size-3" />
-                Delete
-              </Button>
-            ) : null}
           </div>
+
+          {showAssignee || canUpdateTask || canDeleteTask ? (
+            <div
+              className="flex items-center gap-2 "
+              onClick={(event) => event.stopPropagation()}
+            >
+              {showAssignee ? (
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <UserAvatar
+                    profileId={assignment.assignedToProfileId}
+                    name={assignment.assignedToName}
+                    imageUrl={assignment.assignedToImageUrl}
+                    size="sm"
+                  />
+                  <p className="min-w-0 truncate text-xs font-medium">
+                    {assignment.assignedToName}
+                  </p>
+                </div>
+              ) : null}
+
+              {canUpdateTask || canDeleteTask ? (
+                <ButtonGroup
+                  className={cn("shrink-0", !showAssignee && "ml-auto")}
+                >
+                  {canUpdateTask ? (
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="neutral"
+                      aria-label="Edit task"
+                      onClick={() => openEditDialog(assignment)}
+                      disabled={isPending}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                  ) : null}
+                  {canDeleteTask ? (
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="destructive"
+                      aria-label="Delete task"
+                      onClick={handleDelete}
+                      disabled={isPending}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  ) : null}
+                </ButtonGroup>
+              ) : null}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

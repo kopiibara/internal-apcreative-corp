@@ -54,34 +54,48 @@ export function StaffAccountabilitySummaryCards({
 
   return (
     <section className="space-y-3">
-      <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-2 md:gap-3 lg:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <SummaryCard
           label="01 / COMPLETION"
           title="Average Team Completion"
           value={formatStaffPercent(teamSummary.averageTeamCompletion)}
-          detail="Average across included employees"
+          detail="Completed graded tasks / assigned graded tasks"
           tone="bg-background text-foreground"
         />
         <SummaryCard
-          label="02 / TASK POINTS"
-          title="Team Task Points"
+          label="02 / GROSS TASK"
+          title="Gross Task Points"
+          value={`${teamSummary.totalGrossTaskPoints}`}
+          detail="Priority points before late deductions"
+          tone="bg-background text-foreground"
+        />
+        <SummaryCard
+          label="03 / LATE DEDUCTION"
+          title="Late Task Deductions"
+          value={`-${teamSummary.totalLateTaskDeductionPoints}`}
+          detail="2 points per 30 minutes late on proof submission"
+          tone="bg-magenta text-white"
+        />
+        <SummaryCard
+          label="04 / NET TASK"
+          title="Net Task Points"
           value={`${teamSummary.totalTaskPoints}`}
-          detail="Completed graded task priority points"
+          detail="Gross task points minus late deductions"
           tone="bg-blue text-white"
         />
         <SummaryCard
-          label="03 / DAILY PROGRESS"
-          title="Team Daily Progress Net"
+          label="05 / DAILY PROGRESS"
+          title="Daily Progress Net"
           value={`${teamSummary.totalDailyProgressNetPoints}`}
           detail={`${teamSummary.missedDailyProgressReports} missed reports`}
           tone="bg-cyan text-white"
         />
         <SummaryCard
-          label="04 / TOTAL POINTS"
-          title="Team Total Points"
+          label="06 / TOTAL"
+          title="Total Points"
           value={String(teamSummary.totalTeamPoints)}
-          detail={`${teamSummary.lateRequestsPendingApproval} late requests pending`}
-          tone="bg-magenta text-white"
+          detail="Net task points + daily progress net"
+          tone="bg-background text-foreground border-2 border-border"
         />
       </div>
     </section>

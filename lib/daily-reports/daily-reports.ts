@@ -286,10 +286,11 @@ export async function getDailyReportData(
       status: TaskAssignmentStatus;
       priority: TaskPriority | null;
       due_date: Date | null;
+      submitted_at: Date | null;
       completed_at: Date | null;
     }>(
       `
-      SELECT ta.status, t.priority, t.due_date, ta.completed_at
+      SELECT ta.status, t.priority, t.due_date, ta.submitted_at, ta.completed_at
       FROM task_assignment ta
       JOIN task t ON t.id = ta.task_id
       WHERE t.task_type = 'GRADED'
@@ -454,6 +455,7 @@ export async function getDailyReportData(
       status: TaskAssignmentStatus;
       priority: TaskPriority | null;
       due_date: Date | null;
+      submitted_at: Date | null;
       completed_at: Date | null;
     }>(
       `
@@ -465,6 +467,7 @@ export async function getDailyReportData(
         ta.status,
         t.priority,
         t.due_date,
+        ta.submitted_at,
         ta.completed_at
       FROM task_assignment ta
       JOIN task t ON t.id = ta.task_id
@@ -616,6 +619,7 @@ export async function getDailyReportData(
       status: row.status,
       priority: row.priority,
       dueDate: row.due_date?.toISOString() ?? null,
+      submittedAt: row.submitted_at?.toISOString() ?? null,
       completedAt: row.completed_at?.toISOString() ?? null,
     })),
   );
@@ -726,6 +730,8 @@ export async function getDailyReportData(
       approvalsSubmitted: 0,
       approvalsApproved: 0,
       gradedCompletionRate: 0,
+      grossTaskPoints: 0,
+      lateTaskDeductionPoints: 0,
       taskPoints: 0,
       adjustedCompletionRate: 0,
     };
@@ -761,6 +767,8 @@ export async function getDailyReportData(
       approvalsSubmitted: 0,
       approvalsApproved: 0,
       gradedCompletionRate: 0,
+      grossTaskPoints: 0,
+      lateTaskDeductionPoints: 0,
       taskPoints: 0,
       adjustedCompletionRate: 0,
     };
@@ -786,6 +794,7 @@ export async function getDailyReportData(
           status: row.status,
           priority: row.priority,
           dueDate: row.due_date?.toISOString() ?? null,
+          submittedAt: row.submitted_at?.toISOString() ?? null,
           completedAt: row.completed_at?.toISOString() ?? null,
         })),
       );
@@ -793,6 +802,8 @@ export async function getDailyReportData(
       return {
         ...summary,
         gradedCompletionRate: performance.completionRate,
+        grossTaskPoints: performance.grossTaskPoints,
+        lateTaskDeductionPoints: performance.lateTaskDeductionPoints,
         taskPoints: performance.taskPoints,
         adjustedCompletionRate: performance.adjustedCompletionRate,
       };
@@ -968,6 +979,8 @@ export async function getDailyReportData(
     summary: {
       dailyCompletionRate: gradedMetrics.completionRate,
       gradedTaskCompletionRate: gradedMetrics.completionRate,
+      grossTaskPoints: gradedMetrics.grossTaskPoints,
+      lateTaskDeductionPoints: gradedMetrics.lateTaskDeductionPoints,
       gradedTaskPoints: gradedMetrics.taskPoints,
       adjustedCompletionRate: gradedMetrics.adjustedCompletionRate,
       approvalRate:

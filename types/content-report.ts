@@ -10,6 +10,7 @@ export type ApprovalActivityLog = {
   contentReportId: number;
   actorProfileId: number;
   actorName: string;
+  actorImageUrl: string | null;
   actorAccountType: string;
   actorPosition: string | null;
   action: string;
@@ -66,6 +67,8 @@ export type ContentReport = {
 
   remarksRevisionSummary: string | null;
   activityLogs: ApprovalActivityLog[];
+  /** Set server-side by decorateApprovalPublishingPermissions. */
+  approvalPublishingPermissions?: ApprovalPublishingPermissions;
 
   createdAt: string;
   updatedAt: string;
