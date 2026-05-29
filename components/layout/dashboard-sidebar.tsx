@@ -334,10 +334,6 @@ export function DashboardSidebar({
                                                             align="start"
                                                             sideOffset={8}
                                                         >
-                                                            <DropdownMenuLabel>
-                                                                {item.title}
-                                                            </DropdownMenuLabel>
-                                                            <DropdownMenuSeparator />
                                                             {item.subItems.map((subItem) => {
                                                                 const isSubActive =
                                                                     isRouteActive(subItem.href)

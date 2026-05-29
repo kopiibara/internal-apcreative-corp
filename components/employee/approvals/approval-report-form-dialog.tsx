@@ -198,7 +198,7 @@ export function ContentReportFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex h-[calc(100dvh-2rem)] w-[95vw] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+      <DialogContent className="flex h-[calc(100dvh-3rem)] w-2xl flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
         <DialogHeader className="shrink-0 border-b px-6 py-4">
           <DialogTitle>
             {isCreateMode ? "Create Approval Report" : "Edit Approval Report"}

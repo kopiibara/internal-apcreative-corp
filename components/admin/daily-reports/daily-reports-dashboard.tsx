@@ -69,17 +69,7 @@ export function DailyReportsDashboard({
 
   return (
     <div className="min-w-0 space-y-4 overflow-hidden md:space-y-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-normal">
-            Daily Reports
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Read-only command summary of graded tasks, content approvals, and
-            team activity for the selected day.
-          </p>
-        </div>
-      </div>
+
 
       <DailyReportFilters
         brands={brands}

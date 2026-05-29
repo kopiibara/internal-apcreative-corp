@@ -29,15 +29,10 @@ type TaskBoardProps = {
 
 const COPY = {
   admin: {
-    title: "To-Do Task",
-    description:
-      "Assign work, collect proof, and review completion in a Kanban workflow.",
+    cardTitle: "Task board",
     createLabel: "Add Task",
   },
   employee: {
-    title: "To-Do Task",
-    description:
-      "Track assigned tasks, submit proof, and monitor review status.",
     cardTitle: "My tasks",
     createLabel: "Add Personal Task",
     teamCreateLabel: "Assign Task",
@@ -85,8 +80,6 @@ export function TaskBoard({
     [assignments, assignmentPatches, liveAssignments]
   )
 
-  const hasNoTasks = currentAssignments.length === 0
-
   const resolvedDetailsAssignment = detailsAssignment
     ? assignmentPatches[detailsAssignment.assignmentId] ?? detailsAssignment
     : null
@@ -96,6 +89,7 @@ export function TaskBoard({
     enablePolling: isEmployeeView,
   })
 
+  const hasNoTasks = currentAssignments.length === 0
   const emptyMessage = isEmployeeView
     ? canAssignTeamTasks
       ? "No team tasks yet. Assign work to Multimedia or Content Creator teammates on your shared brands."
@@ -104,28 +98,26 @@ export function TaskBoard({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between p-1">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-normal">{copy.title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
-        </div>
+      <BoardSection className="w-full min-w-0 overflow-hidden pb-1 gap-2">
+        <CardHeader className="min-w-0 shrink-0 gap-3 ">
+          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <CardTitle className="shrink-0 text-card-foreground">
+              {copy.cardTitle}
+            </CardTitle>
 
-        {hasNoTasks ? (
-          <p className="shrink-0 rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-            {emptyMessage}
-          </p>
-        ) : null}
+            {hasNoTasks ? (
+              <p className="min-w-0 flex-1 max-w-2xl rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-center text-sm text-muted-foreground">
+                {emptyMessage}
+              </p>
+            ) : null}
 
-        {showCreateButton ? (
-          <Button className="shrink-0" onClick={openCreateDialog}>
-            <Plus className="size-4" />
-            {createLabel}
-          </Button>
-        ) : null}
-      </div>
-
-      <BoardSection className="w-full min-w-0 overflow-hidden py-4 gap-2 ">
-        <CardHeader className="min-w-0 shrink-0 gap-3">
+            {showCreateButton ? (
+              <Button className="shrink-0" onClick={openCreateDialog}>
+                <Plus className="size-4" />
+                {createLabel}
+              </Button>
+            ) : null}
+          </div>
           <TaskFilters
             assignees={assignees}
             showAssigneeFilter={!isEmployeeView}

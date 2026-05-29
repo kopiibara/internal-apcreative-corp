@@ -4,6 +4,11 @@ import type { ReactNode } from "react"
 
 import { StatusBadge } from "@/components/shared/status-badge"
 import {
+  DATA_TABLE_BODY_CLASS,
+  DATA_TABLE_HEADER_CLASS,
+  DataTableScrollArea,
+} from "@/components/shared/data-table-scroll-area"
+import {
   Card,
   CardContent,
   CardDescription,
@@ -11,6 +16,14 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import type {
   DailyApprovalLogEntry,
   DailyBlockerEntry,
@@ -46,43 +59,39 @@ function SummaryTable({
         <CardDescription className="text-xs sm:text-sm">{description}</CardDescription>
       </CardHeader>
       <CardContent className="px-3 md:px-6">
-        <ScrollArea className="w-full" scrollbars="horizontal">
-          <div className="min-w-[720px]">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  {headers.map((header) => (
-                    <th key={header} className="px-3 py-2 font-medium">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={headers.length}
-                      className="px-3 py-6 text-muted-foreground"
-                    >
-                      {emptyMessage}
-                    </td>
-                  </tr>
-                ) : (
-                  rows.map((cells, index) => (
-                    <tr key={index} className="border-b align-top">
-                      {cells.map((cell, cellIndex) => (
-                        <td key={cellIndex} className="px-3 py-3">
-                          {cell}
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </ScrollArea>
+        <DataTableScrollArea className="h-[320px] max-h-[320px] md:h-[420px] md:max-h-[420px]">
+          <Table className="min-w-[720px] border-0">
+            <TableHeader className={DATA_TABLE_HEADER_CLASS}>
+              <TableRow>
+                {headers.map((header) => (
+                  <TableHead key={header}>{header}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody className={DATA_TABLE_BODY_CLASS}>
+              {rows.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={headers.length}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    {emptyMessage}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                rows.map((cells, index) => (
+                  <TableRow key={index}>
+                    {cells.map((cell, cellIndex) => (
+                      <TableCell key={cellIndex} className="align-top">
+                        {cell}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </DataTableScrollArea>
       </CardContent>
     </Card>
   )

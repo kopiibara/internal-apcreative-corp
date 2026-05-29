@@ -199,37 +199,7 @@ function getRecentDateOptions(
   }).filter((dateKey) => dateKey >= startDateKey);
 }
 
-function DailyProgressSummaryPreview({
-  value,
-  fallback,
-  compact = false,
-}: {
-  value: string | null | undefined;
-  fallback?: string | null;
-  compact?: boolean;
-}) {
-  if (!value?.trim()) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        {fallback || "No summary."}
-      </p>
-    );
-  }
 
-  return (
-    <div
-      className={cn(
-        "text-sm text-muted-foreground",
-        "[&_ul]:list-disc [&_ul]:pl-5",
-        "[&_ol]:list-decimal [&_ol]:pl-5",
-        "[&_li]:my-0 [&_p]:my-0",
-        compact && "line-clamp-3",
-      )}
-    >
-      <RichTextRenderer value={value} />
-    </div>
-  );
-}
 
 function groupDailyProgressReports(
   reports: DailyProgressReportRecord[],
@@ -669,12 +639,12 @@ export function EmployeeDailyProgressDashboard({
           </CardContent>
         </Card>
 
-        <Card className="min-w-0 shadow-none">
+        <Card className="min-w-0 shadow-none bg-white dark:bg-gray-900">
           <CardHeader>
             <CardTitle>Submit Progress</CardTitle>
           </CardHeader>
 
-          <CardContent className="grid gap-4">
+          <CardContent className="grid gap-2">
             <div className="grid gap-2 md:grid-cols-2">
               <div className="space-y-2">
                 <RequiredLabel required>Report date</RequiredLabel>
@@ -731,7 +701,7 @@ export function EmployeeDailyProgressDashboard({
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label
                     className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-lg border-2 border-border bg-white p-3 text-sm font-semibold transition",
+                      "flex cursor-pointer items-center gap-3 rounded-lg border-2 border-border bg-white p-3 text-xs font-semibold transition",
                       "hover:bg-muted/30",
                       isNoBrandSelected && "bg-blue-50 ring-2 ring-blue-700",
                       isSelectedPastReportLocked &&
@@ -756,7 +726,7 @@ export function EmployeeDailyProgressDashboard({
                       <label
                         key={brand.id}
                         className={cn(
-                          "flex cursor-pointer items-center gap-3 rounded-lg border-2 border-border bg-white p-3 text-sm font-semibold transition",
+                          "flex cursor-pointer items-center gap-3 rounded-lg border-2 border-border bg-white p-3 text-xs font-semibold transition",
                           "hover:bg-muted/30",
                           isChecked && "bg-blue-50 ring-2 ring-blue-700",
                           isSelectedPastReportLocked &&
@@ -802,6 +772,7 @@ export function EmployeeDailyProgressDashboard({
                 disabled={isSelectedPastReportLocked}
                 minHeight={130}
                 placeholder="Optional"
+
               />
 
               <div className="space-y-2">

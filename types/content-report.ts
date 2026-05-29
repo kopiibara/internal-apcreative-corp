@@ -20,6 +20,11 @@ export type ApprovalActivityLog = {
   createdAt: string;
 };
 
+export type ApprovalPublishingPermissions = {
+  canPublishNow: boolean;
+  canSchedulePublish: boolean;
+};
+
 export type ContentReport = {
   id: number;
   submittedByProfileId: number;

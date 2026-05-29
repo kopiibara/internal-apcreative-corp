@@ -13,13 +13,18 @@ import {
 } from "@tanstack/react-table"
 
 import { StatusBadge } from "@/components/shared/status-badge"
+import { DataTablePagination } from "@/components/shared/data-table-pagination"
+import {
+  DATA_TABLE_BODY_CLASS,
+  DATA_TABLE_HEADER_CLASS,
+  DataTableScrollArea,
+} from "@/components/shared/data-table-scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -31,7 +36,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  canEmployeeEditOwnReport,
+  canEmployeeEditReport,
+  canEditPublishingFields,
   type ContentReport,
 } from "@/types/content-report"
 import { useContentReportStore } from "@/stores/use-content-report-store"
@@ -107,17 +113,28 @@ function getContentReportColumns({
     {
       accessorKey: "brandName",
       header: "Brand",
-      cell: ({ row }) => row.original.brandName ?? "No brand",
+      cell: ({ row }) =>
+        row.original.brandName ? (
+          <Badge variant="secondary">{row.original.brandName}</Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">No brand</span>
+        ),
     },
     {
       accessorKey: "contentType",
       header: ({ column }) => (
         <SortButton label="Content Type" column={column} />
       ),
+      cell: ({ row }) => (
+        <Badge variant="neutral">{row.original.contentType}</Badge>
+      ),
     },
     {
       accessorKey: "platform",
       header: ({ column }) => <SortButton label="Platform" column={column} />,
+      cell: ({ row }) => (
+        <Badge variant="neutral">{row.original.platform}</Badge>
+      ),
     },
     {
       accessorKey: "caption",
@@ -229,7 +246,6 @@ function getContentReportColumns({
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
         const report = row.original
-        const canEdit = canEmployeeEditOwnReport(report, currentProfileId)
 
         return (
           <div className="text-right">
@@ -248,22 +264,7 @@ function getContentReportColumns({
                   <Eye className="size-4" />
                   View Details
                 </DropdownMenuItem>
-                {canEdit ? (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => openEditDialog(report)}>
-                      <Pencil className="size-4" />
-                      Edit report
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={() => openDeleteDialog(report)}
-                    >
-                      <XCircle className="size-4" />
-                      Cancel report
-                    </DropdownMenuItem>
-                  </>
-                ) : null}
+
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -305,9 +306,9 @@ export function EmployeeApprovalTableView({
 
   return (
     <div className="min-w-0 space-y-4">
-      <div className="w-full min-w-0 rounded-lg border">
-        <Table>
-          <TableHeader>
+      <DataTableScrollArea>
+        <Table className="min-w-[1600px] border-0">
+          <TableHeader className={DATA_TABLE_HEADER_CLASS}>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -316,14 +317,14 @@ export function EmployeeApprovalTableView({
                       ? null
                       : flexRender(
                         header.column.columnDef.header,
-                        header.getContext()
+                        header.getContext(),
                       )}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className={DATA_TABLE_BODY_CLASS}>
             {table.getRowModel().rows.length === 0 ? (
               <TableRow>
                 <TableCell
@@ -335,12 +336,24 @@ export function EmployeeApprovalTableView({
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer"
+                  onClick={() => openDetailsSheet(row.original)}
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="align-top">
+                    <TableCell
+                      key={cell.id}
+                      className="align-top"
+                      onClick={
+                        cell.column.id === "actions"
+                          ? (event) => event.stopPropagation()
+                          : undefined
+                      }
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
@@ -349,32 +362,16 @@ export function EmployeeApprovalTableView({
             )}
           </TableBody>
         </Table>
-      </div>
+      </DataTableScrollArea>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Page {table.getState().pagination.pageIndex + 1} of{" "}
-          {table.getPageCount() || 1}
-        </p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="neutral"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="neutral"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <DataTablePagination
+        pageIndex={table.getState().pagination.pageIndex}
+        pageCount={table.getPageCount()}
+        canPreviousPage={table.getCanPreviousPage()}
+        canNextPage={table.getCanNextPage()}
+        onPreviousPage={() => table.previousPage()}
+        onNextPage={() => table.nextPage()}
+      />
     </div>
   )
 }

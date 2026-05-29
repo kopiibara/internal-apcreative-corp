@@ -8,15 +8,23 @@ import { FileUp, Pencil, Plus, Trash2 } from "lucide-react"
 import {
   createAdsCampaign,
   deleteAdsCampaign,
-  importGoogleAdsCsvMetrics,
+  importAdsPlatformCsv,
   updateAdsCampaign,
 } from "@/app/employee/ads-campaigns/actions"
-import { GoogleAdsImportDialog } from "@/components/employee/ads-campaigns/google-ads-import-dialog"
+import { AdsPlatformImportDialog } from "@/components/employee/ads-campaigns/ads-platform-import-dialog"
 import { FilterBadge } from "@/components/shared/filter-badge"
 import { FilterBadgeGroup } from "@/components/shared/filter-badge-group"
 import { GoogleAdsKpiCards } from "@/components/shared/google-ads-kpi-cards"
 import { GoogleAdsPerformanceChart } from "@/components/shared/google-ads-performance-chart"
+import { MetaAdsKpiCards } from "@/components/shared/meta-ads-kpi-cards"
+import { MetaAdsPerformanceChart } from "@/components/shared/meta-ads-performance-chart"
 import { StatusBadge } from "@/components/shared/status-badge"
+import {
+  DATA_TABLE_BODY_CLASS,
+  DATA_TABLE_HEADER_CLASS,
+  DataTableScrollArea,
+} from "@/components/shared/data-table-scroll-area"
+import { Badge } from "@/components/ui/badge"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,7 +53,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Select,
   SelectContent,
@@ -74,6 +81,11 @@ import {
   type GoogleAdsSummary,
 } from "@/lib/ads-campaigns-types"
 import { summarizeGoogleAdsMetrics } from "@/lib/ads-campaigns/google-ads-metrics-display"
+import {
+  getMetaCampaignMonth,
+  getMetaCampaignSourceFile,
+  summarizeMetaCampaigns,
+} from "@/lib/ads-campaigns/meta-ads-metrics-display"
 
 type AdsCampaignsDashboardProps = {
   brands: AssignedAdsBrand[]
@@ -132,7 +144,7 @@ function getDefaultBrandId(brands: AssignedAdsBrand[]) {
 
 function getCampaignDraft(
   brands: AssignedAdsBrand[],
-  campaign?: AdsCampaign
+  campaign?: AdsCampaign,
 ): CampaignDraft {
   return {
     campaignId: campaign?.id,
@@ -393,10 +405,11 @@ export function AdsCampaignsDashboard({
   summary,
 }: AdsCampaignsDashboardProps) {
   const router = useRouter()
+
   const [selectedPlatform, setSelectedPlatform] =
     useState<AdsPlatform>("GOOGLE")
   const [selectedBrandId, setSelectedBrandId] = useState(
-    brands.length === 1 ? String(brands[0].id) : "all"
+    brands.length === 1 ? String(brands[0].id) : "all",
   )
   const [selectedMonth, setSelectedMonth] = useState("all")
   const [selectedSourceFile, setSelectedSourceFile] = useState("all")
@@ -404,39 +417,98 @@ export function AdsCampaignsDashboard({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [campaignToDelete, setCampaignToDelete] =
     useState<AdsCampaign | null>(null)
-  const [draft, setDraft] = useState<CampaignDraft>(
-    getCampaignDraft(brands)
-  )
+  const [draft, setDraft] = useState<CampaignDraft>(getCampaignDraft(brands))
   const [isPending, startTransition] = useTransition()
+
   const selectedBrand =
     selectedBrandId === "all"
       ? null
       : brands.find((brand) => String(brand.id) === selectedBrandId) ?? null
+
+  const canImportCsv =
+    selectedPlatform === "GOOGLE" || selectedPlatform === "META"
+
   const visibleCampaigns = campaigns.filter(
     (campaign) =>
       campaign.platform === selectedPlatform &&
-      (selectedBrandId === "all" || String(campaign.brandId) === selectedBrandId)
+      (selectedBrandId === "all" ||
+        String(campaign.brandId) === selectedBrandId),
   )
+
   const visibleMetrics = metrics.filter(
     (metric) =>
-      (selectedBrandId === "all" || String(metric.brandId) === selectedBrandId) &&
-      (selectedMonth === "all" || metric.metricDate.startsWith(selectedMonth)) &&
-      (selectedSourceFile === "all" || metric.sourceFileName === selectedSourceFile)
+      (selectedBrandId === "all" ||
+        String(metric.brandId) === selectedBrandId) &&
+      (selectedMonth === "all" ||
+        metric.metricDate.startsWith(selectedMonth)) &&
+      (selectedSourceFile === "all" ||
+        metric.sourceFileName === selectedSourceFile),
   )
+
   const baseFilteredMetrics = metrics.filter(
     (metric) =>
-      selectedBrandId === "all" || String(metric.brandId) === selectedBrandId
+      selectedBrandId === "all" || String(metric.brandId) === selectedBrandId,
   )
+
   const monthOptions = Array.from(
-    new Set(baseFilteredMetrics.map((metric) => metric.metricDate.slice(0, 7)))
+    new Set(baseFilteredMetrics.map((metric) => metric.metricDate.slice(0, 7))),
   ).sort((left, right) => right.localeCompare(left))
+
   const fileOptions = Array.from(
     new Set(
       baseFilteredMetrics
         .map((metric) => metric.sourceFileName)
-        .filter((fileName): fileName is string => Boolean(fileName))
-    )
+        .filter((fileName): fileName is string => Boolean(fileName)),
+    ),
   ).sort()
+
+  const visibleMetaCampaigns = useMemo(
+    () =>
+      campaigns.filter(
+        (campaign) =>
+          campaign.platform === "META" &&
+          (selectedBrandId === "all" ||
+            String(campaign.brandId) === selectedBrandId),
+      ),
+    [campaigns, selectedBrandId],
+  )
+
+  const filteredMetaCampaigns = useMemo(() => {
+    return visibleMetaCampaigns.filter((campaign) => {
+      const month = getMetaCampaignMonth(campaign)
+      const sourceFile = getMetaCampaignSourceFile(campaign.notes)
+
+      return (
+        (selectedMonth === "all" || month === selectedMonth) &&
+        (selectedSourceFile === "all" || sourceFile === selectedSourceFile)
+      )
+    })
+  }, [selectedMonth, selectedSourceFile, visibleMetaCampaigns])
+
+  const metaMonthOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          visibleMetaCampaigns
+            .map((campaign) => getMetaCampaignMonth(campaign))
+            .filter((month): month is string => Boolean(month)),
+        ),
+      ).sort((left, right) => right.localeCompare(left)),
+    [visibleMetaCampaigns],
+  )
+
+  const metaFileOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          visibleMetaCampaigns
+            .map((campaign) => getMetaCampaignSourceFile(campaign.notes))
+            .filter((fileName): fileName is string => Boolean(fileName)),
+        ),
+      ).sort(),
+    [visibleMetaCampaigns],
+  )
+
   const visibleSummary = useMemo(
     () =>
       selectedBrandId === "all" &&
@@ -444,13 +516,35 @@ export function AdsCampaignsDashboard({
         selectedSourceFile === "all"
         ? summary
         : summarizeGoogleAdsMetrics(visibleMetrics),
-    [selectedBrandId, selectedMonth, selectedSourceFile, summary, visibleMetrics]
+    [selectedBrandId, selectedMonth, selectedSourceFile, summary, visibleMetrics],
   )
+
+  const visibleMetaSummary = useMemo(
+    () => summarizeMetaCampaigns(filteredMetaCampaigns),
+    [filteredMetaCampaigns],
+  )
+
+  const metaLastSourceFileName = useMemo(() => {
+    const sourceFiles = visibleMetaCampaigns
+      .map((campaign) => getMetaCampaignSourceFile(campaign.notes))
+      .filter((fileName): fileName is string => Boolean(fileName))
+
+    return sourceFiles.length > 0 ? sourceFiles[sourceFiles.length - 1] : null
+  }, [visibleMetaCampaigns])
+
+  function handlePlatformChange(platform: AdsPlatform) {
+    setSelectedPlatform(platform)
+    setSelectedMonth("all")
+    setSelectedSourceFile("all")
+    setImportDialogOpen(false)
+  }
 
   function openCreateDialog() {
     setDraft({
       campaignId: undefined,
-      brandId: selectedBrand ? String(selectedBrand.id) : getDefaultBrandId(brands),
+      brandId: selectedBrand
+        ? String(selectedBrand.id)
+        : getDefaultBrandId(brands),
       platform: selectedPlatform,
       campaignName: "",
       objective: "Lead Gen",
@@ -518,54 +612,64 @@ export function AdsCampaignsDashboard({
     })
   }
 
-  function submitCsvImport(file: File) {
+  async function submitCsvImport(file: File) {
     if (selectedBrandId === "all") {
-      toast.error("Choose one brand before importing Google Ads data.")
-      return
+      toast.error(
+        `Choose one brand before importing ${platformLabels[selectedPlatform]} Ads data.`,
+      )
+      throw new Error("Brand is required for import.")
     }
 
-    startTransition(async () => {
-      const csvText = await file.text()
-      const result = await importGoogleAdsCsvMetrics({
-        brandId: Number(selectedBrandId),
-        fileName: file.name,
-        csvText,
-      })
+    if (!canImportCsv) {
+      toast.error(
+        `${platformLabels[selectedPlatform]} CSV import is not supported yet.`,
+      )
+      throw new Error("CSV import is not supported for this platform.")
+    }
 
-      if (!result.success) {
-        toast.error(result.message)
-        return
-      }
+    const csvText = await file.text()
 
-      toast.success(result.message)
-      setImportDialogOpen(false)
-      router.refresh()
+    const result = await importAdsPlatformCsv({
+      platform: selectedPlatform,
+      brandId: Number(selectedBrandId),
+      fileName: file.name,
+      csvText,
     })
+
+    if (!result.success) {
+      toast.error(result.message)
+      throw new Error(result.message)
+    }
+
+    toast.success(result.message)
+    router.refresh()
   }
 
   return (
     <div className="min-w-0 space-y-6 overflow-hidden">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between p-1">
+      <div className="flex flex-col gap-3 p-1 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight md:text-3xl">
             Ads Campaigns
           </h1>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Track campaign performance, imported Google Ads data, and brand
+            Track campaign performance, imported platform data, and brand
             campaign records.
           </p>
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
-          {selectedPlatform === "GOOGLE" ? (
+          {canImportCsv ? (
             <Button
               type="button"
               variant="neutral"
               onClick={() => setImportDialogOpen(true)}
             >
               <FileUp className="size-4" />
-              Import CSV
+              Import {platformLabels[selectedPlatform]} CSV
             </Button>
           ) : null}
+
           <Button onClick={openCreateDialog} disabled={brands.length === 0}>
             <Plus className="size-4" />
             New Campaign
@@ -579,12 +683,13 @@ export function AdsCampaignsDashboard({
             <FilterBadge
               key={platform}
               active={selectedPlatform === platform}
-              onClick={() => setSelectedPlatform(platform)}
+              onClick={() => handlePlatformChange(platform)}
             >
               {platformLabels[platform]}
             </FilterBadge>
           ))}
         </div>
+
         <FilterBadgeGroup label="" className="min-w-0">
           <FilterBadge
             active={selectedBrandId === "all"}
@@ -593,6 +698,7 @@ export function AdsCampaignsDashboard({
           >
             All Brands
           </FilterBadge>
+
           {brands.map((brand) => (
             <FilterBadge
               key={brand.id}
@@ -605,48 +711,58 @@ export function AdsCampaignsDashboard({
         </FilterBadgeGroup>
       </div>
 
-      {selectedPlatform === "GOOGLE" ? (
-        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <FilterBadgeGroup label="Month" className="min-w-0">
+      {(selectedPlatform === "GOOGLE" || selectedPlatform === "META") && (
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <FilterBadgeGroup label="Month" className="min-w-0 flex-1">
             <FilterBadge
               active={selectedMonth === "all"}
               onClick={() => setSelectedMonth("all")}
             >
               All Months
             </FilterBadge>
-            {monthOptions.map((month) => (
-              <FilterBadge
-                key={month}
-                active={selectedMonth === month}
-                onClick={() => setSelectedMonth(month)}
-              >
-                {new Date(`${month}-01T00:00:00`).toLocaleDateString("en-US", {
-                  month: "short",
-                  year: "numeric",
-                })}
-              </FilterBadge>
-            ))}
+
+            {(selectedPlatform === "GOOGLE" ? monthOptions : metaMonthOptions).map(
+              (month) => (
+                <FilterBadge
+                  key={month}
+                  active={selectedMonth === month}
+                  onClick={() => setSelectedMonth(month)}
+                >
+                  {new Date(`${month}-01T00:00:00`).toLocaleDateString("en-US", {
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </FilterBadge>
+              ),
+            )}
           </FilterBadgeGroup>
 
-          <FilterBadgeGroup label="Import" className="min-w-0">
-            <FilterBadge
-              active={selectedSourceFile === "all"}
-              onClick={() => setSelectedSourceFile("all")}
+          <div className="min-w-0 space-y-2 lg:w-full lg:max-w-md">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Import
+            </p>
+            <Select
+              value={selectedSourceFile}
+              onValueChange={setSelectedSourceFile}
             >
-              All Imports
-            </FilterBadge>
-            {fileOptions.map((fileName) => (
-              <FilterBadge
-                key={fileName}
-                active={selectedSourceFile === fileName}
-                onClick={() => setSelectedSourceFile(fileName)}
-              >
-                {fileName}
-              </FilterBadge>
-            ))}
-          </FilterBadgeGroup>
+              <SelectTrigger className="w-full [&>span]:truncate">
+                <SelectValue placeholder="All Imports" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Imports</SelectItem>
+                {(selectedPlatform === "GOOGLE"
+                  ? fileOptions
+                  : metaFileOptions
+                ).map((fileName) => (
+                  <SelectItem key={fileName} value={fileName}>
+                    {fileName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      ) : null}
+      )}
 
       {selectedPlatform === "GOOGLE" ? (
         <>
@@ -654,13 +770,19 @@ export function AdsCampaignsDashboard({
 
           <GoogleAdsPerformanceChart metrics={visibleMetrics} />
         </>
+      ) : selectedPlatform === "META" ? (
+        <>
+          <MetaAdsKpiCards summary={visibleMetaSummary} />
+
+          <MetaAdsPerformanceChart campaigns={filteredMetaCampaigns} />
+        </>
       ) : (
         <Card className="shadow-none">
           <CardHeader>
             <CardTitle>{platformLabels[selectedPlatform]} Ads</CardTitle>
             <CardDescription>
-              Import and API integrations for this platform are coming soon.
-              You can still create and track campaign records below.
+              Import and API integrations for this platform are coming soon. You
+              can still create and track campaign records below.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -669,93 +791,99 @@ export function AdsCampaignsDashboard({
       <Card className="min-w-0 shadow-none">
         <CardHeader>
           <CardTitle>Campaign Tracker</CardTitle>
-          <CardDescription>
-            Campaign records filtered by selected platform and brand.
-          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-hidden rounded-lg border-2 border-border bg-card">
-            <ScrollArea className="w-full" scrollbars="horizontal">
-              <Table className="min-w-[980px] border-0">
-                <TableHeader>
+
+        <CardContent className="min-h-0">
+          <DataTableScrollArea className="h-[320px] max-h-[320px] md:h-[420px] md:max-h-[420px]">
+            <Table className="min-w-[980px] border-0">
+              <TableHeader className={DATA_TABLE_HEADER_CLASS}>
+                <TableRow>
+                  <TableHead>Campaign</TableHead>
+                  <TableHead>Brand</TableHead>
+                  <TableHead>Objective</TableHead>
+                  <TableHead>Spend</TableHead>
+                  <TableHead>Leads</TableHead>
+                  <TableHead>CTR</TableHead>
+                  <TableHead>ROAS</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody className={DATA_TABLE_BODY_CLASS}>
+                {visibleCampaigns.length === 0 ? (
                   <TableRow>
-                    <TableHead>Campaign</TableHead>
-                    <TableHead>Brand</TableHead>
-                    <TableHead>Objective</TableHead>
-                    <TableHead>Spend</TableHead>
-                    <TableHead>Leads</TableHead>
-                    <TableHead>CTR</TableHead>
-                    <TableHead>ROAS</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableCell
+                      colSpan={9}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No campaigns found for the active filters.
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visibleCampaigns.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={9}
-                        className="h-24 text-center text-muted-foreground"
-                      >
-                        No campaigns found for the active filters.
+                ) : (
+                  visibleCampaigns.map((campaign) => (
+                    <TableRow key={campaign.id}>
+                      <TableCell>
+                        <div className="min-w-0">
+                          <p className="font-bold">
+                            {campaign.campaignName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {platformLabels[campaign.platform]}
+                          </p>
+                        </div>
+                      </TableCell>
+
+                      <TableCell>
+                        <Badge variant="secondary">{campaign.brandName}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="neutral">{campaign.objective}</Badge>
+                      </TableCell>
+                      <TableCell>{formatPeso(campaign.spend)}</TableCell>
+                      <TableCell>{campaign.leads}</TableCell>
+                      <TableCell>{formatPercent(campaign.ctr)}</TableCell>
+                      <TableCell>
+                        {campaign.roas == null ? "-" : campaign.roas}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge
+                          status={campaign.status}
+                          type="campaign"
+                          size="sm"
+                        />
+                      </TableCell>
+
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDraft(getCampaignDraft(brands, campaign))
+                              setDialogOpen(true)
+                            }}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setCampaignToDelete(campaign)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    visibleCampaigns.map((campaign) => (
-                      <TableRow key={campaign.id}>
-                        <TableCell>
-                          <div className="min-w-0">
-                            <p className="font-bold">{campaign.campaignName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {platformLabels[campaign.platform]}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{campaign.brandName}</TableCell>
-                        <TableCell>{campaign.objective}</TableCell>
-                        <TableCell>{formatPeso(campaign.spend)}</TableCell>
-                        <TableCell>{campaign.leads}</TableCell>
-                        <TableCell>{formatPercent(campaign.ctr)}</TableCell>
-                        <TableCell>
-                          {campaign.roas == null ? "-" : campaign.roas}
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge
-                            status={campaign.status}
-                            type="campaign"
-                            size="sm"
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setDraft(getCampaignDraft(brands, campaign))
-                                setDialogOpen(true)
-                              }}
-                            >
-                              <Pencil className="size-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => setCampaignToDelete(campaign)}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </div>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </DataTableScrollArea>
         </CardContent>
       </Card>
 
@@ -769,12 +897,16 @@ export function AdsCampaignsDashboard({
         isPending={isPending}
       />
 
-      <GoogleAdsImportDialog
+      <AdsPlatformImportDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
+        platform={selectedPlatform}
         selectedBrandId={selectedBrandId}
-        lastSourceFileName={summary.lastSourceFileName}
-        isPending={isPending}
+        lastSourceFileName={
+          selectedPlatform === "GOOGLE"
+            ? summary.lastSourceFileName
+            : metaLastSourceFileName
+        }
         onImport={submitCsvImport}
       />
 
@@ -794,6 +926,7 @@ export function AdsCampaignsDashboard({
               cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction

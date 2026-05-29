@@ -24,7 +24,7 @@ import {
   KanbanOverlay,
   type KanbanMoveEvent,
 } from "@/components/reui/kanban"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Tabs,
   TabsContent,
@@ -161,6 +161,7 @@ export function ApprovalKanbanBoard({
     () => getApprovalActionableCount(filteredReports, viewerContext),
     [filteredReports, viewerContext]
   )
+  const hasNoReports = reports.length === 0
 
   const boardSyncKey = useMemo(
     () =>
@@ -221,48 +222,44 @@ export function ApprovalKanbanBoard({
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
       <ApprovalDeepLinkOpener reports={currentReports} approvalId={approvalId} />
 
-      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-normal">Approvals</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Review submissions through the approval workflow and update
-            publishing once both approvals are complete.
-          </p>
-        </div>
-
-        <div className="flex min-w-0 flex-wrap items-center justify-start gap-3 lg:shrink-0 lg:justify-end">
-          <Tabs
-            value={activeView}
-            onValueChange={(value) =>
-              setActiveView(value as "kanban" | "table")
-            }
-            className="w-auto shrink-0"
-          >
-            <TabsList>
-              <TabsTrigger value="kanban">
-                Kanban Board
-                {actionableCount > 0 ? (
-                  <span className="ml-2 rounded-md border border-border bg-background px-1.5 text-xs">
-                    {actionableCount}
-                  </span>
-                ) : null}
-              </TabsTrigger>
-              <TabsTrigger value="table">Table View</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
-
       <Tabs
         value={activeView}
         onValueChange={(value) => setActiveView(value as "kanban" | "table")}
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       >
-        <TabsContent value="kanban" className="mt-0 min-w-0 overflow-hidden">
-          <BoardSection className="w-full min-w-0 overflow-hidden pb-1 gap-2">
-            <CardHeader className="min-w-0 shrink-0 gap-3">
+        <BoardSection className="w-full min-w-0 flex-1 overflow-hidden pb-1 gap-2">
+          <CardHeader className="min-w-0 shrink-0 gap-3">
+            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <CardTitle className="shrink-0 text-card-foreground">
+                Approval board
+              </CardTitle>
 
-              <ApprovalFilters reports={currentReports} />
-            </CardHeader>
+              {hasNoReports ? (
+                <p className="min-w-0 flex-1 max-w-2xl rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-center text-sm text-muted-foreground">
+                  No approval submissions yet. Reports will appear here once
+                  brand officers submit creative work.
+                </p>
+              ) : null}
+
+              <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-start gap-3 lg:justify-end">
+                <TabsList>
+                  <TabsTrigger value="kanban">
+                    Kanban Board
+                    {actionableCount > 0 ? (
+                      <span className="ml-2 rounded-md border border-border bg-background px-1.5 text-xs">
+                        {actionableCount}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger value="table">Table View</TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
+
+            <ApprovalFilters reports={currentReports} />
+          </CardHeader>
+
+          <TabsContent value="kanban" className="mt-0 min-w-0 overflow-hidden">
             <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
               <KanbanBoardShell>
                 <Kanban
@@ -291,7 +288,7 @@ export function ApprovalKanbanBoard({
                                 onClick={() => {
                                   const merged =
                                     currentReports.find(
-                                      (entry) => entry.id === report.id
+                                      (entry) => entry.id === report.id,
                                     ) ?? report
                                   openDetailsSheet(merged)
                                 }}
@@ -306,15 +303,9 @@ export function ApprovalKanbanBoard({
                 </Kanban>
               </KanbanBoardShell>
             </CardContent>
-          </BoardSection>
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="table" className="mt-0 min-w-0 overflow-hidden">
-          <Card className="w-full min-w-0 overflow-hidden">
-            <CardHeader className="gap-3">
-
-              <ApprovalFilters reports={currentReports} />
-            </CardHeader>
+          <TabsContent value="table" className="mt-0 min-w-0 overflow-hidden">
             <CardContent className="min-w-0">
               <ApprovalDataTable
                 reports={currentReports}
@@ -325,8 +316,8 @@ export function ApprovalKanbanBoard({
                 embedded
               />
             </CardContent>
-          </Card>
-        </TabsContent>
+          </TabsContent>
+        </BoardSection>
       </Tabs>
 
       <ApprovalDetailsSheet

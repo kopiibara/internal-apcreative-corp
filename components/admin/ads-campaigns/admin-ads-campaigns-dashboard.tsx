@@ -7,8 +7,13 @@ import { FilterBadgeGroup } from "@/components/shared/filter-badge-group"
 import { GoogleAdsKpiCards } from "@/components/shared/google-ads-kpi-cards"
 import { GoogleAdsPerformanceChart } from "@/components/shared/google-ads-performance-chart"
 import { StatusBadge } from "@/components/shared/status-badge"
+import {
+  DATA_TABLE_BODY_CLASS,
+  DATA_TABLE_HEADER_CLASS,
+  DataTableScrollArea,
+} from "@/components/shared/data-table-scroll-area"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Table,
   TableBody,
@@ -240,54 +245,60 @@ export function AdminAdsCampaignsDashboard({
           <CardDescription>Read-only campaign records.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-hidden rounded-lg border-2 border-border bg-card">
-            <ScrollArea className="w-full" scrollbars="horizontal">
-              <Table className="min-w-[1080px] border-0">
-                <TableHeader>
+          <DataTableScrollArea>
+            <Table className="min-w-[1080px] border-0">
+              <TableHeader className={DATA_TABLE_HEADER_CLASS}>
+                <TableRow>
+                  <TableHead>Campaign</TableHead>
+                  <TableHead>Platform</TableHead>
+                  <TableHead>Brand</TableHead>
+                  <TableHead>Objective</TableHead>
+                  <TableHead>Spend</TableHead>
+                  <TableHead>Leads</TableHead>
+                  <TableHead>CTR</TableHead>
+                  <TableHead>ROAS</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Start Date</TableHead>
+                  <TableHead>End Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className={DATA_TABLE_BODY_CLASS}>
+                {visibleCampaigns.length === 0 ? (
                   <TableRow>
-                    <TableHead>Campaign</TableHead>
-                    <TableHead>Platform</TableHead>
-                    <TableHead>Brand</TableHead>
-                    <TableHead>Objective</TableHead>
-                    <TableHead>Spend</TableHead>
-                    <TableHead>Leads</TableHead>
-                    <TableHead>CTR</TableHead>
-                    <TableHead>ROAS</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>End Date</TableHead>
+                    <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
+                      No campaigns found for the active filters.
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visibleCampaigns.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
-                        No campaigns found for the active filters.
+                ) : (
+                  visibleCampaigns.map((campaign) => (
+                    <TableRow key={campaign.id}>
+                      <TableCell className="font-bold">{campaign.campaignName}</TableCell>
+                      <TableCell>
+                        <Badge variant="neutral">
+                          {platformLabels[campaign.platform]}
+                        </Badge>
                       </TableCell>
-                    </TableRow>
-                  ) : (
-                    visibleCampaigns.map((campaign) => (
-                      <TableRow key={campaign.id}>
-                        <TableCell className="font-bold">{campaign.campaignName}</TableCell>
-                        <TableCell>{platformLabels[campaign.platform]}</TableCell>
-                        <TableCell>{campaign.brandName}</TableCell>
-                        <TableCell>{campaign.objective}</TableCell>
-                        <TableCell>{formatPeso(campaign.spend)}</TableCell>
-                        <TableCell>{campaign.leads}</TableCell>
-                        <TableCell>{formatPercent(campaign.ctr)}</TableCell>
-                        <TableCell>{campaign.roas == null ? "-" : campaign.roas}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={campaign.status} type="campaign" size="sm" />
-                        </TableCell>
-                        <TableCell>{formatDate(campaign.startDate)}</TableCell>
-                        <TableCell>{formatDate(campaign.endDate)}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{campaign.brandName}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="neutral">{campaign.objective}</Badge>
+                      </TableCell>
+                      <TableCell>{formatPeso(campaign.spend)}</TableCell>
+                      <TableCell>{campaign.leads}</TableCell>
+                      <TableCell>{formatPercent(campaign.ctr)}</TableCell>
+                      <TableCell>{campaign.roas == null ? "-" : campaign.roas}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={campaign.status} type="campaign" size="sm" />
+                      </TableCell>
+                      <TableCell>{formatDate(campaign.startDate)}</TableCell>
+                      <TableCell>{formatDate(campaign.endDate)}</TableCell>
                       </TableRow>
                     ))
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </div>
+                )}
+              </TableBody>
+            </Table>
+          </DataTableScrollArea>
         </CardContent>
       </Card>
     </div>

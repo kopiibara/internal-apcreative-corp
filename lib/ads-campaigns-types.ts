@@ -81,3 +81,21 @@ export type GoogleAdsSummary = {
   lastImportTemplate: string | null
   availability: GoogleAdsMetricAvailability
 }
+
+export type MetaAdsMetricAvailability = {
+  hasSpend: boolean
+  hasLeads: boolean
+  hasRoas: boolean
+  hasCtr: boolean
+}
+
+export type MetaAdsSummary = {
+  totalSpend: number
+  totalLeads: number
+  avgCpa: number | null
+  avgRoas: number | null
+  avgCtr: number | null
+  campaignCount: number
+  lastSourceFileName: string | null
+  availability: MetaAdsMetricAvailability
+}
