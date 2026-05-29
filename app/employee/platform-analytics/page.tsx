@@ -20,7 +20,10 @@ export const metadata = {
 
 export default async function EmployeePlatformAnalyticsPage() {
   const { profile } = await requireEmployee()
-  const allowed = await canViewPlatformAnalytics(profile.auth_user_id)
+  const allowed = await canViewPlatformAnalytics(
+    profile.auth_user_id,
+    profile.id,
+  )
 
   if (!allowed) {
     redirect("/employee/unauthorized?permission=platform_analytics.view")
