@@ -88,7 +88,7 @@ export function ReminderKanbanBoard({ reminders }: ReminderKanbanBoardProps) {
   }
 
   return (
-    <KanbanBoardShell>
+    <KanbanBoardShell columnLayout="fit">
       <Kanban
         value={columns}
         onValueChange={() => undefined}
