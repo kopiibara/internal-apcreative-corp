@@ -44,6 +44,8 @@ import type {
   PlatformCode,
 } from "@/lib/platform-analytics/types";
 import type { PlatformAnalyticsBrandScopeUi } from "@/lib/platform-analytics/brand-scope";
+import { FilterBadge } from "@/components/shared/filter-badge";
+import { FilterBadgeGroup } from "@/components/shared/filter-badge-group";
 import { cn } from "@/lib/utils";
 
 type PlatformAnalyticsDashboardProps = {
@@ -118,6 +120,8 @@ export function PlatformAnalyticsDashboard({
     hasAllBrandsAccess: true,
     defaultMetaPageKey: "all",
     showAllPagesOption: true,
+    assignedBrandNames: [],
+    scopeDescription: "All brands",
   },
   analyticsBasePath = "/admin/platform-analytics",
 }: PlatformAnalyticsDashboardProps) {
@@ -323,6 +327,38 @@ export function PlatformAnalyticsDashboard({
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
               {PAGE_SUBTITLE}
             </p>
+            {brandScopeUi.hasAllBrandsAccess ? (
+              <FilterBadgeGroup
+                label="Brands"
+                className="mt-3 min-w-0"
+                scrollable={false}
+              >
+                <FilterBadge
+                  active
+                  type="button"
+                  className="pointer-events-none"
+                >
+                  All brands
+                </FilterBadge>
+              </FilterBadgeGroup>
+            ) : brandScopeUi.assignedBrandNames.length > 0 ? (
+              <FilterBadgeGroup
+                label="Your brands"
+                className="mt-3 min-w-0"
+                scrollable={brandScopeUi.assignedBrandNames.length > 3}
+              >
+                {brandScopeUi.assignedBrandNames.map((brandName) => (
+                  <FilterBadge
+                    key={brandName}
+                    active
+                    type="button"
+                    className="pointer-events-none"
+                  >
+                    {brandName}
+                  </FilterBadge>
+                ))}
+              </FilterBadgeGroup>
+            ) : null}
           </div>
           <PlatformActions
             platform={platform}
@@ -481,10 +517,22 @@ export function PlatformAnalyticsDashboard({
           ) : data.metaBusinessPages.length === 0 ? (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                No Meta business pages are enabled. Set{" "}
-                <code className="text-xs">*_META_ENABLED=true</code> (e.g.{" "}
-                <code className="text-xs">PRO_GROUP_META_ENABLED</code>) and
-                configure the matching Page ID and Page Access Token.
+                {brandScopeUi.hasAllBrandsAccess ? (
+                  <>
+                    No Meta business pages are enabled. Set{" "}
+                    <code className="text-xs">*_META_ENABLED=true</code> (e.g.{" "}
+                    <code className="text-xs">PRO_GROUP_META_ENABLED</code>) and
+                    configure the matching Page ID and Page Access Token.
+                  </>
+                ) : (
+                  <>
+                    No Meta pages are available for{" "}
+                    <strong>{brandScopeUi.scopeDescription}</strong>. Ask an admin
+                    to connect the Facebook page for your assigned brand(s), or
+                    confirm your brand assignment matches the configured Meta
+                    pages.
+                  </>
+                )}
               </CardContent>
             </Card>
           ) : (

@@ -183,6 +183,7 @@ export function DashboardShell({
                         canAccessTaskBoard: user.canAccessTaskBoard,
                         canAccessReminders: user.canAccessReminders,
                         canAccessDailyProgress: user.canAccessDailyProgress,
+                        canAccessPlatformAnalytics: user.canAccessPlatformAnalytics,
                         imageUrl: user.imageUrl,
                     }}
                 />

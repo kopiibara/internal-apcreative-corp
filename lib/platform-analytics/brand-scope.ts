@@ -17,16 +17,42 @@ export type PlatformAnalyticsBrandScope = {
   hasAllBrandsAccess: boolean;
   allowedBrandSlugs: string[];
   allowedBrandIds: number[];
+  metaPageBrandIds: Record<string, number>;
 };
 
 export type PlatformAnalyticsBrandScopeUi = {
   hasAllBrandsAccess: boolean;
   defaultMetaPageKey: string;
   showAllPagesOption: boolean;
+  assignedBrandNames: string[];
+  scopeDescription: string;
 };
 
 function normalizeBrandSlug(slug: string) {
   return slug.trim().toLowerCase().replace(/[_\s]+/g, "-");
+}
+
+async function loadMetaPageBrandIdsByKey(): Promise<Record<string, number>> {
+  const result = await query<{ facebook_page_id: string; brand_id: number | null }>(
+    `
+    SELECT facebook_page_id, brand_id
+    FROM meta_facebook_page
+    WHERE is_active = true
+      AND brand_id IS NOT NULL
+    `,
+  );
+
+  const map: Record<string, number> = {};
+
+  for (const row of result.rows) {
+    const config = getMetaPageByFacebookPageId(row.facebook_page_id);
+
+    if (config?.key && row.brand_id != null) {
+      map[config.key] = row.brand_id;
+    }
+  }
+
+  return map;
 }
 
 function slugMatchesAllowedBrand(
@@ -52,11 +78,14 @@ function slugMatchesAllowedBrand(
 export async function getPlatformAnalyticsBrandScope(
   profileId: number,
 ): Promise<PlatformAnalyticsBrandScope> {
+  const metaPageBrandIds = await loadMetaPageBrandIdsByKey();
+
   if (await profileHasAllBrandsAccess(profileId)) {
     return {
       hasAllBrandsAccess: true,
       allowedBrandSlugs: [],
       allowedBrandIds: [],
+      metaPageBrandIds,
     };
   }
 
@@ -67,6 +96,7 @@ export async function getPlatformAnalyticsBrandScope(
       hasAllBrandsAccess: false,
       allowedBrandSlugs: [],
       allowedBrandIds: [],
+      metaPageBrandIds,
     };
   }
 
@@ -85,6 +115,7 @@ export async function getPlatformAnalyticsBrandScope(
     hasAllBrandsAccess: false,
     allowedBrandSlugs: slugResult.rows.map((row) => row.slug),
     allowedBrandIds: slugResult.rows.map((row) => row.id),
+    metaPageBrandIds,
   };
 }
 
@@ -106,21 +137,26 @@ export function isMetaPageKeyAllowed(
     return false;
   }
 
+  const mappedBrandId = scope.metaPageBrandIds[pageKey];
+
   return (
     slugMatchesAllowedBrand(
       config.brandSlug,
       scope.allowedBrandSlugs,
       scope.allowedBrandIds,
+      mappedBrandId,
     ) ||
     slugMatchesAllowedBrand(
       pageKey,
       scope.allowedBrandSlugs,
       scope.allowedBrandIds,
+      mappedBrandId,
     ) ||
     slugMatchesAllowedBrand(
       config.displayName,
       scope.allowedBrandSlugs,
       scope.allowedBrandIds,
+      mappedBrandId,
     )
   );
 }
@@ -153,23 +189,36 @@ export function filterMetaBusinessPagesByScope(
   return pages.filter((page) => isMetaPageKeyAllowed(page.key, scope));
 }
 
-export function toPlatformAnalyticsBrandScopeUi(
+export async function toPlatformAnalyticsBrandScopeUi(
   scope: PlatformAnalyticsBrandScope,
   allowedPages: MetaBusinessPageDashboard[],
-): PlatformAnalyticsBrandScopeUi {
+  profileId: number,
+): Promise<PlatformAnalyticsBrandScopeUi> {
+  const effectiveBrands = await getEffectiveBrandAccessForProfile(profileId);
+  const assignedBrandNames = effectiveBrands.map((brand) => brand.brandName);
+
   if (scope.hasAllBrandsAccess) {
     return {
       hasAllBrandsAccess: true,
       defaultMetaPageKey: "all",
       showAllPagesOption: true,
+      assignedBrandNames,
+      scopeDescription: "All brands",
     };
   }
+
+  const scopeDescription =
+    assignedBrandNames.length > 0
+      ? assignedBrandNames.join(", ")
+      : "No brands assigned";
 
   if (allowedPages.length <= 1) {
     return {
       hasAllBrandsAccess: false,
       defaultMetaPageKey: allowedPages[0]?.key ?? "all",
       showAllPagesOption: false,
+      assignedBrandNames,
+      scopeDescription,
     };
   }
 
@@ -177,6 +226,8 @@ export function toPlatformAnalyticsBrandScopeUi(
     hasAllBrandsAccess: false,
     defaultMetaPageKey: allowedPages[0]?.key ?? "all",
     showAllPagesOption: false,
+    assignedBrandNames,
+    scopeDescription,
   };
 }
 
