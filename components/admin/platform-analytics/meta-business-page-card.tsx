@@ -211,6 +211,12 @@ export function MetaBusinessPageCard({
                 {page.tokenResolutionHint}
               </p>
             ) : null}
+            {page.lastSyncError ? (
+              <p className="rounded-md border border-amber-600/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+                <span className="font-medium">Last sync error: </span>
+                {page.lastSyncError}
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <Badge variant={connected ? "default" : "neutral"}>
                 Connection: {page.connectionStatus}

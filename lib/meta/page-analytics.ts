@@ -104,6 +104,7 @@ export type MetaBusinessPageDashboard = {
   tokenSource: ResolvedPageTokenSource | null
   tokenResolutionHint: string | null
   lastSyncAt: string | null
+  lastSyncError: string | null
   pageSummarySyncStatus: MetaSourceSyncStatus
   postsSyncStatus: MetaSourceSyncStatus
   insightsSyncStatus: MetaSourceSyncStatus
@@ -637,6 +638,9 @@ async function loadPageAnalytics(
   const hourlyPostsRun = getLastSyncRun(runs, "hourly_posts")
   const dailyInsightsRun = getLastSyncRun(runs, "daily_insights")
 
+  const lastFailedRun = runs.find((run) => run.status === "FAILED")
+  const lastSyncError = lastFailedRun?.error_log?.trim() || null
+
   const postsPermissionDenied = runIndicatesPermissionDenied(hourlyPostsRun)
 
   const pageSummarySyncStatus = resolveSourceSyncStatus({
@@ -673,15 +677,33 @@ async function loadPageAnalytics(
 
   const pageAccessTokenStatus = !pageChecklist.tokenConfigured
     ? "Missing"
-    : pageSummarySyncStatus === "success" || pageSummarySyncStatus === "partial"
-      ? "OK"
-      : runIndicatesApplicationDeleted(dailyPageRun)
+    : runIndicatesApplicationDeleted(dailyPageRun) ||
+        runIndicatesApplicationDeleted(hourlyPostsRun) ||
+        runIndicatesApplicationDeleted(dailyInsightsRun)
+      ? "Invalid"
+      : (pageSummaryTokenFailed ||
+          runIndicatesTokenExpired(hourlyPostsRun) ||
+          runIndicatesTokenExpired(dailyInsightsRun) ||
+          runIndicatesTokenInvalid(hourlyPostsRun) ||
+          runIndicatesTokenInvalid(dailyInsightsRun)) &&
+          runIndicatesTokenExpired(dailyPageRun)
+        ? "Expired"
+      : pageSummaryTokenFailed ||
+          runIndicatesTokenInvalid(hourlyPostsRun) ||
+          runIndicatesTokenInvalid(dailyInsightsRun)
         ? "Invalid"
-        : pageSummaryTokenFailed && runIndicatesTokenExpired(dailyPageRun)
-          ? "Expired"
-          : pageSummaryTokenFailed && runIndicatesTokenInvalid(dailyPageRun)
-            ? "Invalid"
-            : "OK"
+      : pageSummarySyncStatus === "success" ||
+          pageSummarySyncStatus === "partial" ||
+          postsSyncStatus === "success" ||
+          postsSyncStatus === "partial"
+        ? "OK"
+        : lastSyncError &&
+            (lastSyncError.toLowerCase().includes("token") ||
+              lastSyncError.toLowerCase().includes("oauth"))
+          ? "Invalid"
+          : pageChecklist.tokenConfigured
+            ? "OK"
+            : "Missing"
 
   const tokenReady = pageChecklist.ready
   const hasDbPage = dbPage.rows.length > 0
@@ -775,6 +797,7 @@ async function loadPageAnalytics(
     tokenSource,
     tokenResolutionHint,
     lastSyncAt: lastSyncRow ? new Date(lastSyncRow).toISOString() : null,
+    lastSyncError,
     pageSummarySyncStatus,
     postsSyncStatus,
     insightsSyncStatus,
@@ -950,6 +973,7 @@ function buildUnconfiguredPageDashboard(
     tokenSource: null,
     tokenResolutionHint: null,
     lastSyncAt: null,
+    lastSyncError: null,
     pageSummarySyncStatus: "no_data",
     postsSyncStatus: "no_data",
     insightsSyncStatus: "no_data",

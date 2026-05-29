@@ -18,6 +18,17 @@ function readEnv(name: string) {
   return process.env[name]?.trim() ?? ""
 }
 
+/** Strip whitespace and non-numeric prefixes from Facebook Page IDs in env. */
+export function normalizeFacebookPageId(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return ""
+  }
+
+  const digitsOnly = trimmed.replace(/\D/g, "")
+  return digitsOnly || trimmed
+}
+
 function normalizeBrandKey(value: string) {
   return value.trim().toLowerCase().replace(/[_\s]+/g, "-")
 }
@@ -66,17 +77,27 @@ function discoverFacebookPagesFromEnv(): MetaFacebookPagesConfigEntry[] {
 }
 
 function readFacebookPagesConfig(): MetaFacebookPagesConfigEntry[] {
+  const discovered = discoverFacebookPagesFromEnv()
+
+  // Per-brand env vars (AL_QAYSAR_META_*, PRO_GROUP_META_*, etc.) are the source of truth
+  // when present — avoids stale META_FACEBOOK_PAGES_CONFIG JSON overriding production env.
+  if (discovered.length > 0) {
+    return discovered
+  }
+
   const raw = process.env.META_FACEBOOK_PAGES_CONFIG?.trim()
-  if (!raw) return discoverFacebookPagesFromEnv()
+  if (!raw) {
+    return discovered
+  }
 
   try {
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) {
-      return discoverFacebookPagesFromEnv()
+      return discovered
     }
     return parsed as MetaFacebookPagesConfigEntry[]
   } catch {
-    return discoverFacebookPagesFromEnv()
+    return discovered
   }
 }
 
@@ -115,7 +136,7 @@ function buildPageFromConfig(entry: MetaFacebookPagesConfigEntry): MetaPageConfi
         : enabledFromEnv === null
           ? true
           : enabledFromEnv,
-    pageId: readEnv(pageIdEnvKey),
+    pageId: normalizeFacebookPageId(readEnv(pageIdEnvKey)),
     accessToken: readEnv(accessTokenEnvKey),
     pageIdEnvKey,
     accessTokenEnvKey,
@@ -186,7 +207,13 @@ export function getMetaPageByKey(key: MetaPageConfigKey) {
 }
 
 export function getMetaPageByFacebookPageId(pageId: string) {
-  return metaPages.find((page) => page.pageId === pageId)
+  const normalized = normalizeFacebookPageId(pageId)
+  return metaPages.find(
+    (page) =>
+      page.pageId === pageId ||
+      page.pageId === normalized ||
+      normalizeFacebookPageId(page.pageId) === normalized,
+  )
 }
 
 export type MetaSyncPage = {
@@ -206,7 +233,7 @@ export function getActiveMetaPagesForSync(): MetaSyncPage[] {
   }
 
   return configured.map((page) => ({
-    facebook_page_id: page.pageId,
+    facebook_page_id: normalizeFacebookPageId(page.pageId),
     page_name: page.name,
     brand_slug: page.brandSlug,
     access_token_env_key: page.accessTokenEnvKey,
