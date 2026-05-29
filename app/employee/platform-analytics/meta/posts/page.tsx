@@ -1,4 +1,7 @@
+import { requireEmployee } from "@/lib/auth/auth-session";
+import { canViewPlatformAnalytics } from "@/lib/platform-analytics/access";
 import { renderMetaPostsAnalyticsPage } from "@/lib/platform-analytics/meta-posts-page";
+import { redirect } from "next/navigation";
 
 export const metadata = {
   title: "Meta Posts Analytics",
@@ -18,13 +21,20 @@ type MetaPostsPageProps = {
   }>;
 };
 
-export default async function AdminMetaPostsAnalyticsPage({
+export default async function EmployeeMetaPostsAnalyticsPage({
   searchParams,
 }: MetaPostsPageProps) {
+  const { profile } = await requireEmployee();
+  const allowed = await canViewPlatformAnalytics(profile.auth_user_id);
+
+  if (!allowed) {
+    redirect("/employee/unauthorized?permission=platform_analytics.view");
+  }
+
   const params = await searchParams;
 
   return renderMetaPostsAnalyticsPage({
-    analyticsBasePath: "/admin/platform-analytics",
+    analyticsBasePath: "/employee/platform-analytics",
     searchParams: params,
   });
 }

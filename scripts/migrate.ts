@@ -4,15 +4,15 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { Pool } from "pg";
 
+import {
+  createScriptPoolConfig,
+  formatDatabaseConnectionError,
+  getScriptDatabaseUrlLabel,
+} from "./db-connection";
+
 const migrationsDir = path.join(process.cwd(), "db", "migrations");
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl:
-    process.env.NODE_ENV === "production"
-      ? { rejectUnauthorized: false }
-      : undefined,
-});
+const pool = new Pool(createScriptPoolConfig());
 
 async function ensureMigrationTable() {
   await pool.query(`
@@ -67,9 +67,7 @@ async function runMigration(filename: string, sql: string) {
 }
 
 async function main() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is missing in .env");
-  }
+  console.log(`Using ${getScriptDatabaseUrlLabel()} for migrations.`);
 
   await ensureMigrationTable();
 
@@ -103,7 +101,7 @@ async function main() {
 
 main()
   .catch((error) => {
-    console.error(error);
+    console.error(formatDatabaseConnectionError(error));
     process.exit(1);
   })
   .finally(async () => {

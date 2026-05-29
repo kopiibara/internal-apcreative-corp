@@ -1,5 +1,6 @@
 import { requireEmployee } from "@/lib/auth/auth-session"
 import { DashboardShell } from "@/components/layout/dashboard-shell"
+import { canViewPlatformAnalytics } from "@/lib/platform-analytics/access"
 import { can } from "@/lib/permissions"
 import {
     canAccessEmployeeTaskPage,
@@ -18,6 +19,7 @@ export default async function EmployeeLayout({
         canAccessReminders,
         canAccessAdsCampaigns,
         canAccessDailyProgress,
+        canAccessPlatformAnalytics,
     ] =
         await Promise.all([
             canAccessEmployeeToDoTaskBoard(
@@ -34,6 +36,7 @@ export default async function EmployeeLayout({
                 can(profile.auth_user_id, "daily_progress.submit"),
                 can(profile.auth_user_id, "daily_progress.view_own"),
             ]).then((checks) => checks.some(Boolean)),
+            canViewPlatformAnalytics(profile.auth_user_id),
         ])
     const actionableTaskCount = canAccessTaskBoard
         ? await getEmployeeActionableTaskCount(profile.id)
@@ -53,6 +56,7 @@ export default async function EmployeeLayout({
                 canAccessTaskBoard,
                 canAccessReminders,
                 canAccessDailyProgress,
+                canAccessPlatformAnalytics,
                 imageUrl: user.image ?? null,
                 mustChangePassword: profile.must_change_password,
             }}
