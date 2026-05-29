@@ -20,6 +20,7 @@ export default async function AdminPlatformAnalyticsPage() {
     <PlatformAnalyticsDashboard
       initialData={page.initialData}
       canManage={page.canManage}
+      showAdminSyncActions={page.showAdminSyncActions}
       bootstrapMessage={page.bootstrapMessage}
       brandScopeUi={page.brandScopeUi}
       analyticsBasePath={page.analyticsBasePath}

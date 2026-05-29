@@ -4,6 +4,7 @@ import { bootstrapMetaMonitoring } from "@/lib/meta/bootstrap";
 import type { AccountType } from "@/lib/auth/account-type";
 import {
   canManagePlatformAnalytics,
+  canShowAdminPlatformAnalyticsSyncActions,
   canViewPlatformAnalytics,
 } from "@/lib/platform-analytics/access";
 import {
@@ -40,7 +41,15 @@ export async function loadPlatformAnalyticsPage({
     redirect(unauthorizedPath);
   }
 
-  const canManage = await canManagePlatformAnalytics(profile.auth_user_id);
+  const [canManage, showAdminSyncActions] = await Promise.all([
+    canManagePlatformAnalytics(profile.auth_user_id),
+    canShowAdminPlatformAnalyticsSyncActions(
+      profile.auth_user_id,
+      profile.account_type,
+      profile.id,
+      analyticsBasePath,
+    ),
+  ]);
 
   let initialData = await getPlatformAnalyticsDashboardData({
     platform: "META",
@@ -59,7 +68,7 @@ export async function loadPlatformAnalyticsPage({
   let bootstrapMessage: string | null = null;
 
   if (
-    canManage &&
+    showAdminSyncActions &&
     initialData.metaNeedsBootstrap &&
     initialData.platform === "META"
   ) {
@@ -87,6 +96,7 @@ export async function loadPlatformAnalyticsPage({
   return {
     initialData,
     canManage,
+    showAdminSyncActions,
     bootstrapMessage,
     brandScopeUi,
     analyticsBasePath,
