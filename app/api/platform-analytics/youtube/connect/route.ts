@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import { isAdminAccountType } from "@/lib/auth/account-type";
 import { buildYouTubeOAuthUrl } from "@/lib/platform-analytics/youtube-client";
-import { canManagePlatformAnalytics } from "@/lib/platform-analytics/access";
+import { canSyncPlatformAnalytics } from "@/lib/platform-analytics/access";
 
 export const runtime = "nodejs";
 
@@ -32,7 +32,11 @@ export async function GET(request: NextRequest) {
     return redirectTo(request, "/login");
   }
 
-  const allowed = await canManagePlatformAnalytics(context.profile.auth_user_id);
+  const allowed = await canSyncPlatformAnalytics(
+    context.profile.auth_user_id,
+    context.profile.account_type,
+    context.profile.id,
+  );
 
   if (!allowed) {
     const unauthorizedPath = isAdminAccountType(context.profile.account_type)

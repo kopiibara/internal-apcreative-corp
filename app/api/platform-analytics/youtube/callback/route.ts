@@ -6,7 +6,7 @@ import {
   exchangeYouTubeOAuthCode,
   upsertYouTubeIntegrationFromOAuth,
 } from "@/lib/platform-analytics/youtube-sync";
-import { canManagePlatformAnalytics } from "@/lib/platform-analytics/access";
+import { canSyncPlatformAnalytics } from "@/lib/platform-analytics/access";
 
 export const runtime = "nodejs";
 
@@ -47,7 +47,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", appOrigin(request)));
   }
 
-  const allowed = await canManagePlatformAnalytics(context.profile.auth_user_id);
+  const allowed = await canSyncPlatformAnalytics(
+    context.profile.auth_user_id,
+    context.profile.account_type,
+    context.profile.id,
+  );
 
   if (!allowed) {
     const unauthorizedPath = isAdminAccountType(context.profile.account_type)
