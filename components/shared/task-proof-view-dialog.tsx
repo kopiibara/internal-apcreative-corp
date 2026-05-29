@@ -35,7 +35,7 @@ export function TaskProofViewDialog({
 }: TaskProofViewDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>{proofDialogTitle(proofType)}</DialogTitle>
           {taskTitle ? (
@@ -47,7 +47,7 @@ export function TaskProofViewDialog({
             proofType={proofType}
             proofUrl={proofUrl}
             proofNote={proofNote}
-            mediaClassName="max-h-[min(60dvh,640px)]"
+            viewportClassName="min-h-[min(50dvh,480px)] max-h-[min(65dvh,720px)]"
           />
         </DialogBody>
       </DialogContent>

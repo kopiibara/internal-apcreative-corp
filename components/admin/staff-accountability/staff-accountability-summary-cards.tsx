@@ -54,7 +54,7 @@ export function StaffAccountabilitySummaryCards({
 
   return (
     <section className="space-y-3">
-      <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-5">
         <SummaryCard
           label="01 / COMPLETION"
           title="Average Team Completion"
@@ -63,11 +63,11 @@ export function StaffAccountabilitySummaryCards({
           tone="bg-background text-foreground"
         />
         <SummaryCard
-          label="02 / GROSS TASK"
-          title="Gross Task Points"
-          value={`${teamSummary.totalGrossTaskPoints}`}
-          detail="Priority points before late deductions"
-          tone="bg-background text-foreground"
+          label="02 / TASK POINTS"
+          title="Task Points"
+          value={`${teamSummary.totalTaskPoints}`}
+          detail="Priority points earned minus late deductions"
+          tone="bg-blue text-white"
         />
         <SummaryCard
           label="03 / LATE DEDUCTION"
@@ -77,24 +77,17 @@ export function StaffAccountabilitySummaryCards({
           tone="bg-magenta text-white"
         />
         <SummaryCard
-          label="04 / NET TASK"
-          title="Net Task Points"
-          value={`${teamSummary.totalTaskPoints}`}
-          detail="Gross task points minus late deductions"
-          tone="bg-blue text-white"
-        />
-        <SummaryCard
-          label="05 / DAILY PROGRESS"
+          label="04 / DAILY PROGRESS"
           title="Daily Progress Net"
           value={`${teamSummary.totalDailyProgressNetPoints}`}
           detail={`${teamSummary.missedDailyProgressReports} missed reports`}
           tone="bg-cyan text-white"
         />
         <SummaryCard
-          label="06 / TOTAL"
+          label="05 / TOTAL"
           title="Total Points"
           value={String(teamSummary.totalTeamPoints)}
-          detail="Net task points + daily progress net"
+          detail="Task points + daily progress net"
           tone="bg-background text-foreground border-2 border-border"
         />
       </div>

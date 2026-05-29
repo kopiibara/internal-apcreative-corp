@@ -2,6 +2,7 @@
 
 import { ExternalLink } from "lucide-react"
 
+import { ZoomableImage } from "@/components/shared/zoomable-image"
 import { Button } from "@/components/ui/button"
 import { isHttpProofUrl, isProofDataUrl } from "@/lib/proof/proof-media"
 import type { ProofSubmitType } from "@/lib/proof/proof-types"
@@ -14,6 +15,8 @@ type TaskProofDisplayProps = {
   proofNote?: string | null
   className?: string
   mediaClassName?: string
+  viewportClassName?: string
+  zoomable?: boolean
 }
 
 function isImageProof(
@@ -33,6 +36,8 @@ export function TaskProofDisplay({
   proofNote,
   className,
   mediaClassName,
+  viewportClassName,
+  zoomable = true,
 }: TaskProofDisplayProps) {
   return (
     <div className={cn("space-y-3", className)}>
@@ -45,15 +50,24 @@ export function TaskProofDisplay({
       {proofUrl ? (
         <>
           {isImageProof(proofType, proofUrl) ? (
-            // eslint-disable-next-line @next/next/no-img-element -- proof may be a data URL
-            <img
-              src={proofUrl}
-              alt="Submitted task proof"
-              className={cn(
-                "max-h-56 w-full rounded-lg border-2 border-border object-contain bg-muted/20",
-                mediaClassName,
-              )}
-            />
+            zoomable ? (
+              <ZoomableImage
+                src={proofUrl}
+                alt="Submitted task proof"
+                viewportClassName={cn("max-h-56 sm:max-h-72", viewportClassName)}
+                imageClassName={mediaClassName}
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element -- proof may be a data URL
+              <img
+                src={proofUrl}
+                alt="Submitted task proof"
+                className={cn(
+                  "max-h-56 w-full rounded-lg border-2 border-border object-contain bg-muted/20",
+                  mediaClassName,
+                )}
+              />
+            )
           ) : isHttpProofUrl(proofUrl) || !isProofDataUrl(proofUrl) ? (
             <Button type="button" size="sm" variant="neutral" asChild>
               <a href={proofUrl} target="_blank" rel="noreferrer">

@@ -15,6 +15,10 @@ export const KANBAN_BOARD_SECTION_CLASS =
 export const KANBAN_BOARD_CONTENT_CLASS =
   "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-0 pb-0"
 
+/** Max height for a kanban board panel inside a dashboard page. */
+export const KANBAN_BOARD_MAX_HEIGHT_CLASS =
+  "max-h-[min(65dvh,calc(100dvh-20rem))]"
+
 /** Active kanban tab panel (boards with table/kanban tabs). */
 export const KANBAN_BOARD_TAB_PANEL_CLASS =
   "mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden"

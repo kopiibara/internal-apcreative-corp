@@ -17,6 +17,7 @@ import {
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
+  chartHoverCursor,
 } from "@/components/ui/chart"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
@@ -32,6 +33,11 @@ import {
   getLeaderboardRankClass,
   getStaffBrandLabel,
 } from "@/lib/staff-accountability/format"
+import {
+  getCategoryAxisWidth,
+  getCategoryChartHeight,
+  truncateChartLabel,
+} from "@/lib/chart-layout"
 import type {
   StaffAccountabilityBrandSummary,
   StaffAccountabilityData,
@@ -40,7 +46,7 @@ import type {
 import { cn } from "@/lib/utils"
 
 type CompletionChartItem = {
-  name: string
+  chartLabel: string
   fullName: string
   completionRate: number
   taskPoints: number
@@ -89,7 +95,7 @@ export function StaffAccountabilityLeaderboard({
       <CardHeader>
         <CardTitle>Employee Leaderboard</CardTitle>
         <CardDescription>
-          Ranked by total points, net task points, completion rate, then completed
+          Ranked by total points, task points, completion rate, then completed
           tasks.
         </CardDescription>
       </CardHeader>
@@ -101,7 +107,7 @@ export function StaffAccountabilityLeaderboard({
         ) : (
           <div className="overflow-hidden rounded-lg border-2 border-border ">
             <ScrollArea className="w-full" scrollbars="horizontal">
-              <Table className="min-w-[1180px]">
+              <Table className="min-w-[1040px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-20">Rank</TableHead>
@@ -109,9 +115,8 @@ export function StaffAccountabilityLeaderboard({
                     <TableHead>Brand</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Completion</TableHead>
-                    <TableHead className="text-right">Gross Task</TableHead>
+                    <TableHead className="text-right">Task Points</TableHead>
                     <TableHead className="text-right">Late Deduction</TableHead>
-                    <TableHead className="text-right">Net Task</TableHead>
                     <TableHead className="text-right">Daily Points</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                   </TableRow>
@@ -163,13 +168,10 @@ export function StaffAccountabilityLeaderboard({
                         {employee.completedTasks}/{employee.totalAssignedTasks})
                       </TableCell>
                       <TableCell className="text-right font-bold tabular-nums">
-                        {employee.grossTaskPoints} pts
+                        {employee.taskPoints} pts
                       </TableCell>
                       <TableCell className="text-right font-bold tabular-nums text-destructive">
                         -{employee.lateTaskDeductionPoints} pts
-                      </TableCell>
-                      <TableCell className="text-right font-bold tabular-nums">
-                        {employee.taskPoints} pts
                       </TableCell>
                       <TableCell className="text-right font-bold tabular-nums">
                         {employee.dailyProgressNetPoints} pts
@@ -219,9 +221,27 @@ function CompletionChartTooltip({
           Completion: {formatStaffPercent(item.completionRate)} (
           {item.completedTasks}/{item.totalAssignedTasks})
         </p>
-        <p>Net task points: {item.taskPoints} pts</p>
+        <p>Task points: {item.taskPoints} pts</p>
       </div>
     </div>
+  )
+}
+
+function CompletionCompactSummary({ items }: { items: CompletionChartItem[] }) {
+  return (
+    <ul className="mt-4 grid max-h-40 gap-2 overflow-y-auto border-t pt-3 text-xs">
+      {items.map((item) => (
+        <li
+          key={item.fullName}
+          className="flex items-center justify-between gap-2 rounded-lg border-2 border-border bg-muted/20 px-2 py-1.5"
+        >
+          <p className="min-w-0 truncate font-medium">{item.fullName}</p>
+          <span className="shrink-0 tabular-nums text-muted-foreground">
+            {formatStaffPercent(item.completionRate)} · {item.taskPoints} pts
+          </span>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -231,63 +251,70 @@ export function StaffAccountabilityCompletionChart({
   summaries: StaffAccountabilitySummary[]
 }) {
   const chartData: CompletionChartItem[] = summaries.slice(0, 8).map((summary) => ({
-    name:
-      summary.fullName.length > 14
-        ? `${summary.fullName.slice(0, 13)}...`
-        : summary.fullName,
+    chartLabel: truncateChartLabel(summary.fullName),
     fullName: summary.fullName,
     completionRate: summary.completionRate,
     taskPoints: summary.taskPoints,
     completedTasks: summary.completedTasks,
     totalAssignedTasks: summary.totalAssignedTasks,
   }))
-  const chartMinWidth = Math.max(420, chartData.length * 90)
+  const axisWidth = getCategoryAxisWidth(chartData.map((item) => item.fullName))
+  const chartHeight = getCategoryChartHeight(chartData.length)
 
   return (
-    <Card className="h-full min-w-0 shadow-none">
+    <Card className="flex h-full min-w-0 flex-col shadow-none">
       <CardHeader>
         <CardTitle>Team Completion Distribution</CardTitle>
         <CardDescription>
           Completion rate by employee, with points in the tooltip.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex min-h-0 flex-1 flex-col">
         {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground">No chart data found.</p>
         ) : (
-          <ScrollArea className="w-full min-w-0" scrollbars="horizontal">
-            <div style={{ minWidth: chartMinWidth }}>
-              <ChartContainer
-                config={completionChartConfig}
-                className="aspect-auto h-[300px] w-full"
+          <>
+            <ChartContainer
+              config={completionChartConfig}
+              className="aspect-auto w-full min-w-0"
+              style={{ height: `${chartHeight}px` }}
+            >
+              <BarChart
+                data={chartData}
+                layout="vertical"
+                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
               >
-                <BarChart data={chartData} margin={{ left: 0, right: 8 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tickLine={false}
-                    axisLine={false}
-                    width={36}
-                    tickFormatter={(value) => `${value}%`}
-                  />
-                  <ChartTooltip content={<CompletionChartTooltip />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Bar
-                    dataKey="completionRate"
-                    fill="var(--color-completionRate)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ChartContainer>
-            </div>
-          </ScrollArea>
+                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                <XAxis
+                  type="number"
+                  domain={[0, 100]}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `${value}%`}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="chartLabel"
+                  tickLine={false}
+                  axisLine={false}
+                  width={axisWidth}
+                  tick={{ fontSize: 11 }}
+                />
+                <ChartTooltip
+                  cursor={chartHoverCursor}
+                  content={<CompletionChartTooltip />}
+                />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Bar
+                  dataKey="completionRate"
+                  fill="var(--color-completionRate)"
+                  radius={[0, 4, 4, 0]}
+                  barSize={18}
+                />
+              </BarChart>
+            </ChartContainer>
+            <CompletionCompactSummary items={chartData} />
+          </>
         )}
       </CardContent>
     </Card>
@@ -299,10 +326,7 @@ function toBrandChartItems(
 ): BrandSummaryChartItem[] {
   return summaries.map((summary) => ({
     ...summary,
-    chartLabel:
-      summary.brandName.length > 16
-        ? `${summary.brandName.slice(0, 15)}...`
-        : summary.brandName,
+    chartLabel: truncateChartLabel(summary.brandName),
   }))
 }
 
@@ -346,7 +370,11 @@ function BrandSummaryTooltip({
 }
 
 function BrandTaskChart({ data }: { data: BrandSummaryChartItem[] }) {
-  const chartMinWidth = Math.max(420, data.length * 112)
+  const axisWidth = getCategoryAxisWidth(data.map((item) => item.brandName))
+  const chartHeight = getCategoryChartHeight(data.length, {
+    rowHeight: 44,
+    max: 560,
+  })
 
   return (
     <Card className="min-w-0 shadow-none">
@@ -360,48 +388,57 @@ function BrandTaskChart({ data }: { data: BrandSummaryChartItem[] }) {
         {data.length === 0 ? (
           <p className="text-sm text-muted-foreground">No task chart data found.</p>
         ) : (
-          <ScrollArea className="w-full min-w-0" scrollbars="horizontal">
-            <div style={{ minWidth: chartMinWidth }}>
-              <ChartContainer
-                config={brandTaskChartConfig}
-                className="aspect-auto h-[320px] w-full"
-              >
-                <BarChart data={data} margin={{ left: 0, right: 8 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="chartLabel"
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis tickLine={false} axisLine={false} width={36} />
-                  <ChartTooltip content={<BrandSummaryTooltip />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Bar
-                    dataKey="completedTasks"
-                    fill="var(--color-completedTasks)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="pendingTasks"
-                    fill="var(--color-pendingTasks)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="revisionTasks"
-                    fill="var(--color-revisionTasks)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="blockerTasks"
-                    fill="var(--color-blockerTasks)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ChartContainer>
-            </div>
-          </ScrollArea>
+          <ChartContainer
+            config={brandTaskChartConfig}
+            className="aspect-auto w-full min-w-0"
+            style={{ height: `${chartHeight}px` }}
+          >
+            <BarChart
+              data={data}
+              layout="vertical"
+              margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+            >
+              <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+              <XAxis type="number" tickLine={false} axisLine={false} width={36} />
+              <YAxis
+                type="category"
+                dataKey="chartLabel"
+                tickLine={false}
+                axisLine={false}
+                width={axisWidth}
+                tick={{ fontSize: 11 }}
+              />
+              <ChartTooltip
+                cursor={chartHoverCursor}
+                content={<BrandSummaryTooltip />}
+              />
+              <ChartLegend content={<ChartLegendContent />} />
+              <Bar
+                dataKey="completedTasks"
+                fill="var(--color-completedTasks)"
+                radius={[0, 4, 4, 0]}
+                barSize={12}
+              />
+              <Bar
+                dataKey="pendingTasks"
+                fill="var(--color-pendingTasks)"
+                radius={[0, 4, 4, 0]}
+                barSize={12}
+              />
+              <Bar
+                dataKey="revisionTasks"
+                fill="var(--color-revisionTasks)"
+                radius={[0, 4, 4, 0]}
+                barSize={12}
+              />
+              <Bar
+                dataKey="blockerTasks"
+                fill="var(--color-blockerTasks)"
+                radius={[0, 4, 4, 0]}
+                barSize={12}
+              />
+            </BarChart>
+          </ChartContainer>
         )}
       </CardContent>
     </Card>
@@ -409,7 +446,11 @@ function BrandTaskChart({ data }: { data: BrandSummaryChartItem[] }) {
 }
 
 function BrandApprovalChart({ data }: { data: BrandSummaryChartItem[] }) {
-  const chartMinWidth = Math.max(420, data.length * 112)
+  const axisWidth = getCategoryAxisWidth(data.map((item) => item.brandName))
+  const chartHeight = getCategoryChartHeight(data.length, {
+    rowHeight: 44,
+    max: 560,
+  })
 
   return (
     <Card className="min-w-0 shadow-none">
@@ -425,53 +466,63 @@ function BrandApprovalChart({ data }: { data: BrandSummaryChartItem[] }) {
             No approval chart data found.
           </p>
         ) : (
-          <ScrollArea className="w-full min-w-0" scrollbars="horizontal">
-            <div style={{ minWidth: chartMinWidth }}>
-              <ChartContainer
-                config={brandApprovalChartConfig}
-                className="aspect-auto h-[320px] w-full"
-              >
-                <BarChart data={data} margin={{ left: 0, right: 8 }}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="chartLabel"
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                    tick={{ fontSize: 11 }}
-                  />
-                  <YAxis tickLine={false} axisLine={false} width={36} />
-                  <ChartTooltip content={<BrandSummaryTooltip />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Bar
-                    dataKey="approvedApprovals"
-                    fill="var(--color-approvedApprovals)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="pendingApprovals"
-                    fill="var(--color-pendingApprovals)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="revisionApprovals"
-                    fill="var(--color-revisionApprovals)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="rejectedApprovals"
-                    fill="var(--color-rejectedApprovals)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="scheduledPublishedApprovals"
-                    fill="var(--color-scheduledPublishedApprovals)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ChartContainer>
-            </div>
-          </ScrollArea>
+          <ChartContainer
+            config={brandApprovalChartConfig}
+            className="aspect-auto w-full min-w-0"
+            style={{ height: `${chartHeight}px` }}
+          >
+            <BarChart
+              data={data}
+              layout="vertical"
+              margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+            >
+              <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+              <XAxis type="number" tickLine={false} axisLine={false} width={36} />
+              <YAxis
+                type="category"
+                dataKey="chartLabel"
+                tickLine={false}
+                axisLine={false}
+                width={axisWidth}
+                tick={{ fontSize: 11 }}
+              />
+              <ChartTooltip
+                cursor={chartHoverCursor}
+                content={<BrandSummaryTooltip />}
+              />
+              <ChartLegend content={<ChartLegendContent />} />
+              <Bar
+                dataKey="approvedApprovals"
+                fill="var(--color-approvedApprovals)"
+                radius={[0, 4, 4, 0]}
+                barSize={10}
+              />
+              <Bar
+                dataKey="pendingApprovals"
+                fill="var(--color-pendingApprovals)"
+                radius={[0, 4, 4, 0]}
+                barSize={10}
+              />
+              <Bar
+                dataKey="revisionApprovals"
+                fill="var(--color-revisionApprovals)"
+                radius={[0, 4, 4, 0]}
+                barSize={10}
+              />
+              <Bar
+                dataKey="rejectedApprovals"
+                fill="var(--color-rejectedApprovals)"
+                radius={[0, 4, 4, 0]}
+                barSize={10}
+              />
+              <Bar
+                dataKey="scheduledPublishedApprovals"
+                fill="var(--color-scheduledPublishedApprovals)"
+                radius={[0, 4, 4, 0]}
+                barSize={10}
+              />
+            </BarChart>
+          </ChartContainer>
         )}
       </CardContent>
     </Card>
