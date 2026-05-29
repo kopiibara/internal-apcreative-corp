@@ -3,11 +3,14 @@ import "server-only";
 import { redirect } from "next/navigation";
 
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
-import { isAdminAccountType } from "@/lib/auth/account-type";
-import { getEffectiveBrandAccessForProfile } from "@/lib/brand-access/effective-brand-access";
+import {
+  hasAdminPermissionBypass,
+  isAdminAccountType,
+} from "@/lib/auth/account-type";
+import { profileHasAssignedBrandAccess } from "@/lib/brand-access/effective-brand-access";
 import { can } from "@/lib/permissions";
 
-/** Role permissions that explicitly unlock Platform Analytics. */
+/** Role permissions that also unlock Platform Analytics explicitly. */
 const PLATFORM_ANALYTICS_VIEW_KEYS = [
   "meta_monitoring.view",
   "platform_analytics.view",
@@ -23,25 +26,26 @@ async function hasPlatformAnalyticsRolePermission(authUserId: string) {
   return checks.some(Boolean);
 }
 
-/** Any active brand assignment (or All Brand expansion) unlocks employee analytics. */
-async function hasBrandAssignmentForPlatformAnalytics(profileId: number) {
-  const brands = await getEffectiveBrandAccessForProfile(profileId);
-  return brands.length > 0;
-}
-
+/**
+ * Platform Analytics access rules:
+ * 1. Admin-tier accounts (supervisor/manager/executive/etc.) keep full access.
+ * 2. Any account with at least one active real-brand assignment gets brand-scoped access.
+ * 3. Otherwise fall back to explicit analytics role permissions.
+ */
 export async function canViewPlatformAnalytics(
   authUserId: string,
   profileId?: number,
+  accountType?: string,
 ) {
-  if (await hasPlatformAnalyticsRolePermission(authUserId)) {
+  if (accountType && hasAdminPermissionBypass(accountType as never)) {
     return true;
   }
 
-  if (profileId == null) {
-    return false;
+  if (profileId != null && (await profileHasAssignedBrandAccess(profileId))) {
+    return true;
   }
 
-  return hasBrandAssignmentForPlatformAnalytics(profileId);
+  return hasPlatformAnalyticsRolePermission(authUserId);
 }
 
 export async function canManagePlatformAnalytics(authUserId: string) {
@@ -65,6 +69,7 @@ export async function requirePlatformAnalyticsView() {
   const allowed = await canViewPlatformAnalytics(
     context.profile.auth_user_id,
     context.profile.id,
+    context.profile.account_type,
   );
 
   if (!allowed) {
