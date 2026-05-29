@@ -1,3 +1,5 @@
+//lib/daily-progress-report/daily-progress-report.ts
+
 import "server-only";
 
 import type { PoolClient } from "pg";
@@ -32,8 +34,11 @@ export type DailyProgressReportRecord = {
   employeeName: string;
   employeeEmail: string;
   employeeImageUrl: string | null;
+  submissionId: string;
   brandId: number | null;
   brandName: string | null;
+  brandIds: number[];
+  brandNames: string[];
   reportDate: string;
   summary: string | null;
   blockers: string | null;
@@ -83,8 +88,11 @@ type DailyProgressReportRow = {
   employee_name: string;
   employee_email: string;
   employee_image_url: string | null;
+  submission_id: string;
   brand_id: number | null;
   brand_name: string | null;
+  brand_ids: number[] | null;
+  brand_names: string | null;
   report_date: Date;
   summary: string | null;
   blockers: string | null;
@@ -132,7 +140,10 @@ export function getYesterdayDateKeyInPhilippines(now = new Date()) {
   return formatDateKeyInPhilippines(yesterday);
 }
 
-export function getPreviousDateKeyInPhilippines(daysBack: number, now = new Date()) {
+export function getPreviousDateKeyInPhilippines(
+  daysBack: number,
+  now = new Date(),
+) {
   const today = formatDateKeyInPhilippines(now);
   const date = new Date(`${today}T12:00:00+08:00`);
   date.setUTCDate(date.getUTCDate() - daysBack);
@@ -143,6 +154,20 @@ export function getPreviousDateKeyInPhilippines(daysBack: number, now = new Date
 function mapReportRow(row: DailyProgressReportRow): DailyProgressReportRecord {
   const points_awarded = Number(row.points_awarded ?? 0);
   const deduction_applied = Number(row.deduction_applied ?? 0);
+  const bridgeBrandIds = Array.isArray(row.brand_ids)
+    ? row.brand_ids.map((brandId) => Number(brandId))
+    : [];
+  const brandIds =
+    bridgeBrandIds.length > 0
+      ? bridgeBrandIds
+      : row.brand_id
+        ? [Number(row.brand_id)]
+        : [];
+  const brandNames = row.brand_names
+    ? row.brand_names.split(", ").filter(Boolean)
+    : row.brand_name
+      ? [row.brand_name]
+      : [];
 
   return {
     id: row.id,
@@ -150,8 +175,11 @@ function mapReportRow(row: DailyProgressReportRow): DailyProgressReportRecord {
     employeeName: row.employee_name,
     employeeEmail: row.employee_email,
     employeeImageUrl: row.employee_image_url,
-    brandId: row.brand_id,
-    brandName: row.brand_name,
+    submissionId: row.submission_id,
+    brandId: brandIds.length === 1 ? brandIds[0] : null,
+    brandName: brandNames.length > 0 ? brandNames.join(", ") : null,
+    brandIds,
+    brandNames,
     reportDate: formatDateKeyInPhilippines(row.report_date),
     summary: row.summary,
     blockers: row.blockers,
@@ -181,8 +209,11 @@ const REPORT_SELECT = `
     p.full_name AS employee_name,
     p.email AS employee_email,
     u.image AS employee_image_url,
+    dpr.submission_id,
     dpr.brand_id,
     b.name AS brand_name,
+    brand_scope.brand_ids,
+    brand_scope.brand_names,
     dpr.report_date,
     dpr.summary,
     dpr.blockers,
@@ -205,6 +236,14 @@ const REPORT_SELECT = `
   JOIN profile p ON p.id = dpr.profile_id
   JOIN "user" u ON u.id = p.auth_user_id
   LEFT JOIN brand b ON b.id = dpr.brand_id
+  LEFT JOIN LATERAL (
+    SELECT
+      ARRAY_AGG(brand.id ORDER BY brand.name ASC) AS brand_ids,
+      STRING_AGG(brand.name, ', ' ORDER BY brand.name ASC) AS brand_names
+    FROM daily_progress_report_brand report_brand
+    JOIN brand ON brand.id = report_brand.brand_id
+    WHERE report_brand.daily_progress_report_id = dpr.id
+  ) brand_scope ON true
   LEFT JOIN profile reviewer ON reviewer.id = dpr.late_reviewed_by_profile_id
 `;
 
@@ -300,7 +339,16 @@ export async function getAdminDailyProgressData(
       ${REPORT_SELECT}
       WHERE dpr.report_date >= $1::date
         AND dpr.report_date <= $2::date
-        AND ($3::integer IS NULL OR dpr.brand_id = $3::integer)
+        AND (
+          $3::integer IS NULL
+          OR dpr.brand_id = $3::integer
+          OR EXISTS (
+            SELECT 1
+            FROM daily_progress_report_brand report_brand_filter
+            WHERE report_brand_filter.daily_progress_report_id = dpr.id
+              AND report_brand_filter.brand_id = $3::integer
+          )
+        )
         AND ($4::integer IS NULL OR dpr.profile_id = $4::integer)
         AND ($5::text IS NULL OR dpr.status = $5::text)
         AND ($6::text IS NULL OR dpr.late_approval_status = $6::text)
@@ -322,7 +370,16 @@ export async function getAdminDailyProgressData(
       FROM daily_progress_report dpr
       WHERE dpr.report_date >= $1::date
         AND dpr.report_date <= $2::date
-        AND ($3::integer IS NULL OR dpr.brand_id = $3::integer)
+        AND (
+          $3::integer IS NULL
+          OR dpr.brand_id = $3::integer
+          OR EXISTS (
+            SELECT 1
+            FROM daily_progress_report_brand report_brand_filter
+            WHERE report_brand_filter.daily_progress_report_id = dpr.id
+              AND report_brand_filter.brand_id = $3::integer
+          )
+        )
         AND ($4::integer IS NULL OR dpr.profile_id = $4::integer)
         AND ($5::text IS NULL OR dpr.status = $5::text)
         AND ($6::text IS NULL OR dpr.late_approval_status = $6::text)

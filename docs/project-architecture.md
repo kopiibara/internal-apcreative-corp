@@ -97,7 +97,7 @@ These load the Better Auth session, profile, permissions, and brand access using
 Use component-based structure:
 
 ```txt
-app/admin/accounts/
+app/admin/account-control/
   page.tsx
   actions.ts
   schema.ts

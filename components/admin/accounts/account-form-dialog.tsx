@@ -255,14 +255,14 @@ export function AccountFormDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto p-5 sm:max-w-2xl sm:p-6">
+    <Dialog open={open} onOpenChange={onOpenChange} >
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5 ">
           <section className="space-y-3">
             <div className="text-sm font-medium">Basic account information</div>
             <div className="grid gap-4 md:grid-cols-2">
