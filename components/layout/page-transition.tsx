@@ -12,7 +12,11 @@ export function PageTransition({ children }: PageTransitionProps) {
   const prefersReducedMotion = useReducedMotion()
 
   if (prefersReducedMotion) {
-    return <div className="min-h-0 min-w-0 flex-1">{children}</div>
+    return (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {children}
+      </div>
+    )
   }
 
   return (
@@ -23,7 +27,7 @@ export function PageTransition({ children }: PageTransitionProps) {
         animate={{ opacity: 1, x: 0, }}
         exit={{ opacity: 0, x: 8, }}
         transition={{ duration: 0.22, ease: "easeOut" }}
-        className="min-h-0 min-w-0 flex-1"
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       >
         {children}
       </motion.div>
