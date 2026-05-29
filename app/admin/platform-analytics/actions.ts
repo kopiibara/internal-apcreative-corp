@@ -22,6 +22,14 @@ import {
 } from "@/lib/meta/posts-analytics";
 import { getMetaPageByKey } from "@/lib/meta/pages-config";
 import { listActiveMetaFacebookPages } from "@/lib/meta/sync";
+import {
+  canManagePlatformAnalytics,
+  canViewPlatformAnalytics,
+} from "@/lib/platform-analytics/access";
+import {
+  isMetaPageKeyAllowed,
+  getPlatformAnalyticsBrandScope,
+} from "@/lib/platform-analytics/brand-scope";
 import { getPlatformAnalyticsDashboardData } from "@/lib/platform-analytics/get-dashboard-data";
 import type {
   AnalyticsDateRange,
@@ -36,7 +44,6 @@ import {
 } from "@/lib/meta/sync";
 import { syncYouTubeAnalytics } from "@/lib/platform-analytics/youtube-sync";
 import type { MetaSyncType } from "@/lib/meta/types";
-import { can } from "@/lib/permissions";
 import { buildYouTubeOAuthUrl } from "@/lib/platform-analytics/youtube-client";
 
 export type MetaMonitoringActionResult<T = unknown> = {
@@ -45,7 +52,16 @@ export type MetaMonitoringActionResult<T = unknown> = {
   data?: T;
 };
 
-async function authorizeMetaView(): Promise<MetaMonitoringActionResult<never> | null> {
+function revalidatePlatformAnalyticsPaths() {
+  revalidatePath("/admin/platform-analytics");
+  revalidatePath("/admin/platform-analytics/meta/posts");
+  revalidatePath("/employee/platform-analytics");
+  revalidatePath("/employee/platform-analytics/meta/posts");
+}
+
+async function authorizeMetaView(): Promise<
+  MetaMonitoringActionResult<never> | { profileId: number }
+> {
   const context = await getCurrentProfileContext();
 
   if (!context) {
@@ -56,10 +72,7 @@ async function authorizeMetaView(): Promise<MetaMonitoringActionResult<never> | 
     return { success: false, message: "Your account is not active." };
   }
 
-  const allowed = await can(
-    context.profile.auth_user_id,
-    "meta_monitoring.view",
-  );
+  const allowed = await canViewPlatformAnalytics(context.profile.auth_user_id);
 
   if (!allowed) {
     return {
@@ -68,13 +81,13 @@ async function authorizeMetaView(): Promise<MetaMonitoringActionResult<never> | 
     };
   }
 
-  return null;
+  return { profileId: context.profile.id };
 }
 
 async function authorizeMetaManage(): Promise<MetaMonitoringActionResult<never> | null> {
-  const viewError = await authorizeMetaView();
-  if (viewError) {
-    return viewError;
+  const viewAuth = await authorizeMetaView();
+  if ("success" in viewAuth) {
+    return viewAuth;
   }
 
   const context = await getCurrentProfileContext();
@@ -82,15 +95,28 @@ async function authorizeMetaManage(): Promise<MetaMonitoringActionResult<never> 
     return { success: false, message: "You must be signed in." };
   }
 
-  const allowed = await can(
-    context.profile.auth_user_id,
-    "meta_monitoring.manage",
-  );
+  const allowed = await canManagePlatformAnalytics(context.profile.auth_user_id);
 
   if (!allowed) {
     return {
       success: false,
       message: "You do not have permission to manage Platform Analytics.",
+    };
+  }
+
+  return null;
+}
+
+async function assertMetaPageAccess(
+  profileId: number,
+  pageKey: string,
+): Promise<MetaMonitoringActionResult<never> | null> {
+  const scope = await getPlatformAnalyticsBrandScope(profileId);
+
+  if (!isMetaPageKeyAllowed(pageKey, scope)) {
+    return {
+      success: false,
+      message: "You do not have access to analytics for this brand.",
     };
   }
 
@@ -109,9 +135,9 @@ export async function fetchPlatformAnalyticsAction(input?: {
     Awaited<ReturnType<typeof getPlatformAnalyticsDashboardData>>
   >
 > {
-  const authError = await authorizeMetaView();
-  if (authError) {
-    return authError;
+  const authResult = await authorizeMetaView();
+  if ("success" in authResult) {
+    return authResult;
   }
 
   const parsed = platformAnalyticsFiltersSchema.safeParse(input ?? {});
@@ -129,6 +155,7 @@ export async function fetchPlatformAnalyticsAction(input?: {
     dateRange: parsed.data.dateRange,
     customDateFrom: parsed.data.customDateFrom,
     customDateTo: parsed.data.customDateTo,
+    profileId: authResult.profileId,
   });
 
   return { success: true, message: "Platform analytics loaded.", data };
@@ -141,9 +168,9 @@ export async function fetchMetaMonitoringAction(input?: {
     Awaited<ReturnType<typeof getMetaMonitoringDashboardData>>
   >
 > {
-  const authError = await authorizeMetaView();
-  if (authError) {
-    return authError;
+  const authResult = await authorizeMetaView();
+  if ("success" in authResult) {
+    return authResult;
   }
 
   const parsed = metaMonitoringFiltersSchema.safeParse(input ?? {});
@@ -206,7 +233,7 @@ export async function registerMetaFacebookPageAction(input: {
     ],
   );
 
-  revalidatePath("/admin/platform-analytics");
+  revalidatePlatformAnalyticsPaths();
 
   return {
     success: true,
@@ -230,8 +257,7 @@ export async function bootstrapMetaMonitoringAction(): Promise<
 
   try {
     const result = await bootstrapMetaMonitoring();
-    revalidatePath("/admin/platform-analytics");
-    revalidatePath("/admin/platform-analytics/meta/posts");
+    revalidatePlatformAnalyticsPaths();
 
     const hasData = result.dailySnapshots > 0 || result.postMetrics > 0;
 
@@ -276,8 +302,7 @@ export async function syncAllMetaMonitoringAction(): Promise<
 
   try {
     const result = await runAllMetaSyncJobs();
-    revalidatePath("/admin/platform-analytics");
-    revalidatePath("/admin/platform-analytics/meta/posts");
+    revalidatePlatformAnalyticsPaths();
 
     return {
       success: true,
@@ -314,6 +339,19 @@ export async function triggerMetaSyncAction(
       };
     }
 
+    const viewAuth = await authorizeMetaView();
+    if ("success" in viewAuth) {
+      return viewAuth;
+    }
+
+    const pageAccessError = await assertMetaPageAccess(
+      viewAuth.profileId,
+      parsed.data.pageKey,
+    );
+    if (pageAccessError) {
+      return pageAccessError;
+    }
+
     const config = getMetaPageByKey(parsed.data.pageKey);
     if (!config?.enabled || !config.pageId) {
       return {
@@ -327,7 +365,7 @@ export async function triggerMetaSyncAction(
         parsed.data.syncType,
         config.pageId,
       );
-      revalidatePath("/admin/platform-analytics");
+      revalidatePlatformAnalyticsPaths();
       revalidatePath("/admin/platform-analytics/meta/posts");
       return {
         success: true,
@@ -345,8 +383,7 @@ export async function triggerMetaSyncAction(
 
   try {
     const recordsAffected = await runMetaSyncJob(syncType);
-    revalidatePath("/admin/platform-analytics");
-    revalidatePath("/admin/platform-analytics/meta/posts");
+    revalidatePlatformAnalyticsPaths();
     return {
       success: true,
       message: `${syncType} sync completed for all enabled pages.`,
@@ -382,6 +419,19 @@ export async function syncMetaPageMonitoringAction(input: {
     };
   }
 
+  const viewAuth = await authorizeMetaView();
+  if ("success" in viewAuth) {
+    return viewAuth;
+  }
+
+  const pageAccessError = await assertMetaPageAccess(
+    viewAuth.profileId,
+    parsed.data.pageKey,
+  );
+  if (pageAccessError) {
+    return pageAccessError;
+  }
+
   const config = getMetaPageByKey(parsed.data.pageKey);
   if (!config?.enabled || !config.pageId) {
     return {
@@ -392,8 +442,7 @@ export async function syncMetaPageMonitoringAction(input: {
 
   try {
     const result = await runAllMetaSyncJobsForPage(config.pageId);
-    revalidatePath("/admin/platform-analytics");
-    revalidatePath("/admin/platform-analytics/meta/posts");
+    revalidatePlatformAnalyticsPaths();
 
     return {
       success: true,
@@ -423,8 +472,7 @@ export async function syncYouTubeAction(input?: {
       accountId: input?.accountId ?? null,
       dateRange: input?.dateRange,
     });
-    revalidatePath("/admin/platform-analytics");
-    revalidatePath("/admin/platform-analytics/meta/posts");
+    revalidatePlatformAnalyticsPaths();
 
     return {
       success: true,
@@ -464,8 +512,7 @@ export async function disconnectYouTubeAction(input?: {
       [accountId],
     );
 
-    revalidatePath("/admin/platform-analytics");
-    revalidatePath("/admin/platform-analytics/meta/posts");
+    revalidatePlatformAnalyticsPaths();
 
     return {
       success: true,
@@ -489,9 +536,9 @@ export async function fetchMetaPostsAction(
     NonNullable<Awaited<ReturnType<typeof getMetaPostsPageData>>>
   >
 > {
-  const authError = await authorizeMetaView();
-  if (authError) {
-    return authError;
+  const authResult = await authorizeMetaView();
+  if ("success" in authResult) {
+    return authResult;
   }
 
   const parsed = metaPostsFiltersSchema.safeParse(input);
@@ -500,6 +547,14 @@ export async function fetchMetaPostsAction(
       success: false,
       message: "Invalid posts filters.",
     };
+  }
+
+  const pageAccessError = await assertMetaPageAccess(
+    authResult.profileId,
+    parsed.data.pageKey,
+  );
+  if (pageAccessError) {
+    return pageAccessError;
   }
 
   const data = await getMetaPostsPageData(parsed.data);
@@ -534,9 +589,9 @@ export async function fetchMetaPostCommentsAction(input: {
     unavailableMessage: string | null;
   }>
 > {
-  const authError = await authorizeMetaView();
-  if (authError) {
-    return authError;
+  const authResult = await authorizeMetaView();
+  if ("success" in authResult) {
+    return authResult;
   }
 
   const parsed = metaPostCommentsSchema.safeParse(input);
@@ -545,6 +600,14 @@ export async function fetchMetaPostCommentsAction(input: {
       success: false,
       message: "Invalid comment request.",
     };
+  }
+
+  const pageAccessError = await assertMetaPageAccess(
+    authResult.profileId,
+    parsed.data.pageKey,
+  );
+  if (pageAccessError) {
+    return pageAccessError;
   }
 
   const config = getMetaPageByKey(parsed.data.pageKey);

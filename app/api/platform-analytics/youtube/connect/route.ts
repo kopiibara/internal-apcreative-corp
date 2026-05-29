@@ -3,8 +3,9 @@ import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
+import { isAdminAccountType } from "@/lib/auth/account-type";
 import { buildYouTubeOAuthUrl } from "@/lib/platform-analytics/youtube-client";
-import { can } from "@/lib/permissions";
+import { canManagePlatformAnalytics } from "@/lib/platform-analytics/access";
 
 export const runtime = "nodejs";
 
@@ -31,13 +32,13 @@ export async function GET(request: NextRequest) {
     return redirectTo(request, "/login");
   }
 
-  const allowed = await can(
-    context.profile.auth_user_id,
-    "meta_monitoring.manage",
-  );
+  const allowed = await canManagePlatformAnalytics(context.profile.auth_user_id);
 
   if (!allowed) {
-    return redirectTo(request, "/admin/unauthorized");
+    const unauthorizedPath = isAdminAccountType(context.profile.account_type)
+      ? "/admin/unauthorized"
+      : "/employee/unauthorized";
+    return redirectTo(request, unauthorizedPath);
   }
 
   const state = randomUUID();
