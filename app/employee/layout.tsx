@@ -36,7 +36,7 @@ export default async function EmployeeLayout({
                 can(profile.auth_user_id, "daily_progress.submit"),
                 can(profile.auth_user_id, "daily_progress.view_own"),
             ]).then((checks) => checks.some(Boolean)),
-            canViewPlatformAnalytics(profile.auth_user_id),
+            canViewPlatformAnalytics(profile.auth_user_id, profile.id),
         ])
     const actionableTaskCount = canAccessTaskBoard
         ? await getEmployeeActionableTaskCount(profile.id)
