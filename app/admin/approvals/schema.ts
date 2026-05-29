@@ -9,6 +9,14 @@ import {
   APPROVAL_STATUSES,
   PUBLISH_STATUSES,
 } from "@/lib/approvals/approval-statuses";
+import {
+  hasValidProofSubmission,
+  validateProofUrl,
+} from "@/lib/proof/proof-media";
+import {
+  proofTypeFieldSchema,
+  proofUrlFieldSchema,
+} from "@/lib/proof/proof-schema";
 import { richTextToPlainText } from "@/lib/rich-text/rich-text";
 
 const optionalDateSchema = z.preprocess((value) => {
@@ -191,31 +199,70 @@ export const updateDirectorReviewSchema = z
     );
   });
 
+const optionalPublishingProofNoteSchema = z.preprocess((value) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  return value ?? null;
+}, z.string().max(2000, "Publishing proof notes must be 2,000 characters or less.").nullable());
+
 export const updatePublishingInfoSchema = z
   .object({
     reportId: z.coerce.number().int().positive(),
     publishStatus: z.enum(PUBLISH_STATUSES),
     scheduledPublishedDate: optionalDateSchema,
     remarksRevisionSummary: requiredNotesSchema,
-    proofUrl: z.preprocess((value) => {
-      if (typeof value === "string") {
-        const trimmed = value.trim();
-
-        return trimmed.length > 0 ? trimmed : null;
-      }
-
-      return value ?? null;
-    }, z.string().url("Publishing proof must be a valid URL.").nullable()),
+    proofType: proofTypeFieldSchema.default("LINK"),
+    proofUrl: proofUrlFieldSchema.default(""),
+    proofNote: optionalPublishingProofNoteSchema,
     confirmationAccepted: confirmationAcceptedSchema,
   })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.publishStatus !== "Published") {
+      return;
+    }
+
+    const proofNote = value.proofNote?.trim() ?? "";
+
+    if (value.proofType === "NOTE") {
+      if (!proofNote) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please add proof notes before submitting.",
+          path: ["proofNote"],
+        });
+      }
+
+      return;
+    }
+
+    const proofUrlError = validateProofUrl(value.proofType, value.proofUrl);
+
+    if (proofUrlError) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: proofUrlError,
+        path: ["proofUrl"],
+      });
+    }
+  })
   .refine(
-    (data) => data.publishStatus !== "Published" || Boolean(data.proofUrl),
+    (data) =>
+      data.publishStatus !== "Published" ||
+      hasValidProofSubmission(
+        data.proofType,
+        data.proofUrl,
+        data.proofNote ?? "",
+      ),
     {
       path: ["proofUrl"],
       message: "Publishing proof is required before marking as Published.",
     },
-  )
-  .strict();
+  );
 
 export const approvalKanbanColumnSchema = z
   .object({

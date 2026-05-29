@@ -37,6 +37,7 @@ type RichTextEditorProps = {
   disabled?: boolean
   readOnly?: boolean
   minHeight?: number
+  maxHeight?: number
   className?: string
   id?: string
   name?: string
@@ -304,6 +305,7 @@ export function RichTextEditor({
   disabled = false,
   readOnly = false,
   minHeight = 160,
+  maxHeight,
   className,
   id,
   name,
@@ -409,7 +411,7 @@ export function RichTextEditor({
   }
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("min-w-0 max-w-full space-y-2", className)}>
       {label ? (
         <RequiredLabel htmlFor={id} required={required}>
           {label}
@@ -418,7 +420,7 @@ export function RichTextEditor({
 
       <div
         className={cn(
-          "overflow-hidden rounded-lg border-2 border-border bg-background transition",
+          "max-w-full min-w-0 overflow-hidden rounded-lg border-2 border-border bg-background transition",
           error && "border-destructive",
           isFocused &&
           !error &&
@@ -515,7 +517,7 @@ export function RichTextEditor({
           </ToolbarButton>
         </div>
 
-        <div className="relative">
+        <div className="relative max-w-full min-w-0 overflow-x-hidden overflow-y-visible">
           <div
             ref={editorRef}
             id={id}
@@ -532,8 +534,11 @@ export function RichTextEditor({
             onKeyUp={updateToolbarState}
             onMouseUp={updateToolbarState}
             className={cn(
-              "prose-none min-h-[var(--rich-text-min-height)] w-full px-3 py-3 text-sm leading-relaxed outline-none",
+              "prose-none min-h-[var(--rich-text-min-height)] w-full max-w-full px-3 py-3 text-sm leading-relaxed break-words outline-none [overflow-wrap:anywhere]",
+              maxHeight &&
+                "max-h-[var(--rich-text-max-height)] overflow-y-auto overscroll-contain",
               "empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]",
+              "[&_*]:max-w-full [&_*]:break-words [&_*]:[overflow-wrap:anywhere]",
               "[&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-4",
               "[&_h1]:text-lg [&_h1]:font-black",
               "[&_h2]:text-base [&_h2]:font-black",
@@ -543,6 +548,9 @@ export function RichTextEditor({
             style={
               {
                 "--rich-text-min-height": `${minHeight}px`,
+                ...(maxHeight
+                  ? { "--rich-text-max-height": `${maxHeight}px` }
+                  : {}),
               } as React.CSSProperties
             }
           />

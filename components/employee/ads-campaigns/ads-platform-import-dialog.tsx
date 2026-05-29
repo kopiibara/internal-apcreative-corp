@@ -7,6 +7,7 @@ import { CsvImportThinkingSteps } from "@/components/employee/ads-campaigns/csv-
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -158,13 +159,15 @@ export function AdsPlatformImportDialog({
         </DialogHeader>
 
         {showThinkingSteps ? (
-          <CsvImportThinkingSteps
-            platform={platform}
-            isComplete={importComplete}
-            fileName={selectedFile?.name}
-          />
+          <DialogBody>
+            <CsvImportThinkingSteps
+              platform={platform}
+              isComplete={importComplete}
+              fileName={selectedFile?.name}
+            />
+          </DialogBody>
         ) : (
-          <div className="space-y-3">
+          <DialogBody className="space-y-3">
             <div className="space-y-2">
               <Label>CSV file</Label>
               <Input
@@ -225,7 +228,7 @@ export function AdsPlatformImportDialog({
                 data.
               </p>
             ) : null}
-          </div>
+          </DialogBody>
         )}
 
         {!showThinkingSteps ? (

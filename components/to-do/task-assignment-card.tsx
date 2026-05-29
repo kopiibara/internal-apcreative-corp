@@ -20,7 +20,7 @@ import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { richTextExcerpt } from "@/lib/rich-text/rich-text"
-import { shouldOpenTaskProofInDialog } from "@/lib/tasks/task-proof-media"
+import { shouldOpenProofInDialog } from "@/lib/proof/proof-media"
 import { getTaskLateSubmissionDisplay } from "@/lib/tasks/task-late-submission"
 import { isAssignmentSubmittedOnTime } from "@/lib/tasks/task-type"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
@@ -57,7 +57,7 @@ export function TaskAssignmentCard({
   const [revisionOpen, setRevisionOpen] = useState(false)
   const [doneDialogOpen, setDoneDialogOpen] = useState(false)
   const [proofViewOpen, setProofViewOpen] = useState(false)
-  const openProofInDialog = shouldOpenTaskProofInDialog(
+  const openProofInDialog = shouldOpenProofInDialog(
     assignment.proofType,
     assignment.proofUrl,
   )

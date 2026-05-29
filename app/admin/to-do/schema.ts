@@ -1,9 +1,10 @@
 import { z } from "zod";
 
 import {
-  TASK_PROOF_IMAGE_DATA_URL_MAX_LENGTH,
-  validateTaskProofUrl,
-} from "@/lib/tasks/task-proof-media";
+  addProofSubmissionRefinement,
+  proofTypeFieldSchema,
+  proofUrlFieldSchema,
+} from "@/lib/proof/proof-schema";
 import { TASK_PRIORITIES, TASK_PROOF_SUBMIT_TYPES } from "@/lib/tasks/task-type";
 import { TASK_STATUSES } from "@/lib/tasks/task-statuses";
 
@@ -54,39 +55,14 @@ export const deleteTaskSchema = z.object({
   taskId: z.coerce.number().int().positive(),
 });
 
-export const submitTaskProofSchema = z
-  .object({
+export const submitTaskProofSchema = addProofSubmissionRefinement(
+  z.object({
     assignmentId: z.coerce.number().int().positive(),
-    proofType: z.enum(TASK_PROOF_SUBMIT_TYPES),
-    proofUrl: z.preprocess(
-      (value) => (value === null || value === undefined ? "" : value),
-      z.string().trim().max(TASK_PROOF_IMAGE_DATA_URL_MAX_LENGTH),
-    ),
+    proofType: proofTypeFieldSchema,
+    proofUrl: proofUrlFieldSchema,
     proofNote: proofText(5000),
-  })
-  .superRefine((value, context) => {
-    if (value.proofType === "NOTE") {
-      if (!value.proofNote) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Please add proof notes before submitting.",
-          path: ["proofNote"],
-        });
-      }
-
-      return;
-    }
-
-    const proofUrlError = validateTaskProofUrl(value.proofType, value.proofUrl);
-
-    if (proofUrlError) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: proofUrlError,
-        path: ["proofUrl"],
-      });
-    }
-  });
+  }),
+);
 
 const requiredTaskNote = z
   .string()

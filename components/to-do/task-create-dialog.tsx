@@ -14,7 +14,9 @@ import { Button } from "@/components/ui/button"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
+  dialogFormClassName,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -171,7 +173,7 @@ export function TaskCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {personalOnly ? "Create Personal Task" : "Create Task"}
@@ -187,179 +189,181 @@ export function TaskCreateDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <RequiredLabel htmlFor="task-title" required>
-              Title
-            </RequiredLabel>
-            <Input
-              id="task-title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              required
-              disabled={isPending}
-            />
-          </div>
-
-          <RichTextEditor
-            id="task-description"
-            label="Description"
-            value={description}
-            onChange={setDescription}
-            disabled={isPending}
-            minHeight={140}
-            placeholder="Add task context, instructions, links, or checklist items."
-          />
-
-          {!personalOnly ? (
+        <form onSubmit={handleSubmit} className={dialogFormClassName}>
+          <DialogBody className="space-y-4">
             <div className="space-y-2">
-              <RequiredLabel required>
-                Assign to ({selectedAssigneeIds.length} selected)
+              <RequiredLabel htmlFor="task-title" required>
+                Title
               </RequiredLabel>
-              <Popover
-                open={assigneePickerOpen}
-                onOpenChange={setAssigneePickerOpen}
-              >
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="neutral"
-                    className="w-full justify-between"
-                    disabled={isPending}
-                  >
-                    Select employees
-                    <ChevronsUpDown className="size-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  align="start"
-                  sideOffset={6}
-                  className="w-[var(--radix-popover-trigger-width)] p-0"
-                  onWheel={(event) => event.stopPropagation()}
-                  onTouchMove={(event) => event.stopPropagation()}
+              <Input
+                id="task-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                required
+                disabled={isPending}
+              />
+            </div>
+
+            <RichTextEditor
+              id="task-description"
+              label="Description"
+              value={description}
+              onChange={setDescription}
+              disabled={isPending}
+              minHeight={140}
+              placeholder="Add task context, instructions, links, or checklist items."
+            />
+
+            {!personalOnly ? (
+              <div className="space-y-2">
+                <RequiredLabel required>
+                  Assign to ({selectedAssigneeIds.length} selected)
+                </RequiredLabel>
+                <Popover
+                  open={assigneePickerOpen}
+                  onOpenChange={setAssigneePickerOpen}
                 >
-                  <div
-                    className="max-h-[min(300px,50vh)] overflow-y-auto overscroll-contain p-2 pr-1"
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="neutral"
+                      className="w-full justify-between"
+                      disabled={isPending}
+                    >
+                      Select employees
+                      <ChevronsUpDown className="size-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    sideOffset={6}
+                    className="w-[var(--radix-popover-trigger-width)] p-0"
                     onWheel={(event) => event.stopPropagation()}
                     onTouchMove={(event) => event.stopPropagation()}
                   >
-                    {assigneeOptions.map((assignee) => {
-                      const isSelected = selectedAssigneeIds.includes(assignee.id)
+                    <div
+                      className="max-h-[min(300px,50vh)] overflow-y-auto overscroll-contain p-2 pr-1"
+                      onWheel={(event) => event.stopPropagation()}
+                      onTouchMove={(event) => event.stopPropagation()}
+                    >
+                      {assigneeOptions.map((assignee) => {
+                        const isSelected = selectedAssigneeIds.includes(assignee.id)
 
-                      return (
-                        <Button
-                          key={assignee.id}
-                          type="button"
-                          variant="ghost"
-                          className={cn(
-                            "h-auto w-full items-start justify-start gap-2 rounded-lg px-2 py-2 text-left text-sm font-normal",
-                            isSelected && "bg-accent"
-                          )}
-                          onClick={() => toggleAssignee(assignee.id)}
-                          disabled={
-                            isPending ||
-                            (!permissions.canAssign &&
-                              assignee.id !== currentProfileId)
-                          }
-                        >
-                          <Check
+                        return (
+                          <Button
+                            key={assignee.id}
+                            type="button"
+                            variant="ghost"
                             className={cn(
-                              "mt-0.5 size-4 shrink-0",
-                              isSelected ? "opacity-100" : "opacity-0"
+                              "h-auto w-full items-start justify-start gap-2 rounded-lg px-2 py-2 text-left text-sm font-normal",
+                              isSelected && "bg-accent"
                             )}
-                          />
+                            onClick={() => toggleAssignee(assignee.id)}
+                            disabled={
+                              isPending ||
+                              (!permissions.canAssign &&
+                                assignee.id !== currentProfileId)
+                            }
+                          >
+                            <Check
+                              className={cn(
+                                "mt-0.5 size-4 shrink-0",
+                                isSelected ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <UserAvatar
+                              profileId={assignee.id}
+                              name={assignee.fullName}
+                              imageUrl={assignee.imageUrl}
+                              size="sm"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-medium">
+                                {assignee.fullName}
+                              </span>
+                              <TaskAssigneeBrands
+                                brands={assignee.brands}
+                                hasAllBrandsAccess={assignee.hasAllBrandsAccess}
+                                className="mt-1"
+                              />
+                            </span>
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                <div className="space-y-2">
+                  {selectedAssignees.map((assignee) => (
+                    <div
+                      key={assignee.id}
+                      className="rounded-lg border bg-muted/20 px-4 py-2 pb-4"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="flex flex-row items-center gap-3 text-sm font-medium">
                           <UserAvatar
                             profileId={assignee.id}
                             name={assignee.fullName}
                             imageUrl={assignee.imageUrl}
                             size="sm"
                           />
-                          <span className="min-w-0 flex-1">
-                            <span className="block font-medium">
-                              {assignee.fullName}
-                            </span>
-                            <TaskAssigneeBrands
-                              brands={assignee.brands}
-                              hasAllBrandsAccess={assignee.hasAllBrandsAccess}
-                              className="mt-1"
-                            />
-                          </span>
+                          {assignee.fullName}
+                          <TaskAssigneeBrands
+                            brands={assignee.brands}
+                            hasAllBrandsAccess={assignee.hasAllBrandsAccess}
+                            className="mt-1"
+                          />
+                        </span>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => toggleAssignee(assignee.id)}
+                          disabled={isPending}
+                        >
+                          <X className="size-3" />
                         </Button>
-                      )
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
-
-              <div className="space-y-2">
-                {selectedAssignees.map((assignee) => (
-                  <div
-                    key={assignee.id}
-                    className="rounded-lg border bg-muted/20 px-4 py-2 pb-4"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="flex flex-row items-center gap-3 text-sm font-medium">
-                        <UserAvatar
-                          profileId={assignee.id}
-                          name={assignee.fullName}
-                          imageUrl={assignee.imageUrl}
-                          size="sm"
-                        />
-                        {assignee.fullName}
-                        <TaskAssigneeBrands
-                          brands={assignee.brands}
-                          hasAllBrandsAccess={assignee.hasAllBrandsAccess}
-                          className="mt-1"
-                        />
-                      </span>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => toggleAssignee(assignee.id)}
-                        disabled={isPending}
-                      >
-                        <X className="size-3" />
-                      </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <RequiredLabel required={requiresDueDate}>
+                Due date
+              </RequiredLabel>
+              <DateTimePicker
+                value={dueDate}
+                onChange={setDueDate}
+                disabled={isPending}
+              />
             </div>
-          ) : null}
 
-          <div className="space-y-2">
-            <RequiredLabel required={requiresDueDate}>
-              Due date
-            </RequiredLabel>
-            <DateTimePicker
-              value={dueDate}
-              onChange={setDueDate}
-              disabled={isPending}
-            />
-          </div>
+            <div className="space-y-2">
+              <RequiredLabel>Priority</RequiredLabel>
+              <Select value={priority} onValueChange={setPriority} disabled={isPending}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Optional priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No priority</SelectItem>
+                  {TASK_PRIORITIES.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {value}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <RequiredLabel>Priority</RequiredLabel>
-            <Select value={priority} onValueChange={setPriority} disabled={isPending}>
-              <SelectTrigger>
-                <SelectValue placeholder="Optional priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No priority</SelectItem>
-                {TASK_PRIORITIES.map((value) => (
-                  <SelectItem key={value} value={value}>
-                    {value}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Badge variant="secondary">
-            {resolvedTaskType === "GRADED" ? "Graded task" : "Personal task"}
-          </Badge>
+            <Badge variant="secondary">
+              {resolvedTaskType === "GRADED" ? "Graded task" : "Personal task"}
+            </Badge>
+          </DialogBody>
 
           <DialogFooter>
             <Button

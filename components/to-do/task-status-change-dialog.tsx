@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -146,7 +147,11 @@ export function TaskStatusChangeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <DialogBody className="space-y-4">
           {!toStatus ? (
             <div className="space-y-2">
               <Label>Next status</Label>
@@ -216,6 +221,7 @@ export function TaskStatusChangeDialog({
               recorded under my account.
             </Label>
           </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button

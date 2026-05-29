@@ -14,6 +14,7 @@ import {
 } from "@/app/admin/platform-analytics/actions";
 import { MetaBusinessPageCard } from "@/components/admin/platform-analytics/meta-business-page-card";
 import { PlatformAnalyticsCharts } from "@/components/admin/platform-analytics/platform-analytics-charts";
+import { KANBAN_BOARD_PAGE_CLASS } from "@/components/shared/kanban-board-scroll";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -323,7 +324,7 @@ export function PlatformAnalyticsDashboard({
         : null;
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div className={KANBAN_BOARD_PAGE_CLASS}>
       <header className="shrink-0 space-y-4 pb-2">
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-normal">
@@ -393,7 +394,11 @@ export function PlatformAnalyticsDashboard({
         ) : null}
       </header>
 
-      <ScrollArea className="min-h-0 flex-1" scrollbars="vertical">
+      <ScrollArea
+        className="h-full min-h-0 w-full min-w-0 flex-1 overflow-hidden"
+        scrollbars="vertical"
+        viewportClassName="h-full max-h-full"
+      >
         <div className="min-w-0 space-y-6 pr-2 pb-4">
       <section className="space-y-4 rounded-lg border border-border bg-card/40 p-4 sm:p-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">

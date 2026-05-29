@@ -10,10 +10,15 @@ type ScrollableSectionProps = ComponentProps<typeof ScrollArea>
 export function ScrollableSection({
   className,
   children,
+  viewportClassName,
   ...props
 }: ScrollableSectionProps) {
   return (
-    <ScrollArea className={cn("min-h-0 flex-1", className)} {...props}>
+    <ScrollArea
+      className={cn("min-h-0 flex-1", className)}
+      viewportClassName={viewportClassName}
+      {...props}
+    >
       {children}
     </ScrollArea>
   )

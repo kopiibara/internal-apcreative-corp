@@ -1,4 +1,4 @@
-import { TaskProofDisplay } from "@/components/shared/task-proof-display"
+import { ProofDisplay } from "@/components/shared/proof-display"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
@@ -56,7 +56,7 @@ export function TaskProofSummary({
                 <StatusBadge status="SUBMITTED" type="proof" />
               </div>
             </div>
-            <TaskProofDisplay
+            <ProofDisplay
               proofType={assignment.proofType}
               proofUrl={assignment.proofUrl}
               proofNote={assignment.proofNote}

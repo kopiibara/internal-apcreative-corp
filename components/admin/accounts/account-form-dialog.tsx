@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -256,13 +257,17 @@ export function AccountFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} >
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 ">
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <DialogBody className="space-y-5">
           <section className="space-y-3">
             <div className="text-sm font-medium">Basic account information</div>
             <div className="grid gap-4 md:grid-cols-2">
@@ -408,6 +413,7 @@ export function AccountFormDialog({
               </SelectContent>
             </Select>
           </section>
+          </DialogBody>
 
           <DialogFooter>
             <Button
