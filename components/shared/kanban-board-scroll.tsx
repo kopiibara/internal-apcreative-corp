@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 
 /** Fixed width columns for boards with many columns (approvals, reminders). */
 export const KANBAN_COLUMN_WIDTH_CLASS =
-  "w-[280px] min-w-[280px] max-w-[280px] shrink-0 sm:w-[300px] sm:min-w-[300px] sm:max-w-[300px] lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px]"
+  "w-[280px] min-w-[280px] max-w-[280px] shrink-0 sm:w-[300px] sm:min-w-[300px] sm:max-w-[300px] lg:w-[380px] lg:min-w-[380px] lg:max-w-[380px]"
 
 /** Full-width columns inside a fit grid (to-do tasks: 5 columns). */
 export const KANBAN_COLUMN_FIT_CLASS =
@@ -39,7 +39,7 @@ export const KANBAN_COLUMN_LIST_CLASS =
 
 /** Drag overlay while dragging Kanban cards. */
 export const KANBAN_OVERLAY_CLASS =
-  "rounded-lg border-2 border-dashed bg-muted/20"
+  "rounded-lg border-2 border-dashed bg-muted"
 
 type KanbanBoardShellProps = {
   children: ReactNode

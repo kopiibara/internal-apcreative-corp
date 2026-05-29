@@ -26,7 +26,27 @@ export type PlatformAnalyticsBrandScopeUi = {
 };
 
 function normalizeBrandSlug(slug: string) {
-  return slug.trim().toLowerCase();
+  return slug.trim().toLowerCase().replace(/[_\s]+/g, "-");
+}
+
+function slugMatchesAllowedBrand(
+  candidate: string,
+  allowedBrandSlugs: string[],
+  allowedBrandIds: number[],
+  brandId?: number | null,
+) {
+  const normalizedCandidate = normalizeBrandSlug(candidate);
+
+  if (
+    brandId != null &&
+    allowedBrandIds.some((allowedId) => allowedId === brandId)
+  ) {
+    return true;
+  }
+
+  return allowedBrandSlugs.some(
+    (slug) => normalizeBrandSlug(slug) === normalizedCandidate,
+  );
 }
 
 export async function getPlatformAnalyticsBrandScope(
@@ -80,16 +100,28 @@ export function isMetaPageKeyAllowed(
     return true;
   }
 
-  const brandSlug = getMetaPageBrandSlug(pageKey);
+  const config = getMetaPageByKey(pageKey);
 
-  if (!brandSlug) {
+  if (!config) {
     return false;
   }
 
-  const normalized = normalizeBrandSlug(brandSlug);
-
-  return scope.allowedBrandSlugs.some(
-    (slug) => normalizeBrandSlug(slug) === normalized,
+  return (
+    slugMatchesAllowedBrand(
+      config.brandSlug,
+      scope.allowedBrandSlugs,
+      scope.allowedBrandIds,
+    ) ||
+    slugMatchesAllowedBrand(
+      pageKey,
+      scope.allowedBrandSlugs,
+      scope.allowedBrandIds,
+    ) ||
+    slugMatchesAllowedBrand(
+      config.displayName,
+      scope.allowedBrandSlugs,
+      scope.allowedBrandIds,
+    )
   );
 }
 

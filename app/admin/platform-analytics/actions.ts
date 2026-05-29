@@ -75,6 +75,7 @@ async function authorizeMetaView(): Promise<
   const allowed = await canViewPlatformAnalytics(
     context.profile.auth_user_id,
     context.profile.id,
+    context.profile.account_type,
   );
 
   if (!allowed) {

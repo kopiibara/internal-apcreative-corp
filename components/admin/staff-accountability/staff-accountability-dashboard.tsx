@@ -32,15 +32,6 @@ export function StaffAccountabilityDashboard({
 }: StaffAccountabilityDashboardProps) {
   return (
     <div className="min-w-0 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-normal">
-          Staff Accountability
-        </h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Performance tracking based on task completion rate and points.
-        </p>
-      </div>
-
       <StaffAccountabilityFilterBar
         brands={brands}
         employees={employees}

@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { DailyReportBrandOption } from "@/lib/daily-reports/daily-report-types"
+import { getDashboardPeriodBounds } from "@/lib/dashboard/dashboard-period"
 
 type DashboardPeriod = "daily" | "weekly" | "monthly"
 
@@ -129,6 +130,13 @@ export function DashboardFilterBar({
 
     router.push(`${pathname}?${nextParams.toString()}`)
   }
+
+  const bounds = getDashboardPeriodBounds({
+    period,
+    dateKey,
+    month,
+    weekStartKey: weekStart,
+  })
 
   return (
     <div className="relative z-20 flex min-w-0 flex-col gap-3 pr-1 lg:flex-row lg:items-center lg:justify-between">
@@ -267,15 +275,20 @@ export function DashboardFilterBar({
         ) : null}
       </div>
 
-      <Button
-        type="button"
-        size="sm"
-        className="h-9 w-fit shrink-0"
-        onClick={() => router.push(pathname)}
-      >
-        <RotateCcw className="size-4" />
-        Reset
-      </Button>
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <p className="rounded-lg border-2 border-border bg-background px-3 py-2 text-xs font-black uppercase tracking-[0.16em]">
+          {bounds.label}
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          className="h-9 w-fit shrink-0"
+          onClick={() => router.push(pathname)}
+        >
+          <RotateCcw className="size-4" />
+          Reset
+        </Button>
+      </div>
     </div>
   )
 }

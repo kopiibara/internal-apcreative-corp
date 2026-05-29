@@ -25,6 +25,13 @@ import { DirectorReviewForm } from "@/components/admin/approvals/director-review
 import { PublishingReviewForm } from "@/components/admin/approvals/publishing-review-form"
 import { SupervisorReviewForm } from "@/components/admin/approvals/supervisor-review-form"
 import { StatusBadge } from "@/components/shared/status-badge"
+import { DataTablePagination } from "@/components/shared/data-table-pagination"
+import {
+  DATA_TABLE_BODY_CLASS,
+  DATA_TABLE_HEADER_CLASS,
+  DataTableScrollArea,
+} from "@/components/shared/data-table-scroll-area"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -256,10 +263,16 @@ function getApprovalColumns({
       header: ({ column }) => (
         <SortButton label="Content Type" column={column} />
       ),
+      cell: ({ row }) => (
+        <Badge variant="neutral">{row.original.contentType}</Badge>
+      ),
     },
     {
       accessorKey: "platform",
       header: ({ column }) => <SortButton label="Platform" column={column} />,
+      cell: ({ row }) => (
+        <Badge variant="neutral">{row.original.platform}</Badge>
+      ),
     },
     {
       accessorKey: "caption",
@@ -304,7 +317,12 @@ function getApprovalColumns({
     {
       accessorKey: "brandName",
       header: "Brand",
-      cell: ({ row }) => row.original.brandName ?? "No brand",
+      cell: ({ row }) =>
+        row.original.brandName ? (
+          <Badge variant="secondary">{row.original.brandName}</Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">No brand</span>
+        ),
     },
     {
       accessorKey: "supervisorStatus",
@@ -507,9 +525,9 @@ export function ApprovalDataTable({
 
   const tableSection = (
     <>
-      <div className="w-full min-w-0 rounded-lg border">
-        <Table>
-          <TableHeader>
+      <DataTableScrollArea>
+        <Table className="min-w-[1600px] border-0">
+          <TableHeader className={DATA_TABLE_HEADER_CLASS}>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -517,15 +535,15 @@ export function ApprovalDataTable({
                     {header.isPlaceholder
                       ? null
                       : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className={DATA_TABLE_BODY_CLASS}>
             {table.getRowModel().rows.length === 0 ? (
               <TableRow>
                 <TableCell
@@ -537,12 +555,24 @@ export function ApprovalDataTable({
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer"
+                  onClick={() => openDetailsSheet(row.original)}
+                >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="align-top">
+                    <TableCell
+                      key={cell.id}
+                      className="align-top"
+                      onClick={
+                        cell.column.id === "actions"
+                          ? (event) => event.stopPropagation()
+                          : undefined
+                      }
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
@@ -551,32 +581,16 @@ export function ApprovalDataTable({
             )}
           </TableBody>
         </Table>
-      </div>
+      </DataTableScrollArea>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Page {table.getState().pagination.pageIndex + 1} of{" "}
-          {table.getPageCount() || 1}
-        </p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <DataTablePagination
+        pageIndex={table.getState().pagination.pageIndex}
+        pageCount={table.getPageCount()}
+        canPreviousPage={table.getCanPreviousPage()}
+        canNextPage={table.getCanNextPage()}
+        onPreviousPage={() => table.previousPage()}
+        onNextPage={() => table.nextPage()}
+      />
     </>
   )
 

@@ -193,7 +193,7 @@ export function DashboardShell({
                             <SidebarTrigger className="cursor-pointer" />
 
                             <div className="hidden lg:block">
-                                <h1 >{headerTitle}</h1>
+                                <h1 className="text-lg font-bold tracking-tight">{headerTitle}</h1>
                             </div>
                         </div>
 

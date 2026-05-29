@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import {
   Select,
   SelectContent,
@@ -27,7 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import {
+  normalizeRichTextForStorage,
+  isRichTextEmpty,
+} from "@/lib/rich-text/rich-text"
 import {
   REMINDER_PRIORITIES,
   type ReminderPriority,
@@ -60,9 +64,13 @@ export function ReminderFormDialog({
     event.preventDefault()
 
     startTransition(async () => {
+      const normalizedDescription = isRichTextEmpty(description)
+        ? null
+        : normalizeRichTextForStorage(description)
+
       const payload = {
         title,
-        description,
+        description: normalizedDescription,
         remindAt,
         priority,
       }
@@ -105,16 +113,15 @@ export function ReminderFormDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="reminder-description">Description</Label>
-            <Textarea
-              id="reminder-description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              disabled={isPending}
-              className="min-h-24"
-            />
-          </div>
+          <RichTextEditor
+            id="reminder-description"
+            label="Description"
+            value={description}
+            onChange={setDescription}
+            disabled={isPending}
+            minHeight={120}
+            placeholder="Optional details for this reminder"
+          />
 
           <div className="space-y-2">
             <Label>Remind date and time</Label>

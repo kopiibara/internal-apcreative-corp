@@ -2,7 +2,7 @@
 
 import { useMemo, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Search } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 
 import { disableAccount } from "@/app/admin/account-control/actions"
@@ -11,8 +11,12 @@ import {
   profileStatuses,
 } from "@/app/admin/account-control/schema"
 import { AccountFormDialog } from "@/components/admin/accounts/account-form-dialog"
-import { AccountPageHeader } from "@/components/admin/accounts/account-page-header"
 import { AccountStatusMenu } from "@/components/admin/accounts/account-status-menu"
+import {
+  DATA_TABLE_BODY_CLASS,
+  DATA_TABLE_HEADER_CLASS,
+  DataTableScrollArea,
+} from "@/components/shared/data-table-scroll-area"
 import {
   AccountStatusBadge,
   AccountTypeBadge,
@@ -82,6 +86,7 @@ export function AccountTable({ accounts, brands, roles }: AccountTableProps) {
     closeCreateDialog,
     closeEditDialog,
     closeDisableDialog,
+    openCreateDialog,
     setSearchQuery,
     setSelectedRoleFilter,
     setSelectedBrandFilter,
@@ -158,15 +163,19 @@ export function AccountTable({ accounts, brands, roles }: AccountTableProps) {
 
   return (
     <div className="space-y-6">
-      <AccountPageHeader />
-
       <Card>
         <CardHeader className="gap-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle>Accounts</CardTitle>
-            <Button variant="neutral" size="sm" onClick={resetAccountFilters}>
-              Reset Filters
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="neutral" size="sm" onClick={resetAccountFilters}>
+                Reset Filters
+              </Button>
+              <Button onClick={openCreateDialog}>
+                <Plus className="size-4" />
+                Create Account
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -251,19 +260,20 @@ export function AccountTable({ accounts, brands, roles }: AccountTableProps) {
         </CardHeader>
 
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Account</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Brands</TableHead>
-                <TableHead>Roles</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-12 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <DataTableScrollArea>
+            <Table className="min-w-[1200px] border-0">
+              <TableHeader className={DATA_TABLE_HEADER_CLASS}>
+                <TableRow>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Brands</TableHead>
+                  <TableHead>Roles</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="w-12 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className={DATA_TABLE_BODY_CLASS}>
               {filteredAccounts.length === 0 ? (
                 <TableRow>
                   <TableCell
@@ -333,6 +343,7 @@ export function AccountTable({ accounts, brands, roles }: AccountTableProps) {
               )}
             </TableBody>
           </Table>
+          </DataTableScrollArea>
         </CardContent>
       </Card>
 

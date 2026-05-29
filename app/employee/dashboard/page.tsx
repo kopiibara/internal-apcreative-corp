@@ -102,19 +102,6 @@ export default async function EmployeeDashboardPage({
 
   return (
     <div className="min-w-0 space-y-4 overflow-hidden">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            My Brand Dashboard
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            View your assigned brand reports, approvals, and analytics.
-          </p>
-        </div>
-        <p className="rounded-lg border-2 border-border bg-background px-3 py-2 text-xs font-black uppercase tracking-[0.16em]">
-          {bounds.label}
-        </p>
-      </div>
 
       <DashboardFilterBar
         period={period}

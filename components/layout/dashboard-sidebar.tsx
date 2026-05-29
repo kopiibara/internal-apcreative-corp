@@ -113,18 +113,36 @@ export function DashboardSidebar({
         mode === "admin"
             ? user?.canAccessDailyProgress !== false
             : user?.canAccessDailyProgress === true
+    const isFullStackDeveloper = user?.accountType === "FULL_STACK_DEVELOPER"
     const groups =
         mode === "admin"
             ? adminGroups
                 .map((group) => ({
                     ...group,
-                    items: group.items.filter(
-                        (item) =>
-                            (item.href !== "/admin/account-control" ||
-                                canSeeAccountControl) &&
-                            (item.href !== "/admin/daily-progress" ||
-                                canSeeDailyProgress)
-                    ),
+                    items: group.items
+                        .filter(
+                            (item) =>
+                                (item.href !== "/admin/account-control" ||
+                                    canSeeAccountControl) &&
+                                (item.href !== "/admin/daily-progress" ||
+                                    canSeeDailyProgress)
+                        )
+                        .map((item) => {
+                            if (item.title !== "To-Do") {
+                                return item
+                            }
+
+                            const subItems = item.subItems?.map((subItem) =>
+                                isFullStackDeveloper &&
+                                subItem.href === "/admin/to-do/tasks"
+                                    ? { ...subItem, badge: taskBadge }
+                                    : subItem
+                            )
+
+                            return isFullStackDeveloper
+                                ? { ...item, badge: taskBadge, subItems }
+                                : { ...item, subItems }
+                        }),
                 }))
                 .filter((group) => group.items.length > 0)
             : employeeGroups
@@ -341,10 +359,6 @@ export function DashboardSidebar({
                                                             align="start"
                                                             sideOffset={8}
                                                         >
-                                                            <DropdownMenuLabel>
-                                                                {item.title}
-                                                            </DropdownMenuLabel>
-                                                            <DropdownMenuSeparator />
                                                             {item.subItems.map((subItem) => {
                                                                 const isSubActive =
                                                                     isRouteActive(subItem.href)

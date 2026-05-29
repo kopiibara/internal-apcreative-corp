@@ -132,13 +132,11 @@ export function BrandManagement({
 
   return (
     <div className="min-w-0 space-y-4 rounded-xl bg-background p-1 md:p-0">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-normal">Brands</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage brands and view content approval performance.
-          </p>
-        </div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-center">
+        <BrandFilters
+          brands={filteredBrands}
+          selectedBrandId={selectedViewBrand?.id ?? null}
+        />
         {permissions.canCreate ? (
           <Button onClick={openCreateDialog}>
             <Plus className="size-4" />
@@ -147,10 +145,6 @@ export function BrandManagement({
         ) : null}
       </div>
 
-      <BrandFilters
-        brands={filteredBrands}
-        selectedBrandId={selectedViewBrand?.id ?? null}
-      />
 
       {selectedViewBrand ? (
         <>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { LayoutGrid, List, Search } from "lucide-react"
+import { LayoutGrid, List, Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 import {
   type ColumnDef,
@@ -21,8 +21,13 @@ import {
 } from "@/app/admin/account-control/schema"
 import { AccountFormDialog } from "@/components/admin/accounts/account-form-dialog"
 import { AccountDetailsSheet } from "@/components/admin/accounts/account-details-sheet"
-import { AccountPageHeader } from "@/components/admin/accounts/account-page-header"
 import { AccountStatusMenu } from "@/components/admin/accounts/account-status-menu"
+import { DataTablePagination } from "@/components/shared/data-table-pagination"
+import {
+  DATA_TABLE_BODY_CLASS,
+  DATA_TABLE_HEADER_CLASS,
+  DataTableScrollArea,
+} from "@/components/shared/data-table-scroll-area"
 import { ForcePasswordDialog } from "@/components/admin/accounts/force-password-dialog"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { SoftDeleteAccountDialog } from "@/components/admin/accounts/soft-delete-account-dialog"
@@ -350,6 +355,7 @@ export function AccountDataTable({
     closeCreateDialog,
     closeEditDialog,
     closeDisableDialog,
+    openCreateDialog,
     openDetailsSheet,
     closeDetailsSheet,
     openEditDialog,
@@ -449,19 +455,17 @@ export function AccountDataTable({
 
   return (
     <div className="min-w-0 space-y-6">
-      <AccountPageHeader />
-
       <Card className="w-full min-w-0 overflow-hidden">
         <CardHeader className="gap-3">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle>Accounts</CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
               {isPending ? (
                 <span className="hidden text-xs text-muted-foreground sm:inline">
                   Updating...
                 </span>
               ) : null}
-              <div className="flex ">
+              <div className="flex">
                 <Button
                   type="button"
                   variant={viewMode === "table" ? "default" : "ghost"}
@@ -483,6 +487,10 @@ export function AccountDataTable({
                   <LayoutGrid className="size-4" />
                 </Button>
               </div>
+              <Button onClick={openCreateDialog}>
+                <Plus className="size-4" />
+                Create Account
+              </Button>
             </div>
           </div>
 
@@ -580,13 +588,9 @@ export function AccountDataTable({
 
         <CardContent className="min-h-0 min-w-0 space-y-4">
           {viewMode === "table" ? (
-            <ScrollArea
-              className="h-[calc(100vh-24rem)] min-h-[320px] max-h-[620px] w-full rounded-lg border-2 border-border"
-              scrollbars="both"
-              viewportClassName="rounded-lg"
-            >
+            <DataTableScrollArea>
               <Table className="min-w-[1600px] border-0">
-                <TableHeader className="sticky top-0 z-20 shadow-[0_2px_0_0_var(--border)]">
+                <TableHeader className={DATA_TABLE_HEADER_CLASS}>
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -602,7 +606,7 @@ export function AccountDataTable({
                     </TableRow>
                   ))}
                 </TableHeader>
-                <TableBody className="bg-white dark:bg-gray-900">
+                <TableBody className={DATA_TABLE_BODY_CLASS}>
                   {table.getRowModel().rows.length === 0 ? (
                     <TableRow>
                       <TableCell
@@ -640,7 +644,7 @@ export function AccountDataTable({
                   )}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </DataTableScrollArea>
           ) : (
             <ScrollArea
               className="h-[calc(100vh-24rem)] min-h-[320px] max-h-[620px] w-full rounded-lg border-2 border-border bg-card"
@@ -665,30 +669,14 @@ export function AccountDataTable({
             </ScrollArea>
           )}
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount() || 1}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="neutral"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="neutral"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          <DataTablePagination
+            pageIndex={table.getState().pagination.pageIndex}
+            pageCount={table.getPageCount()}
+            canPreviousPage={table.getCanPreviousPage()}
+            canNextPage={table.getCanNextPage()}
+            onPreviousPage={() => table.previousPage()}
+            onNextPage={() => table.nextPage()}
+          />
         </CardContent>
       </Card>
 

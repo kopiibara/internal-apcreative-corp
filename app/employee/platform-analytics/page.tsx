@@ -23,6 +23,7 @@ export default async function EmployeePlatformAnalyticsPage() {
   const allowed = await canViewPlatformAnalytics(
     profile.auth_user_id,
     profile.id,
+    profile.account_type,
   )
 
   if (!allowed) {

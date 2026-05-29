@@ -74,7 +74,10 @@ async function loadTaskPermissions(
 export async function loadAdminTaskBoardPage() {
   const context = await requirePermission("tasks.view");
   const authUserId = context.profile.auth_user_id;
-  const canViewAll = await can(authUserId, "tasks.view_all");
+  const isFullStackDeveloper =
+    context.profile.account_type === "FULL_STACK_DEVELOPER";
+  const canViewAll =
+    !isFullStackDeveloper && (await can(authUserId, "tasks.view_all"));
 
   const [assignments, assignees, permissions] = await Promise.all([
     getTaskAssignmentsForViewer({

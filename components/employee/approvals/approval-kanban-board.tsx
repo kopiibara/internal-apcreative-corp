@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Tabs,
   TabsContent,
@@ -158,67 +158,53 @@ export function EmployeeApprovalKanbanBoard({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-normal">
-            Approval Page
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Submit creative work and track supervisor, director, and publishing
-            status.
-          </p>
-        </div>
-
-        {hasNoReports ? (
-          <p className="shrink-0 rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-            No approval reports yet. Create your first submission to start the
-            review workflow.
-          </p>
-        ) : null}
-
-        <div className="flex min-w-0 flex-wrap items-center justify-start gap-3 pr-1 lg:shrink-0 lg:justify-end">
-          <Tabs
-            value={activeView}
-            onValueChange={(value) =>
-              setActiveView(value as "kanban" | "table")
-            }
-            className="w-auto shrink-0"
-          >
-            <TabsList>
-              <TabsTrigger value="kanban">
-                Kanban Board
-                {readyToPublishCount > 0 ? (
-                  <span className="ml-2 rounded-md border border-border bg-background px-1.5 text-xs">
-                    {readyToPublishCount}
-                  </span>
-                ) : null}
-              </TabsTrigger>
-              <TabsTrigger value="table">Table View</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          {canCreateContentReport ? (
-            <Button className="shrink-0" onClick={openCreateDialog}>
-              <Plus className="size-4" />
-              Create Approval Report
-            </Button>
-          ) : null}
-        </div>
-      </div>
-
       <Tabs
         value={activeView}
         onValueChange={(value) => setActiveView(value as "kanban" | "table")}
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       >
-        <TabsContent value="kanban" className="mt-0 min-w-0 overflow-hidden">
-          <BoardSection className="w-full min-w-0 overflow-hidden  pb-1 gap-2">
-            <CardHeader className="min-w-0 shrink-0 gap-3">
-              <div className="flex items-center justify-between gap-3">
-                {isPending ? (
-                  <span className="text-xs text-muted-foreground">Updating...</span>
+        <BoardSection className="w-full min-w-0 flex-1 overflow-hidden pb-1 gap-2">
+          <CardHeader className="min-w-0 shrink-0 gap-3">
+            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <CardTitle className="shrink-0 text-card-foreground">
+                Approval board
+              </CardTitle>
+
+              {hasNoReports ? (
+                <p className="min-w-0 flex-1 max-w-2xl rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-center text-sm text-muted-foreground">
+                  No approval reports yet. Create your first submission to start
+                  the review workflow.
+                </p>
+              ) : null}
+
+              <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-start gap-3 lg:justify-end">
+                <TabsList>
+                  <TabsTrigger value="kanban">
+                    Kanban Board
+                    {readyToPublishCount > 0 ? (
+                      <span className="ml-2 rounded-md border border-border bg-background px-1.5 text-xs">
+                        {readyToPublishCount}
+                      </span>
+                    ) : null}
+                  </TabsTrigger>
+                  <TabsTrigger value="table">Table View</TabsTrigger>
+                </TabsList>
+                {canCreateContentReport ? (
+                  <Button className="shrink-0" onClick={openCreateDialog}>
+                    <Plus className="size-4" />
+                    Create Approval Report
+                  </Button>
                 ) : null}
               </div>
-              <EmployeeApprovalFilters reports={reports} />
-            </CardHeader>
+            </div>
+
+            {isPending ? (
+              <span className="text-xs text-muted-foreground">Updating...</span>
+            ) : null}
+            <EmployeeApprovalFilters reports={reports} />
+          </CardHeader>
+
+          <TabsContent value="kanban" className="mt-0 min-w-0 overflow-hidden">
             <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
               <KanbanBoardShell>
                 <KanbanColumnsRow className={employeeBoardRowClass}>
@@ -241,22 +227,17 @@ export function EmployeeApprovalKanbanBoard({
                 </KanbanColumnsRow>
               </KanbanBoardShell>
             </CardContent>
-          </BoardSection>
-        </TabsContent>
+          </TabsContent>
 
-        <TabsContent value="table" className="mt-0 min-w-0 overflow-hidden">
-          <Card className="w-full min-w-0 overflow-hidden">
-            <CardHeader className="gap-3">
-              <EmployeeApprovalFilters reports={reports} />
-            </CardHeader>
+          <TabsContent value="table" className="mt-0 min-w-0 overflow-hidden">
             <CardContent className="min-w-0">
               <EmployeeApprovalTableView
                 reports={filteredReports}
                 currentProfileId={currentProfileId}
               />
             </CardContent>
-          </Card>
-        </TabsContent>
+          </TabsContent>
+        </BoardSection>
       </Tabs>
 
       {isCreateDialogOpen ? (

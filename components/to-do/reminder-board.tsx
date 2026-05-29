@@ -9,6 +9,7 @@ import { ReminderKanbanBoard } from "@/components/to-do/reminder-kanban-board"
 import { BoardSection } from "@/components/shared/board-section"
 import { Button } from "@/components/ui/button"
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { richTextToPlainText } from "@/lib/rich-text/rich-text"
 import type { ReminderRecord } from "@/lib/reminders/reminders"
 import { useReminderStore } from "@/stores/use-reminder-store"
 
@@ -68,7 +69,9 @@ export function ReminderBoard({ reminders }: ReminderBoardProps) {
       const matchesSearch =
         normalizedSearch.length === 0 ||
         reminder.title.toLowerCase().includes(normalizedSearch) ||
-        (reminder.description ?? "").toLowerCase().includes(normalizedSearch)
+        richTextToPlainText(reminder.description)
+          .toLowerCase()
+          .includes(normalizedSearch)
       const matchesStatus =
         selectedStatusFilter === "all" ||
         reminder.status === selectedStatusFilter
@@ -93,22 +96,15 @@ export function ReminderBoard({ reminders }: ReminderBoardProps) {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <div className="flex shrink-0 flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-normal">Reminder</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Personal reminders for follow-ups and deadlines.
-          </p>
-        </div>
-        <Button onClick={openCreateDialog}>
-          <Plus className="size-4" />
-          Add Reminder
-        </Button>
-      </div>
-
       <BoardSection className="w-full min-w-0 overflow-hidden pb-1 gap-2">
         <CardHeader className="min-w-0 shrink-0 gap-3">
-          <CardTitle className="text-card-foreground">Reminder board</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-card-foreground">Reminder board</CardTitle>
+            <Button onClick={openCreateDialog}>
+              <Plus className="size-4" />
+              Add Reminder
+            </Button>
+          </div>
           <ReminderFilters />
         </CardHeader>
         <CardContent className="min-w-0 overflow-hidden px-0 pb-0">

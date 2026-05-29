@@ -142,9 +142,11 @@ export default async function AccountPage() {
         can(profile.auth_user_id, "ads_campaigns.view"),
       ])
   const actionableTaskCount =
-    !isAdmin && canAccessTaskBoard
+    profile.account_type === "FULL_STACK_DEVELOPER"
       ? await getEmployeeActionableTaskCount(profile.id)
-      : 0
+      : !isAdmin && canAccessTaskBoard
+        ? await getEmployeeActionableTaskCount(profile.id)
+        : 0
 
   return (
     <DashboardShell

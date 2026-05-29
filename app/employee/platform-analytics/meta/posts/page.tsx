@@ -28,6 +28,7 @@ export default async function EmployeeMetaPostsAnalyticsPage({
   const allowed = await canViewPlatformAnalytics(
     profile.auth_user_id,
     profile.id,
+    profile.account_type,
   );
 
   if (!allowed) {
