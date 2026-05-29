@@ -1,9 +1,18 @@
 "use client"
 
-import { CalendarClock, CheckCircle2, ExternalLink, PenLine } from "lucide-react"
+import {
+  CalendarClock,
+  CheckCircle2,
+  ExternalLink,
+  Eye,
+  PenLine,
+  Pencil,
+  Trash2,
+} from "lucide-react"
 
 import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
 import { ApprovalPublishingActions } from "@/components/employee/approvals/approval-publishing-actions"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,10 +22,13 @@ import {
   getRevisionAreaCount,
   getRevisionSummaryLabel,
 } from "@/lib/approvals/approval-revision"
+import { useContentReportStore } from "@/stores/use-content-report-store"
+import { canEmployeeEditOwnReport } from "@/types/content-report"
 import type { ContentReport } from "@/types/content-report"
 
 type EmployeeApprovalKanbanCardProps = {
   report: ContentReport
+  currentProfileId: number
   onOpenDetails: (report: ContentReport) => void
 }
 
@@ -26,45 +38,45 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 })
 
-function hasText(value: string | null) {
-  return Boolean(value?.trim())
-}
-
 function getScheduledLabel(value: string | null) {
   return value ? dateFormatter.format(new Date(value)) : "Scheduled"
 }
 
 export function EmployeeApprovalKanbanCard({
   report,
+  currentProfileId,
   onOpenDetails,
 }: EmployeeApprovalKanbanCardProps) {
-  const hasSupervisorNote = hasText(report.supervisorNotes)
-  const hasDirectorNote = hasText(report.directorNotes)
+  const openEditDialog = useContentReportStore((state) => state.openEditDialog)
+  const openDeleteDialog = useContentReportStore((state) => state.openDeleteDialog)
+  const hasSupervisorNote = Boolean(report.supervisorNotes?.trim())
+  const hasDirectorNote = Boolean(report.directorNotes?.trim())
   const displayStatus = getApprovalDisplayStatus(report)
   const revisionSummary = getRevisionSummaryLabel(report)
   const revisionItemCount = getRevisionAreaCount(report)
   const publishingPermissions = getApprovalPublishingPermissions(report)
+  const canEditOwn = canEmployeeEditOwnReport(report, currentProfileId)
 
   return (
     <Card
-      className="cursor-pointer rounded-lg bg-white dark:bg-gray-900 py-2 transition-colors hover:bg-muted"
+      className="cursor-pointer rounded-lg bg-white  px-0 py-2 transition-colors hover:bg-muted dark:bg-gray-900"
       onClick={() => onOpenDetails(report)}
     >
-      <CardContent className="space-y-3 px-4 py-1">
+      <CardContent className="space-y-3 px-4 py-2">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-col gap-1">
+          <div className="flex min-w-0 flex-col gap-1">
             <h2 className="line-clamp-2 font-bold leading-snug">
               {report.brandName ?? "No brand"}
-
             </h2>
             {report.assetLink ? (
-              <Button type="button" size="sm" variant="outline" asChild className="flex h-fit py-1 items-center gap-1.5 text-xs"
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                asChild
+                className="flex h-fit items-center gap-1.5 py-1 text-xs"
               >
-                <a
-                  href={report.assetLink}
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <a href={report.assetLink} target="_blank" rel="noreferrer">
                   <ExternalLink className="size-3" />
                   Open asset
                 </a>
@@ -78,14 +90,9 @@ export function EmployeeApprovalKanbanCard({
           </div>
         </div>
 
-        <p className="text-xs">
-          <span className="text-muted-foreground">Submitted by:</span>{" "}
-          <span className="font-medium">{report.submittedByName}</span>
-        </p>
-
-        <p className="text-xs">
-          <span className="text-muted-foreground">Submitted:</span>{" "}
-          <span className="font-medium">
+        <p className="text-xs text-muted-foreground">
+          Submitted:{" "}
+          <span className="font-medium text-foreground">
             {dateFormatter.format(new Date(report.dateSubmitted))}
           </span>
         </p>
@@ -110,7 +117,9 @@ export function EmployeeApprovalKanbanCard({
           </div>
         ) : null}
 
-        {report.publishStatus === "Scheduled" || report.scheduledPublishedDate || report.publishingProofUrl ? (
+        {report.publishStatus === "Scheduled" ||
+          report.scheduledPublishedDate ||
+          report.publishingProofUrl ? (
           <div className="flex flex-wrap gap-1.5">
             {report.publishStatus === "Scheduled" || report.scheduledPublishedDate ? (
               <Badge variant="secondary" className="gap-1">
@@ -128,22 +137,32 @@ export function EmployeeApprovalKanbanCard({
         ) : null}
 
         <div
-          className="flex flex-wrap gap-1.5"
+          className="flex items-center gap-2 pt-1"
           onClick={(event) => event.stopPropagation()}
         >
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <UserAvatar
+              profileId={report.submittedByProfileId}
+              name={report.submittedByName}
+              imageUrl={report.submittedByImageUrl}
+              size="sm"
+            />
+            <p className="min-w-0 truncate text-xs font-medium">
+              {report.submittedByName}
+            </p>
+          </div>
 
-
-          <div className="flex  w-full gap-1.5">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
             {hasSupervisorNote ? (
               <Button
                 type="button"
                 size="sm"
                 variant="neutral"
+                className="h-8 gap-1 px-2 text-[11px]"
                 onClick={() => onOpenDetails(report)}
-                className="flex items-center gap-1.5 text-xs"
               >
-                <PenLine className="h-2" />
-                Supervisor Note
+                <PenLine className="size-3" />
+                Sup. Note
               </Button>
             ) : null}
 
@@ -152,20 +171,43 @@ export function EmployeeApprovalKanbanCard({
                 type="button"
                 size="sm"
                 variant="neutral"
+                className="h-8 gap-1 px-2 text-[11px]"
                 onClick={() => onOpenDetails(report)}
-                className="flex items-center gap-1.5 text-xs"
-
               >
                 <PenLine className="size-3" />
-                Director Note
+                Dir. Note
               </Button>
             ) : null}
+
+            <ApprovalPublishingActions
+              report={report}
+              publishingPermissions={publishingPermissions}
+              compact
+            />
+
+            {canEditOwn ? (
+              <>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="neutral"
+                  aria-label="Edit approval report"
+                  onClick={() => openEditDialog(report)}
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="destructive"
+                  aria-label="Cancel approval report"
+                  onClick={() => openDeleteDialog(report)}
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </>
+            ) : null}
           </div>
-          <ApprovalPublishingActions
-            report={report}
-            publishingPermissions={publishingPermissions}
-            compact
-          />
         </div>
       </CardContent>
     </Card>

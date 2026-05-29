@@ -1,7 +1,5 @@
-import { ExternalLink } from "lucide-react"
-
+import { TaskProofDisplay } from "@/components/shared/task-proof-display"
 import { StatusBadge } from "@/components/shared/status-badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
@@ -58,19 +56,11 @@ export function TaskProofSummary({
                 <StatusBadge status="SUBMITTED" type="proof" />
               </div>
             </div>
-            {assignment.proofUrl ? (
-              <Button type="button" size="sm" variant="neutral" asChild>
-                <a href={assignment.proofUrl} target="_blank" rel="noreferrer">
-                  <ExternalLink className="size-3" />
-                  Open proof link
-                </a>
-              </Button>
-            ) : null}
-            {assignment.proofNote ? (
-              <p className="whitespace-pre-wrap break-words rounded-lg border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
-                {assignment.proofNote}
-              </p>
-            ) : null}
+            <TaskProofDisplay
+              proofType={assignment.proofType}
+              proofUrl={assignment.proofUrl}
+              proofNote={assignment.proofNote}
+            />
           </>
         ) : (
           <div className="rounded-lg border-2 border-dashed border-border p-4 text-center text-sm text-muted-foreground">

@@ -11,8 +11,11 @@ export type TaskType = (typeof TASK_TYPES)[number];
 export { TASK_KANBAN_COLUMNS, TASK_STATUSES as TASK_ASSIGNMENT_STATUSES };
 export type { TaskAssignmentStatus };
 
-export const TASK_PROOF_TYPES = ["IMAGE", "VIDEO", "LINK", "NOTE"] as const;
-export type TaskProofType = (typeof TASK_PROOF_TYPES)[number];
+export const TASK_PROOF_SUBMIT_TYPES = ["IMAGE", "LINK", "NOTE"] as const;
+export type TaskProofSubmitType = (typeof TASK_PROOF_SUBMIT_TYPES)[number];
+
+/** Values allowed in `task_assignment.proof_type` (legacy VIDEO removed). */
+export type TaskProofType = TaskProofSubmitType;
 
 export const TASK_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];

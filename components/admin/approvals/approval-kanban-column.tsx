@@ -6,15 +6,15 @@ import { KanbanColumnHeader } from "@/components/shared/kanban-column-header"
 import {
   KANBAN_COLUMN_BODY_CLASS,
   KANBAN_COLUMN_CARD_CLASS,
-  KANBAN_COLUMN_LIST_CLASS,
+  KANBAN_COLUMN_EMPTY_BODY_CLASS,
   KANBAN_COLUMN_VIEWPORT_CLASS,
   KANBAN_COLUMN_WIDTH_CLASS,
+  kanbanColumnListClass,
 } from "@/components/shared/kanban-board-scroll"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { getKanbanStageConfig } from "@/lib/approvals/approval-kanban-status"
 import type { ApprovalKanbanColumnId } from "@/lib/approvals/approval-statuses"
-import { cn } from "@/lib/utils"
 
 type ApprovalKanbanColumnProps = {
   id: ApprovalKanbanColumnId
@@ -30,13 +30,11 @@ export function ApprovalKanbanColumn({
   children,
 }: ApprovalKanbanColumnProps) {
   const config = getKanbanStageConfig(id)
-  const listClassName = cn(
-    KANBAN_COLUMN_LIST_CLASS,
-    count === 0 && "items-center justify-center"
-  )
+  const listClassName = kanbanColumnListClass(count)
+  const isEmpty = count === 0
 
   return (
-    <KanbanColumn value={id} className={cn(KANBAN_COLUMN_WIDTH_CLASS, "self-start")}>
+    <KanbanColumn value={id} className={KANBAN_COLUMN_WIDTH_CLASS}>
       <Card className={KANBAN_COLUMN_CARD_CLASS}>
         <KanbanColumnHeader
           title={title}
@@ -44,12 +42,12 @@ export function ApprovalKanbanColumn({
           countClassName={config.badgeClassName}
         />
         <ScrollArea
-          className={KANBAN_COLUMN_BODY_CLASS}
+          className={isEmpty ? KANBAN_COLUMN_EMPTY_BODY_CLASS : KANBAN_COLUMN_BODY_CLASS}
           viewportClassName={KANBAN_COLUMN_VIEWPORT_CLASS}
           scrollbars="vertical"
         >
           <KanbanColumnContent value={id} className={listClassName}>
-            {count === 0 ? (
+            {isEmpty ? (
               <p className="text-center text-xs text-muted-foreground">
                 No approvals here.
               </p>

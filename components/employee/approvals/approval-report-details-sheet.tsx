@@ -23,7 +23,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { canEmployeeEditReport } from "@/types/content-report"
+import { canEmployeeEditOwnReport } from "@/types/content-report"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 
 type ContentReportDetailsSheetProps = {
@@ -42,7 +42,7 @@ export function ContentReportDetailsSheet({
 
   const canEdit =
     selectedContentReport != null &&
-    canEmployeeEditReport(selectedContentReport)
+    canEmployeeEditOwnReport(selectedContentReport, currentProfileId)
 
   const publishingPermissions = selectedContentReport
     ? getApprovalPublishingPermissions(selectedContentReport)

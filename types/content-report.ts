@@ -88,6 +88,20 @@ export function canEmployeeEditReport(report: {
   );
 }
 
+export function canEmployeeEditOwnReport(
+  report: {
+    submittedByProfileId: number;
+    supervisorStatus: ReviewStatus;
+    directorStatus: ReviewStatus;
+    publishStatus: PublishStatus;
+  },
+  profileId: number,
+) {
+  return (
+    report.submittedByProfileId === profileId && canEmployeeEditReport(report)
+  );
+}
+
 export function canEditPublishingFields(report: {
   supervisorStatus: ReviewStatus;
   directorStatus: ReviewStatus;

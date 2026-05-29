@@ -105,6 +105,7 @@ export function ApprovalDetailsSheet({
               />
               <AdminApprovalReviewActionsPanel
                 report={resolvedApproval}
+                accountType={accountType}
                 canSupervisorReview={canSupervisorReview}
                 canDirectorReview={canDirectorReview}
                 canPublishUpdate={canPublishUpdate}

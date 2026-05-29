@@ -32,10 +32,10 @@ export function StatusBadge({
 
   return (
     <Badge
-      variant="outline"
+      variant="status"
       size={size}
       className={cn(
-        "border-2 shadow-none",
+        "shadow-none",
         getStatusBadgeClassName(status, type),
         className
       )}

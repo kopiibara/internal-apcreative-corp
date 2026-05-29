@@ -11,15 +11,16 @@ import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
 import { TaskProofDialog } from "@/components/to-do/task-proof-dialog"
 import { TaskRevisionDialog } from "@/components/to-do/task-revision-dialog"
 import { TaskStatusChangeDialog } from "@/components/to-do/task-status-change-dialog"
+import { TaskProofViewDialog } from "@/components/shared/task-proof-view-dialog"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
 import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
-import { ButtonGroup } from "@/components/ui/button-group"
 import { Card, CardContent } from "@/components/ui/card"
 import { richTextExcerpt } from "@/lib/rich-text/rich-text"
+import { shouldOpenTaskProofInDialog } from "@/lib/tasks/task-proof-media"
 import { getTaskLateSubmissionDisplay } from "@/lib/tasks/task-late-submission"
 import { isAssignmentSubmittedOnTime } from "@/lib/tasks/task-type"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
@@ -55,6 +56,11 @@ export function TaskAssignmentCard({
   const [blockerOpen, setBlockerOpen] = useState(false)
   const [revisionOpen, setRevisionOpen] = useState(false)
   const [doneDialogOpen, setDoneDialogOpen] = useState(false)
+  const [proofViewOpen, setProofViewOpen] = useState(false)
+  const openProofInDialog = shouldOpenTaskProofInDialog(
+    assignment.proofType,
+    assignment.proofUrl,
+  )
   const openEditDialog = useTaskStore((state) => state.openEditDialog)
 
   const onTimeStatus = isAssignmentSubmittedOnTime(
@@ -64,11 +70,11 @@ export function TaskAssignmentCard({
   const lateSubmissionDisplay =
     assignment.taskType === "GRADED"
       ? getTaskLateSubmissionDisplay({
-          taskType: assignment.taskType,
-          status: assignment.status,
-          dueDate: assignment.dueDate,
-          submittedAt: assignment.submittedAt,
-        })
+        taskType: assignment.taskType,
+        status: assignment.status,
+        dueDate: assignment.dueDate,
+        submittedAt: assignment.submittedAt,
+      })
       : null
   const isAssignee = assignment.assignedToProfileId === currentProfileId
   const canEditTask =
@@ -99,7 +105,7 @@ export function TaskAssignmentCard({
   return (
     <>
       <Card
-        className="w-full max-w-full cursor-pointer dark:bg-gray-900 overflow-hidden rounded-lg bg-white px-0 py-3 transition-all hover:bg-muted hover:-translate-y-0.5"
+        className="w-full max-w-full cursor-pointer dark:bg-gray-900 overflow-hidden rounded-lg bg-white px-0 py-2 transition-all hover:bg-muted hover:-translate-y-0.5"
         onClick={() => onOpenDetails?.(assignment)}
       >
         <CardContent className="min-w-0 space-y-2.5 px-4 py-2">
@@ -230,12 +236,32 @@ export function TaskAssignmentCard({
             ) : null}
 
             {assignment.proofUrl ? (
-              <Button type="button" size="sm" variant="neutral" asChild>
-                <a href={assignment.proofUrl} target="_blank" rel="noreferrer">
+              openProofInDialog ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="neutral"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    setProofViewOpen(true)
+                  }}
+                >
                   <ExternalLink className="size-3" />
-                  View
-                </a>
-              </Button>
+                  {assignment.proofType === "IMAGE" ? "View image" : "View proof"}
+                </Button>
+              ) : (
+                <Button type="button" size="sm" variant="neutral" asChild>
+                  <a
+                    href={assignment.proofUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <ExternalLink className="size-3" />
+                    View
+                  </a>
+                </Button>
+              )
             ) : null}
           </div>
 
@@ -259,8 +285,11 @@ export function TaskAssignmentCard({
               ) : null}
 
               {canUpdateTask || canDeleteTask ? (
-                <ButtonGroup
-                  className={cn("shrink-0", !showAssignee && "ml-auto")}
+                <div
+                  className={cn(
+                    "flex shrink-0 items-center gap-1.5",
+                    !showAssignee && "ml-auto",
+                  )}
                 >
                   {canUpdateTask ? (
                     <Button
@@ -286,7 +315,7 @@ export function TaskAssignmentCard({
                       <Trash2 className="size-3.5" />
                     </Button>
                   ) : null}
-                </ButtonGroup>
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -297,6 +326,14 @@ export function TaskAssignmentCard({
         assignment={assignment}
         open={proofOpen}
         onOpenChange={setProofOpen}
+      />
+      <TaskProofViewDialog
+        open={proofViewOpen}
+        onOpenChange={setProofViewOpen}
+        proofType={assignment.proofType}
+        proofUrl={assignment.proofUrl}
+        proofNote={assignment.proofNote}
+        taskTitle={assignment.title}
       />
       <ReportBlockerDialog
         assignment={assignment}

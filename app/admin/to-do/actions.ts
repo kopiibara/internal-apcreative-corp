@@ -785,7 +785,9 @@ export async function submitTaskProof(
 
   try {
     const proofUrl =
-      parsed.data.proofType === "LINK" ? parsed.data.proofUrl : null;
+      parsed.data.proofType === "LINK" || parsed.data.proofType === "IMAGE"
+        ? parsed.data.proofUrl
+        : null;
     const proofNote =
       parsed.data.proofType === "NOTE" ? parsed.data.proofNote : null;
 

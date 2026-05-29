@@ -83,6 +83,31 @@ function formatSidebarBadge(count: number) {
 const sidebarNavActiveClass =
     "border-2 border-border bg-sidebar-primary font-medium text-sidebar-primary-foreground shadow-[var(--shadow-hard-sm)] hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
 
+function SidebarNavCountBadge({
+    count,
+    onPrimaryBackground = false,
+    className,
+}: {
+    count: string | number
+    onPrimaryBackground?: boolean
+    className?: string
+}) {
+    return (
+        <Badge
+            variant="status"
+            className={cn(
+                "ml-auto min-w-5 justify-center rounded-full px-1.5 py-0 text-[10px] font-bold tabular-nums shadow-none",
+                onPrimaryBackground
+                    ? "border-white/40 bg-destructive text-destructive-foreground"
+                    : "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
+                className,
+            )}
+        >
+            {count}
+        </Badge>
+    )
+}
+
 export function DashboardSidebar({
     mode,
     user,
@@ -329,10 +354,6 @@ export function DashboardSidebar({
                                             (subItem) =>
                                                 isRouteActive(subItem.href)
                                         )
-                                        const hasSubItemBadge = item.subItems.some(
-                                            (subItem) => Boolean(subItem.badge)
-                                        )
-
                                         if (isCollapsed) {
                                             return (
                                                 <SidebarMenuItem key={item.title}>
@@ -343,15 +364,12 @@ export function DashboardSidebar({
                                                                 tooltip={item.title}
                                                                 isActive={isActive}
                                                                 className={cn(
-                                                                    "relative mx-auto h-8 w-8 justify-center rounded-xl px-0",
+                                                                    "mx-auto h-8 w-8 justify-center rounded-xl px-0",
                                                                     isActive &&
                                                                     sidebarNavActiveClass
                                                                 )}
                                                             >
                                                                 <item.icon className="h-3 w-3 shrink-0" />
-                                                                {hasSubItemBadge ? (
-                                                                    <span className="absolute -top-1 -right-1 size-2 rounded-full bg-destructive" />
-                                                                ) : null}
                                                             </SidebarMenuButton>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent
@@ -378,14 +396,6 @@ export function DashboardSidebar({
                                                                             className="flex w-full items-center gap-2 p-1"
                                                                         >
                                                                             <span>{subItem.title}</span>
-                                                                            {subItem.badge ? (
-                                                                                <Badge
-                                                                                    variant="secondary"
-                                                                                    className="ml-auto rounded-full"
-                                                                                >
-                                                                                    {subItem.badge}
-                                                                                </Badge>
-                                                                            ) : null}
                                                                         </Link>
                                                                     </DropdownMenuItem>
                                                                 )
@@ -425,12 +435,10 @@ export function DashboardSidebar({
                                                         <>
                                                             <span>{item.title}</span>
                                                             {item.badge ? (
-                                                                <Badge
-                                                                    variant="secondary"
-                                                                    className="ml-auto rounded-full"
-                                                                >
-                                                                    {item.badge}
-                                                                </Badge>
+                                                                <SidebarNavCountBadge
+                                                                    count={item.badge}
+                                                                    onPrimaryBackground={isActive}
+                                                                />
                                                             ) : null}
                                                             <ChevronDown
                                                                 className={cn(
@@ -481,12 +489,9 @@ export function DashboardSidebar({
                                                                                     }
                                                                                 </span>
                                                                                 {subItem.badge ? (
-                                                                                    <Badge
-                                                                                        variant="secondary"
-                                                                                        className="ml-auto rounded-full"
-                                                                                    >
-                                                                                        {subItem.badge}
-                                                                                    </Badge>
+                                                                                    <SidebarNavCountBadge
+                                                                                        count={subItem.badge}
+                                                                                    />
                                                                                 ) : null}
                                                                             </Link>
                                                                         </SidebarMenuSubButton>
