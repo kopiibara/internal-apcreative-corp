@@ -141,6 +141,11 @@ export default async function AccountPage() {
       can(profile.auth_user_id, "daily_progress.view_all"),
       can(profile.auth_user_id, "daily_progress.manage"),
     ]).then((checks) => checks.some(Boolean))
+    canAccessPlatformAnalytics = await canViewPlatformAnalytics(
+      profile.auth_user_id,
+      profile.id,
+      profile.account_type,
+    )
   } else {
     ;[
       canAccessTaskBoard,

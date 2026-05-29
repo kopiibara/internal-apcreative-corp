@@ -27,9 +27,9 @@ type YouTubeTrendRow = {
 type YouTubeContentRow = {
   title: string;
   views: number | null;
-  likes: number;
-  comments: number;
-  shares: number;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
   watchTime: string | null;
   avgViewDuration: string | null;
   publishedAt: string | null;
