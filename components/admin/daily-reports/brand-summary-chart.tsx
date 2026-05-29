@@ -15,6 +15,7 @@ import {
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
+  chartHoverCursor,
 } from "@/components/ui/chart"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
@@ -68,7 +69,7 @@ function BrandSummaryTooltip({
   }
 
   return (
-    <div className="grid min-w-[200px] gap-1.5 rounded-lg border border-border/60 bg-background px-3 py-2 text-xs shadow-xl">
+    <div className="grid min-w-50 gap-1.5 rounded-lg border border-border/60 bg-background px-3 py-2 text-xs shadow-xl">
       <p className="font-medium text-foreground">{item.brandName}</p>
       <div className="grid gap-0.5 text-muted-foreground">
         <p>Graded: {item.graded}</p>
@@ -129,7 +130,7 @@ export function BrandSummaryChart({ summaries }: BrandSummaryChartProps) {
               <div style={{ minWidth: chartMinWidth }}>
                 <ChartContainer
                   config={brandChartConfig}
-                  className="aspect-auto h-[220px] w-full md:h-[280px]"
+                  className="aspect-auto h-55 w-full md:h-70"
                 >
                   <BarChart
                     data={chartData}
@@ -153,7 +154,7 @@ export function BrandSummaryChart({ summaries }: BrandSummaryChartProps) {
                       width={32}
                     />
                     <ChartTooltip
-                      cursor={{ fill: "hsl(var(--muted) / 0.35)" }}
+                      cursor={chartHoverCursor}
                       content={<BrandSummaryTooltip />}
                     />
                     <ChartLegend content={<ChartLegendContent />} />
