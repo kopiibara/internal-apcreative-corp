@@ -309,12 +309,45 @@ export async function syncAllMetaMonitoringAction(): Promise<
   }
 
   try {
+    const viewAuth = await authorizeMetaView();
+    if ("success" in viewAuth) {
+      return viewAuth;
+    }
+
     const result = await runAllMetaSyncJobs();
     revalidatePlatformAnalyticsPaths();
 
+    const pageErrors = await query<{
+      page_name: string;
+      sync_type: string;
+      error_log: string | null;
+    }>(
+      `
+      SELECT DISTINCT ON (p.facebook_page_id)
+        COALESCE(p.page_name, p.facebook_page_id) AS page_name,
+        r.sync_type,
+        r.error_log
+      FROM meta_sync_run r
+      JOIN meta_facebook_page p ON p.facebook_page_id = r.facebook_page_id
+      WHERE r.status = 'FAILED'
+        AND r.started_at > now() - interval '15 minutes'
+      ORDER BY p.facebook_page_id, r.started_at DESC
+      `,
+    );
+
+    const failureSummary = pageErrors.rows
+      .filter((row) => row.error_log)
+      .map((row) => `${row.page_name} (${row.sync_type}): ${row.error_log}`)
+      .slice(0, 5);
+
+    const baseMessage = `Meta sync finished: daily_page=${result.dailyPage}, hourly_posts=${result.hourlyPosts}, daily_insights=${result.dailyInsights}.`;
+
     return {
-      success: true,
-      message: `Meta sync finished: daily_page=${result.dailyPage}, hourly_posts=${result.hourlyPosts}, daily_insights=${result.dailyInsights}.`,
+      success: failureSummary.length === 0,
+      message:
+        failureSummary.length > 0
+          ? `${baseMessage} Failures: ${failureSummary.join(" | ")}`
+          : baseMessage,
       data: result,
     };
   } catch (error) {

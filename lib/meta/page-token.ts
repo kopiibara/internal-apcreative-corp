@@ -1,6 +1,7 @@
 import "server-only"
 
 import { resolveMetaPageAccessToken } from "@/lib/meta/config"
+import { normalizeFacebookPageId } from "@/lib/meta/pages-config"
 import { classifyMetaGraphError } from "@/lib/meta/graph-errors"
 import { metaGraphFetchSafe } from "@/lib/meta/meta-http"
 
@@ -70,7 +71,9 @@ export async function resolveEffectivePageAccessToken(input: {
     throwTokenResolutionError(me.error)
   }
 
-  if (me.data.id === input.facebookPageId) {
+  const expectedPageId = normalizeFacebookPageId(input.facebookPageId)
+
+  if (normalizeFacebookPageId(me.data.id) === expectedPageId) {
     const resolved: ResolvedPageToken = {
       token: configured,
       source: "env_page_token",
@@ -90,7 +93,7 @@ export async function resolveEffectivePageAccessToken(input: {
   }
 
   const match = accounts.data.data?.find(
-    (account) => account.id === input.facebookPageId
+    (account) => normalizeFacebookPageId(account.id) === expectedPageId,
   )
 
   if (match?.access_token) {
@@ -104,6 +107,6 @@ export async function resolveEffectivePageAccessToken(input: {
 
   throw new Error(
     `Meta access token does not have access to Facebook Page ${input.facebookPageId}. ` +
-      `Use a Page access token from /me/accounts for this Page, and verify the brand META_PAGE_ID env var matches that page.`
+      `Use a Page access token from /me/accounts for this Page, and verify ${input.accessTokenEnvKey ?? "META_PAGE_ID"} matches that page.`
   )
 }

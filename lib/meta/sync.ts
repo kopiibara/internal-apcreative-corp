@@ -17,6 +17,7 @@ import {
 import { isMetaPermissionError } from "@/lib/meta/graph-errors"
 import {
   getActiveMetaPagesForSync,
+  normalizeFacebookPageId,
   type MetaSyncPage,
 } from "@/lib/meta/pages-config"
 import { clearMetaPageTokenCache } from "@/lib/meta/page-token"
@@ -91,12 +92,31 @@ async function deactivateStaleMetaPages(activePageIds: string[]) {
   )
 }
 
+async function resolveBrandIdForMetaPage(brandSlug: string) {
+  const normalized = brandSlug.trim().toLowerCase().replace(/[_\s]+/g, "-")
+  const brand = await query<{ id: number }>(
+    `
+    SELECT id
+    FROM brand
+    WHERE is_active = true
+      AND (
+        slug = $1
+        OR slug = $2
+        OR REPLACE(slug, '_', '-') = $2
+        OR REPLACE(slug, '-', '_') = REPLACE($2, '-', '_')
+      )
+    ORDER BY id ASC
+    LIMIT 1
+    `,
+    [brandSlug, normalized],
+  )
+
+  return brand.rows[0]?.id ?? null
+}
+
 async function ensureEnvMetaPagesRegistered(pages: MetaSyncPage[]) {
   for (const page of pages) {
-    const brand = await query<{ id: number }>(
-      `SELECT id FROM brand WHERE slug = $1 LIMIT 1`,
-      [page.brand_slug]
-    )
+    const brandId = await resolveBrandIdForMetaPage(page.brand_slug)
 
     await query(
       `
@@ -117,9 +137,9 @@ async function ensureEnvMetaPagesRegistered(pages: MetaSyncPage[]) {
         updated_at = now()
       `,
       [
-        page.facebook_page_id,
+        normalizeFacebookPageId(page.facebook_page_id),
         page.page_name,
-        brand.rows[0]?.id ?? null,
+        brandId,
         page.access_token_env_key,
       ]
     )
@@ -574,10 +594,13 @@ async function validatePageConnection(
     return { ok: false, error: summaryResult.error }
   }
 
-  if (summaryResult.data.id !== page.facebook_page_id) {
+  const expectedPageId = normalizeFacebookPageId(page.facebook_page_id)
+  const apiPageId = normalizeFacebookPageId(summaryResult.data.id)
+
+  if (apiPageId !== expectedPageId) {
     return {
       ok: false,
-      error: `Page ID mismatch: API returned ${summaryResult.data.id}, expected ${page.facebook_page_id}.`,
+      error: `Page ID mismatch: API returned ${summaryResult.data.id}, expected ${page.facebook_page_id}. Check ${page.access_token_env_key ?? "the page token env var"} points to this Page ID.`,
     }
   }
 

@@ -131,4 +131,7 @@ Do not use a User token without `pages_show_list` — posts and insights will fa
 
 Central page config: `lib/meta/pages-config.ts`
 
-Active pages: `getActiveMetaPages()` → for now only Neon Nights when `NEON_NIGHTS_META_ENABLED=true`.
+Per-brand env vars (`AL_QAYSAR_META_*`, `PRO_GROUP_META_*`, etc.) are used first when present.  
+If `META_FACEBOOK_PAGES_CONFIG` JSON is also set, it is **ignored** whenever those env vars exist — so Vercel updates to `AL_QAYSAR_META_PAGE_ID` / token are not overridden by stale JSON.
+
+Active pages: `getConfiguredMetaPages()` → every brand with `*_META_ENABLED=true` and both Page ID + Page access token set.
