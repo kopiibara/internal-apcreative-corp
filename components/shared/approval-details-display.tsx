@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react"
 
 import { ApprovalActivityTimeline } from "@/components/shared/approval-activity-timeline"
+import { ProofDisplay } from "@/components/shared/proof-display"
 import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
@@ -453,25 +454,11 @@ export function ApprovalMetadataPanel({ report }: ApprovalMetadataPanelProps) {
         <ApprovalDetailSection title="Publishing proof">
           <div className="space-y-4">
             <DetailField label="Proof">
-              {report.publishingProofUrl ? (
-                <a
-                  href={report.publishingProofUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 font-medium underline-offset-4 hover:underline"
-                >
-                  <ExternalLink className="size-3.5" />
-                  Open proof
-                </a>
-              ) : (
-                "Not submitted"
-              )}
+              <ProofDisplay
+                proofUrl={report.publishingProofUrl}
+                proofNote={report.publishingProofNote}
+              />
             </DetailField>
-            {report.publishingProofNote ? (
-              <DetailField label="Proof note">
-                <LongText value={report.publishingProofNote} />
-              </DetailField>
-            ) : null}
             {report.publishingProofSubmittedByName ? (
               <DetailField label="Proof submitted by">
                 {report.publishingProofSubmittedByName}

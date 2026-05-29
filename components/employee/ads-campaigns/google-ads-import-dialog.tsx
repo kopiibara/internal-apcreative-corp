@@ -7,6 +7,7 @@ import { GoogleAdsDetectedTemplateSummary } from "@/components/employee/ads-camp
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -106,7 +107,7 @@ export function GoogleAdsImportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <DialogBody className="space-y-3">
           <div className="space-y-2">
             <Label>CSV file</Label>
             <Input
@@ -139,7 +140,7 @@ export function GoogleAdsImportDialog({
               Choose one brand before importing Google Ads data.
             </p>
           ) : null}
-        </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button

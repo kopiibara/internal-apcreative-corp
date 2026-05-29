@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -210,7 +211,9 @@ function ApprovalVerificationDialogContent({
                 reportId: payload.report.id,
                 publishStatus: payload.publishStatus,
                 scheduledPublishedDate: payload.scheduledPublishedDate,
+                proofType: payload.proofType,
                 proofUrl: payload.proofUrl,
+                proofNote: payload.proofNote,
                 remarksRevisionSummary: notes,
                 confirmationAccepted,
               })
@@ -246,7 +249,7 @@ function ApprovalVerificationDialogContent({
   }
 
   return (
-    <DialogContent className="max-w-lg">
+    <DialogContent className="sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>
           {isRevisionRequest ? "Request Revision" : "Approval Verification"}
@@ -254,51 +257,56 @@ function ApprovalVerificationDialogContent({
 
       </DialogHeader>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {isRevisionRequest ? (
-          <ApprovalRevisionRequestFields
-            report={payload.report}
-            revisionAreas={revisionAreas}
-            revisionInstruction={revisionInstruction}
-            otherExplanation={otherExplanation}
-            onRevisionAreasChange={setRevisionAreas}
-            onRevisionInstructionChange={setRevisionInstruction}
-            onOtherExplanationChange={setOtherExplanation}
-            disabled={isPending}
-          />
-        ) : (
-          <div className="space-y-2">
-            <RequiredLabel htmlFor="approval-verification-notes" required>
-              Notes / reason
-            </RequiredLabel>
-            <Textarea
-              id="approval-verification-notes"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
+      <form
+        onSubmit={handleSubmit}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      >
+        <DialogBody className="space-y-4">
+          {isRevisionRequest ? (
+            <ApprovalRevisionRequestFields
+              report={payload.report}
+              revisionAreas={revisionAreas}
+              revisionInstruction={revisionInstruction}
+              otherExplanation={otherExplanation}
+              onRevisionAreasChange={setRevisionAreas}
+              onRevisionInstructionChange={setRevisionInstruction}
+              onOtherExplanationChange={setOtherExplanation}
               disabled={isPending}
-              className="min-h-28"
-              required
             />
-          </div>
-        )}
+          ) : (
+            <div className="space-y-2">
+              <RequiredLabel htmlFor="approval-verification-notes" required>
+                Notes / reason
+              </RequiredLabel>
+              <Textarea
+                id="approval-verification-notes"
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                disabled={isPending}
+                className="min-h-28"
+                required
+              />
+            </div>
+          )}
 
-        <div className="flex items-start gap-3 rounded-lg border p-3">
-          <Checkbox
-            id="approval-confirmation-accepted"
-            checked={confirmationAccepted}
-            onCheckedChange={(checked) =>
-              setConfirmationAccepted(checked === true)
-            }
-            disabled={isPending}
-          />
-          <Label
-            htmlFor="approval-confirmation-accepted"
-            className="text-sm leading-relaxed"
-          >
-            I confirm that I reviewed this request and this action will be
-            recorded under my account.
-          </Label>
-        </div>
+          <div className="flex items-start gap-3 rounded-lg border p-3">
+            <Checkbox
+              id="approval-confirmation-accepted"
+              checked={confirmationAccepted}
+              onCheckedChange={(checked) =>
+                setConfirmationAccepted(checked === true)
+              }
+              disabled={isPending}
+            />
+            <Label
+              htmlFor="approval-confirmation-accepted"
+              className="text-sm leading-relaxed"
+            >
+              I confirm that I reviewed this request and this action will be
+              recorded under my account.
+            </Label>
+          </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button

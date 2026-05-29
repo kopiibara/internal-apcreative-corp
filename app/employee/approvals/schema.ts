@@ -6,6 +6,12 @@ import {
   type ApprovalStatus,
   type PublishStatus as ApprovalPublishStatus,
 } from "@/lib/approvals/approval-statuses";
+import { validateProofUrl } from "@/lib/proof/proof-media";
+import {
+  addProofSubmissionRefinement,
+  proofTypeFieldSchema,
+  proofUrlFieldSchema,
+} from "@/lib/proof/proof-schema";
 import { richTextToPlainText } from "@/lib/rich-text/rich-text";
 
 export const contentTypes = [
@@ -79,11 +85,6 @@ export const deleteContentReportSchema = z.object({
   reportId: z.coerce.number().int().positive(),
 });
 
-const requiredPublishingProofUrlSchema = z
-  .string()
-  .trim()
-  .url("Publishing proof must be a valid URL.");
-
 const optionalPublishingNoteSchema = z.preprocess((value) => {
   if (typeof value === "string") {
     const trimmed = value.trim();
@@ -94,13 +95,16 @@ const optionalPublishingNoteSchema = z.preprocess((value) => {
   return value ?? null;
 }, z.string().max(2000, "Publishing notes must be 2,000 characters or less.").nullable());
 
-export const publishContentReportSchema = z
-  .object({
-    reportId: z.coerce.number().int().positive(),
-    proofUrl: requiredPublishingProofUrlSchema,
-    proofNote: optionalPublishingNoteSchema,
-  })
-  .strict();
+export const publishContentReportSchema = addProofSubmissionRefinement(
+  z
+    .object({
+      reportId: z.coerce.number().int().positive(),
+      proofType: proofTypeFieldSchema,
+      proofUrl: proofUrlFieldSchema,
+      proofNote: optionalPublishingNoteSchema,
+    })
+    .strict(),
+);
 
 export const scheduleContentReportSchema = z
   .object({
@@ -115,17 +119,41 @@ export const scheduleContentReportSchema = z
       return value ?? null;
     }, z.date("Scheduled publish date is required.")),
     notes: optionalPublishingNoteSchema,
-    proofUrl: z.preprocess((value) => {
-      if (typeof value === "string") {
-        const trimmed = value.trim();
+    proofType: proofTypeFieldSchema.optional().default("LINK"),
+    proofUrl: proofUrlFieldSchema.optional().default(""),
+    proofNote: optionalPublishingNoteSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const proofUrl = value.proofUrl.trim();
+    const proofNote = value.proofNote?.trim() ?? "";
 
-        return trimmed.length > 0 ? trimmed : null;
+    if (!proofUrl && !proofNote) {
+      return;
+    }
+
+    if (value.proofType === "NOTE") {
+      if (!proofNote) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Please add proof notes before submitting.",
+          path: ["proofNote"],
+        });
       }
 
-      return value ?? null;
-    }, z.string().url("Publishing proof must be a valid URL.").nullable()),
-  })
-  .strict();
+      return;
+    }
+
+    const proofUrlError = validateProofUrl(value.proofType, proofUrl);
+
+    if (proofUrlError) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: proofUrlError,
+        path: ["proofUrl"],
+      });
+    }
+  });
 
 export type CreateContentReportInput = z.infer<
   typeof createContentReportSchema

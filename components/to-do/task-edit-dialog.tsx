@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
+  dialogFormClassName,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -88,7 +90,11 @@ function TaskEditDialogContent({
         </DialogDescription>
       </DialogHeader>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form
+        onSubmit={handleSubmit}
+        className={dialogFormClassName}
+      >
+        <DialogBody className="space-y-4">
         <div className="space-y-2">
           <RequiredLabel htmlFor="edit-task-title" required>
             Title
@@ -143,6 +149,7 @@ function TaskEditDialogContent({
             </SelectContent>
           </Select>
         </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button

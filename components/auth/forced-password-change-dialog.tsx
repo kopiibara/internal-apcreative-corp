@@ -8,6 +8,7 @@ import { changeOwnPassword } from "@/app/actions/change-password"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -105,7 +106,11 @@ export function ForcedPasswordChangeDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <DialogBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="forced-current-password">Current password</Label>
             <Input
@@ -159,6 +164,7 @@ export function ForcedPasswordChangeDialog({
               </p>
             ) : null}
           </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button type="submit" className="w-full" disabled={isPending}>

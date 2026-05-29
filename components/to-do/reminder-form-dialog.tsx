@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -101,7 +102,11 @@ export function ReminderFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <DialogBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="reminder-title">Title</Label>
             <Input
@@ -152,6 +157,7 @@ export function ReminderFormDialog({
               </SelectContent>
             </Select>
           </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button

@@ -9,19 +9,25 @@ import {
   publishContentReportNow,
   scheduleContentReportPublishing,
 } from "@/app/employee/approvals/actions"
+import { ProofSubmissionFields } from "@/components/shared/proof-submission-fields"
 import { Button } from "@/components/ui/button"
 import { DateTimePicker } from "@/components/ui/date-time-picker"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  hasValidProofSubmission,
+  inferProofSubmitType,
+} from "@/lib/proof/proof-media"
+import type { ProofSubmitType } from "@/lib/proof/proof-types"
 import type {
   ApprovalPublishingPermissions,
   ContentReport,
@@ -41,14 +47,22 @@ export function ApprovalPublishingActions({
   const router = useRouter()
   const [isPublishOpen, setIsPublishOpen] = useState(false)
   const [isScheduleOpen, setIsScheduleOpen] = useState(false)
+  const [proofType, setProofType] = useState<ProofSubmitType>(
+    inferProofSubmitType(report.publishingProofUrl, report.publishingProofNote) ??
+      "LINK",
+  )
   const [proofUrl, setProofUrl] = useState(report.publishingProofUrl ?? "")
   const [proofNote, setProofNote] = useState(report.publishingProofNote ?? "")
   const [scheduledDate, setScheduledDate] = useState<string | null>(
     report.scheduledPublishedDate,
   )
   const [scheduleNotes, setScheduleNotes] = useState("")
+  const [scheduleProofType, setScheduleProofType] = useState<ProofSubmitType>("LINK")
   const [scheduleProofUrl, setScheduleProofUrl] = useState(
     report.publishingProofUrl ?? "",
+  )
+  const [scheduleProofNote, setScheduleProofNote] = useState(
+    report.publishingProofNote ?? "",
   )
   const [isPending, startTransition] = useTransition()
   const canPublishNow = publishingPermissions.canPublishNow
@@ -61,7 +75,7 @@ export function ApprovalPublishingActions({
   function handlePublishSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-    if (!proofUrl.trim()) {
+    if (!hasValidProofSubmission(proofType, proofUrl, proofNote)) {
       toast.error("Publishing proof is required before publishing.")
       return
     }
@@ -69,7 +83,8 @@ export function ApprovalPublishingActions({
     startTransition(async () => {
       const result = await publishContentReportNow({
         reportId: report.id,
-        proofUrl,
+        proofType,
+        proofUrl: proofUrl.trim(),
         proofNote,
       })
 
@@ -92,12 +107,19 @@ export function ApprovalPublishingActions({
       return
     }
 
+    const hasOptionalProof =
+      scheduleProofType === "NOTE"
+        ? scheduleProofNote.trim().length > 0
+        : scheduleProofUrl.trim().length > 0 || scheduleProofNote.trim().length > 0
+
     startTransition(async () => {
       const result = await scheduleContentReportPublishing({
         reportId: report.id,
         scheduledPublishedDate: scheduledDate,
         notes: scheduleNotes,
-        proofUrl: scheduleProofUrl,
+        proofType: hasOptionalProof ? scheduleProofType : undefined,
+        proofUrl: scheduleProofUrl.trim(),
+        proofNote: scheduleProofNote,
       })
 
       if (result.success) {
@@ -114,6 +136,7 @@ export function ApprovalPublishingActions({
   const buttonClass = compact
     ? "h-8 gap-1 px-2 text-[11px] [&_svg]:size-3"
     : undefined
+  const canSubmitPublish = hasValidProofSubmission(proofType, proofUrl, proofNote)
 
   return (
     <div className={compact ? "contents" : "flex flex-wrap gap-2"}>
@@ -149,32 +172,25 @@ export function ApprovalPublishingActions({
               Submit publishing proof before this request becomes Published.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handlePublishSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor={`publish-proof-${report.id}`}>
-                Publishing proof URL
-              </Label>
-              <Input
-                id={`publish-proof-${report.id}`}
-                value={proofUrl}
-                onChange={(event) => setProofUrl(event.target.value)}
-                placeholder="https://..."
-                disabled={isPending}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`publish-note-${report.id}`}>
-                Optional notes
-              </Label>
-              <Textarea
-                id={`publish-note-${report.id}`}
-                value={proofNote}
-                onChange={(event) => setProofNote(event.target.value)}
-                disabled={isPending}
-                maxLength={2000}
-              />
-            </div>
+          <form
+            onSubmit={handlePublishSubmit}
+            className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          >
+            <DialogBody className="space-y-4">
+            <ProofSubmissionFields
+              proofType={proofType}
+              proofUrl={proofUrl}
+              proofNote={proofNote}
+              disabled={isPending}
+              onProofTypeChange={setProofType}
+              onProofUrlChange={setProofUrl}
+              onProofNoteChange={setProofNote}
+              idPrefix={`publish-proof-${report.id}`}
+              linkLabel="Publishing proof URL"
+              noteLabel="Publishing proof note"
+              noteMaxLength={2000}
+            />
+            </DialogBody>
             <DialogFooter>
               <Button
                 type="button"
@@ -184,7 +200,7 @@ export function ApprovalPublishingActions({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending || !canSubmitPublish}>
                 {isPending ? "Publishing..." : "Publish"}
               </Button>
             </DialogFooter>
@@ -197,10 +213,15 @@ export function ApprovalPublishingActions({
           <DialogHeader>
             <DialogTitle>Schedule publishing</DialogTitle>
             <DialogDescription>
-              Choose when this approved request should be published.
+              Choose when this approved request should be published. Proof is
+              optional when scheduling.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleScheduleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleScheduleSubmit}
+            className="flex min-h-0 flex-1 flex-col overflow-hidden"
+          >
+            <DialogBody className="space-y-4">
             <div className="space-y-2">
               <Label>Scheduled publish date</Label>
               <DateTimePicker
@@ -209,21 +230,22 @@ export function ApprovalPublishingActions({
                 disabled={isPending}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor={`schedule-proof-${report.id}`}>
-                Optional proof URL
-              </Label>
-              <Input
-                id={`schedule-proof-${report.id}`}
-                value={scheduleProofUrl}
-                onChange={(event) => setScheduleProofUrl(event.target.value)}
-                placeholder="https://..."
-                disabled={isPending}
-              />
-            </div>
+            <ProofSubmissionFields
+              proofType={scheduleProofType}
+              proofUrl={scheduleProofUrl}
+              proofNote={scheduleProofNote}
+              disabled={isPending}
+              onProofTypeChange={setScheduleProofType}
+              onProofUrlChange={setScheduleProofUrl}
+              onProofNoteChange={setScheduleProofNote}
+              idPrefix={`schedule-proof-${report.id}`}
+              linkLabel="Optional proof URL"
+              noteLabel="Optional proof note"
+              noteMaxLength={2000}
+            />
             <div className="space-y-2">
               <Label htmlFor={`schedule-note-${report.id}`}>
-                Optional notes
+                Optional schedule notes
               </Label>
               <Textarea
                 id={`schedule-note-${report.id}`}
@@ -233,6 +255,7 @@ export function ApprovalPublishingActions({
                 maxLength={2000}
               />
             </div>
+            </DialogBody>
             <DialogFooter>
               <Button
                 type="button"

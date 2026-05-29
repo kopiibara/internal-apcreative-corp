@@ -27,7 +27,10 @@ function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className={cn("size-full rounded-[inherit]", viewportClassName)}
+        className={cn(
+          "size-full rounded-[inherit] [&>div]:!block [&>div]:min-w-full",
+          viewportClassName,
+        )}
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

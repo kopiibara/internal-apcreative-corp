@@ -1,6 +1,7 @@
 "use client"
 
 import { ApprovalRoleStatusBadge } from "@/components/shared/approval-status-badges"
+import { ProofDisplay } from "@/components/shared/proof-display"
 import {
   Card,
   CardContent,
@@ -50,17 +51,13 @@ export function PublishingReviewReadonly({ report }: PublishingReviewReadonlyPro
             </p>
           </div>
         ) : null}
-        {report.publishingProofUrl ? (
+        {report.publishingProofUrl || report.publishingProofNote ? (
           <div className="space-y-2">
-            <Label>Publishing proof URL</Label>
-            <a
-              href={report.publishingProofUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm font-medium underline-offset-2 hover:underline"
-            >
-              {report.publishingProofUrl}
-            </a>
+            <Label>Publishing proof</Label>
+            <ProofDisplay
+              proofUrl={report.publishingProofUrl}
+              proofNote={report.publishingProofNote}
+            />
           </div>
         ) : null}
       </CardContent>

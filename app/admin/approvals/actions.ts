@@ -18,6 +18,7 @@ import { canApprovalAction, canDirectorReview } from "@/lib/permissions";
 import { query, transaction } from "@/lib/db";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { insertApprovalActivityLog } from "@/lib/approvals/approval-activity-log";
+import { normalizeProofSubmission } from "@/lib/proof/normalize-proof-submission";
 import {
   buildRevisionRequestMetadata,
   getApprovalRevisionAreaLabel,
@@ -701,6 +702,15 @@ export async function updatePublishingInfo(
         );
       }
 
+      const publishedProof =
+        parsed.data.publishStatus === "Published"
+          ? normalizeProofSubmission(
+              parsed.data.proofType,
+              parsed.data.proofUrl,
+              parsed.data.proofNote,
+            )
+          : { proofUrl: null, proofNote: null };
+
       await client.query(
         `
         UPDATE content_report
@@ -713,11 +723,11 @@ export async function updatePublishingInfo(
             ELSE publishing_proof_url
           END,
           publishing_proof_note = CASE
-            WHEN $2 = 'Published' THEN $4
+            WHEN $2 = 'Published' THEN $6
             ELSE publishing_proof_note
           END,
           publishing_proof_submitted_by_profile_id = CASE
-            WHEN $2 = 'Published' THEN $6
+            WHEN $2 = 'Published' THEN $7
             ELSE publishing_proof_submitted_by_profile_id
           END,
           publishing_proof_submitted_at = CASE
@@ -725,7 +735,7 @@ export async function updatePublishingInfo(
             ELSE publishing_proof_submitted_at
           END,
           published_by_profile_id = CASE
-            WHEN $2 = 'Published' THEN $6
+            WHEN $2 = 'Published' THEN $7
             ELSE published_by_profile_id
           END,
           published_at = CASE
@@ -733,7 +743,7 @@ export async function updatePublishingInfo(
             ELSE published_at
           END,
           scheduled_by_profile_id = CASE
-            WHEN $2 = 'Scheduled' THEN $6
+            WHEN $2 = 'Scheduled' THEN $7
             ELSE scheduled_by_profile_id
           END,
           scheduled_at = CASE
@@ -748,7 +758,8 @@ export async function updatePublishingInfo(
           parsed.data.publishStatus,
           parsed.data.scheduledPublishedDate,
           parsed.data.remarksRevisionSummary,
-          parsed.data.proofUrl,
+          publishedProof.proofUrl,
+          publishedProof.proofNote,
           authorization.context.profile.id,
         ],
       );
@@ -768,7 +779,8 @@ export async function updatePublishingInfo(
           scheduledPublishedDate: serializeStatus(
             parsed.data.scheduledPublishedDate,
           ),
-          proofUrl: parsed.data.proofUrl,
+          proofUrl: publishedProof.proofUrl,
+          proofNote: publishedProof.proofNote,
           previousRemarksRevisionSummary: current.remarks_revision_summary,
           confirmationAccepted: parsed.data.confirmationAccepted,
           source: "approval_form",

@@ -5,6 +5,7 @@ import { toast } from "sonner"
 
 import { PublishStatusSelect } from "@/components/admin/approvals/publish-status-select"
 import { ScheduledDatePicker } from "@/components/admin/approvals/scheduled-date-picker"
+import { ProofSubmissionFields } from "@/components/shared/proof-submission-fields"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -13,8 +14,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { inferProofSubmitType } from "@/lib/proof/proof-media"
+import type { ProofSubmitType } from "@/lib/proof/proof-types"
 import { useApprovalStore } from "@/stores/use-approval-store"
 import {
   canEditPublishingFields,
@@ -40,7 +42,12 @@ export function PublishingReviewForm({
   const [scheduledDate, setScheduledDate] = useState<string | null>(
     report.scheduledPublishedDate
   )
+  const [proofType, setProofType] = useState<ProofSubmitType>(
+    inferProofSubmitType(report.publishingProofUrl, report.publishingProofNote) ??
+      "LINK",
+  )
   const [proofUrl, setProofUrl] = useState(report.publishingProofUrl ?? "")
+  const [proofNote, setProofNote] = useState(report.publishingProofNote ?? "")
   const [remarks, setRemarks] = useState(report.remarksRevisionSummary ?? "")
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -56,7 +63,9 @@ export function PublishingReviewForm({
       report,
       publishStatus,
       scheduledPublishedDate: scheduledDate,
+      proofType,
       proofUrl,
+      proofNote,
       notes: remarks,
       onSaved,
     })
@@ -103,26 +112,22 @@ export function PublishingReviewForm({
           </div>
 
           {publishStatus === "Published" ? (
-            <div className="space-y-2">
-              <Label htmlFor="details-publishing-proof">
-                Publishing proof URL
-              </Label>
-              <Input
-                id="details-publishing-proof"
-                value={proofUrl}
-                onChange={(event) => setProofUrl(event.target.value)}
-                disabled={!canEdit}
-                placeholder="https://..."
-                required
-              />
-            </div>
+            <ProofSubmissionFields
+              proofType={proofType}
+              proofUrl={proofUrl}
+              proofNote={proofNote}
+              disabled={!canEdit}
+              onProofTypeChange={setProofType}
+              onProofUrlChange={setProofUrl}
+              onProofNoteChange={setProofNote}
+              idPrefix="details-publishing-proof"
+              linkLabel="Publishing proof URL"
+              noteLabel="Publishing proof note"
+              noteMaxLength={2000}
+            />
           ) : null}
 
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!canEdit}
-          >
+          <Button type="submit" size="sm" disabled={!canEdit}>
             Save Publishing Update
           </Button>
         </form>

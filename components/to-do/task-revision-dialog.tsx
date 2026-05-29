@@ -8,6 +8,7 @@ import { requestTaskRevision } from "@/app/admin/to-do/actions"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -75,7 +76,11 @@ export function TaskRevisionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        >
+          <DialogBody className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="revision-note">Revision note</Label>
             <Textarea
@@ -87,6 +92,7 @@ export function TaskRevisionDialog({
               disabled={isPending}
             />
           </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button
