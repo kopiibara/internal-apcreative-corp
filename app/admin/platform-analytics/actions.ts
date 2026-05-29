@@ -72,7 +72,10 @@ async function authorizeMetaView(): Promise<
     return { success: false, message: "Your account is not active." };
   }
 
-  const allowed = await canViewPlatformAnalytics(context.profile.auth_user_id);
+  const allowed = await canViewPlatformAnalytics(
+    context.profile.auth_user_id,
+    context.profile.id,
+  );
 
   if (!allowed) {
     return {
