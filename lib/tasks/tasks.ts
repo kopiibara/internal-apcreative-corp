@@ -64,7 +64,12 @@ export type StaffAccountabilitySummary = {
   notCompletedTasks: number;
   completionRate: number;
   adjustedCompletionRate: number;
+  completedTaskPriorityPoints: number;
+  grossTaskPoints: number;
+  lateTaskDeductionPoints: number;
   taskPoints: number;
+  lateSubmissionCount: number;
+  lateSubmissionMinutesTotal: number;
   dailyProgressSubmittedCount: number;
   dailyProgressLatePendingCount: number;
   dailyProgressLateApprovedCount: number;
@@ -87,6 +92,8 @@ export type StaffAccountabilityTeamSummary = {
   totalBlockerTasks: number;
   teamCompletionRate: number;
   totalTeamPoints: number;
+  totalGrossTaskPoints: number;
+  totalLateTaskDeductionPoints: number;
   totalTaskPoints: number;
   totalDailyProgressPoints: number;
   totalDailyProgressDeductions: number;
@@ -231,6 +238,7 @@ type StaffAccountabilityAssignmentRow = {
   status: TaskAssignmentStatus;
   priority: TaskPriority | null;
   due_date: Date | null;
+  submitted_at: Date | null;
   completed_at: Date | null;
 };
 
@@ -582,6 +590,7 @@ export async function getGradedAssignmentPerformanceCounts(profileId: number) {
     status: TaskAssignmentStatus;
     priority: TaskPriority | null;
     due_date: Date | null;
+    submitted_at: Date | null;
     completed_at: Date | null;
   }>(
     `
@@ -589,6 +598,7 @@ export async function getGradedAssignmentPerformanceCounts(profileId: number) {
       ta.status,
       t.priority,
       t.due_date,
+      ta.submitted_at,
       ta.completed_at
     FROM task_assignment ta
     JOIN task t ON t.id = ta.task_id
@@ -603,6 +613,7 @@ export async function getGradedAssignmentPerformanceCounts(profileId: number) {
       status: row.status,
       priority: row.priority,
       dueDate: row.due_date?.toISOString() ?? null,
+      submittedAt: row.submitted_at?.toISOString() ?? null,
       completedAt: row.completed_at?.toISOString() ?? null,
     })),
   );
@@ -612,6 +623,9 @@ export async function getGradedAssignmentPerformanceCounts(profileId: number) {
     completedOnTimeTasks: metrics.completedOnTime,
     completedLateTasks: metrics.completedLate,
     completedTaskPriorityPoints: metrics.completedTaskPriorityPoints,
+    lateTaskDeductionPoints: metrics.lateTaskDeductionPoints,
+    lateSubmissionCount: metrics.lateSubmissionCount,
+    lateSubmissionMinutesTotal: metrics.lateSubmissionMinutesTotal,
   });
 }
 
@@ -702,18 +716,12 @@ function sortStaffAccountabilitySummaries(
       return right.totalPoints - left.totalPoints;
     }
 
-    if (right.completionRate !== left.completionRate) {
-      return right.completionRate - left.completionRate;
+    if (right.taskPoints !== left.taskPoints) {
+      return right.taskPoints - left.taskPoints;
     }
 
-    if (
-      right.dailyProgressSubmittedCount !==
-      left.dailyProgressSubmittedCount
-    ) {
-      return (
-        right.dailyProgressSubmittedCount -
-        left.dailyProgressSubmittedCount
-      );
+    if (right.completionRate !== left.completionRate) {
+      return right.completionRate - left.completionRate;
     }
 
     if (right.completedTasks !== left.completedTasks) {
@@ -807,6 +815,7 @@ export async function getStaffAccountabilityData({
         ta.status,
         t.priority,
         t.due_date,
+        ta.submitted_at,
         ta.completed_at
       FROM task_assignment ta
       JOIN task t ON t.id = ta.task_id
@@ -964,6 +973,7 @@ export async function getStaffAccountabilityData({
           status: assignment.status,
           priority: assignment.priority,
           dueDate: assignment.due_date?.toISOString() ?? null,
+          submittedAt: assignment.submitted_at?.toISOString() ?? null,
           completedAt: assignment.completed_at?.toISOString() ?? null,
         })),
       );
@@ -996,7 +1006,12 @@ export async function getStaffAccountabilityData({
         notCompletedTasks: Math.max(0, metrics.total - metrics.done),
         completionRate: metrics.completionRate,
         adjustedCompletionRate: metrics.adjustedCompletionRate,
+        completedTaskPriorityPoints: metrics.completedTaskPriorityPoints,
+        grossTaskPoints: metrics.grossTaskPoints,
+        lateTaskDeductionPoints: metrics.lateTaskDeductionPoints,
         taskPoints: metrics.taskPoints,
+        lateSubmissionCount: metrics.lateSubmissionCount,
+        lateSubmissionMinutesTotal: metrics.lateSubmissionMinutesTotal,
         dailyProgressSubmittedCount: Number(
           dailyProgress?.submitted_count ?? 0,
         ),
@@ -1037,6 +1052,10 @@ export async function getStaffAccountabilityData({
       totalBlockerTasks: summary.totalBlockerTasks + employee.blockerTasks,
       teamCompletionRate: 0,
       totalTeamPoints: summary.totalTeamPoints + employee.totalPoints,
+      totalGrossTaskPoints:
+        summary.totalGrossTaskPoints + employee.grossTaskPoints,
+      totalLateTaskDeductionPoints:
+        summary.totalLateTaskDeductionPoints + employee.lateTaskDeductionPoints,
       totalTaskPoints: summary.totalTaskPoints + employee.taskPoints,
       totalDailyProgressPoints:
         summary.totalDailyProgressPoints + employee.dailyProgressPoints,
@@ -1064,6 +1083,8 @@ export async function getStaffAccountabilityData({
       totalBlockerTasks: 0,
       teamCompletionRate: 0,
       totalTeamPoints: 0,
+      totalGrossTaskPoints: 0,
+      totalLateTaskDeductionPoints: 0,
       totalTaskPoints: 0,
       totalDailyProgressPoints: 0,
       totalDailyProgressDeductions: 0,

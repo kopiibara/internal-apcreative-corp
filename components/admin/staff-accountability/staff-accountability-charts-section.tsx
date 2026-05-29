@@ -89,7 +89,8 @@ export function StaffAccountabilityLeaderboard({
       <CardHeader>
         <CardTitle>Employee Leaderboard</CardTitle>
         <CardDescription>
-          Ranked by total points, completion rate, then completed tasks.
+          Ranked by total points, net task points, completion rate, then completed
+          tasks.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -100,7 +101,7 @@ export function StaffAccountabilityLeaderboard({
         ) : (
           <div className="overflow-hidden rounded-lg border-2 border-border ">
             <ScrollArea className="w-full" scrollbars="horizontal">
-              <Table className="min-w-[980px]">
+              <Table className="min-w-[1180px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-20">Rank</TableHead>
@@ -108,7 +109,9 @@ export function StaffAccountabilityLeaderboard({
                     <TableHead>Brand</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Completion</TableHead>
-                    <TableHead className="text-right">Task Points</TableHead>
+                    <TableHead className="text-right">Gross Task</TableHead>
+                    <TableHead className="text-right">Late Deduction</TableHead>
+                    <TableHead className="text-right">Net Task</TableHead>
                     <TableHead className="text-right">Daily Points</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                   </TableRow>
@@ -158,6 +161,12 @@ export function StaffAccountabilityLeaderboard({
                       <TableCell className="text-right font-bold tabular-nums">
                         {formatStaffPercent(employee.completionRate)} (
                         {employee.completedTasks}/{employee.totalAssignedTasks})
+                      </TableCell>
+                      <TableCell className="text-right font-bold tabular-nums">
+                        {employee.grossTaskPoints} pts
+                      </TableCell>
+                      <TableCell className="text-right font-bold tabular-nums text-destructive">
+                        -{employee.lateTaskDeductionPoints} pts
                       </TableCell>
                       <TableCell className="text-right font-bold tabular-nums">
                         {employee.taskPoints} pts
@@ -210,7 +219,7 @@ function CompletionChartTooltip({
           Completion: {formatStaffPercent(item.completionRate)} (
           {item.completedTasks}/{item.totalAssignedTasks})
         </p>
-        <p>Points: {item.taskPoints} pts</p>
+        <p>Net task points: {item.taskPoints} pts</p>
       </div>
     </div>
   )

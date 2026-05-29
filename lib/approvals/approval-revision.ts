@@ -1,7 +1,9 @@
-import type { ApprovalActivityLog, ContentReport } from "@/types/content-report";
+import type {
+  ApprovalActivityLog,
+  ContentReport,
+} from "@/types/content-report";
 
 export const APPROVAL_REVISION_AREA_IDS = [
-  "title",
   "caption",
   "content-type",
   "platform",
@@ -11,13 +13,13 @@ export const APPROVAL_REVISION_AREA_IDS = [
   "other",
 ] as const;
 
-export type ApprovalRevisionAreaId = (typeof APPROVAL_REVISION_AREA_IDS)[number];
+export type ApprovalRevisionAreaId =
+  (typeof APPROVAL_REVISION_AREA_IDS)[number];
 
 export const APPROVAL_REVISION_AREA_LABELS: Record<
   ApprovalRevisionAreaId,
   string
 > = {
-  title: "Title / Request Name",
   caption: "Caption / Description",
   "content-type": "Content Type",
   platform: "Platform",
@@ -180,7 +182,8 @@ function buildRevisionRequestFromLog(
   return {
     id: `${log.id}-${metadata.revisionRole}`,
     role: metadata.revisionRole,
-    roleLabel: metadata.revisionRole === "supervisor" ? "Supervisor" : "Director",
+    roleLabel:
+      metadata.revisionRole === "supervisor" ? "Supervisor" : "Director",
     requestedByName: log.actorName,
     requestedAt: metadata.requestedAt || log.createdAt,
     areas: metadata.revisionAreas,
@@ -197,7 +200,10 @@ export function getOpenRevisionRequestsFromLogs(
   logs: ApprovalActivityLog[],
   report: Pick<ContentReport, "supervisorStatus" | "directorStatus">,
 ): ApprovalRevisionRequest[] {
-  const requestsByRole = new Map<ApprovalRevisionRole, ApprovalRevisionRequest>();
+  const requestsByRole = new Map<
+    ApprovalRevisionRole,
+    ApprovalRevisionRequest
+  >();
 
   for (const log of logs) {
     if (log.action === REVISION_ADDRESS_ACTION) {
@@ -210,7 +216,10 @@ export function getOpenRevisionRequestsFromLogs(
       continue;
     }
 
-    if (!REVISION_REQUEST_ACTIONS.has(log.action) || log.toStatus !== "Revision") {
+    if (
+      !REVISION_REQUEST_ACTIONS.has(log.action) ||
+      log.toStatus !== "Revision"
+    ) {
       continue;
     }
 
@@ -259,7 +268,10 @@ export function getRevisionAreaCount(report: ContentReport) {
     report,
   );
 
-  return openRequests.reduce((total, request) => total + request.areas.length, 0);
+  return openRequests.reduce(
+    (total, request) => total + request.areas.length,
+    0,
+  );
 }
 
 export function getRevisionSummaryLabel(report: ContentReport) {
@@ -299,7 +311,6 @@ export function revisionAreaMatchesFormField(
 const APPROVAL_REVISION_FORM_FIELD_MAP: Partial<
   Record<ApprovalRevisionAreaId, ApprovalRevisionFormField[]>
 > = {
-  title: ["contentInspo"],
   caption: ["caption"],
   "content-type": ["contentType"],
   platform: ["platform"],

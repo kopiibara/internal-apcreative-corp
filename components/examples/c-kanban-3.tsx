@@ -17,8 +17,7 @@ import {
   KanbanItemHandle,
   KanbanOverlay,
 } from "@/components/reui/kanban"
-import { HugeiconsIcon } from "@hugeicons/react"
-import { CircleIcon, RefreshDotIcon, CheckmarkCircle01Icon } from "@hugeicons/core-free-icons"
+import { Circle, LoaderCircle, CheckCircle2 } from "lucide-react"
 
 interface Task {
   id: string
@@ -35,21 +34,17 @@ interface Task {
 const COLUMNS: Record<string, { title: string; icon: React.ReactNode }> = {
   todo: {
     title: "To Do",
-    icon: (
-      <HugeiconsIcon icon={CircleIcon} strokeWidth={2} className="size-4" />
-    ),
+    icon: <Circle className="size-4" strokeWidth={2} />,
   },
   doing: {
     title: "In Progress",
     icon: (
-      <HugeiconsIcon icon={RefreshDotIcon} strokeWidth={2} className="text-muted-foreground size-4" />
+      <LoaderCircle className="text-muted-foreground size-4" strokeWidth={2} />
     ),
   },
   done: {
     title: "Done",
-    icon: (
-      <HugeiconsIcon icon={CheckmarkCircle01Icon} strokeWidth={2} className="size-4" />
-    ),
+    icon: <CheckCircle2 className="size-4" strokeWidth={2} />,
   },
 }
 
