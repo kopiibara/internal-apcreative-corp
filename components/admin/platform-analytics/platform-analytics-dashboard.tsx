@@ -8,6 +8,7 @@ import {
   disconnectYouTubeAction,
   fetchPlatformAnalyticsAction,
   syncAllMetaMonitoringAction,
+  syncMetaPageMonitoringAction,
   syncYouTubeAction,
   triggerMetaSyncAction,
 } from "@/app/admin/platform-analytics/actions";
@@ -288,7 +289,10 @@ export function PlatformAnalyticsDashboard({
 
   function handleSyncAll() {
     startTransition(async () => {
-      const result = await syncAllMetaMonitoringAction();
+      const result =
+        platform === "META" && metaPageKey !== "all"
+          ? await syncMetaPageMonitoringAction({ pageKey: metaPageKey })
+          : await syncAllMetaMonitoringAction();
       if (!result.success) {
         toast.error(result.message);
         return;
@@ -302,7 +306,10 @@ export function PlatformAnalyticsDashboard({
     syncType: "hourly_posts" | "daily_page" | "daily_insights",
   ) {
     startTransition(async () => {
-      const result = await triggerMetaSyncAction(syncType);
+      const result =
+        platform === "META" && metaPageKey !== "all"
+          ? await triggerMetaSyncAction(syncType, { pageKey: metaPageKey })
+          : await triggerMetaSyncAction(syncType);
       if (!result.success) {
         toast.error(result.message);
         return;

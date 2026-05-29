@@ -29,7 +29,10 @@ export function classifyMetaGraphError(error: unknown): MetaGraphErrorInfo {
   const tokenExpired =
     lower.includes("(#190)") ||
     lower.includes("expired") ||
-    lower.includes("session has expired")
+    lower.includes("session has expired") ||
+    lower.includes("session is invalid") ||
+    lower.includes("user logged out") ||
+    lower.includes("error validating access token")
 
   const applicationDeleted =
     lower.includes("application has been deleted") ||
@@ -40,7 +43,6 @@ export function classifyMetaGraphError(error: unknown): MetaGraphErrorInfo {
     !tokenExpired &&
     !applicationDeleted &&
     (lower.includes("invalid oauth") ||
-      lower.includes("invalid access token") ||
       lower.includes("malformed access token") ||
       lower.includes("cannot parse access token"))
 

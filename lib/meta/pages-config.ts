@@ -14,17 +14,35 @@ export type MetaPageConfig = {
   accessTokenEnvKey: string
 }
 
-function readEnv(name: string) {
-  return process.env[name]?.trim() ?? ""
+function stripEnvQuotes(value: string) {
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+  return trimmed
 }
 
-/** Strip whitespace and non-numeric prefixes from Facebook Page IDs in env. */
+function readEnv(name: string) {
+  const raw = process.env[name]
+  if (raw == null) {
+    return ""
+  }
+  return stripEnvQuotes(raw)
+}
+
+function isEnvTrue(name: string) {
+  return readEnv(name).toLowerCase() === "true"
+}
+
+/** Numeric Facebook Page IDs only (strips accidental URLs or spaces from Vercel). */
 export function normalizeFacebookPageId(value: string) {
-  const trimmed = value.trim()
+  const trimmed = stripEnvQuotes(value).trim()
   if (!trimmed) {
     return ""
   }
-
   const digitsOnly = trimmed.replace(/\D/g, "")
   return digitsOnly || trimmed
 }
@@ -69,7 +87,7 @@ function discoverFacebookPagesFromEnv(): MetaFacebookPagesConfigEntry[] {
       brandName: titleCaseFromEnvPrefix(prefix),
       pageId: pageIdEnvKey,
       pageAccessToken: tokenEnvKey,
-      enabled: process.env[enabledEnvKey] === "true",
+      enabled: isEnvTrue(enabledEnvKey),
     })
   }
 
@@ -79,13 +97,12 @@ function discoverFacebookPagesFromEnv(): MetaFacebookPagesConfigEntry[] {
 function readFacebookPagesConfig(): MetaFacebookPagesConfigEntry[] {
   const discovered = discoverFacebookPagesFromEnv()
 
-  // Per-brand env vars (AL_QAYSAR_META_*, PRO_GROUP_META_*, etc.) are the source of truth
-  // when present — avoids stale META_FACEBOOK_PAGES_CONFIG JSON overriding production env.
+  // Per-brand Vercel vars (AL_QAYSAR_META_*, PRO_GROUP_META_*, etc.) win over JSON config.
   if (discovered.length > 0) {
     return discovered
   }
 
-  const raw = process.env.META_FACEBOOK_PAGES_CONFIG?.trim()
+  const raw = readEnv("META_FACEBOOK_PAGES_CONFIG")
   if (!raw) {
     return discovered
   }
@@ -120,10 +137,9 @@ function buildPageFromConfig(entry: MetaFacebookPagesConfigEntry): MetaPageConfi
 
   const inferredPrefix = pageIdEnvKey.replace(/_META_PAGE_ID$/, "")
   const enabledEnvKey = `${inferredPrefix}_META_ENABLED`
-  const enabledFromEnv =
-    typeof process.env[enabledEnvKey] === "string"
-      ? process.env[enabledEnvKey] === "true"
-      : null
+  const enabledFromEnv = process.env[enabledEnvKey]
+    ? isEnvTrue(enabledEnvKey)
+    : null
 
   return {
     key,
@@ -214,6 +230,20 @@ export function getMetaPageByFacebookPageId(pageId: string) {
       page.pageId === normalized ||
       normalizeFacebookPageId(page.pageId) === normalized,
   )
+}
+
+/** Server diagnostics — which brands env vars resolved (no secrets). */
+export function getMetaPagesEnvDiagnostics() {
+  return metaPages.map((page) => ({
+    key: page.key,
+    displayName: page.displayName,
+    enabled: page.enabled,
+    pageIdEnvKey: page.pageIdEnvKey,
+    accessTokenEnvKey: page.accessTokenEnvKey,
+    pageIdConfigured: Boolean(page.pageId),
+    tokenConfigured: Boolean(page.accessToken),
+    ready: isMetaPageConfigured(page),
+  }))
 }
 
 export type MetaSyncPage = {
