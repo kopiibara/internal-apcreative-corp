@@ -1068,28 +1068,19 @@ export function AdminDailyProgressDashboard({
           </KanbanBoardShell>
         </TabsContent>
 
-        <TabsContent
-          value="table"
-          className="mt-0 min-h-0 min-w-0 flex-1 overflow-hidden data-[state=inactive]:hidden"
-        >
-          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-            <p className="shrink-0 text-xs text-muted-foreground">
-              Scroll horizontally on smaller screens. Use filters above to narrow
-              results.
-            </p>
-            <DataTableScrollArea
-              className={cn(
-                "min-h-0 flex-1",
-                KANBAN_BOARD_MAX_HEIGHT_CLASS,
-                "h-auto max-h-none",
-              )}
-            >
-              <Table className="min-w-[880px] border-0">
-                <TableHeader className={DATA_TABLE_HEADER_CLASS}>
-                  <TableRow>
-                    <TableHead className="sticky left-0 z-30 min-w-[200px] bg-card">
-                      Employee
-                    </TableHead>
+        <TabsContent value="table" className={KANBAN_BOARD_TAB_PANEL_CLASS}>
+          <DataTableScrollArea
+            fill
+            className={cn("min-h-0 bg-cream", KANBAN_BOARD_MAX_HEIGHT_CLASS)}
+          >
+            <Table className="min-w-[880px] border-0">
+              <TableHeader
+                className={cn(DATA_TABLE_HEADER_CLASS, "bg-cream")}
+              >
+                <TableRow>
+                  <TableHead className="sticky left-0 z-30 min-w-[200px] bg-cream">
+                    Employee
+                  </TableHead>
                     <TableHead className="hidden min-w-[140px] lg:table-cell">
                       Brand
                     </TableHead>
@@ -1106,7 +1097,7 @@ export function AdminDailyProgressDashboard({
                   </TableRow>
                 </TableHeader>
 
-                <TableBody className={cn(DATA_TABLE_BODY_CLASS, "bg-background")}>
+                <TableBody className={cn(DATA_TABLE_BODY_CLASS, "bg-cream")}>
                   {filteredReports.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
@@ -1116,7 +1107,7 @@ export function AdminDailyProgressDashboard({
                   ) : (
                     filteredReports.map((report) => (
                       <TableRow key={report.id}>
-                        <TableCell className="sticky left-0 z-10 bg-background">
+                        <TableCell className="sticky left-0 z-10 bg-cream">
                           <EmployeeIdentity report={report} />
                         </TableCell>
 
@@ -1255,8 +1246,7 @@ export function AdminDailyProgressDashboard({
                   )}
                 </TableBody>
               </Table>
-            </DataTableScrollArea>
-          </div>
+          </DataTableScrollArea>
         </TabsContent>
       </Tabs>
 
