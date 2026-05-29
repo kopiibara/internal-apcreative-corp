@@ -3,7 +3,6 @@ import { BrandSummaryChart } from "@/components/admin/daily-reports/brand-summar
 import { DailySummaryCards } from "@/components/admin/daily-reports/daily-summary-cards"
 import { EmployeeSummaryChart } from "@/components/admin/daily-reports/employee-summary-chart"
 import { TopSummaryCards } from "@/components/admin/staff-accountability/staff-accountability-dashboard"
-import { getEmployeeDashboardBrandContext } from "@/lib/dashboard/employee-dashboard-brands"
 import {
   getDashboardPeriodBounds,
   getDefaultDashboardWeekStart,
@@ -14,6 +13,7 @@ import {
 import { getTodayDateKeyInPhilippines } from "@/lib/daily-reports/daily-report-filters"
 import { getDailyReportData } from "@/lib/daily-reports/daily-reports"
 import { requireEmployee } from "@/lib/auth/auth-session"
+import { query } from "@/lib/db"
 import { getStaffAccountabilityData } from "@/lib/tasks/tasks"
 
 type EmployeeDashboardPageProps = {
@@ -22,14 +22,37 @@ type EmployeeDashboardPageProps = {
     date?: string
     month?: string
     weekStart?: string
-    brandId?: string
   }>
+}
+
+type AssignedBrandRow = {
+  brand_id: number
+  brand_name: string
+}
+
+async function getPrimaryAssignedBrand(profileId: number) {
+  const result = await query<AssignedBrandRow>(
+    `
+    SELECT b.id AS brand_id, b.name AS brand_name
+    FROM user_brand_access uba
+    JOIN brand b ON b.id = uba.brand_id
+    WHERE uba.profile_id = $1
+      AND uba.is_active = true
+      AND b.is_active = true
+    ORDER BY uba.is_primary DESC, uba.granted_at ASC, b.name ASC
+    LIMIT 1
+    `,
+    [profileId]
+  )
+
+  return result.rows[0] ?? null
 }
 
 export default async function EmployeeDashboardPage({
   searchParams,
 }: EmployeeDashboardPageProps) {
   const { profile } = await requireEmployee()
+  const assignedBrand = await getPrimaryAssignedBrand(profile.id)
   const params = await searchParams
   const todayKey = getTodayDateKeyInPhilippines()
   const currentMonth = todayKey.slice(0, 7)
@@ -40,10 +63,6 @@ export default async function EmployeeDashboardPage({
     params.weekStart,
     getDefaultDashboardWeekStart(todayKey)
   )
-  const brandContext = await getEmployeeDashboardBrandContext(
-    profile.id,
-    params.brandId
-  )
   const bounds = getDashboardPeriodBounds({
     period,
     dateKey,
@@ -51,7 +70,7 @@ export default async function EmployeeDashboardPage({
     weekStartKey: weekStart,
   })
 
-  if (!brandContext) {
+  if (!assignedBrand) {
     return (
       <div className="min-w-0 space-y-4 overflow-hidden">
         <div>
@@ -71,23 +90,15 @@ export default async function EmployeeDashboardPage({
       dateKey,
       start: bounds.dailyStart,
       end: bounds.dailyEnd,
-      brandId: brandContext.effectiveBrandId,
+      brandId: assignedBrand.brand_id,
       employeeId: null,
     }),
     getStaffAccountabilityData({
       startDate: bounds.staffStart,
       endDate: bounds.staffEnd,
-      brandId: brandContext.effectiveBrandId,
+      brandId: assignedBrand.brand_id,
     }),
   ])
-
-  const brandFilterLabel = brandContext.showBrandFilter
-    ? brandContext.selectedBrandId === "all"
-      ? "All Brands"
-      : brandContext.brands.find(
-          (brand) => String(brand.id) === brandContext.selectedBrandId
-        )?.name
-    : brandContext.assignedBrandLabel
 
   return (
     <div className="min-w-0 space-y-4 overflow-hidden">
@@ -97,26 +108,21 @@ export default async function EmployeeDashboardPage({
             My Brand Dashboard
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            {brandContext.showBrandFilter
-              ? "View reports, approvals, and analytics across your assigned brands."
-              : "View your assigned brand reports, approvals, and analytics."}
+            View your assigned brand reports, approvals, and analytics.
           </p>
         </div>
         <p className="rounded-lg border-2 border-border bg-background px-3 py-2 text-xs font-black uppercase tracking-[0.16em]">
           {bounds.label}
-          {brandFilterLabel ? ` · ${brandFilterLabel}` : ""}
         </p>
       </div>
 
       <DashboardFilterBar
-        brands={brandContext.brands}
         period={period}
         dateKey={dateKey}
         month={month}
         weekStart={weekStart}
-        brandId={brandContext.selectedBrandId}
-        showBrandFilter={brandContext.showBrandFilter}
-        assignedBrandLabel={brandContext.assignedBrandLabel}
+        showBrandFilter={false}
+        assignedBrandLabel={assignedBrand.brand_name}
       />
 
       <section className="space-y-3 pr-1">

@@ -215,6 +215,12 @@ function DailyProgressSummaryPreview({
   );
 }
 
+function getReportBrandNames(report: DailyProgressReportRecord) {
+  return report.brandNames.length > 0
+    ? report.brandNames
+    : [report.brandName ?? "No brand"];
+}
+
 function EmployeeIdentity({ report }: { report: DailyProgressReportRecord }) {
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -291,6 +297,22 @@ function DailyProgressKanbanCard({
         fallback={report.excusedReason}
         compact
       />
+
+      <div className="mt-3 rounded-lg border-2 border-border bg-muted/20 p-2">
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">
+          Brands Included
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {getReportBrandNames(report).map((brandName) => (
+            <span
+              key={brandName}
+              className="rounded-lg border-2 border-border bg-background px-2 py-1 text-xs font-bold"
+            >
+              {brandName}
+            </span>
+          ))}
+        </div>
+      </div>
 
       {children ? <div className="mt-3">{children}</div> : null}
     </article>
