@@ -15,6 +15,7 @@ import {
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
+  chartHoverCursor,
 } from "@/components/ui/chart"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { UserAvatar } from "@/components/shared/user-avatar"
@@ -49,7 +50,7 @@ function EmployeeSummaryTooltip({
   }
 
   return (
-    <div className="grid min-w-[220px] gap-1.5 rounded-lg border border-border/60 bg-background px-3 py-2 text-xs shadow-xl">
+    <div className="grid min-w-55 gap-1.5 rounded-lg border border-border/60 bg-background px-3 py-2 text-xs shadow-xl">
       <div>
         <p className="font-medium text-foreground">{item.employeeName}</p>
         <p className="text-muted-foreground">{item.email}</p>
@@ -155,7 +156,7 @@ export function EmployeeSummaryChart({
                       tick={{ fontSize: 11 }}
                     />
                     <ChartTooltip
-                      cursor={{ fill: "hsl(var(--muted) / 0.35)" }}
+                      cursor={chartHoverCursor}
                       content={<EmployeeSummaryTooltip />}
                     />
                     <ChartLegend content={<ChartLegendContent />} />
