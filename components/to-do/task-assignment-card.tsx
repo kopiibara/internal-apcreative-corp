@@ -105,10 +105,10 @@ export function TaskAssignmentCard({
   return (
     <>
       <Card
-        className="w-full max-w-full cursor-pointer dark:bg-gray-900 overflow-hidden rounded-lg bg-white px-0 py-2 transition-all hover:bg-muted hover:-translate-y-0.5"
+        className="box-border w-full min-w-0 max-w-full gap-0 cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-2 transition-all hover:-translate-y-0.5 hover:bg-muted dark:bg-gray-900"
         onClick={() => onOpenDetails?.(assignment)}
       >
-        <CardContent className="min-w-0 space-y-2.5 px-4 py-2">
+        <CardContent className="min-w-0 space-y-2.5 px-3 py-2 sm:px-4">
           <div className="flex min-w-0 flex-col gap-1.5">
             <h1 className="line-clamp-2 min-w-0 font-bold leading-snug">
               {assignment.title}
@@ -118,7 +118,7 @@ export function TaskAssignmentCard({
                 {richTextExcerpt(assignment.description, 110)}
               </p>
             ) : null}
-            <div className="flex max-w-full flex-wrap gap-1">
+            <div className="flex min-w-0 flex-wrap gap-1">
               <TaskTypeBadge taskType={assignment.taskType} />
               <TaskStatusBadge status={assignment.status} />
               <TaskAssigneeBrands brands={assignment.assigneeBrands} />
@@ -183,7 +183,7 @@ export function TaskAssignmentCard({
           ) : null}
 
           <div
-            className="grid grid-cols-2 gap-1.5 pt-1 [&_button]:h-8 [&_button]:min-w-0 [&_button]:px-2 [&_button]:text-[11px] [&_svg]:size-3"
+            className="grid w-full min-w-0 grid-cols-2 gap-1.5 pt-1 [&_button]:h-8 [&_button]:min-w-0 [&_button]:px-2 [&_button]:text-[11px] [&_svg]:size-3"
             onClick={(event) => event.stopPropagation()}
           >
             {isAssignee &&
@@ -267,7 +267,7 @@ export function TaskAssignmentCard({
 
           {showAssignee || canUpdateTask || canDeleteTask ? (
             <div
-              className="flex items-center gap-2 "
+              className="flex w-full min-w-0 items-center gap-2"
               onClick={(event) => event.stopPropagation()}
             >
               {showAssignee ? (

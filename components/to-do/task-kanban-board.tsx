@@ -17,6 +17,7 @@ import type { TaskPermissionFlags } from "@/components/to-do/types"
 import {
   KanbanBoardShell,
   KANBAN_BOARD_FIT_ROW_CLASS,
+  KANBAN_COLUMN_ITEM_CLASS,
   KANBAN_OVERLAY_CLASS,
 } from "@/components/shared/kanban-board-scroll"
 import { filterTaskAssignments } from "@/lib/tasks/task-filters"
@@ -77,11 +78,14 @@ function renderTaskColumns({
           <KanbanItem
             key={assignment.assignmentId}
             value={String(assignment.assignmentId)}
+            className={KANBAN_COLUMN_ITEM_CLASS}
           >
-            <KanbanItemHandle>{card}</KanbanItemHandle>
+            <KanbanItemHandle className={KANBAN_COLUMN_ITEM_CLASS}>
+              {card}
+            </KanbanItemHandle>
           </KanbanItem>
         ) : (
-          card
+          <div className={KANBAN_COLUMN_ITEM_CLASS}>{card}</div>
         )
       })}
     </TaskKanbanColumn>
@@ -172,20 +176,25 @@ export function TaskKanbanBoard({
   return (
     <>
       {canDragCards ? (
-        <KanbanBoardShell>
+        <KanbanBoardShell columnLayout="fit">
           <Kanban
+            className="flex h-full min-h-0 flex-col"
             value={columns}
             onValueChange={() => undefined}
             getItemValue={(assignment) => String(assignment.assignmentId)}
             onMove={handleMove}
           >
-            <KanbanBoard className={TASK_BOARD_ROW_CLASS}>{columnNodes}</KanbanBoard>
+            <KanbanBoard className={cn(TASK_BOARD_ROW_CLASS, "min-h-0 flex-1")}>
+              {columnNodes}
+            </KanbanBoard>
             <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
           </Kanban>
         </KanbanBoardShell>
       ) : (
-        <KanbanBoardShell>
-          <div className={TASK_BOARD_ROW_CLASS}>{columnNodes}</div>
+        <KanbanBoardShell columnLayout="fit">
+          <div className={cn(TASK_BOARD_ROW_CLASS, "min-h-0 flex-1")}>
+            {columnNodes}
+          </div>
         </KanbanBoardShell>
       )}
 
