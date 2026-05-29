@@ -1,6 +1,10 @@
 import "server-only";
 
 import {
+  applyBrandScopeToDashboardData,
+  getPlatformAnalyticsBrandScope,
+} from "@/lib/platform-analytics/brand-scope";
+import {
   filterMetaKpisByScope,
   loadMetaPlatformSlice,
   metaAccountIdFromFilter,
@@ -26,10 +30,14 @@ export async function getPlatformAnalyticsDashboardData(input?: {
   dateRange?: AnalyticsDateRange;
   customDateFrom?: string | null;
   customDateTo?: string | null;
+  profileId?: number | null;
 }): Promise<PlatformAnalyticsDashboardData> {
   const platform: AnalyticsPlatform = input?.platform ?? "META";
   const accountId = input?.accountId ?? null;
-
+  const brandScope =
+    input?.profileId != null
+      ? await getPlatformAnalyticsBrandScope(input.profileId)
+      : null;
 
   if (
     platform === "TIKTOK" ||
@@ -43,16 +51,20 @@ export async function getPlatformAnalyticsDashboardData(input?: {
         youtubeAccountIdFromFilter(accountId),
         input?.dateRange,
       );
-      return {
+      const data = {
         platform,
         accountId,
         ...youtube,
         metaBusinessPages: [],
       };
+
+      return brandScope
+        ? applyBrandScopeToDashboardData(data, brandScope)
+        : data;
     }
 
     const demo = buildDemoPlatformSlice(platform);
-    return {
+    const data = {
       platform,
       accountId,
       isDemo: true,
@@ -70,6 +82,8 @@ export async function getPlatformAnalyticsDashboardData(input?: {
       metaNeedsBootstrap: false,
       metaBusinessPages: [],
     };
+
+    return brandScope ? applyBrandScopeToDashboardData(data, brandScope) : data;
   }
 
   const meta = await loadMetaPlatformSlice(metaAccountIdFromFilter(accountId), {
@@ -78,8 +92,8 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     customDateTo: input?.customDateTo,
   });
 
-  return {
-    platform: "META",
+  const data = {
+    platform: "META" as const,
     accountId,
     isDemo: false,
     accounts: meta.accounts,
@@ -96,6 +110,8 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     metaNeedsBootstrap: meta.metaNeedsBootstrap,
     metaBusinessPages: meta.metaBusinessPages,
   };
+
+  return brandScope ? applyBrandScopeToDashboardData(data, brandScope) : data;
 }
 
 export function isDemoPlatform(platform: PlatformCode) {

@@ -2,34 +2,13 @@ import "server-only";
 
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
+import { getResolvedDatabaseUrl } from "@/lib/database-url";
+
 const globalForPg = globalThis as unknown as {
   pgPool?: Pool;
 };
 
-function normalizeDatabaseUrl(connectionString: string | undefined) {
-  if (!connectionString) {
-    return connectionString;
-  }
-
-  try {
-    const url = new URL(connectionString);
-    const sslMode = url.searchParams.get("sslmode");
-
-    if (
-      sslMode === "prefer" ||
-      sslMode === "require" ||
-      sslMode === "verify-ca"
-    ) {
-      url.searchParams.set("sslmode", "verify-full");
-    }
-
-    return url.toString();
-  } catch {
-    return connectionString;
-  }
-}
-
-const connectionString = normalizeDatabaseUrl(process.env.DATABASE_URL);
+const connectionString = getResolvedDatabaseUrl();
 
 export const pool =
   globalForPg.pgPool ??

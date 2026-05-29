@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
+import { isAdminAccountType, type AccountType } from "@/lib/auth/account-type";
 import {
   exchangeYouTubeOAuthCode,
   upsertYouTubeIntegrationFromOAuth,
 } from "@/lib/platform-analytics/youtube-sync";
-import { can } from "@/lib/permissions";
+import { canManagePlatformAnalytics } from "@/lib/platform-analytics/access";
 
 export const runtime = "nodejs";
 
@@ -25,8 +26,12 @@ function redirectWithStatus(
   request: NextRequest,
   status: "success" | "error",
   message?: string,
+  accountType?: AccountType,
 ) {
-  const url = new URL("/admin/platform-analytics", appOrigin(request));
+  const basePath = accountType && isAdminAccountType(accountType)
+    ? "/admin/platform-analytics"
+    : "/employee/platform-analytics";
+  const url = new URL(basePath, appOrigin(request));
   url.searchParams.set("platform", "YOUTUBE");
   url.searchParams.set("youtube_oauth", status);
   if (message) {
@@ -42,16 +47,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", appOrigin(request)));
   }
 
-  const allowed = await can(
-    context.profile.auth_user_id,
-    "meta_monitoring.manage",
-  );
+  const allowed = await canManagePlatformAnalytics(context.profile.auth_user_id);
 
   if (!allowed) {
+    const unauthorizedPath = isAdminAccountType(context.profile.account_type)
+      ? "/admin/unauthorized"
+      : "/employee/unauthorized";
     return NextResponse.redirect(
-      new URL("/admin/unauthorized", appOrigin(request)),
+      new URL(unauthorizedPath, appOrigin(request)),
     );
   }
+
+  const accountType = context.profile.account_type;
 
   const stateFromCookie = request.cookies.get(
     YOUTUBE_OAUTH_STATE_COOKIE,
@@ -61,7 +68,7 @@ export async function GET(request: NextRequest) {
   const oauthError = request.nextUrl.searchParams.get("error");
 
   if (oauthError) {
-    const response = redirectWithStatus(request, "error", oauthError);
+    const response = redirectWithStatus(request, "error", oauthError, accountType);
     response.cookies.delete(YOUTUBE_OAUTH_STATE_COOKIE);
     return response;
   }
@@ -75,6 +82,7 @@ export async function GET(request: NextRequest) {
       request,
       "error",
       "State validation failed",
+      accountType,
     );
     response.cookies.delete(YOUTUBE_OAUTH_STATE_COOKIE);
     return response;
@@ -85,6 +93,7 @@ export async function GET(request: NextRequest) {
       request,
       "error",
       "Missing authorization code",
+      accountType,
     );
     response.cookies.delete(YOUTUBE_OAUTH_STATE_COOKIE);
     return response;
@@ -109,14 +118,14 @@ export async function GET(request: NextRequest) {
       channel: result.channel,
     });
 
-    const response = redirectWithStatus(request, "success");
+    const response = redirectWithStatus(request, "success", undefined, accountType);
     response.cookies.delete(YOUTUBE_OAUTH_STATE_COOKIE);
     return response;
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "YouTube OAuth callback failed";
 
-    const response = redirectWithStatus(request, "error", message);
+    const response = redirectWithStatus(request, "error", message, accountType);
     response.cookies.delete(YOUTUBE_OAUTH_STATE_COOKIE);
     return response;
   }

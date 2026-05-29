@@ -43,12 +43,15 @@ import type {
   PlatformAnalyticsDashboardData,
   PlatformCode,
 } from "@/lib/platform-analytics/types";
+import type { PlatformAnalyticsBrandScopeUi } from "@/lib/platform-analytics/brand-scope";
 import { cn } from "@/lib/utils";
 
 type PlatformAnalyticsDashboardProps = {
   initialData: PlatformAnalyticsDashboardData;
   canManage: boolean;
   bootstrapMessage?: string | null;
+  brandScopeUi?: PlatformAnalyticsBrandScopeUi;
+  analyticsBasePath?: string;
 };
 
 const dateFormatter = new Intl.DateTimeFormat("en-PH", {
@@ -111,13 +114,21 @@ export function PlatformAnalyticsDashboard({
   initialData,
   canManage,
   bootstrapMessage,
+  brandScopeUi = {
+    hasAllBrandsAccess: true,
+    defaultMetaPageKey: "all",
+    showAllPagesOption: true,
+  },
+  analyticsBasePath = "/admin/platform-analytics",
 }: PlatformAnalyticsDashboardProps) {
   const [data, setData] = useState(initialData);
   const [platform, setPlatform] = useState<AnalyticsPlatform>(
     initialData.platform === "META" ? "META" : initialData.platform,
   );
   const [metaScope, setMetaScope] = useState<MetaScope>("combined");
-  const [metaPageKey, setMetaPageKey] = useState<string>("all");
+  const [metaPageKey, setMetaPageKey] = useState<string>(
+    brandScopeUi.defaultMetaPageKey,
+  );
   const [accountId, setAccountId] = useState("all");
   const [dateRange, setDateRange] = useState<AnalyticsDateRange>("28d");
   const [customDateFrom, setCustomDateFrom] = useState("");
@@ -420,15 +431,17 @@ export function PlatformAnalyticsDashboard({
         {platform === "META" ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-muted-foreground">Sync target:</span>
-            <Button
-              type="button"
-              size="sm"
-              variant={metaPageKey === "all" ? "default" : "neutral"}
-              disabled={isPending}
-              onClick={() => setMetaPageKey("all")}
-            >
-              All enabled pages
-            </Button>
+            {brandScopeUi.showAllPagesOption ? (
+              <Button
+                type="button"
+                size="sm"
+                variant={metaPageKey === "all" ? "default" : "neutral"}
+                disabled={isPending}
+                onClick={() => setMetaPageKey("all")}
+              >
+                All enabled pages
+              </Button>
+            ) : null}
             {data.metaBusinessPages.map((page) => (
               <Button
                 key={page.key}
@@ -478,7 +491,13 @@ export function PlatformAnalyticsDashboard({
             (metaPageKey === "all"
               ? data.metaBusinessPages
               : data.metaBusinessPages.filter((page) => page.key === metaPageKey)
-            ).map((page) => <MetaBusinessPageCard key={page.key} page={page} />)
+            ).map((page) => (
+              <MetaBusinessPageCard
+                key={page.key}
+                page={page}
+                analyticsBasePath={analyticsBasePath}
+              />
+            ))
           )}
         </section>
       ) : (

@@ -41,6 +41,7 @@ type MetaPostsAnalyticsDashboardProps = {
   pageKey: MetaPageConfigKey
   highlightPostId?: string | null
   highlightPost?: MetaBusinessPagePostRow | null
+  analyticsBasePath?: string
 }
 
 const SORT_OPTIONS: Array<{ value: MetaPostsSort; label: string }> = [
@@ -74,6 +75,7 @@ export function MetaPostsAnalyticsDashboard({
   pageKey,
   highlightPostId,
   highlightPost,
+  analyticsBasePath = "/admin/platform-analytics",
 }: MetaPostsAnalyticsDashboardProps) {
   const [data, setData] = useState(initialData)
   const [search, setSearch] = useState("")
@@ -158,7 +160,7 @@ export function MetaPostsAnalyticsDashboard({
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="neutral" size="sm" asChild>
-              <Link href="/admin/platform-analytics">← Meta Analytics</Link>
+              <Link href={analyticsBasePath}>← Meta Analytics</Link>
             </Button>
             <Badge variant="neutral">Facebook Posts</Badge>
           </div>

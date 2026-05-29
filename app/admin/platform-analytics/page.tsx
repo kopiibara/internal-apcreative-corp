@@ -1,7 +1,14 @@
 import { PlatformAnalyticsDashboard } from "@/components/admin/platform-analytics/platform-analytics-dashboard"
 import { bootstrapMetaMonitoring } from "@/lib/meta/bootstrap"
 import { getPlatformAnalyticsDashboardData } from "@/lib/platform-analytics/get-dashboard-data"
-import { can, requirePermission } from "@/lib/permissions"
+import {
+  canManagePlatformAnalytics,
+  requirePlatformAnalyticsView,
+} from "@/lib/platform-analytics/access"
+import {
+  getPlatformAnalyticsBrandScope,
+  toPlatformAnalyticsBrandScopeUi,
+} from "@/lib/platform-analytics/brand-scope"
 
 export const metadata = {
   title: "Platform Analytics",
@@ -10,17 +17,22 @@ export const metadata = {
 }
 
 export default async function AdminPlatformAnalyticsPage() {
-  const context = await requirePermission("meta_monitoring.view")
-  const canManage = await can(
-    context.profile.auth_user_id,
-    "meta_monitoring.manage"
+  const context = await requirePlatformAnalyticsView()
+  const canManage = await canManagePlatformAnalytics(
+    context.profile.auth_user_id
   )
 
   let initialData = await getPlatformAnalyticsDashboardData({
     platform: "META",
     accountId: null,
     metaScope: "combined",
+    profileId: context.profile.id,
   })
+  const brandScope = await getPlatformAnalyticsBrandScope(context.profile.id)
+  const brandScopeUi = toPlatformAnalyticsBrandScopeUi(
+    brandScope,
+    initialData.metaBusinessPages
+  )
   let bootstrapMessage: string | null = null
 
   if (
@@ -34,6 +46,7 @@ export default async function AdminPlatformAnalyticsPage() {
         platform: "META",
         accountId: null,
         metaScope: "combined",
+        profileId: context.profile.id,
       })
       bootstrapMessage =
         result.dailySnapshots > 0 || result.postMetrics > 0
@@ -53,6 +66,8 @@ export default async function AdminPlatformAnalyticsPage() {
       initialData={initialData}
       canManage={canManage}
       bootstrapMessage={bootstrapMessage}
+      brandScopeUi={brandScopeUi}
+      analyticsBasePath="/admin/platform-analytics"
     />
   )
 }

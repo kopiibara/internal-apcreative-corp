@@ -112,6 +112,7 @@ type DashboardUser = {
     canAccessTaskBoard?: boolean
     canAccessReminders?: boolean
     canAccessDailyProgress?: boolean
+    canAccessPlatformAnalytics?: boolean
     imageUrl?: string | null
     mustChangePassword?: boolean
 }

@@ -62,6 +62,7 @@ type SidebarUser = {
     canAccessTaskBoard?: boolean
     canAccessReminders?: boolean
     canAccessDailyProgress?: boolean
+    canAccessPlatformAnalytics?: boolean
     imageUrl?: string | null
 }
 
@@ -105,6 +106,7 @@ export function DashboardSidebar({
             user?.roleSlugs?.includes("supervisor"))
     const taskBadge = formatSidebarBadge(employeeActionableTaskCount)
     const canSeeAdsCampaigns = user?.canAccessAdsCampaigns === true
+    const canSeePlatformAnalytics = user?.canAccessPlatformAnalytics === true
     const canSeeTaskBoard = user?.canAccessTaskBoard === true
     const canSeeReminders = user?.canAccessReminders !== false
     const canSeeDailyProgress =
@@ -133,6 +135,11 @@ export function DashboardSidebar({
                             (item) =>
                                 item.href !== "/employee/ads-campaigns" ||
                                 canSeeAdsCampaigns
+                        )
+                        .filter(
+                            (item) =>
+                                item.href !== "/employee/platform-analytics" ||
+                                canSeePlatformAnalytics
                         )
                         .filter(
                             (item) =>

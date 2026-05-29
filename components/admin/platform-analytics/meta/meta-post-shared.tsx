@@ -117,13 +117,15 @@ export function MetaPostExternalLink({
 export function MetaViewAllPostsButton({
   pageKey = "neon-nights",
   label = "View All Facebook Posts",
+  analyticsBasePath = "/admin/platform-analytics",
 }: {
   pageKey?: string
   label?: string
+  analyticsBasePath?: string
 }) {
   return (
     <Button type="button" variant="default" asChild>
-      <Link href={`/admin/platform-analytics/meta/posts?pageKey=${pageKey}`}>
+      <Link href={`${analyticsBasePath}/meta/posts?pageKey=${pageKey}`}>
         {label}
       </Link>
     </Button>

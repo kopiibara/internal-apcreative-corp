@@ -136,6 +136,11 @@ export const employeeGroups: SidebarGroupItem[] = [
         icon: CheckCircle2,
       },
       {
+        title: "Platform Analytics",
+        href: "/employee/platform-analytics",
+        icon: BarChart3,
+      },
+      {
         title: "To-Do",
         icon: ListTodo,
         subItems: [

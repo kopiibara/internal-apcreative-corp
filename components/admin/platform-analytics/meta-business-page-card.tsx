@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils"
 
 type MetaBusinessPageCardProps = {
   page: MetaBusinessPageDashboard
+  analyticsBasePath?: string
 }
 
 function StatusPill({
@@ -168,7 +169,10 @@ function PostPreviewCard({
   )
 }
 
-export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
+export function MetaBusinessPageCard({
+  page,
+  analyticsBasePath = "/admin/platform-analytics",
+}: MetaBusinessPageCardProps) {
   const connected = page.connectionStatus === "Connected"
   const m = page.metrics
   const preview = page.postPreview
@@ -366,7 +370,7 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
             {m.topPerformingPostId ? (
               <Button type="button" variant="neutral" size="sm" asChild>
                 <Link
-                  href={`/admin/platform-analytics/meta/posts?pageKey=${page.key}&postId=${m.topPerformingPostId}`}
+                  href={`${analyticsBasePath}/meta/posts?pageKey=${page.key}&postId=${m.topPerformingPostId}`}
                 >
                   View details
                 </Link>
@@ -408,7 +412,10 @@ export function MetaBusinessPageCard({ page }: MetaBusinessPageCardProps) {
                 ) : null}
               </p>
             </div>
-            <MetaViewAllPostsButton pageKey={page.key} />
+            <MetaViewAllPostsButton
+              pageKey={page.key}
+              analyticsBasePath={analyticsBasePath}
+            />
           </div>
 
           {page.postsUnavailableMessage ? (
