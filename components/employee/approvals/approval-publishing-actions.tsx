@@ -111,15 +111,20 @@ export function ApprovalPublishingActions({
     })
   }
 
+  const buttonClass = compact
+    ? "h-8 gap-1 px-2 text-[11px] [&_svg]:size-3"
+    : undefined
+
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className={compact ? "contents" : "flex flex-wrap gap-2"}>
       {canPublishNow ? (
         <Button
           type="button"
           size={compact ? "sm" : "default"}
+          className={buttonClass}
           onClick={() => setIsPublishOpen(true)}
         >
-          <Send className="size-4" />
+          <Send className={compact ? "size-3" : "size-4"} />
           Publish Now
         </Button>
       ) : null}
@@ -128,10 +133,11 @@ export function ApprovalPublishingActions({
           type="button"
           size={compact ? "sm" : "default"}
           variant="neutral"
+          className={buttonClass}
           onClick={() => setIsScheduleOpen(true)}
         >
-          <CalendarClock className="size-4" />
-          Schedule Publish
+          <CalendarClock className={compact ? "size-3" : "size-4"} />
+          Schedule
         </Button>
       ) : null}
 

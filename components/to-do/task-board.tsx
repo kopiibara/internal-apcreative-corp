@@ -11,6 +11,11 @@ import { TaskEditDialog } from "@/components/to-do/task-edit-dialog"
 import { TaskFilters } from "@/components/to-do/task-filters"
 import { TaskKanbanBoard } from "@/components/to-do/task-kanban-board"
 import { BoardSection } from "@/components/shared/board-section"
+import {
+  KANBAN_BOARD_CONTENT_CLASS,
+  KANBAN_BOARD_PAGE_CLASS,
+  KANBAN_BOARD_SECTION_CLASS,
+} from "@/components/shared/kanban-board-scroll"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -97,8 +102,8 @@ export function TaskBoard({
     : "No tasks yet. Add a task to assign work and start the review workflow."
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden">
-      <BoardSection className="w-full min-w-0 overflow-hidden pb-1 gap-2">
+    <div className={KANBAN_BOARD_PAGE_CLASS}>
+      <BoardSection className={KANBAN_BOARD_SECTION_CLASS}>
         <CardHeader className="min-w-0 shrink-0 gap-3 ">
           <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle className="shrink-0 text-card-foreground">
@@ -123,7 +128,7 @@ export function TaskBoard({
             showAssigneeFilter={!isEmployeeView}
           />
         </CardHeader>
-        <CardContent className="min-w-0 overflow-hidden px-0 pb-0">
+        <CardContent className={KANBAN_BOARD_CONTENT_CLASS}>
           <TaskKanbanBoard
             assignments={currentAssignments}
             currentProfileId={currentProfileId}
