@@ -23,7 +23,7 @@ import {
 import { getMetaPageByKey } from "@/lib/meta/pages-config";
 import { listActiveMetaFacebookPages } from "@/lib/meta/sync";
 import {
-  canManagePlatformAnalytics,
+  canSyncPlatformAnalytics,
   canViewPlatformAnalytics,
 } from "@/lib/platform-analytics/access";
 import {
@@ -99,12 +99,16 @@ async function authorizeMetaManage(): Promise<MetaMonitoringActionResult<never> 
     return { success: false, message: "You must be signed in." };
   }
 
-  const allowed = await canManagePlatformAnalytics(context.profile.auth_user_id);
+  const allowed = await canSyncPlatformAnalytics(
+    context.profile.auth_user_id,
+    context.profile.account_type,
+    context.profile.id,
+  );
 
   if (!allowed) {
     return {
       success: false,
-      message: "You do not have permission to manage Platform Analytics.",
+      message: "You do not have permission to sync Platform Analytics.",
     };
   }
 

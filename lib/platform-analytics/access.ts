@@ -6,8 +6,13 @@ import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import {
   hasAdminPermissionBypass,
   isAdminAccountType,
+  type AccountType,
 } from "@/lib/auth/account-type";
-import { profileHasAssignedBrandAccess } from "@/lib/brand-access/effective-brand-access";
+import { isFullStackDeveloperAccountType } from "@/lib/auth/full-stack-developer-access";
+import {
+  profileHasAllBrandsAccess,
+  profileHasAssignedBrandAccess,
+} from "@/lib/brand-access/effective-brand-access";
 import { can } from "@/lib/permissions";
 
 /** Role permissions that also unlock Platform Analytics explicitly. */
@@ -53,6 +58,49 @@ export async function canManagePlatformAnalytics(authUserId: string) {
     (await can(authUserId, "meta_monitoring.manage")) ||
     (await can(authUserId, "platform_analytics.manage"))
   );
+}
+
+/**
+ * Meta connect/sync is limited to all-brands access only.
+ * - Allowed: All Brand assignment, or org-wide admin account types (supervisor, etc.)
+ * - Not allowed: single-brand employees, or multiple specific brands (e.g. Neon Nights + Oculto only)
+ */
+export async function canSyncPlatformAnalytics(
+  authUserId: string,
+  accountType: AccountType,
+  profileId: number,
+) {
+  if (!(await profileHasAllBrandsAccess(profileId))) {
+    return false;
+  }
+
+  if (!isAdminAccountType(accountType)) {
+    return false;
+  }
+
+  if (hasAdminPermissionBypass(accountType)) {
+    return true;
+  }
+
+  if (isFullStackDeveloperAccountType(accountType)) {
+    return true;
+  }
+
+  return canManagePlatformAnalytics(authUserId);
+}
+
+/** Sync/connect buttons on admin Platform Analytics only (all-brands users). */
+export async function canShowAdminPlatformAnalyticsSyncActions(
+  authUserId: string,
+  accountType: AccountType,
+  profileId: number,
+  analyticsBasePath: "/admin/platform-analytics" | "/employee/platform-analytics",
+) {
+  if (analyticsBasePath.startsWith("/employee")) {
+    return false;
+  }
+
+  return canSyncPlatformAnalytics(authUserId, accountType, profileId);
 }
 
 export async function requirePlatformAnalyticsView() {

@@ -7,7 +7,6 @@ import {
   bootstrapMetaMonitoringAction,
   disconnectYouTubeAction,
   fetchPlatformAnalyticsAction,
-  syncMetaPageMonitoringAction,
   syncAllMetaMonitoringAction,
   syncYouTubeAction,
   triggerMetaSyncAction,
@@ -51,6 +50,8 @@ import { cn } from "@/lib/utils";
 type PlatformAnalyticsDashboardProps = {
   initialData: PlatformAnalyticsDashboardData;
   canManage: boolean;
+  /** Admin dashboard only — shows Connect / Sync Meta controls. */
+  showAdminSyncActions?: boolean;
   bootstrapMessage?: string | null;
   brandScopeUi?: PlatformAnalyticsBrandScopeUi;
   analyticsBasePath?: string;
@@ -115,6 +116,7 @@ const PLATFORM_TABS: Record<PlatformCode, { value: string; label: string }[]> =
 export function PlatformAnalyticsDashboard({
   initialData,
   canManage,
+  showAdminSyncActions = false,
   bootstrapMessage,
   brandScopeUi = {
     hasAllBrandsAccess: true,
@@ -286,10 +288,7 @@ export function PlatformAnalyticsDashboard({
 
   function handleSyncAll() {
     startTransition(async () => {
-      const result =
-        platform === "META" && metaPageKey !== "all"
-          ? await syncMetaPageMonitoringAction({ pageKey: metaPageKey })
-          : await syncAllMetaMonitoringAction();
+      const result = await syncAllMetaMonitoringAction();
       if (!result.success) {
         toast.error(result.message);
         return;
@@ -303,10 +302,7 @@ export function PlatformAnalyticsDashboard({
     syncType: "hourly_posts" | "daily_page" | "daily_insights",
   ) {
     startTransition(async () => {
-      const result =
-        platform === "META" && metaPageKey !== "all"
-          ? await triggerMetaSyncAction(syncType, { pageKey: metaPageKey })
-          : await triggerMetaSyncAction(syncType);
+      const result = await triggerMetaSyncAction(syncType);
       if (!result.success) {
         toast.error(result.message);
         return;
@@ -335,7 +331,7 @@ export function PlatformAnalyticsDashboard({
           </p>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+        <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-start xl:justify-between xl:gap-4">
           <PlatformAnalyticsFilterBar
             brandScopeUi={brandScopeUi}
             platform={platform}
@@ -348,7 +344,9 @@ export function PlatformAnalyticsDashboard({
           <PlatformActions
             platform={platform}
             isConnected={data.connection.apiConnected}
-            canManage={canManage}
+            showAdminSyncActions={
+              showAdminSyncActions && brandScopeUi.hasAllBrandsAccess
+            }
             isPending={isPending}
             onConnect={
               platform === "YOUTUBE" ? handleYouTubeConnect : handleBootstrap
@@ -621,7 +619,7 @@ const PLATFORM_ACTIONS_ROW_CLASS =
 function PlatformActions({
   platform,
   isConnected,
-  canManage,
+  showAdminSyncActions,
   isPending,
   onConnect,
   onDisconnect,
@@ -632,7 +630,7 @@ function PlatformActions({
 }: {
   platform: AnalyticsPlatform;
   isConnected: boolean;
-  canManage: boolean;
+  showAdminSyncActions: boolean;
   isPending: boolean;
   onConnect: () => void;
   onDisconnect?: () => void;
@@ -641,7 +639,7 @@ function PlatformActions({
   onSyncPage: () => void;
   onSyncInsights: () => void;
 }) {
-  if (!canManage) {
+  if (!showAdminSyncActions) {
     return null;
   }
 
