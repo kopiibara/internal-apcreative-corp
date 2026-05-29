@@ -1,15 +1,14 @@
+// employee/daily-progress/actions.ts
+
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { PoolClient } from "pg";
 
 import { submitDailyProgressSchema } from "@/app/employee/daily-progress/schema";
-import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import { isEmployeeAccountType } from "@/lib/auth/account-type";
-import { transaction } from "@/lib/db";
-import { can } from "@/lib/permissions";
-import {
-  toDateKey,
-} from "@/lib/daily-progress-report/daily-progress-report";
+import { getCurrentProfileContext } from "@/lib/auth/auth-session";
+import { toDateKey } from "@/lib/daily-progress-report/daily-progress-report";
 import {
   DAILY_PROGRESS_SCORING_START_DATE_KEY,
   isBeforeDailyProgressScoringStart,
@@ -20,8 +19,10 @@ import {
   isWeekendPH,
 } from "@/lib/daily-progress-report/scoring";
 import { formatDateKeyInPhilippines } from "@/lib/daily-reports/daily-report-filters";
-import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
+import { transaction } from "@/lib/db";
+import { can } from "@/lib/permissions";
 import { normalizeRichTextForStorage } from "@/lib/rich-text/rich-text";
+import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
 import {
   sanitizeOptionalText,
   sanitizeRequiredText,
@@ -37,6 +38,35 @@ function revalidateDailyProgressRoutes() {
   revalidatePath("/employee/daily-progress");
   revalidatePath("/admin/daily-progress");
   revalidatePath("/admin/staff-accountability");
+}
+
+async function replaceReportBrands(
+  client: PoolClient,
+  reportId: number,
+  brandIds: number[],
+) {
+  await client.query(
+    `
+    DELETE FROM daily_progress_report_brand
+    WHERE daily_progress_report_id = $1
+    `,
+    [reportId],
+  );
+
+  if (brandIds.length === 0) {
+    return;
+  }
+
+  await client.query(
+    `
+    INSERT INTO daily_progress_report_brand (daily_progress_report_id, brand_id)
+    SELECT $1, brand_id
+    FROM UNNEST($2::integer[]) AS brand_id
+    ON CONFLICT (daily_progress_report_id, brand_id)
+    DO NOTHING
+    `,
+    [reportId, brandIds],
+  );
 }
 
 export async function submitDailyProgressReport(
@@ -152,17 +182,33 @@ export async function submitDailyProgressReport(
   const status = isLateRequest ? "Late" : "Submitted";
   const lateApprovalStatus = isLateRequest ? "Pending" : null;
   const points = calculateDailyProgressPoints(status, lateApprovalStatus);
+
   const normalizedSummary = normalizeRichTextForStorage(parsed.data.summary);
   const normalizedBlockers = parsed.data.blockers
     ? normalizeRichTextForStorage(parsed.data.blockers)
     : null;
+
+  const sanitizedSummary = sanitizeRequiredText(normalizedSummary, 8000);
+  const sanitizedBlockers = sanitizeOptionalText(normalizedBlockers, 8000);
+  const sanitizedProofLink = sanitizeOptionalText(parsed.data.proofLink, 1000);
+
   const lateReason = isLateRequest
     ? parsed.data.lateReasonCategory === "Others"
       ? `Others: ${sanitizeRequiredText(parsed.data.lateReason ?? "", 1900)}`
       : parsed.data.lateReason?.trim()
-        ? `${parsed.data.lateReasonCategory}: ${sanitizeRequiredText(parsed.data.lateReason, 1800)}`
+        ? `${parsed.data.lateReasonCategory}: ${sanitizeRequiredText(
+            parsed.data.lateReason,
+            1800,
+          )}`
         : parsed.data.lateReasonCategory
     : null;
+
+  const sanitizedLateReason = lateReason
+    ? sanitizeRequiredText(lateReason, 2000)
+    : null;
+
+  const selectedBrandIds = Array.from(new Set(parsed.data.brandIds));
+  const primaryBrandId = selectedBrandIds[0] ?? null;
 
   try {
     await transaction(async (client) => {
@@ -180,22 +226,28 @@ export async function submitDailyProgressReport(
         `,
         [context.profile.id, reportDateKey],
       );
+
       const existingReport = existing.rows[0];
+
       const canEditSameDayReport =
         existingReport &&
         reportDateKey === todayDateKey &&
         existingReport.status === "Submitted";
 
+      const canConvertMissedToLateRequest =
+        existingReport &&
+        isLateRequest &&
+        existingReport.status === "Missed" &&
+        existingReport.late_approval_status !== "Rejected";
+
       if (
         existingReport &&
         !canEditSameDayReport &&
-        !(
-          isLateRequest &&
-          existingReport.status === "Missed" &&
-          existingReport.late_approval_status !== "Rejected"
-        )
+        !canConvertMissedToLateRequest
       ) {
-        throw new Error("You already have a Daily Progress Report for this date.");
+        throw new Error(
+          "You already have a Daily Progress Report for this date.",
+        );
       }
 
       if (canEditSameDayReport) {
@@ -215,19 +267,20 @@ export async function submitDailyProgressReport(
           `,
           [
             existingReport.id,
-            parsed.data.brandId ?? null,
-            sanitizeRequiredText(normalizedSummary, 8000),
-            sanitizeOptionalText(normalizedBlockers, 8000),
-            sanitizeOptionalText(parsed.data.proofLink, 1000),
+            primaryBrandId,
+            sanitizedSummary,
+            sanitizedBlockers,
+            sanitizedProofLink,
             context.profile.id,
             todayDateKey,
           ],
         );
 
+        await replaceReportBrands(client, existingReport.id, selectedBrandIds);
         return;
       }
 
-      if (existingReport) {
+      if (canConvertMissedToLateRequest) {
         await client.query(
           `
           UPDATE daily_progress_report
@@ -253,19 +306,20 @@ export async function submitDailyProgressReport(
           `,
           [
             existingReport.id,
-            parsed.data.brandId ?? null,
-            sanitizeRequiredText(normalizedSummary, 8000),
-            sanitizeOptionalText(normalizedBlockers, 8000),
-            sanitizeOptionalText(parsed.data.proofLink, 1000),
-            sanitizeRequiredText(lateReason ?? "", 2000),
+            primaryBrandId,
+            sanitizedSummary,
+            sanitizedBlockers,
+            sanitizedProofLink,
+            sanitizeRequiredText(sanitizedLateReason ?? "", 2000),
             context.profile.id,
           ],
         );
 
+        await replaceReportBrands(client, existingReport.id, selectedBrandIds);
         return;
       }
 
-      await client.query(
+      const inserted = await client.query<{ id: number }>(
         `
         INSERT INTO daily_progress_report (
           profile_id,
@@ -301,22 +355,25 @@ export async function submitDailyProgressReport(
           $12,
           $12
         )
+        RETURNING id
         `,
         [
           context.profile.id,
-          parsed.data.brandId ?? null,
+          primaryBrandId,
           reportDateKey,
-          sanitizeRequiredText(normalizedSummary, 8000),
-          sanitizeOptionalText(normalizedBlockers, 8000),
-          sanitizeOptionalText(parsed.data.proofLink, 1000),
+          sanitizedSummary,
+          sanitizedBlockers,
+          sanitizedProofLink,
           status,
           points.pointsAwarded,
           points.deductionApplied,
-          lateReason ? sanitizeRequiredText(lateReason, 2000) : null,
+          sanitizedLateReason,
           lateApprovalStatus,
           context.profile.id,
         ],
       );
+
+      await replaceReportBrands(client, inserted.rows[0].id, selectedBrandIds);
     });
 
     revalidateDailyProgressRoutes();
@@ -329,6 +386,15 @@ export async function submitDailyProgressReport(
           : "Previous-date report was submitted for supervisor approval.",
     };
   } catch (error) {
+    const pgError = error as { code?: string; message?: string };
+
+    if (pgError.code === "23505") {
+      return {
+        success: false,
+        message: "You already have a Daily Progress Report for this date.",
+      };
+    }
+
     return {
       success: false,
       message:

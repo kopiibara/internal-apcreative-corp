@@ -586,7 +586,7 @@ export function AccountDataTable({
               viewportClassName="rounded-lg"
             >
               <Table className="min-w-[1600px] border-0">
-                <TableHeader className="sticky top-0 z-20 bg-card shadow-[0_2px_0_0_var(--border)]">
+                <TableHeader className="sticky top-0 z-20 shadow-[0_2px_0_0_var(--border)]">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -602,7 +602,7 @@ export function AccountDataTable({
                     </TableRow>
                   ))}
                 </TableHeader>
-                <TableBody>
+                <TableBody className="bg-white dark:bg-gray-900">
                   {table.getRowModel().rows.length === 0 ? (
                     <TableRow>
                       <TableCell
@@ -616,7 +616,7 @@ export function AccountDataTable({
                     table.getRowModel().rows.map((row) => (
                       <TableRow
                         key={row.id}
-                        className="cursor-pointer"
+                        className="cursor-pointer "
                         onClick={() => openDetailsSheet(row.original)}
                       >
                         {row.getVisibleCells().map((cell) => (

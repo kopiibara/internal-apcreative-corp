@@ -1,3 +1,5 @@
+//admin/daily-progress/actions.ts
+
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -36,13 +38,19 @@ async function authorizeDailyProgressAdmin(permissionKey: string) {
 
   if (!context) {
     return {
-      error: { success: false, message: "You must be signed in." } satisfies ActionResult,
+      error: {
+        success: false,
+        message: "You must be signed in.",
+      } satisfies ActionResult,
     };
   }
 
   if (context.profile.status !== "ACTIVE") {
     return {
-      error: { success: false, message: "Your account is not active." } satisfies ActionResult,
+      error: {
+        success: false,
+        message: "Your account is not active.",
+      } satisfies ActionResult,
     };
   }
 
@@ -114,10 +122,7 @@ export async function reviewLateDailyProgressReport(
     };
   }
 
-  if (
-    report.status !== "Late" ||
-    report.lateApprovalStatus !== "Pending"
-  ) {
+  if (report.status !== "Late" || report.lateApprovalStatus !== "Pending") {
     return {
       success: false,
       message: "Only pending late report requests can be reviewed.",
@@ -174,9 +179,13 @@ export async function reviewLateDailyProgressReport(
   };
 }
 
-export async function markMissedDailyProgressReports(
-  input: unknown,
-): Promise<ActionResult<{ createdMissed: number; createdExcused: number; skipped: number }>> {
+export async function markMissedDailyProgressReports(input: unknown): Promise<
+  ActionResult<{
+    createdMissed: number;
+    createdExcused: number;
+    skipped: number;
+  }>
+> {
   const authorization = await authorizeDailyProgressAdmin(
     "daily_progress.mark_missed",
   );
