@@ -64,7 +64,7 @@ export async function bootstrapMetaMonitoring(): Promise<MetaBootstrapResult> {
 
   if (configuredPages.length === 0) {
     throw new Error(
-      "No Facebook pages are configured. Set PAGE_ID and PAGE_ACCESS_TOKEN env vars for Neon Nights and/or Al Qaysar."
+      "No Facebook pages are configured. Set PAGE_ID and PAGE_ACCESS_TOKEN env vars for at least one enabled brand (Neon Nights, Al Qaysar, Pro Group, etc.)."
     )
   }
 

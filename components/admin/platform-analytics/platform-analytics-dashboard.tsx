@@ -469,8 +469,9 @@ export function PlatformAnalyticsDashboard({
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
                 No Meta business pages are enabled. Set{" "}
-                <code className="text-xs">NEON_NIGHTS_META_ENABLED=true</code>{" "}
-                and configure the Page ID and access token.
+                <code className="text-xs">*_META_ENABLED=true</code> (e.g.{" "}
+                <code className="text-xs">PRO_GROUP_META_ENABLED</code>) and
+                configure the matching Page ID and Page Access Token.
               </CardContent>
             </Card>
           ) : (

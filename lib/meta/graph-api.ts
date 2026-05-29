@@ -134,8 +134,11 @@ function readPostReactionCount(post: GraphPost) {
   )
 }
 
+/** Matches Graph API Explorer: summary counts without loading comment/reaction objects. */
+export const META_POSTS_FETCH_LIMIT = 10
+
 const POST_FIELDS_ENGAGEMENT =
-  "id,message,created_time,permalink_url,full_picture,shares,reactions.summary(true),comments.summary(true)"
+  "id,message,created_time,permalink_url,full_picture,shares,reactions.limit(0).summary(true),comments.limit(0).summary(true)"
 
 const POST_FIELDS_BASIC =
   "id,message,created_time,permalink_url,full_picture,shares"
@@ -161,7 +164,7 @@ async function fetchPostsWithFields(
 
 export async function fetchRecentPagePostsSafe(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
-  limit = 50
+  limit = META_POSTS_FETCH_LIMIT
 ) {
   const token = await getPageToken(page)
 
@@ -193,7 +196,7 @@ export async function fetchRecentPagePostsSafe(
 
 export async function fetchRecentPagePosts(
   page: Pick<MetaFacebookPageRow, "facebook_page_id" | "access_token_env_key">,
-  limit = 50
+  limit = META_POSTS_FETCH_LIMIT
 ) {
   const result = await fetchRecentPagePostsSafe(page, limit)
   if (!result.ok) {
