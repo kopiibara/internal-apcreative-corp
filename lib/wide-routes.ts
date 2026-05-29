@@ -7,6 +7,7 @@ export const WIDE_LAYOUT_ROUTES = [
   "/employee/to-do/reminders",
   "/admin/platform-analytics",
   "/employee/platform-analytics",
+  "/admin/daily-progress",
 ] as const
 
 export function isWideLayoutRoute(pathname: string) {

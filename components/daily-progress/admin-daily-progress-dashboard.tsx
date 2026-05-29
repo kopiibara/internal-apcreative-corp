@@ -1,15 +1,15 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState,
   useTransition,
   type KeyboardEvent,
   type SyntheticEvent,
 } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ExternalLink, FilePlus2, Play, X } from "lucide-react";
+import { Check, FilePlus2, Play, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -24,10 +24,11 @@ import {
 } from "@/components/daily-progress/employee-daily-progress-dashboard";
 import {
   KanbanBoardShell,
-  KANBAN_BOARD_CONTENT_CLASS,
+  KANBAN_BOARD_MAX_HEIGHT_CLASS,
+  KANBAN_BOARD_PAGE_CLASS,
   KANBAN_BOARD_SCROLL_ROW_CLASS,
-  KANBAN_BOARD_SECTION_CLASS,
   KANBAN_BOARD_TAB_PANEL_CLASS,
+  KANBAN_BOARD_TABS_CLASS,
   KANBAN_COLUMN_BODY_CLASS,
   KANBAN_COLUMN_CARD_CLASS,
   KANBAN_COLUMN_EMPTY_BODY_CLASS,
@@ -36,7 +37,6 @@ import {
   KANBAN_OVERLAY_CLASS,
   kanbanColumnListClass,
 } from "@/components/shared/kanban-board-scroll";
-import { BoardSection } from "@/components/shared/board-section";
 import { KanbanColumnHeader } from "@/components/shared/kanban-column-header";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import {
@@ -90,6 +90,8 @@ import { cn } from "@/lib/utils";
 type AdminDailyProgressDashboardProps = {
   reports: DailyProgressReportRecord[];
   summary: DailyProgressSummary;
+  /** Report date shown on the kanban board (typically today). */
+  boardDate: string;
   targetDate: string;
   ownDailyProgressData?: EmployeeDailyProgressDashboardProps | null;
 };
@@ -286,7 +288,7 @@ function DailyProgressKanbanCard({
       }}
       onKeyDown={handleKeyDown}
       className={cn(
-        "rounded-lg border-2 border-border  bg-white dark:bg-gray-900 p-3 text-left transition",
+        "rounded-lg border-2 border-border bg-background p-3 text-left shadow-[var(--shadow-hard-sm)] transition",
         isClickable &&
         "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         muted && "opacity-70 grayscale-[0.2]",
@@ -507,8 +509,16 @@ function DailyProgressKanbanColumn({
   const isEmpty = count === 0;
 
   return (
-    <KanbanColumn value={id} className={KANBAN_COLUMN_FIT_CLASS}>
-      <Card className={KANBAN_COLUMN_CARD_CLASS}>
+    <KanbanColumn
+      value={id}
+      className={cn(KANBAN_COLUMN_FIT_CLASS, "max-h-full min-h-0 self-stretch")}
+    >
+      <Card
+        className={cn(
+          KANBAN_COLUMN_CARD_CLASS,
+          "h-full max-h-full bg-muted/15 shadow-none",
+        )}
+      >
         <KanbanColumnHeader
           title={title}
           count={count}
@@ -537,6 +547,7 @@ function DailyProgressKanbanColumn({
 export function AdminDailyProgressDashboard({
   reports,
   summary,
+  boardDate,
   targetDate,
   ownDailyProgressData,
 }: AdminDailyProgressDashboardProps) {
@@ -558,12 +569,20 @@ export function AdminDailyProgressDashboard({
   const [missedDate, setMissedDate] = useState(targetDate);
   const [employeeFilter, setEmployeeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [dateFilter, setDateFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState(boardDate);
   const [showOwnProgressForm, setShowOwnProgressForm] = useState(false);
   const [selectedReport, setSelectedReport] =
     useState<DailyProgressReportRecord | null>(null);
   const [isDetailsSheetOpen, setIsDetailsSheetOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const kanbanDate = dateFilter === "all" ? boardDate : dateFilter;
+
+  useEffect(() => {
+    if (activeView === "kanban" && dateFilter === "all") {
+      setDateFilter(boardDate);
+    }
+  }, [activeView, boardDate, dateFilter]);
 
   const recentDateOptions = useMemo(
     () => getRecentDateOptions(targetDate),
@@ -593,6 +612,22 @@ export function AdminDailyProgressDashboard({
     return [...dates].sort((left, right) => right.localeCompare(left));
   }, [recentDateOptions, reports]);
 
+  const kanbanReports = useMemo(
+    () =>
+      reports.filter((report) => {
+        const matchesEmployee =
+          employeeFilter === "all" || String(report.profileId) === employeeFilter;
+
+        const matchesKanbanDate = report.reportDate === kanbanDate;
+
+        const matchesStatus =
+          statusFilter === "all" || getReportStatusKey(report) === statusFilter;
+
+        return matchesEmployee && matchesKanbanDate && matchesStatus;
+      }),
+    [employeeFilter, kanbanDate, reports, statusFilter],
+  );
+
   const filteredReports = useMemo(
     () =>
       reports.filter((report) => {
@@ -614,7 +649,7 @@ export function AdminDailyProgressDashboard({
     () =>
       STATUS_COLUMNS.reduce<Record<string, DailyProgressReportRecord[]>>(
         (nextColumns, column) => {
-          nextColumns[column.key] = filteredReports.filter(
+          nextColumns[column.key] = kanbanReports.filter(
             (report) => getReportStatusKey(report) === column.key,
           );
 
@@ -622,35 +657,35 @@ export function AdminDailyProgressDashboard({
         },
         {},
       ),
-    [filteredReports],
+    [kanbanReports],
   );
 
   const boardSyncKey = useMemo(
     () =>
-      filteredReports
+      kanbanReports
         .map(
           (report) =>
             `${report.id}:${report.status}:${report.lateApprovalStatus ?? "none"
             }`,
         )
         .join("|"),
-    [filteredReports],
+    [kanbanReports],
   );
 
   const visibleSummary = useMemo(
     () => ({
       requiredEmployees: summary.requiredEmployees,
-      submittedCount: filteredReports.filter(
+      submittedCount: kanbanReports.filter(
         (report) => getReportStatusKey(report) === "Submitted",
       ).length,
-      latePendingCount: filteredReports.filter(
+      latePendingCount: kanbanReports.filter(
         (report) => getReportStatusKey(report) === "Late Pending",
       ).length,
-      missedCount: filteredReports.filter(
+      missedCount: kanbanReports.filter(
         (report) => getReportStatusKey(report) === "Missed",
       ).length,
     }),
-    [filteredReports, summary.requiredEmployees],
+    [kanbanReports, summary.requiredEmployees],
   );
 
   function openReportDetails(report: DailyProgressReportRecord) {
@@ -808,8 +843,8 @@ export function AdminDailyProgressDashboard({
   }
 
   return (
-    <div className="min-w-0 space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className={cn("gap-4 flex flex-col overflow-auto")}>
+      <div className="flex shrink-0 flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">
             Daily Progress Report
@@ -819,7 +854,7 @@ export function AdminDailyProgressDashboard({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2 p-1">
           <div>
             <Select value={missedDate} onValueChange={setMissedDate}>
               <SelectTrigger className="w-44" aria-label="Missed checker date">
@@ -864,7 +899,7 @@ export function AdminDailyProgressDashboard({
         <EmployeeDailyProgressDashboard {...ownDailyProgressData} />
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:grid-cols-4 p-1">
         <SummaryCard
           label="Required Staff"
           value={visibleSummary.requiredEmployees}
@@ -882,332 +917,238 @@ export function AdminDailyProgressDashboard({
         />
       </div>
 
-      <Card className="shadow-none">
-        <CardContent className="grid gap-3 p-4 md:grid-cols-3">
-          <div>
-            <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-              <SelectTrigger aria-label="Filter by employee">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All staff</SelectItem>
-                {employeeOptions.map(([profileId, employeeName]) => (
-                  <SelectItem key={profileId} value={String(profileId)}>
-                    {employeeName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          <div>
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as StatusFilter)}
-            >
-              <SelectTrigger aria-label="Filter by status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="Submitted">Submitted</SelectItem>
-                <SelectItem value="Late Pending">Late Pending</SelectItem>
-                <SelectItem value="Missed">Missed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2 p-1">
 
-          <div>
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger aria-label="Filter by date">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All loaded dates</SelectItem>
-                {reportDateOptions.map((dateKey) => (
-                  <SelectItem key={dateKey} value={dateKey}>
-                    {dateKey}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+        <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+          <SelectTrigger
+            className="h-9 w-[11.5rem]"
+            aria-label="Filter by employee"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All staff</SelectItem>
+            {employeeOptions.map(([profileId, employeeName]) => (
+              <SelectItem key={profileId} value={String(profileId)}>
+                {employeeName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      <Tabs
-        value={activeView}
-        onValueChange={(value) => setActiveView(value as "kanban" | "table")}
-        className="flex min-h-[min(70vh,calc(100vh-16rem))] flex-col"
-      >
-        <TabsList className="shrink-0">
-          <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
-          <TabsTrigger value="table">Table View</TabsTrigger>
-        </TabsList>
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+        >
+          <SelectTrigger
+            className="h-9 w-[10.5rem]"
+            aria-label="Filter by status"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="Submitted">Submitted</SelectItem>
+            <SelectItem value="Late Pending">Late Pending</SelectItem>
+            <SelectItem value="Missed">Missed</SelectItem>
+          </SelectContent>
+        </Select>
 
-        <TabsContent value="kanban" className={cn(KANBAN_BOARD_TAB_PANEL_CLASS, "mt-4")}>
-          <BoardSection className={cn(KANBAN_BOARD_SECTION_CLASS, "flex-1 border-0 py-0 shadow-none")}>
-            <CardContent className={KANBAN_BOARD_CONTENT_CLASS}>
-          <KanbanBoardShell>
-            <Kanban
-              key={boardSyncKey}
-              value={columns}
-              onValueChange={() => undefined}
-              getItemValue={(report) => String(report.id)}
-              onMove={handleMove}
-            >
-              <KanbanBoard
-                className={cn(
-                  KANBAN_BOARD_SCROLL_ROW_CLASS,
-                  "xl:grid xl:w-full xl:min-w-0 xl:grid-cols-3",
-                )}
-              >
-                {STATUS_COLUMNS.map((column) => {
-                  const columnReports = columns[column.key] ?? [];
+        <Select value={dateFilter} onValueChange={setDateFilter}>
+          <SelectTrigger
+            className="h-9 w-[11.5rem]"
+            aria-label="Filter by date"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {activeView === "table" ? (
+              <SelectItem value="all">All loaded dates</SelectItem>
+            ) : null}
+            {reportDateOptions.map((dateKey) => (
+              <SelectItem key={dateKey} value={dateKey}>
+                {dateKey}
+                {dateKey === boardDate ? " (today)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-                  return (
-                    <DailyProgressKanbanColumn
-                      key={column.key}
-                      id={column.key}
-                      title={column.title}
-                      count={columnReports.length}
-                      badgeClassName={column.badgeClassName}
+
+
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+        <DataTableScrollArea
+          className={cn(
+            "min-h-0 flex-1",
+            KANBAN_BOARD_MAX_HEIGHT_CLASS,
+            "h-auto max-h-none",
+          )}
+        >
+          <Table className="min-w-[720px] border-0">
+            <TableHeader className={DATA_TABLE_HEADER_CLASS}>
+              <TableRow>
+                <TableHead className="sticky left-0 z-30 min-w-[200px] bg-card">
+                  Employee
+                </TableHead>
+                <TableHead className="hidden min-w-[140px] lg:table-cell">
+                  Brand
+                </TableHead>
+                <TableHead className="min-w-[6.5rem]">Date</TableHead>
+                <TableHead className="min-w-[6.5rem]">Status</TableHead>
+                <TableHead className="hidden min-w-[6.5rem] md:table-cell">
+                  Late Status
+                </TableHead>
+                <TableHead className="min-w-[5.5rem] text-right">
+                  Points
+                </TableHead>
+                <TableHead className="min-w-[11rem]">Review</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody className={cn(DATA_TABLE_BODY_CLASS, "bg-background")}>
+              {filteredReports.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    No Daily Progress Reports found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredReports.map((report) => (
+                  <TableRow
+                    key={report.id}
+                    role="button"
+                    tabIndex={0}
+                    className="group cursor-pointer hover:bg-muted/40"
+                    onClick={() => openReportDetails(report)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openReportDetails(report);
+                      }
+                    }}
+                  >
+                    <TableCell className="sticky left-0 z-10 bg-background group-hover:bg-muted/40">
+                      <EmployeeIdentity report={report} />
+                    </TableCell>
+
+                    <TableCell className="hidden max-w-[10rem] truncate lg:table-cell">
+                      {report.brandName ?? "No brand"}
+                    </TableCell>
+
+                    <TableCell className="font-mono text-xs">
+                      {report.reportDate}
+                    </TableCell>
+
+                    <TableCell>
+                      <DailyProgressStatusBadge
+                        label={report.status}
+                        tone={getTone(report)}
+                      />
+                    </TableCell>
+
+                    <TableCell className="hidden md:table-cell">
+                      {report.lateApprovalStatus ?? "-"}
+                    </TableCell>
+
+                    <TableCell className="text-right tabular-nums">
+                      <p className="font-black">{report.netPoints}</p>
+                      {report.deductionApplied > 0 ? (
+                        <p className="text-xs text-destructive">
+                          −{report.deductionApplied} late
+                        </p>
+                      ) : null}
+                    </TableCell>
+
+                    <TableCell
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
                     >
-                      {columnReports.map((report) => {
-                        const isDraggable =
-                          report.status === "Late" &&
-                          report.lateApprovalStatus === "Pending";
+                      {report.status === "Late" &&
+                        report.lateApprovalStatus === "Pending" ? (
+                        <div className="grid min-w-64 gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            Reason: {report.lateReason}
+                          </p>
 
-                        const cardKey = `${report.id}-${report.status}-${report.lateApprovalStatus ?? "none"
-                          }`;
+                          <Textarea
+                            value={reviewNotesById[report.id] ?? ""}
+                            onChange={(event) =>
+                              updateReviewNotes(
+                                report.id,
+                                event.target.value,
+                              )
+                            }
+                            rows={2}
+                            placeholder="Review note"
+                          />
 
-                        if (!isDraggable) {
-                          return (
-                            <DailyProgressKanbanCard
-                              key={cardKey}
-                              report={report}
-                              muted
-                              onClick={() => openReportDetails(report)}
-                            />
-                          );
-                        }
+                          <Select
+                            value={awardPointsById[report.id] ?? "5"}
+                            onValueChange={(value) =>
+                              updateAwardPoints(report.id, value)
+                            }
+                          >
+                            <SelectTrigger aria-label="Points awarded">
+                              <SelectValue />
+                            </SelectTrigger>
 
-                        return (
-                          <KanbanItem key={cardKey} value={String(report.id)}>
-                            <KanbanItemHandle cursor={isDraggable}>
-                              <DailyProgressKanbanCard
-                                report={report}
-                                muted={isPending}
-                                onClick={() => openReportDetails(report)}
-                              >
-                                <DailyProgressKanbanReviewActions
-                                  report={report}
-                                  reviewNotes={reviewNotesById[report.id] ?? ""}
-                                  awardPoints={awardPointsById[report.id] ?? "5"}
-                                  activeDecision={reviewDecisionById[report.id]}
-                                  isPending={isPending}
-                                  onStartReview={startReviewDraft}
-                                  onCancelReview={cancelReviewDraft}
-                                  onReviewNotesChange={updateReviewNotes}
-                                  onAwardPointsChange={updateAwardPoints}
-                                  onReview={handleReview}
-                                />
-                              </DailyProgressKanbanCard>
-                            </KanbanItemHandle>
-                          </KanbanItem>
-                        );
-                      })}
-                    </DailyProgressKanbanColumn>
-                  );
-                })}
-              </KanbanBoard>
-
-              <KanbanOverlay className={KANBAN_OVERLAY_CLASS} />
-            </Kanban>
-          </KanbanBoardShell>
-            </CardContent>
-          </BoardSection>
-        </TabsContent>
-
-        <TabsContent value="table" className="mt-4 min-w-0 overflow-hidden">
-          <Card className="shadow-none">
-            <CardHeader>
-              <CardTitle>Reports</CardTitle>
-            </CardHeader>
-
-            <CardContent>
-              <DataTableScrollArea>
-                <Table className="min-w-[1180px] border-0">
-                  <TableHeader className={DATA_TABLE_HEADER_CLASS}>
-                      <TableRow>
-                        <TableHead>Employee</TableHead>
-                        <TableHead>Brand</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Late Status</TableHead>
-                        <TableHead>Summary</TableHead>
-                        <TableHead className="text-right">Points</TableHead>
-                        <TableHead className="text-right">Deduction</TableHead>
-                        <TableHead className="text-right">Net</TableHead>
-                        <TableHead>Review</TableHead>
-                      </TableRow>
-                    </TableHeader>
-
-                    <TableBody className={DATA_TABLE_BODY_CLASS}>
-                      {filteredReports.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={10} className="h-24 text-center">
-                            No Daily Progress Reports found.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredReports.map((report) => (
-                          <TableRow key={report.id}>
-                            <TableCell>
-                              <EmployeeIdentity report={report} />
-                            </TableCell>
-
-                            <TableCell>{report.brandName ?? "No brand"}</TableCell>
-
-                            <TableCell className="font-mono text-xs">
-                              {report.reportDate}
-                            </TableCell>
-
-                            <TableCell>
-                              <DailyProgressStatusBadge
-                                label={report.status}
-                                tone={getTone(report)}
-                              />
-                            </TableCell>
-
-                            <TableCell>
-                              {report.lateApprovalStatus ?? "-"}
-                            </TableCell>
-
-                            <TableCell className="max-w-72">
-                              <DailyProgressSummaryPreview
-                                value={report.summary}
-                                fallback={report.excusedReason}
-                                compact
-                              />
-
-                              {report.proofLink ? (
-                                <Button
-                                  asChild
-                                  variant="ghost"
-                                  size="sm"
-                                  className="mt-1 h-7 gap-1 px-0"
+                            <SelectContent>
+                              {Array.from({ length: 11 }, (_, points) => (
+                                <SelectItem
+                                  key={points}
+                                  value={String(points)}
                                 >
-                                  <Link
-                                    href={report.proofLink}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    Proof <ExternalLink className="size-3" />
-                                  </Link>
-                                </Button>
-                              ) : null}
-                            </TableCell>
+                                  Award {points} pts
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
 
-                            <TableCell className="text-right font-bold tabular-nums">
-                              {report.pointsAwarded}
-                            </TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-1"
+                              disabled={isPending}
+                              onClick={() =>
+                                handleReview(report.id, "Approved")
+                              }
+                            >
+                              <Check className="size-3" />
+                              Approve
+                            </Button>
 
-                            <TableCell className="text-right font-bold tabular-nums">
-                              {report.deductionApplied}
-                            </TableCell>
-
-                            <TableCell className="text-right font-black tabular-nums">
-                              {report.netPoints}
-                            </TableCell>
-
-                            <TableCell>
-                              {report.status === "Late" &&
-                                report.lateApprovalStatus === "Pending" ? (
-                                <div className="grid min-w-64 gap-2">
-                                  <p className="text-xs text-muted-foreground">
-                                    Reason: {report.lateReason}
-                                  </p>
-
-                                  <Textarea
-                                    value={reviewNotesById[report.id] ?? ""}
-                                    onChange={(event) =>
-                                      updateReviewNotes(
-                                        report.id,
-                                        event.target.value,
-                                      )
-                                    }
-                                    rows={2}
-                                    placeholder="Review note"
-                                  />
-
-                                  <Select
-                                    value={awardPointsById[report.id] ?? "5"}
-                                    onValueChange={(value) =>
-                                      updateAwardPoints(report.id, value)
-                                    }
-                                  >
-                                    <SelectTrigger aria-label="Points awarded">
-                                      <SelectValue />
-                                    </SelectTrigger>
-
-                                    <SelectContent>
-                                      {Array.from({ length: 11 }, (_, points) => (
-                                        <SelectItem
-                                          key={points}
-                                          value={String(points)}
-                                        >
-                                          Award {points} pts
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-
-                                  <div className="flex gap-2">
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      className="gap-1"
-                                      disabled={isPending}
-                                      onClick={() =>
-                                        handleReview(report.id, "Approved")
-                                      }
-                                    >
-                                      <Check className="size-3" />
-                                      Approve
-                                    </Button>
-
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="destructive"
-                                      className="gap-1"
-                                      disabled={isPending}
-                                      onClick={() =>
-                                        handleReview(report.id, "Rejected")
-                                      }
-                                    >
-                                      <X className="size-3" />
-                                      Reject
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">
-                                  {report.lateReviewNotes ?? "-"}
-                                </span>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              className="gap-1"
+                              disabled={isPending}
+                              onClick={() =>
+                                handleReview(report.id, "Rejected")
+                              }
+                            >
+                              <X className="size-3" />
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {report.lateReviewNotes ?? "-"}
+                        </span>
                       )}
-                    </TableBody>
-                  </Table>
-              </DataTableScrollArea>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </DataTableScrollArea>
+      </div>
+
 
       <DailyProgressReportDetailsSheet
         report={selectedReport}

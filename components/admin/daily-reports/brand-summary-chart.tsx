@@ -17,7 +17,10 @@ import {
   ChartTooltip,
   chartHoverCursor,
 } from "@/components/ui/chart"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  getCategoryAxisWidth,
+  getCategoryChartHeight,
+} from "@/lib/chart-layout"
 import {
   toBrandChartItems,
   type BrandChartItem,
@@ -109,7 +112,13 @@ type BrandSummaryChartProps = {
 
 export function BrandSummaryChart({ summaries }: BrandSummaryChartProps) {
   const chartData = toBrandChartItems(summaries)
-  const chartMinWidth = Math.max(320, chartData.length * 72)
+  const axisWidth = getCategoryAxisWidth(
+    chartData.map((item) => item.brandName),
+  )
+  const chartHeight = getCategoryChartHeight(chartData.length, {
+    rowHeight: 44,
+    max: 560,
+  })
 
   return (
     <Card className="flex h-full min-w-0 flex-col gap-3 py-4 md:gap-6 md:py-6">
@@ -126,72 +135,74 @@ export function BrandSummaryChart({ summaries }: BrandSummaryChartProps) {
           </p>
         ) : (
           <>
-            <ScrollArea className="w-full min-w-0" scrollbars="horizontal">
-              <div style={{ minWidth: chartMinWidth }}>
-                <ChartContainer
-                  config={brandChartConfig}
-                  className="aspect-auto h-55 w-full md:h-70"
-                >
-                  <BarChart
-                    data={chartData}
-                    margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
-                  >
-                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="brandName"
-                      tickLine={false}
-                      axisLine={false}
-                      interval={0}
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(value) =>
-                        value.length > 12 ? `${value.slice(0, 11)}…` : value
-                      }
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tickLine={false}
-                      axisLine={false}
-                      width={32}
-                    />
-                    <ChartTooltip
-                      cursor={chartHoverCursor}
-                      content={<BrandSummaryTooltip />}
-                    />
-                    <ChartLegend content={<ChartLegendContent />} />
-                    <Bar
-                      dataKey="graded"
-                      fill="var(--color-graded)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="done"
-                      fill="var(--color-done)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="pending"
-                      fill="var(--color-pending)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="blockers"
-                      fill="var(--color-blockers)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="approvals"
-                      fill="var(--color-approvals)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="approved"
-                      fill="var(--color-approved)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ChartContainer>
-              </div>
-            </ScrollArea>
+            <ChartContainer
+              config={brandChartConfig}
+              className="aspect-auto w-full min-w-0"
+              style={{ height: `${chartHeight}px` }}
+            >
+              <BarChart
+                data={chartData}
+                layout="vertical"
+                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                <XAxis
+                  type="number"
+                  allowDecimals={false}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="chartLabel"
+                  tickLine={false}
+                  axisLine={false}
+                  width={axisWidth}
+                  tick={{ fontSize: 11 }}
+                />
+                <ChartTooltip
+                  cursor={chartHoverCursor}
+                  content={<BrandSummaryTooltip />}
+                />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Bar
+                  dataKey="graded"
+                  fill="var(--color-graded)"
+                  radius={[0, 4, 4, 0]}
+                  barSize={10}
+                />
+                <Bar
+                  dataKey="done"
+                  fill="var(--color-done)"
+                  radius={[0, 4, 4, 0]}
+                  barSize={10}
+                />
+                <Bar
+                  dataKey="pending"
+                  fill="var(--color-pending)"
+                  radius={[0, 4, 4, 0]}
+                  barSize={10}
+                />
+                <Bar
+                  dataKey="blockers"
+                  fill="var(--color-blockers)"
+                  radius={[0, 4, 4, 0]}
+                  barSize={10}
+                />
+                <Bar
+                  dataKey="approvals"
+                  fill="var(--color-approvals)"
+                  radius={[0, 4, 4, 0]}
+                  barSize={10}
+                />
+                <Bar
+                  dataKey="approved"
+                  fill="var(--color-approved)"
+                  radius={[0, 4, 4, 0]}
+                  barSize={10}
+                />
+              </BarChart>
+            </ChartContainer>
             {chartData.length <= 6 ? (
               <BrandCompactSummary items={chartData} />
             ) : null}

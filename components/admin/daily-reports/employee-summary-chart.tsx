@@ -17,8 +17,11 @@ import {
   ChartTooltip,
   chartHoverCursor,
 } from "@/components/ui/chart"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { UserAvatar } from "@/components/shared/user-avatar"
+import {
+  getCategoryAxisWidth,
+  getCategoryChartHeight,
+} from "@/lib/chart-layout"
 import {
   toEmployeeChartItems,
   type EmployeeChartItem,
@@ -110,7 +113,10 @@ export function EmployeeSummaryChart({
   summaries,
 }: EmployeeSummaryChartProps) {
   const chartData = toEmployeeChartItems(summaries)
-  const chartHeight = Math.min(360, Math.max(220, chartData.length * 36 + 48))
+  const axisWidth = getCategoryAxisWidth(
+    chartData.map((item) => item.employeeName),
+  )
+  const chartHeight = getCategoryChartHeight(chartData.length)
 
   return (
     <Card className="flex h-full min-w-0 flex-col gap-3 py-4 md:gap-6 md:py-6">
@@ -127,49 +133,45 @@ export function EmployeeSummaryChart({
           </p>
         ) : (
           <>
-            <ScrollArea className="w-full min-w-0" scrollbars="horizontal">
-              <div className="min-w-full">
-                <ChartContainer
-                  config={employeeChartConfig}
-                  className="aspect-auto w-full"
-                  style={{ height: `${chartHeight}px` }}
-                >
-                  <BarChart
-                    data={chartData}
-                    layout="vertical"
-                    margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
-                  >
-                    <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-                    <XAxis
-                      type="number"
-                      domain={[0, 100]}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `${value}%`}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="chartLabel"
-                      tickLine={false}
-                      axisLine={false}
-                      width={96}
-                      tick={{ fontSize: 11 }}
-                    />
-                    <ChartTooltip
-                      cursor={chartHoverCursor}
-                      content={<EmployeeSummaryTooltip />}
-                    />
-                    <ChartLegend content={<ChartLegendContent />} />
-                    <Bar
-                      dataKey="completionRate"
-                      fill="var(--color-completionRate)"
-                      radius={[0, 4, 4, 0]}
-                      barSize={18}
-                    />
-                  </BarChart>
-                </ChartContainer>
-              </div>
-            </ScrollArea>
+            <ChartContainer
+              config={employeeChartConfig}
+              className="aspect-auto w-full min-w-0"
+              style={{ height: `${chartHeight}px` }}
+            >
+              <BarChart
+                data={chartData}
+                layout="vertical"
+                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid horizontal={false} strokeDasharray="3 3" />
+                <XAxis
+                  type="number"
+                  domain={[0, 100]}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `${value}%`}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="chartLabel"
+                  tickLine={false}
+                  axisLine={false}
+                  width={axisWidth}
+                  tick={{ fontSize: 11 }}
+                />
+                <ChartTooltip
+                  cursor={chartHoverCursor}
+                  content={<EmployeeSummaryTooltip />}
+                />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Bar
+                  dataKey="completionRate"
+                  fill="var(--color-completionRate)"
+                  radius={[0, 4, 4, 0]}
+                  barSize={18}
+                />
+              </BarChart>
+            </ChartContainer>
             <EmployeeCompactSummary items={chartData} />
           </>
         )}
