@@ -10,6 +10,7 @@ export type ApprovalActivityLog = {
   contentReportId: number;
   actorProfileId: number;
   actorName: string;
+  actorImageUrl?: string | null;
   actorAccountType: string;
   actorPosition: string | null;
   action: string;
@@ -65,6 +66,7 @@ export type ContentReport = {
   scheduledAt: string | null;
 
   remarksRevisionSummary: string | null;
+  approvalPublishingPermissions?: ApprovalPublishingPermissions;
   activityLogs: ApprovalActivityLog[];
 
   createdAt: string;
