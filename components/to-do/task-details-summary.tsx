@@ -53,7 +53,7 @@ export function TaskDetailsSummary({
             <RichTextRenderer
               value={assignment.description}
               emptyText="No task description provided."
-              className="mt-1 text-sm text-muted-foreground"
+              className="mt-1 text-md text-muted-foreground"
             />
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -71,6 +71,8 @@ export function TaskDetailsSummary({
               type="proof"
               prefix="Proof"
             />
+            <TaskAssigneeBrands brands={assignment.assigneeBrands} />
+
           </div>
         </div>
 
@@ -85,10 +87,6 @@ export function TaskDetailsSummary({
         </div>
 
         <Separator />
-
-        <DetailField label="Brand access">
-          <TaskAssigneeBrands brands={assignment.assigneeBrands} />
-        </DetailField>
 
         {assignment.revisionNote ? (
           <div className="rounded-lg border-2 border-orange-500 bg-orange-100 p-3 text-sm leading-relaxed text-orange-950 dark:bg-orange-950/40 dark:text-orange-200">

@@ -39,7 +39,7 @@ export const KANBAN_COLUMN_LIST_CLASS =
 
 /** Drag overlay while dragging Kanban cards. */
 export const KANBAN_OVERLAY_CLASS =
-  "rounded-lg border-2 border-dashed bg-muted/20"
+  "rounded-lg border-2 border-dashed bg-muted"
 
 type KanbanBoardShellProps = {
   children: ReactNode

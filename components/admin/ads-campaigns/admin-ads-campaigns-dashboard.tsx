@@ -143,15 +143,6 @@ export function AdminAdsCampaignsDashboard({
 
   return (
     <div className="min-w-0 space-y-6 overflow-hidden">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-black tracking-tight md:text-3xl">
-          Ads Campaigns
-        </h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Monitor campaign performance, imported Google Ads metrics, and brand
-          campaign records.
-        </p>
-      </header>
 
       <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2">
@@ -293,8 +284,8 @@ export function AdminAdsCampaignsDashboard({
                       </TableCell>
                       <TableCell>{formatDate(campaign.startDate)}</TableCell>
                       <TableCell>{formatDate(campaign.endDate)}</TableCell>
-                      </TableRow>
-                    ))
+                    </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>

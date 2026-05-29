@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AP Creative Dashboard — Site Audit &amp; Static HTML Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design tokens (from app/globals.css) ── */
+    :root {
+      --blue: #1d2d89;
+      --cyan: #209cbb;
+      --red: #f21424;
+      --magenta: #a72a6f;
+      --cream: #f8f3e8;
+      --paper: #f5f4f1;
+      --ink: #111111;
+      --muted-fg: #5f6470;
+      --background: #f8f3e8;
+      --foreground: #111111;
+      --card: #ffffff;
+      --card-fg: #111111;
+      --muted: #f5f4f1;
+      --border: #111111;
+      --sidebar: #ffffff;
+      --sidebar-primary: #1d2d89;
+      --sidebar-primary-fg: #ffffff;
+      --sidebar-accent: #f5f4f1;
+      --destructive: #f21424;
+      --shadow-hard: 7px 7px 0 #111111;
+      --shadow-hard-sm: 4px 4px 0 #111111;
+      --radius: 0.625rem;
+      --sidebar-width: 17rem;
+      --font: "Figtree", ui-sans-serif, system-ui, sans-serif;
+    }
+    .dark {
+      --background: #0f1118;
+      --foreground: #f5f4f1;
+      --card: #171a24;
+      --card-fg: #f5f4f1;
+      --muted: #1c2030;
+      --muted-fg: #a8adb8;
+      --border: rgba(255,255,255,0.14);
+      --sidebar: #12151f;
+      --sidebar-accent: #1c2030;
+      --shadow-hard: 7px 7px 0 #000;
+      --shadow-hard-sm: 4px 4px 0 #000;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--background);
+      color: var(--foreground);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--blue); }
+    h1,h2,h3 { letter-spacing: -0.02em; margin: 0 0 0.5rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; }
+    h2 { font-size: 1.25rem; font-weight: 700; margin-top: 2rem; }
+    h3 { font-size: 1rem; font-weight: 600; }
+    p { margin: 0 0 0.75rem; }
+    code, pre { font-family: ui-monospace, monospace; font-size: 0.85em; }
+    pre {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      overflow-x: auto;
+      box-shadow: var(--shadow-hard-sm);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      margin: 1rem 0;
+    }
+    th, td {
+      border: 2px solid var(--border);
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--muted); font-weight: 600; }
+    .audit-wrap { max-width: 72rem; margin: 0 auto; padding: 1.5rem; }
+    .audit-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.75rem 0;
+      background: var(--background);
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .audit-nav button, .btn {
+      font-family: inherit;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      color: var(--foreground);
+      padding: 0.4rem 0.75rem;
+      box-shadow: var(--shadow-hard-sm);
+      transition: transform 0.1s;
+    }
+    .audit-nav button:hover, .btn:hover { transform: translate(-1px,-1px); }
+    .audit-nav button.active, .btn-primary {
+      background: var(--sidebar-primary);
+      color: var(--sidebar-primary-fg);
+    }
+    .btn-primary { padding: 0.5rem 1rem; }
+    .btn-destructive { background: var(--destructive); color: #fff; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border: 2px solid var(--border);
+      border-radius: 999px;
+      padding: 0.1rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--muted);
+    }
+    .badge-count { background: var(--red); color: #fff; border-color: var(--ink); min-width: 1.25rem; justify-content: center; }
+    .badge-neutral { font-variant-numeric: tabular-nums; }
+    .note {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      background: color-mix(in srgb, var(--muted) 50%, transparent);
+      font-size: 0.875rem;
+      color: var(--muted-fg);
+    }
+    .limitation { border-left: 4px solid var(--red); padding-left: 1rem; margin: 1rem 0; }
+    section.page-view { display: none; }
+    section.page-view.active { display: block; }
+
+    /* ── App shell (dashboard) ── */
+    .app-shell {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 1fr;
+      height: 100vh;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-hard);
+      margin: 1rem 0 2rem;
+    }
+    .sidebar {
+      background: var(--sidebar);
+      border-right: 2px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-header {
+      padding: 1rem;
+      border-bottom: 2px solid var(--border);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .sidebar-group-label {
+      padding: 0.75rem 1rem 0.25rem;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--muted-fg);
+    }
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      margin: 0.125rem 0.5rem;
+      border-radius: var(--radius);
+      text-decoration: none;
+      color: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .sidebar-link:hover { background: var(--sidebar-accent); }
+    .sidebar-link.active {
+      background: var(--sidebar-primary);
+      color: var(--sidebar-primary-fg);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow-hard-sm);
+    }
+    .sidebar-link .icon { width: 1rem; text-align: center; opacity: 0.8; }
+    .sidebar-sub { padding-left: 2rem; font-size: 0.8125rem; }
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 1rem;
+      border-top: 2px solid var(--border);
+      font-size: 0.75rem;
+    }
+    .main-inset { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+    .top-header {
+      height: 3.5rem;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      border-bottom: 2px solid var(--border);
+      background: var(--background);
+    }
+    .top-header h1 { font-size: 1.125rem; margin: 0; }
+    .main-content {
+      flex: 1;
+      overflow: auto;
+      padding: 1rem 1.5rem;
+      position: relative;
+    }
+    .main-content::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: radial-gradient(var(--ink) 1px, transparent 1px);
+      background-size: 6px 6px;
+    }
+    .card {
+      background: var(--card);
+      color: var(--card-fg);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: none;
+    }
+    .card-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 2px solid color-mix(in srgb, var(--border) 40%, transparent);
+    }
+    .card-title { font-size: 1.125rem; font-weight: 700; }
+    .card-body { padding: 1rem 1.25rem; }
+    .login-page {
+      min-height: 70vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 2rem;
+    }
+    .login-page::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.04;
+      background-image: radial-gradient(var(--ink) 1px, transparent 1px);
+      background-size: 6px 6px;
+    }
+    .login-card {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 28rem;
+      box-shadow: var(--shadow-hard);
+    }
+    .field { margin-bottom: 1rem; }
+    .field label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.35rem; }
+    .field input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--muted);
+      font: inherit;
+    }
+    .tabs-list {
+      display: inline-flex;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2px;
+      background: var(--muted);
+    }
+    .tabs-trigger {
+      padding: 0.35rem 0.75rem;
+      border: none;
+      background: transparent;
+      font: inherit;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: calc(var(--radius) - 2px);
+    }
+    .tabs-trigger.active { background: var(--card); border: 2px solid var(--border); box-shadow: var(--shadow-hard-sm); }
+    .board-header-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .empty-banner {
+      flex: 1;
+      max-width: 32rem;
+      text-align: center;
+      padding: 0.75rem 1rem;
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      color: var(--muted-fg);
+      background: color-mix(in srgb, var(--muted) 30%, transparent);
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .filter-select {
+      padding: 0.35rem 0.5rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      font: inherit;
+      font-size: 0.8125rem;
+    }
+    .kanban-row {
+      display: flex;
+      gap: 0.75rem;
+      overflow-x: auto;
+      padding: 0.5rem 0 1rem;
+      min-height: 420px;
+    }
+    .kanban-col {
+      flex: 0 0 260px;
+      display: flex;
+      flex-direction: column;
+      min-height: 360px;
+    }
+    .kanban-col-header {
+      padding: 0.5rem 0.75rem;
+      font-weight: 700;
+      font-size: 0.8125rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius) var(--radius) 0 0;
+      background: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    .kanban-col-body {
+      flex: 1;
+      border: 2px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      background: color-mix(in srgb, var(--muted) 40%, var(--card));
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .kanban-card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem;
+      font-size: 0.8125rem;
+      box-shadow: var(--shadow-hard-sm);
+      cursor: pointer;
+    }
+    .kanban-card strong { display: block; margin-bottom: 0.25rem; }
+    .kanban-card .meta { color: var(--muted-fg); font-size: 0.75rem; }
+    .status-pill {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 0.15rem 0.4rem;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      margin-top: 0.35rem;
+    }
+    .status-pending { background: #fef3c7; }
+    .status-approved { background: #d1fae5; }
+    .status-revision { background: #fce7f3; }
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .kpi {
+      padding: 1rem;
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow-hard-sm);
+    }
+    .kpi .label { font-size: 0.75rem; color: var(--muted-fg); text-transform: uppercase; letter-spacing: 0.05em; }
+    .kpi .value { font-size: 1.5rem; font-weight: 700; }
+    .data-table-wrap {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      overflow: auto;
+      max-height: 320px;
+    }
+    .data-table { margin: 0; }
+    .data-table thead th { position: sticky; top: 0; z-index: 1; }
+    @media (max-width: 900px) {
+      .app-shell { grid-template-columns: 1fr; height: auto; min-height: 80vh; }
+      .sidebar { max-height: 200px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="audit-wrap">
+    <header>
+      <h1>AP Creative Dashboard — Site Audit</h1>
+      <p>Static vanilla HTML prototype generated from the Next.js codebase (<code>internal-apcreative</code>). Open this file in a browser. Use the buttons below to switch views.</p>
+      <div class="audit-nav" role="tablist">
+        <button type="button" class="active" data-view="audit">Audit Report</button>
+        <button type="button" data-view="login">Login</button>
+        <button type="button" data-view="admin-dash">Admin Shell</button>
+        <button type="button" data-view="employee-approvals">Employee Approvals</button>
+        <button type="button" data-view="admin-approvals">Admin Approvals</button>
+        <button type="button" data-view="todo-tasks">To-Do Tasks</button>
+        <button type="button" data-view="reminders">Reminders</button>
+        <button type="button" data-view="account">Account</button>
+        <button type="button" id="theme-toggle" type="button">Toggle dark</button>
+      </div>
+    </header>
+
+    <!-- ═══════════════════ AUDIT REPORT ═══════════════════ -->
+    <section id="view-audit" class="page-view active">
+      <h2>1. Executive summary</h2>
+      <p>This is an <strong>internal dashboard</strong> for AP Creative: brand officers, supervisors, executives, and full-stack developers manage content approvals, tasks, reminders, daily progress, ads campaigns, and analytics. The live app is a <strong>Next.js App Router</strong> SPA with server components, PostgreSQL, and cookie-based Better Auth — not a static site.</p>
+      <div class="limitation">
+        <strong>Static HTML limitations:</strong> No real auth, API, database, drag-and-drop, dialogs, rich text (Plate.js), charts (Recharts), file uploads, or server actions. Prototypes below mirror layout and neo-brutal styling only.
+      </div>
+
+      <h2>2. Tech stack</h2>
+      <table>
+        <thead><tr><th>Layer</th><th>Technology</th></tr></thead>
+        <tbody>
+          <tr><td>Framework</td><td>Next.js App Router, TypeScript</td></tr>
+          <tr><td>UI</td><td>shadcn/ui (Radix), Tailwind CSS v4, Figtree font</td></tr>
+          <tr><td>State (UI only)</td><td>Zustand (filters, dialogs, selected rows)</td></tr>
+          <tr><td>Auth</td><td>Better Auth + PostgreSQL session cookies</td></tr>
+          <tr><td>Data</td><td>PostgreSQL via <code>pg</code> (no Prisma)</td></tr>
+          <tr><td>Validation</td><td>Zod on server actions</td></tr>
+          <tr><td>Toasts</td><td>Sonner</td></tr>
+        </tbody>
+      </table>
+
+      <h2>3. Account types &amp; routing</h2>
+      <table>
+        <thead><tr><th>Account type</th><th>Default dashboard</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>CLIENT, EMPLOYEE</td><td><code>/employee/dashboard</code></td><td>Brand/role permissions; primary brand required</td></tr>
+          <tr><td>SUPERVISOR, MANAGER, EXECUTIVE, DIRECTOR</td><td><code>/admin/dashboard</code></td><td>Active profile → all permissions</td></tr>
+          <tr><td>FULL_STACK_DEVELOPER</td><td><code>/admin/dashboard</code></td><td>Admin UI; restricted permissions; own tasks on <code>/admin/to-do/tasks</code> with sidebar badge</td></tr>
+        </tbody>
+      </table>
+
+      <h2>4. Route map (all pages)</h2>
+      <table>
+        <thead><tr><th>Route</th><th>Purpose</th><th>Layout</th></tr></thead>
+        <tbody>
+          <tr><td><code>/</code></td><td>Session redirect</td><td>Root</td></tr>
+          <tr><td><code>/login</code></td><td>Email/password sign-in</td><td>Public</td></tr>
+          <tr><td><code>/account</code></td><td>Account settings, password</td><td>DashboardShell (role-aware)</td></tr>
+          <tr><td><code>/changelog</code></td><td>Version changelog</td><td>Standalone</td></tr>
+          <tr><td><code>/admin</code>, <code>/admin/dashboard</code></td><td>Admin overview KPIs</td><td>Admin layout</td></tr>
+          <tr><td><code>/admin/daily-reports</code></td><td>Daily reports list</td><td>Admin</td></tr>
+          <tr><td><code>/admin/approvals</code></td><td>Supervisor/director approval kanban + table</td><td>Wide layout</td></tr>
+          <tr><td><code>/admin/brands</code></td><td>Brand management</td><td>Admin</td></tr>
+          <tr><td><code>/admin/platform-analytics</code></td><td>Cross-platform analytics</td><td>Admin</td></tr>
+          <tr><td><code>/admin/platform-analytics/meta/posts</code></td><td>Meta posts drill-down</td><td>Admin</td></tr>
+          <tr><td><code>/admin/staff-accountability</code></td><td>Staff task accountability</td><td>Admin</td></tr>
+          <tr><td><code>/admin/account-control</code></td><td>User/account CRUD (director/supervisor)</td><td>Admin</td></tr>
+          <tr><td><code>/admin/to-do/tasks</code></td><td>Task kanban (team or own for FSD)</td><td>Wide layout</td></tr>
+          <tr><td><code>/admin/to-do/reminders</code></td><td>Reminder kanban</td><td>Wide layout</td></tr>
+          <tr><td><code>/admin/daily-progress</code></td><td>Daily progress report entry</td><td>Admin</td></tr>
+          <tr><td><code>/admin/ads-campaigns</code></td><td>Google/Meta ads campaigns</td><td>Admin</td></tr>
+          <tr><td><code>/admin/facebook-monitoring</code></td><td>Facebook monitoring (legacy route)</td><td>Admin</td></tr>
+          <tr><td><code>/admin/unauthorized</code></td><td>403 fallback</td><td>Admin</td></tr>
+          <tr><td><code>/employee/dashboard</code></td><td>Brand officer dashboard</td><td>Employee layout</td></tr>
+          <tr><td><code>/employee/approvals</code></td><td>Content report approval board</td><td>Wide layout</td></tr>
+          <tr><td><code>/employee/platform-analytics</code></td><td>Brand-scoped analytics</td><td>Employee</td></tr>
+          <tr><td><code>/employee/to-do/tasks</code></td><td>Assigned tasks + badge</td><td>Wide layout</td></tr>
+          <tr><td><code>/employee/to-do/reminders</code></td><td>Personal reminders</td><td>Wide layout</td></tr>
+          <tr><td><code>/employee/daily-progress</code></td><td>Daily progress submit</td><td>Employee</td></tr>
+          <tr><td><code>/employee/ads-campaigns</code></td><td>Ads campaigns (permissioned)</td><td>Employee</td></tr>
+          <tr><td><code>/employee/content-report</code></td><td>Content report flow</td><td>Employee</td></tr>
+          <tr><td><code>/employee/unauthorized</code></td><td>403 fallback</td><td>Employee</td></tr>
+        </tbody>
+      </table>
+
+      <h2>5. Shared UI patterns (audit)</h2>
+      <ul>
+        <li><strong>DashboardShell</strong> — Sidebar (17rem) + sticky header (title from route) + clock badge + dotted main background.</li>
+        <li><strong>BoardSection</strong> — Card wrapper for kanban boards; title row + optional dashed empty-state + actions right-aligned.</li>
+        <li><strong>Kanban</strong> — Horizontal scroll columns; cards with hard shadow; employee approvals use 6 columns (Pending → Published).</li>
+        <li><strong>Data tables</strong> — Bordered scroll area, sticky header, pagination component (Account Control, approvals table view).</li>
+        <li><strong>Neo-brutal</strong> — 2px ink borders, <code>--shadow-hard</code>, cream background, navy sidebar active state.</li>
+      </ul>
+
+      <h2>6. Employee Approvals page (detailed)</h2>
+      <p>Source: <code>components/employee/approvals/approval-kanban-board.tsx</code></p>
+      <table>
+        <thead><tr><th>Element</th><th>Behavior</th></tr></thead>
+        <tbody>
+          <tr><td>Header</td><td>Title "Approval board"; optional dashed empty banner; Kanban/Table tabs; "Create Approval Report" if permitted</td></tr>
+          <tr><td>Filters</td><td>Search, brand, content type, platform, supervisor/director/publish status (Zustand store)</td></tr>
+          <tr><td>Kanban columns</td><td>Pending, Revision, Rejected, Approved, Ready to Publish, Published</td></tr>
+          <tr><td>Polling</td><td><code>useApprovalPollingRefresh</code> refreshes route periodically</td></tr>
+          <tr><td>Dialogs</td><td>Create/edit form dialog, details sheet, cancel alert</td></tr>
+        </tbody>
+      </table>
+
+      <h2>7. Files to open in repo</h2>
+      <pre>app/layout.tsx
+app/globals.css
+components/layout/dashboard-shell.tsx
+components/layout/dashboard-sidebar.tsx
+types/sidebar.ts
+components/employee/approvals/approval-kanban-board.tsx</pre>
+    </section>
+
+    <!-- ═══════════════════ LOGIN ═══════════════════ -->
+    <section id="view-login" class="page-view">
+      <div class="login-page">
+        <div class="card login-card">
+          <div class="card-header">
+            <div class="card-title">AP Creative Dashboard</div>
+            <p style="margin:0.5rem 0 0;font-size:0.875rem;color:var(--muted-fg)">Sign in to access your internal dashboard.</p>
+          </div>
+          <div class="card-body">
+            <form onsubmit="return false;">
+              <div class="field">
+                <label for="email">Email</label>
+                <input id="email" type="email" placeholder="you@apcreative.com" autocomplete="email" />
+              </div>
+              <div class="field">
+                <label for="password">Password</label>
+                <input id="password" type="password" autocomplete="current-password" />
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%">Sign in</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ ADMIN SHELL ═══════════════════ -->
+    <section id="view-admin-dash" class="page-view">
+      <div class="app-shell" data-role="admin">
+        <aside class="sidebar" id="sidebar-admin"></aside>
+        <div class="main-inset">
+          <header class="top-header">
+            <h1>Dashboard</h1>
+            <span class="badge badge-neutral">Fri, May 29, 2026, 02:30:45 PM</span>
+          </header>
+          <main class="main-content">
+            <div class="kpi-grid">
+              <div class="kpi"><div class="label">Pending approvals</div><div class="value">12</div></div>
+              <div class="kpi"><div class="label">Tasks due today</div><div class="value">5</div></div>
+              <div class="kpi"><div class="label">Active brands</div><div class="value">8</div></div>
+              <div class="kpi"><div class="label">Reports this week</div><div class="value">24</div></div>
+            </div>
+            <p class="note" style="margin-top:1rem">Admin dashboard content is dynamic from PostgreSQL; KPIs above are placeholder.</p>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ EMPLOYEE APPROVALS ═══════════════════ -->
+    <section id="view-employee-approvals" class="page-view">
+      <div class="app-shell">
+        <aside class="sidebar" id="sidebar-employee"></aside>
+        <div class="main-inset">
+          <header class="top-header">
+            <h1>Approvals</h1>
+            <span class="badge badge-neutral">Fri, May 29, 2026, 02:30:45 PM</span>
+          </header>
+          <main class="main-content" style="display:flex;flex-direction:column;overflow:hidden;padding:1rem;">
+            <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;">
+              <div class="card-header">
+                <div class="board-header-row">
+                  <div class="card-title">Approval board</div>
+                  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;">
+                    <div class="tabs-list">
+                      <button type="button" class="tabs-trigger active">Kanban Board <span class="badge" style="margin-left:0.35rem">2</span></button>
+                      <button type="button" class="tabs-trigger">Table View</button>
+                    </div>
+                    <button type="button" class="btn btn-primary">+ Create Approval Report</button>
+                  </div>
+                </div>
+                <div class="filters">
+                  <input class="filter-select" type="search" placeholder="Search reports…" style="min-width:12rem" />
+                  <select class="filter-select"><option>All brands</option><option>Brand A</option></select>
+                  <select class="filter-select"><option>Content type</option></select>
+                  <select class="filter-select"><option>Platform</option></select>
+                  <select class="filter-select"><option>Supervisor status</option></select>
+                  <select class="filter-select"><option>Director status</option></select>
+                  <select class="filter-select"><option>Publish status</option></select>
+                </div>
+              </div>
+              <div class="card-body" style="flex:1;overflow:hidden;padding-top:0;">
+                <div class="kanban-row">
+                  <div class="kanban-col">
+                    <div class="kanban-col-header">Pending <span class="badge">1</span></div>
+                    <div class="kanban-col-body">
+                      <article class="kanban-card">
+                        <strong>Summer Campaign Reel</strong>
+                        <span class="meta">Brand A · Instagram Reel</span>
+                        <span class="status-pill status-pending">Pending review</span>
+                      </article>
+                    </div>
+                  </div>
+                  <div class="kanban-col">
+                    <div class="kanban-col-header">Revision <span class="badge">0</span></div>
+                    <div class="kanban-col-body"></div>
+                  </div>
+                  <div class="kanban-col">
+                    <div class="kanban-col-header">Rejected <span class="badge">0</span></div>
+                    <div class="kanban-col-body"></div>
+                  </div>
+                  <div class="kanban-col">
+                    <div class="kanban-col-header">Approved <span class="badge">1</span></div>
+                    <div class="kanban-col-body">
+                      <article class="kanban-card">
+                        <strong>Product Launch Static</strong>
+                        <span class="meta">Brand B · Facebook Post</span>
+                        <span class="status-pill status-approved">Approved</span>
+                      </article>
+                    </div>
+                  </div>
+                  <div class="kanban-col">
+                    <div class="kanban-col-header">Ready to Publish <span class="badge">2</span></div>
+                    <div class="kanban-col-body">
+                      <article class="kanban-card">
+                        <strong>Weekly Newsletter</strong>
+                        <span class="meta">Brand A · Email</span>
+                        <span class="status-pill status-approved">Ready</span>
+                      </article>
+                      <article class="kanban-card">
+                        <strong>Story Series #4</strong>
+                        <span class="meta">Brand C · Stories</span>
+                        <span class="status-pill status-approved">Ready</span>
+                      </article>
+                    </div>
+                  </div>
+                  <div class="kanban-col">
+                    <div class="kanban-col-header">Published <span class="badge">3</span></div>
+                    <div class="kanban-col-body">
+                      <article class="kanban-card">
+                        <strong>March Highlights</strong>
+                        <span class="meta">Published May 28</span>
+                      </article>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ ADMIN APPROVALS (simplified) ═══════════════════ -->
+    <section id="view-admin-approvals" class="page-view">
+      <div class="app-shell">
+        <aside class="sidebar" id="sidebar-admin-2"></aside>
+        <div class="main-inset">
+          <header class="top-header"><h1>Approval</h1><span class="badge badge-neutral">Live clock</span></header>
+          <main class="main-content">
+            <div class="card">
+              <div class="card-header board-header-row">
+                <div class="card-title">Approval board</div>
+                <div class="tabs-list">
+                  <button class="tabs-trigger active">Kanban Board</button>
+                  <button class="tabs-trigger">Table View</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <p class="note">Admin kanban uses supervisor/director lanes and review actions (approve, reject, request revision, publish). See <code>components/admin/approvals/approval-kanban-board.tsx</code>.</p>
+                <div class="kanban-row" style="min-height:200px">
+                  <div class="kanban-col"><div class="kanban-col-header">Awaiting supervisor</div><div class="kanban-col-body"><article class="kanban-card"><strong>Sample report</strong></article></div></div>
+                  <div class="kanban-col"><div class="kanban-col-header">Awaiting director</div><div class="kanban-col-body"></div></div>
+                  <div class="kanban-col"><div class="kanban-col-header">Ready to publish</div><div class="kanban-col-body"></div></div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ TO-DO TASKS ═══════════════════ -->
+    <section id="view-todo-tasks" class="page-view">
+      <div class="app-shell">
+        <aside class="sidebar" id="sidebar-employee-2"></aside>
+        <div class="main-inset">
+          <header class="top-header"><h1>To-Do Task</h1><span class="badge badge-neutral">Live clock</span></header>
+          <main class="main-content">
+            <div class="card">
+              <div class="card-header board-header-row">
+                <div class="card-title">Task board</div>
+                <button class="btn btn-primary">+ Assign task</button>
+              </div>
+              <div class="card-body">
+                <div class="kanban-row">
+                  <div class="kanban-col"><div class="kanban-col-header">Assigned</div><div class="kanban-col-body"><article class="kanban-card"><strong>Update meta copy</strong><span class="meta">Due Jun 2 · High</span></article></div></div>
+                  <div class="kanban-col"><div class="kanban-col-header">Pending proof</div><div class="kanban-col-body"></div></div>
+                  <div class="kanban-col"><div class="kanban-col-header">Revision</div><div class="kanban-col-body"></div></div>
+                  <div class="kanban-col"><div class="kanban-col-header">Blocker</div><div class="kanban-col-body"></div></div>
+                  <div class="kanban-col"><div class="kanban-col-header">Done</div><div class="kanban-col-body"></div></div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ REMINDERS ═══════════════════ -->
+    <section id="view-reminders" class="page-view">
+      <div class="app-shell">
+        <aside class="sidebar" id="sidebar-employee-3"></aside>
+        <div class="main-inset">
+          <header class="top-header"><h1>Reminder</h1></header>
+          <main class="main-content">
+            <div class="card">
+              <div class="card-header board-header-row">
+                <div class="card-title">Reminder board</div>
+                <button class="btn btn-primary">+ Add Reminder</button>
+              </div>
+              <div class="card-body">
+                <div class="kanban-row">
+                  <div class="kanban-col"><div class="kanban-col-header">Active</div><div class="kanban-col-body"><article class="kanban-card"><strong>Client check-in</strong><p style="margin:0.35rem 0 0;font-size:0.75rem">Rich text description rendered via Plate.js in app.</p></article></div></div>
+                  <div class="kanban-col"><div class="kanban-col-header">Done</div><div class="kanban-col-body"></div></div>
+                  <div class="kanban-col"><div class="kanban-col-header">Archived</div><div class="kanban-col-body"></div></div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ ACCOUNT ═══════════════════ -->
+    <section id="view-account" class="page-view">
+      <div class="app-shell">
+        <aside class="sidebar" id="sidebar-mixed"></aside>
+        <div class="main-inset">
+          <header class="top-header"><h1>Account Settings</h1></header>
+          <main class="main-content">
+            <div class="card" style="max-width:40rem">
+              <div class="card-header"><div class="card-title">Profile</div></div>
+              <div class="card-body">
+                <div class="field"><label>Full name</label><input type="text" value="Jane Brand Officer" readonly /></div>
+                <div class="field"><label>Email</label><input type="email" value="jane@example.com" readonly /></div>
+                <div class="field"><label>Account type</label><input type="text" value="EMPLOYEE" readonly /></div>
+                <button class="btn">Change password</button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </section>
+
+    <footer style="margin:3rem 0 2rem;font-size:0.75rem;color:var(--muted-fg)">
+      Generated audit · AP Creative internal dashboard · Not for production deployment
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const adminNav = [
+        { group: "Overview", items: [
+          { title: "Dashboard", href: "/admin", icon: "⌂", active: true },
+          { title: "Daily Reports", href: "/admin/daily-reports", icon: "📄" },
+        ]},
+        { group: "Content", items: [
+          { title: "Approval", href: "/admin/approvals", icon: "✓" },
+          { title: "Brands", href: "/admin/brands", icon: "🏢" },
+        ]},
+        { group: "Management", items: [
+          { title: "Account Control", href: "/admin/account-control", icon: "👤" },
+          { title: "To-Do", sub: [
+            { title: "To-Do Task", href: "/admin/to-do/tasks", badge: "3" },
+            { title: "Reminder", href: "/admin/to-do/reminders" },
+          ], icon: "☑" },
+          { title: "Daily Progress Report", href: "/admin/daily-progress", icon: "📋" },
+        ]},
+      ];
+      const employeeNav = [
+        { group: "Employee Dashboard", items: [
+          { title: "My Brand Dashboard", href: "/employee/dashboard", icon: "⌂" },
+          { title: "Approvals", href: "/employee/approvals", icon: "✓", active: true },
+          { title: "Platform Analytics", href: "/employee/platform-analytics", icon: "📊" },
+          { title: "To-Do", sub: [
+            { title: "To-Do Task", href: "/employee/to-do/tasks", badge: "5" },
+            { title: "Reminder", href: "/employee/to-do/reminders" },
+          ], icon: "☑" },
+          { title: "Daily Progress Report", href: "/employee/daily-progress", icon: "📋" },
+          { title: "Ads Campaigns", href: "/employee/ads-campaigns", icon: "📢" },
+        ]},
+      ];
+
+      function renderSidebar(el, nav, user) {
+        if (!el) return;
+        let html = '<div class="sidebar-header">AP Creative<br><span style="font-weight:400;font-size:0.75rem;color:var(--muted-fg)">' + user + '</span></div>';
+        nav.forEach(function (g) {
+          html += '<div class="sidebar-group-label">' + g.group + '</div>';
+          g.items.forEach(function (item) {
+            if (item.sub) {
+              html += '<div class="sidebar-link' + (item.active ? ' active' : '') + '"><span class="icon">' + item.icon + '</span>' + item.title + '</div>';
+              item.sub.forEach(function (sub) {
+                var badge = sub.badge ? '<span class="badge badge-count" style="margin-left:auto">' + sub.badge + '</span>' : '';
+                html += '<a class="sidebar-link sidebar-sub' + (sub.active ? ' active' : '') + '" href="#">' + sub.title + badge + '</a>';
+              });
+            } else {
+              html += '<a class="sidebar-link' + (item.active ? ' active' : '') + '" href="#"><span class="icon">' + item.icon + '</span>' + item.title + '</a>';
+            }
+          });
+        });
+        html += '<div class="sidebar-footer">Settings · Sign out</div>';
+        el.innerHTML = html;
+      }
+
+      renderSidebar(document.getElementById("sidebar-admin"), adminNav, "Executive · admin@apcreative.com");
+      renderSidebar(document.getElementById("sidebar-admin-2"), adminNav.map(function(g) {
+        return { group: g.group, items: g.items.map(function(i) {
+          return i.title === "Approval" ? Object.assign({}, i, { active: true }) : Object.assign({}, i, { active: false });
+        })};
+      }), "Supervisor");
+      renderSidebar(document.getElementById("sidebar-employee"), employeeNav, "Brand Officer · jane@brand.com");
+      renderSidebar(document.getElementById("sidebar-employee-2"), employeeNav.map(function(g) {
+        return { group: g.group, items: g.items.map(function(i) {
+          if (i.title === "To-Do") return Object.assign({}, i, { active: false, sub: i.sub.map(function(s) {
+            return s.title === "To-Do Task" ? Object.assign({}, s, { active: true }) : s;
+          })});
+          return Object.assign({}, i, { active: false });
+        })};
+      }), "Brand Officer");
+      renderSidebar(document.getElementById("sidebar-employee-3"), employeeNav, "Brand Officer");
+      renderSidebar(document.getElementById("sidebar-mixed"), employeeNav, "Account settings");
+
+      document.querySelectorAll(".audit-nav button[data-view]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var view = btn.getAttribute("data-view");
+          document.querySelectorAll(".audit-nav button[data-view]").forEach(function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          document.querySelectorAll(".page-view").forEach(function (s) { s.classList.remove("active"); });
+          var el = document.getElementById("view-" + view);
+          if (el) el.classList.add("active");
+          window.scrollTo(0, 0);
+        });
+      });
+
+      document.getElementById("theme-toggle").addEventListener("click", function () {
+        document.documentElement.classList.toggle("dark");
+      });
+    })();
+  </script>
+</body>
+</html>

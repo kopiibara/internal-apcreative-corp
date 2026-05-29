@@ -648,16 +648,6 @@ export function AdsCampaignsDashboard({
   return (
     <div className="min-w-0 space-y-6 overflow-hidden">
       <div className="flex flex-col gap-3 p-1 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-black tracking-tight md:text-3xl">
-            Ads Campaigns
-          </h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            Track campaign performance, imported platform data, and brand
-            campaign records.
-          </p>
-        </div>
-
         <div className="flex flex-wrap items-center gap-2">
           {canImportCsv ? (
             <Button
