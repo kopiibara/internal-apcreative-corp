@@ -1,14 +1,11 @@
 "use client"
 
 import { type CSSProperties, useEffect, useSyncExternalStore } from "react"
-import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FileText, ExternalLink } from "lucide-react"
 
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
 import { PageTransition } from "@/components/layout/page-transition"
 import { ForcedPasswordChangeDialog } from "@/components/auth/forced-password-change-dialog"
-import { Button } from "@/components/ui/button"
 import {
     SidebarInset,
     SidebarProvider,
@@ -16,12 +13,7 @@ import {
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
-import { appVersion } from "@/lib/app-version"
+
 import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { adminGroups, employeeGroups, type SidebarGroupItem } from "@/types/sidebar"
 import { cn } from "@/lib/utils"

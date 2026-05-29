@@ -19,9 +19,9 @@ export function PageTransition({ children }: PageTransitionProps) {
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={pathname}
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
+        initial={{ opacity: 0, x: -12, }}
+        animate={{ opacity: 1, x: 0, }}
+        exit={{ opacity: 0, x: 8, }}
         transition={{ duration: 0.22, ease: "easeOut" }}
         className="min-h-0 min-w-0 flex-1"
       >

@@ -24,6 +24,8 @@ export type DailyReportEmployeeOption = {
 export type DailyReportSummary = {
   dailyCompletionRate: number;
   gradedTaskCompletionRate: number;
+  grossTaskPoints: number;
+  lateTaskDeductionPoints: number;
   gradedTaskPoints: number;
   adjustedCompletionRate: number;
   approvalRate: number;
@@ -61,6 +63,8 @@ export type DailyEmployeeSummary = {
   approvalsSubmitted: number;
   approvalsApproved: number;
   gradedCompletionRate: number;
+  grossTaskPoints: number;
+  lateTaskDeductionPoints: number;
   taskPoints: number;
   adjustedCompletionRate: number;
 };

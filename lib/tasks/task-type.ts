@@ -72,3 +72,15 @@ export function isAssignmentCompletedOnTime(
 
   return new Date(completedAt).getTime() <= new Date(dueDate).getTime();
 }
+
+/** Employee proof submission time — used for late task point deductions. */
+export function isAssignmentSubmittedOnTime(
+  submittedAt: string | null,
+  dueDate: string | null,
+) {
+  if (!submittedAt || !dueDate) {
+    return null;
+  }
+
+  return new Date(submittedAt).getTime() <= new Date(dueDate).getTime();
+}
