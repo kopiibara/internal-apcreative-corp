@@ -5,6 +5,7 @@ import type {
   PRCollaborationStatus,
   PRContactStatus,
   PRInfluencerSize,
+  PRRequestStatus,
   PRRequestType,
 } from "@/lib/pr/pr-constants";
 import type { PRRequestRecord } from "@/lib/pr/pr-types";
@@ -35,6 +36,7 @@ type PRRequestRow = {
   collaboration_status: PRCollaborationStatus;
   follow_up_notes: string | null;
   declined_reason: string | null;
+  status: PRRequestStatus;
   created_by_profile_id: number;
   created_at: Date;
   updated_at: Date;
@@ -56,6 +58,7 @@ const PR_REQUEST_SELECT = `
     pr.collaboration_status,
     pr.follow_up_notes,
     pr.declined_reason,
+    pr.status,
     pr.created_by_profile_id,
     pr.created_at,
     pr.updated_at
@@ -82,6 +85,7 @@ function mapPRRequestRow(row: PRRequestRow): PRRequestRecord {
     collaborationStatus: row.collaboration_status,
     followUpNotes: row.follow_up_notes,
     declinedReason: row.declined_reason,
+    status: row.status,
     createdByProfileId: row.created_by_profile_id,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
@@ -235,6 +239,7 @@ export async function getPRRequestsForViewer(options: {
     `
     ${PR_REQUEST_SELECT}
     WHERE b.is_active = true
+      AND pr.status = 'ACTIVE'
     ${scopedFilter}
     ORDER BY pr.created_at DESC, pr.id DESC
     `,

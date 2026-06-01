@@ -122,6 +122,10 @@ export const duplicatePRRequestSchema = z.object({
   requestId: z.coerce.number().int().positive(),
 });
 
+export const deletePRRequestSchema = z.object({
+  requestId: z.coerce.number().int().positive(),
+});
+
 export function sanitizePRRequestInput<T extends {
   recommendation: string;
   initialDetails?: string | null;

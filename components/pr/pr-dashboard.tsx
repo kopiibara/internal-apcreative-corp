@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   DEFAULT_PR_FILTERS,
@@ -15,7 +16,7 @@ import { PRRequestForm } from "@/components/pr/pr-request-form";
 import { PRRequestDataTable } from "@/components/pr/pr-request-data-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { calculatePRRequestMetrics } from "@/lib/pr/pr-types";
+import { calculatePRRequestMetrics, isPRRequestActive } from "@/lib/pr/pr-types";
 import type { PRRequesterOption } from "@/lib/pr/pr-requests";
 import type { PRRequestRecord } from "@/lib/pr/pr-types";
 
@@ -66,6 +67,11 @@ export function PRDashboard({
   }
 
   function openEditForm(request: PRRequestRecord) {
+    if (!isPRRequestActive(request)) {
+      toast.error("Deleted PR requests cannot be edited.");
+      return;
+    }
+
     setFormMode("edit");
     setSelectedRequest(request);
     setFormOpen(true);

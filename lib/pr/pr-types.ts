@@ -2,6 +2,7 @@ import type {
   PRCollaborationStatus,
   PRContactStatus,
   PRInfluencerSize,
+  PRRequestStatus,
   PRRequestType,
 } from "@/lib/pr/pr-constants";
 
@@ -20,10 +21,15 @@ export type PRRequestRecord = {
   collaborationStatus: PRCollaborationStatus;
   followUpNotes: string | null;
   declinedReason: string | null;
+  status: PRRequestStatus;
   createdByProfileId: number;
   createdAt: string;
   updatedAt: string;
 };
+
+export function isPRRequestActive(request: Pick<PRRequestRecord, "status">) {
+  return request.status === "ACTIVE";
+}
 
 export type PRRequestMetrics = {
   totalRequests: number;
@@ -35,14 +41,16 @@ export type PRRequestMetrics = {
 export function calculatePRRequestMetrics(
   requests: PRRequestRecord[],
 ): PRRequestMetrics {
+  const activeRequests = requests.filter(isPRRequestActive);
+
   return {
-    totalRequests: requests.length,
-    contactedCount: requests.filter(
+    totalRequests: activeRequests.length,
+    contactedCount: activeRequests.filter(
       (request) => request.contactStatus === "CONTACTED",
     ).length,
-    scheduledVisitsCount: requests.filter((request) => request.dateOfVisit)
+    scheduledVisitsCount: activeRequests.filter((request) => request.dateOfVisit)
       .length,
-    paidCollabsCount: requests.filter(
+    paidCollabsCount: activeRequests.filter(
       (request) => request.collaborationStatus === "PAID",
     ).length,
   };

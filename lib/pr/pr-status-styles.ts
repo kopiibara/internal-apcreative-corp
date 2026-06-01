@@ -1,6 +1,7 @@
 import type {
   PRCollaborationStatus,
   PRContactStatus,
+  PRRequestStatus,
 } from "@/lib/pr/pr-constants";
 
 const contactStatusClasses: Record<PRContactStatus, string> = {
@@ -9,6 +10,13 @@ const contactStatusClasses: Record<PRContactStatus, string> = {
   CONTACTED:
     "border-emerald-700 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-700",
   DECLINED:
+    "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
+};
+
+const requestStatusClasses: Record<PRRequestStatus, string> = {
+  ACTIVE:
+    "border-emerald-700 bg-emerald-600 text-white dark:border-emerald-600 dark:bg-emerald-700",
+  DELETED:
     "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
 };
 
@@ -22,6 +30,10 @@ const collaborationStatusClasses: Record<PRCollaborationStatus, string> = {
 
 const inactiveButtonClass =
   "border-border bg-background text-foreground hover:bg-muted/60";
+
+export function getPRRequestStatusBadgeClassName(status: PRRequestStatus) {
+  return requestStatusClasses[status];
+}
 
 export function getPRContactStatusBadgeClassName(status: PRContactStatus) {
   return contactStatusClasses[status];

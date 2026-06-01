@@ -869,7 +869,7 @@ export function PlatformAnalyticsDashboard({
 }
 
 const PLATFORM_ACTIONS_ROW_CLASS =
-  "flex shrink-0 flex-wrap items-center justify-end gap-2 pr-1";
+  "flex shrink-0 flex-wrap items-center justify-end gap-2 pr-1  ";
 
 function PlatformActions({
   platform,

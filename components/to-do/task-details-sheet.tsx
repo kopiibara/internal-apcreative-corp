@@ -28,7 +28,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { canReviewTaskAssignment } from "@/lib/tasks/task-review-guards"
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
@@ -261,23 +260,17 @@ export function TaskDetailsSheet({
     permissions.canSubmitProof &&
     (assignment?.status === "ASSIGNED" || assignment?.status === "REVISION")
   const canReportBlocker = canSubmitProof && permissions.canReportBlocker
-  const canReview = assignment
-    ? canReviewTaskAssignment({
-      assignment,
-      actorProfileId: currentProfileId,
-      permissions,
-    })
-    : false
+  const canReview =
+    Boolean(assignment) &&
+    permissions.canReview &&
+    assignment?.assignedToProfileId !== currentProfileId
   const canConfirmDone = canReview && assignment?.status === "PENDING"
   const canRequestRevision = canReview && assignment?.status === "PENDING"
   const canResolveBlocker = canReview && assignment?.status === "BLOCKER"
-  const canChangeStatus = assignment
-    ? canReviewTaskAssignment({
-      assignment,
-      actorProfileId: currentProfileId,
-      permissions,
-    })
-    : false
+  const canChangeStatus =
+    Boolean(assignment) &&
+    (permissions.canReview || permissions.canManageAll) &&
+    assignment?.assignedToProfileId !== currentProfileId
   const hasSheetActions =
     canSubmitProof ||
     canReportBlocker ||
@@ -321,7 +314,7 @@ export function TaskDetailsSheet({
 
           {assignment ? (
             <ScrollArea className="min-h-0 flex-1 pr-3" scrollbars="vertical">
-              <div className="grid min-w-0 grid-cols-1 gap-4 py-4 xl:grid-cols-[2fr_1fr] px-4">
+              <div className="grid min-w-0 grid-cols-1 gap-4 py-4  xl:grid-cols-[2fr_1fr] px-4">
                 <div className="min-w-0 space-y-4">
                   <TaskDetailsSummary assignment={assignment} />
                   <TaskProofSummary assignment={assignment} />

@@ -1,11 +1,12 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Pencil } from "lucide-react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { duplicatePRRequest } from "@/app/employee/pr/actions";
+import { PRDeleteRequestDialog } from "@/components/pr/pr-delete-request-dialog";
 import { PRRequestTimeline } from "@/components/pr/pr-request-timeline";
 import {
   PRCollaborationStatusBadge,
@@ -28,7 +29,7 @@ import {
   getPRInfluencerSizeLabel,
   getPRRequestTypeLabel,
 } from "@/lib/pr/pr-labels";
-import type { PRRequestRecord } from "@/lib/pr/pr-types";
+import { isPRRequestActive, type PRRequestRecord } from "@/lib/pr/pr-types";
 import { formatPRTimelineDate } from "@/lib/pr/pr-timeline";
 
 type PRRequestDetailsSheetProps = {
@@ -115,12 +116,20 @@ export function PRRequestDetailsSheet({
   onEdit,
 }: PRRequestDetailsSheetProps) {
   const router = useRouter();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const isActive = request ? isPRRequestActive(request) : false;
   const canEdit =
     Boolean(request) &&
+    isActive &&
     Boolean(onEdit) &&
     (canManage || (canCreate && request?.createdByProfileId === currentProfileId));
-  const canDuplicate = Boolean(request) && canCreate;
+  const canDuplicate = Boolean(request) && canCreate && isActive;
+  const canDelete =
+    Boolean(request) &&
+    isActive &&
+    canCreate &&
+    request?.createdByProfileId === currentProfileId;
 
   function handleDuplicate() {
     if (!request) {
@@ -195,7 +204,7 @@ export function PRRequestDetailsSheet({
           </ScrollArea>
         ) : null}
 
-        {request && (canEdit || canDuplicate) ? (
+        {request && (canEdit || canDuplicate || canDelete) ? (
           <SheetFooter className="sticky bottom-0 z-10 shrink-0 border-t-2 border-border bg-background/95 px-4  backdrop-blur">
             <div className="flex w-full flex-col  gap-2 sm:flex-row sm:justify-start">
               {canDuplicate ? (
@@ -221,9 +230,27 @@ export function PRRequestDetailsSheet({
                   Edit request
                 </Button>
               ) : null}
+              {canDelete ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setDeleteOpen(true)}
+                  disabled={isPending}
+                  className="w-full sm:w-auto"
+                >
+                  <Trash2 className="size-4" />
+                  Delete request
+                </Button>
+              ) : null}
             </div>
           </SheetFooter>
         ) : null}
+        <PRDeleteRequestDialog
+          request={request}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          onDeleted={() => onOpenChange(false)}
+        />
       </SheetContent>
     </Sheet>
   );
