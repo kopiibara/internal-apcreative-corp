@@ -23,9 +23,13 @@ import type { ContentReport } from "@/types/content-report"
 
 type EmployeeApprovalFiltersProps = {
   reports: ContentReport[]
+  actions?: React.ReactNode
 }
 
-export function EmployeeApprovalFilters({ reports }: EmployeeApprovalFiltersProps) {
+export function EmployeeApprovalFilters({
+  reports,
+  actions,
+}: EmployeeApprovalFiltersProps) {
   const {
     searchQuery,
     selectedBrandFilter,
@@ -45,11 +49,19 @@ export function EmployeeApprovalFilters({ reports }: EmployeeApprovalFiltersProp
   } = useContentReportStore()
 
   const brandOptions = getUniqueApprovalBrands(reports)
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    selectedBrandFilter !== "all" ||
+    selectedContentTypeFilter !== "all" ||
+    selectedPlatformFilter !== "all" ||
+    selectedSupervisorStatusFilter !== "all" ||
+    selectedDirectorStatusFilter !== "all" ||
+    selectedPublishStatusFilter !== "all"
 
   return (
     <ScrollArea className="w-full pb-2" scrollbars="horizontal">
       <div className="flex w-max min-w-full items-center gap-2  p-1">
-        <div className="relative min-w-[260px] md:min-w-[320px]">
+        <div className="relative w-[260px] max-w-[260px] md:w-[320px] md:max-w-[320px]">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchQuery}
@@ -60,7 +72,7 @@ export function EmployeeApprovalFilters({ reports }: EmployeeApprovalFiltersProp
         </div>
 
         <Select value={selectedBrandFilter} onValueChange={setSelectedBrandFilter}>
-          <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
             <SelectValue placeholder="Brand" />
           </SelectTrigger>
           <SelectContent>
@@ -77,7 +89,7 @@ export function EmployeeApprovalFilters({ reports }: EmployeeApprovalFiltersProp
           value={selectedContentTypeFilter}
           onValueChange={setSelectedContentTypeFilter}
         >
-          <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
             <SelectValue placeholder="Content type" />
           </SelectTrigger>
           <SelectContent>
@@ -94,7 +106,7 @@ export function EmployeeApprovalFilters({ reports }: EmployeeApprovalFiltersProp
           value={selectedPlatformFilter}
           onValueChange={setSelectedPlatformFilter}
         >
-          <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
             <SelectValue placeholder="Platform" />
           </SelectTrigger>
           <SelectContent>
@@ -111,7 +123,7 @@ export function EmployeeApprovalFilters({ reports }: EmployeeApprovalFiltersProp
           value={selectedSupervisorStatusFilter}
           onValueChange={setSelectedSupervisorStatusFilter}
         >
-          <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
             <SelectValue placeholder="Supervisor status" />
           </SelectTrigger>
           <SelectContent>
@@ -128,7 +140,7 @@ export function EmployeeApprovalFilters({ reports }: EmployeeApprovalFiltersProp
           value={selectedDirectorStatusFilter}
           onValueChange={setSelectedDirectorStatusFilter}
         >
-          <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
             <SelectValue placeholder="Director status" />
           </SelectTrigger>
           <SelectContent>
@@ -145,7 +157,7 @@ export function EmployeeApprovalFilters({ reports }: EmployeeApprovalFiltersProp
           value={selectedPublishStatusFilter}
           onValueChange={setSelectedPublishStatusFilter}
         >
-          <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
             <SelectValue placeholder="Publish status" />
           </SelectTrigger>
           <SelectContent>
@@ -158,15 +170,23 @@ export function EmployeeApprovalFilters({ reports }: EmployeeApprovalFiltersProp
           </SelectContent>
         </Select>
 
-        <Button
-          type="button"
-          variant="neutral"
-          size="sm"
-          className="h-9 whitespace-nowrap"
-          onClick={resetContentReportFilters}
-        >
-          Reset Filters
-        </Button>
+        {hasActiveFilters ? (
+          <Button
+            type="button"
+            variant="neutral"
+            size="sm"
+            className="h-9 whitespace-nowrap"
+            onClick={resetContentReportFilters}
+          >
+            Reset Filters
+          </Button>
+        ) : null}
+
+        {actions ? (
+          <div className="ml-auto flex shrink-0 items-center gap-2 pl-2">
+            {actions}
+          </div>
+        ) : null}
       </div>
     </ScrollArea>
   )

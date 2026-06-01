@@ -78,10 +78,10 @@ function BrandSelect({
 }) {
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger>
+      <SelectTrigger className="w-fit">
         <SelectValue placeholder="Select brand" />
       </SelectTrigger>
-      <SelectContent>
+      <SelectContent className="w-fit">
         {brands.map((brand) => (
           <SelectItem
             key={brand.id}

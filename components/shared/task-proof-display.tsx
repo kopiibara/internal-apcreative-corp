@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react"
 
 import { ZoomableImage } from "@/components/shared/zoomable-image"
 import { Button } from "@/components/ui/button"
+import { RichTextRenderer } from "@/components/ui/rich-text-renderer"
 import { isHttpProofUrl, isProofDataUrl } from "@/lib/proof/proof-media"
 import type { ProofSubmitType } from "@/lib/proof/proof-types"
 import type { TaskProofType } from "@/lib/tasks/task-type"
@@ -42,9 +43,9 @@ export function TaskProofDisplay({
   return (
     <div className={cn("space-y-3", className)}>
       {proofNote ? (
-        <p className="whitespace-pre-wrap break-words rounded-lg border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
-          {proofNote}
-        </p>
+        <div className="rounded-lg border-2 border-border bg-muted/20 p-3 text-sm">
+          <RichTextRenderer value={proofNote} />
+        </div>
       ) : null}
 
       {proofUrl ? (
@@ -63,7 +64,7 @@ export function TaskProofDisplay({
                 src={proofUrl}
                 alt="Submitted task proof"
                 className={cn(
-                  "max-h-56 w-full rounded-lg border-2 border-border object-contain bg-muted/20",
+                  "max-h-40 w-full rounded-lg border-2 border-border object-contain bg-muted/20",
                   mediaClassName,
                 )}
               />

@@ -10,6 +10,7 @@ import {
   ListTodo,
   UserRoundCog,
   type LucideIcon,
+  CalendarCheck,
 } from "lucide-react";
 
 export type SidebarMode = "admin" | "employee";
@@ -88,23 +89,19 @@ export const adminGroups: SidebarGroupItem[] = [
         icon: UserRoundCog,
       },
       {
-        title: "To-Do",
+        title: "To-Do Task",
+        href: "/admin/to-do/tasks",
         icon: ListTodo,
-        subItems: [
-          {
-            title: "To-Do Task",
-            href: "/admin/to-do/tasks",
-          },
-          {
-            title: "Reminder",
-            href: "/admin/to-do/reminders",
-          },
-        ],
+      },
+      {
+        title: "Reminder",
+        href: "/admin/to-do/reminders",
+        icon: ClipboardList,
       },
       {
         title: "Daily Progress Report",
         href: "/admin/daily-progress",
-        icon: ClipboardList,
+        icon: CalendarCheck,
       },
     ],
   },
@@ -141,23 +138,19 @@ export const employeeGroups: SidebarGroupItem[] = [
         icon: BarChart3,
       },
       {
-        title: "To-Do",
+        title: "To-Do Task",
+        href: "/employee/to-do/tasks",
         icon: ListTodo,
-        subItems: [
-          {
-            title: "To-Do Task",
-            href: "/employee/to-do/tasks",
-          },
-          {
-            title: "Reminder",
-            href: "/employee/to-do/reminders",
-          },
-        ],
+      },
+      {
+        title: "Reminder",
+        href: "/employee/to-do/reminders",
+        icon: ClipboardList,
       },
       {
         title: "Daily Progress Report",
         href: "/employee/daily-progress",
-        icon: ClipboardList,
+        icon: CalendarCheck,
       },
       {
         title: "Ads Campaigns",

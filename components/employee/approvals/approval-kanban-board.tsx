@@ -34,7 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardHeader } from "@/components/ui/card"
 import {
   Tabs,
   TabsContent,
@@ -170,19 +170,21 @@ export function EmployeeApprovalKanbanBoard({
       >
         <BoardSection className={KANBAN_BOARD_SECTION_CLASS}>
           <CardHeader className="min-w-0 shrink-0 gap-3">
-            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <CardTitle className="shrink-0 text-card-foreground">
-                Approval board
-              </CardTitle>
+            {hasNoReports ? (
+              <p className="max-w-2xl rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-center text-sm text-muted-foreground">
+                No approval reports yet. Create your first submission to start
+                the review workflow.
+              </p>
+            ) : null}
 
-              {hasNoReports ? (
-                <p className="min-w-0 flex-1 max-w-2xl rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-center text-sm text-muted-foreground">
-                  No approval reports yet. Create your first submission to start
-                  the review workflow.
-                </p>
-              ) : null}
+            {isPending ? (
+              <span className="text-xs text-muted-foreground">Updating...</span>
+            ) : null}
 
-              <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-start gap-3 lg:justify-end">
+            <EmployeeApprovalFilters
+              reports={reports}
+              actions={
+                <>
                 <TabsList>
                   <TabsTrigger value="kanban">
                     Kanban Board
@@ -200,13 +202,9 @@ export function EmployeeApprovalKanbanBoard({
                     Create Approval Report
                   </Button>
                 ) : null}
-              </div>
-            </div>
-
-            {isPending ? (
-              <span className="text-xs text-muted-foreground">Updating...</span>
-            ) : null}
-            <EmployeeApprovalFilters reports={reports} />
+                </>
+              }
+            />
           </CardHeader>
 
           <TabsContent value="kanban" className={KANBAN_BOARD_TAB_PANEL_CLASS}>

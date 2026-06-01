@@ -1,3 +1,4 @@
+import { ProofDisplay } from "@/components/shared/proof-display"
 import {
   Timeline,
   TimelineContent,
@@ -12,6 +13,7 @@ import { StatusBadge } from "@/components/shared/status-badge"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import type { ProofSubmitType } from "@/lib/proof/proof-types"
 import type { TaskActivityLogRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -38,6 +40,45 @@ const ACTION_LABELS: Record<string, string> = {
   TASK_MARKED_DONE: "Task marked done",
   TASK_REOPENED: "Task reopened",
   DEADLINE_CHANGED: "Deadline changed",
+}
+
+const PROOF_ACTIVITY_ACTIONS = new Set([
+  "PROOF_SUBMITTED",
+  "PROOF_RESUBMITTED",
+  "TASK_MARKED_DONE",
+])
+
+function getMetadataString(
+  metadata: Record<string, unknown> | null,
+  key: string,
+) {
+  const value = metadata?.[key]
+  return typeof value === "string" ? value : null
+}
+
+function getProofType(value: string | null): ProofSubmitType | null {
+  return value === "LINK" || value === "IMAGE" || value === "NOTE"
+    ? value
+    : null
+}
+
+function getProofActivity(log: TaskActivityLogRecord) {
+  const proofType = getProofType(getMetadataString(log.metadata, "proofType"))
+  const metadataProofUrl = getMetadataString(log.metadata, "proofUrl")
+  const notes = log.notes?.trim() ?? ""
+  const notesLookLikeProofUrl =
+    notes.startsWith("data:image/") || /^https?:\/\//i.test(notes)
+  const proofUrl = metadataProofUrl ?? (notesLookLikeProofUrl ? notes : null)
+
+  if (!proofType && !proofUrl) {
+    return null
+  }
+
+  return {
+    proofType: proofType ?? null,
+    proofUrl,
+    proofNote: proofType === "NOTE" || !notesLookLikeProofUrl ? log.notes : null,
+  }
 }
 
 function formatMetadata(metadata: Record<string, unknown> | null) {
@@ -79,6 +120,11 @@ export function TaskActivityTimeline({
             <Timeline defaultValue={logs.length} className="w-full min-w-0">
               {logs.map((log, index) => {
                 const metadataSummary = formatMetadata(log.metadata)
+                const proofActivity = PROOF_ACTIVITY_ACTIONS.has(log.action)
+                  ? getProofActivity(log)
+                  : null
+                const shouldShowNotesAsText =
+                  Boolean(log.notes) && !proofActivity
 
                 return (
                   <TimelineItem key={log.id} step={index + 1}>
@@ -126,10 +172,19 @@ export function TaskActivityTimeline({
                         </div>
                       </div>
 
-                      {log.notes ? (
+                      {shouldShowNotesAsText ? (
                         <p className="whitespace-pre-wrap break-words rounded-lg border-2 border-border bg-muted/20 p-3 text-sm leading-relaxed">
                           {log.notes}
                         </p>
+                      ) : null}
+
+                      {proofActivity ? (
+                        <ProofDisplay
+                          proofType={proofActivity.proofType}
+                          proofUrl={proofActivity.proofUrl}
+                          proofNote={proofActivity.proofNote}
+                          mediaClassName="max-h-52"
+                        />
                       ) : null}
 
                       {metadataSummary ? (

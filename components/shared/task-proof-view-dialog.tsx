@@ -47,7 +47,6 @@ export function TaskProofViewDialog({
             proofType={proofType}
             proofUrl={proofUrl}
             proofNote={proofNote}
-            viewportClassName="min-h-[min(50dvh,480px)] max-h-[min(65dvh,720px)]"
           />
         </DialogBody>
       </DialogContent>

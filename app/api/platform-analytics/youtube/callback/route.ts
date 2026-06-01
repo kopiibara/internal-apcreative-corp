@@ -106,15 +106,6 @@ export async function GET(request: NextRequest) {
   try {
     const result = await exchangeYouTubeOAuthCode(code);
 
-    // Debug: log tokens returned by Google to ensure refresh_token present
-    try {
-
-      console.log("YouTube OAuth token response:", result.tokens);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (e) {
-      /* ignore */
-    }
-
     await upsertYouTubeIntegrationFromOAuth({
       createdByProfileId: context.profile.id,
       refreshToken: result.refreshToken,

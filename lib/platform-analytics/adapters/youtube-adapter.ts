@@ -5,7 +5,7 @@ import {
   getYouTubeLatestMetricMap,
   getYouTubeLiveMetricMap,
 } from "@/lib/platform-analytics/youtube-sync";
-import { liveMetric } from "@/lib/platform-analytics/format";
+import { formatWholeMetric } from "@/lib/platform-analytics/format";
 import type { PlatformChartConfig } from "@/lib/platform-analytics/types";
 import type { AnalyticsDateRange } from "@/lib/platform-analytics/types";
 import type {
@@ -21,7 +21,7 @@ import type {
 type YouTubeTrendRow = {
   metric_date: string;
   metric_key: string;
-  metric_value: number;
+  metric_value: number | string;
 };
 
 type YouTubeContentRow = {
@@ -99,6 +99,15 @@ function normalizeTrendKey(value: string | number | Date) {
   }
 
   return String(value);
+}
+
+function toNumber(value: number | string | null | undefined) {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function youtubeVideoUrl(videoId: string) {
+  return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
 }
 
 function dateRangeLabel(dateRange?: AnalyticsDateRange) {
@@ -179,19 +188,19 @@ function buildYouTubeCharts(
     };
 
     if (row.metric_key === "views") {
-      entry.views = row.metric_value;
+      entry.views = toNumber(row.metric_value);
     }
 
     if (row.metric_key === "watch_time_minutes") {
-      entry.watchTimeMinutes = row.metric_value;
+      entry.watchTimeMinutes = toNumber(row.metric_value);
     }
 
     if (row.metric_key === "subscribers_total") {
-      entry.subscribersTotal = row.metric_value;
+      entry.subscribersTotal = toNumber(row.metric_value);
     }
 
     if (row.metric_key === "subscribers_net") {
-      entry.subscribersNet = row.metric_value;
+      entry.subscribersNet = toNumber(row.metric_value);
     }
 
     trendMap.set(row.metric_date, entry);
@@ -227,6 +236,7 @@ function buildYouTubeCharts(
       data: trend,
       keys: [{ key: "views", label: "Views", color: "var(--chart-1)" }],
       chartType: "line",
+      valueFormat: "whole",
     },
     {
       id: "yt-subscribers-trend",
@@ -237,6 +247,7 @@ function buildYouTubeCharts(
         { key: "subscribers", label: "Subscribers", color: "var(--chart-2)" },
       ],
       chartType: "area",
+      valueFormat: "whole",
     },
     {
       id: "yt-watch-time-trend",
@@ -251,6 +262,7 @@ function buildYouTubeCharts(
         },
       ],
       chartType: "bar",
+      valueFormat: "whole",
     },
     {
       id: "yt-subscriber-change",
@@ -265,6 +277,7 @@ function buildYouTubeCharts(
         },
       ],
       chartType: "line",
+      valueFormat: "whole",
     },
     {
       id: "yt-top-videos",
@@ -273,6 +286,7 @@ function buildYouTubeCharts(
       data: topVideoData,
       keys: [{ key: "views", label: "Views", color: "var(--chart-5)" }],
       chartType: "bar",
+      valueFormat: "whole",
     },
   ];
 }
@@ -309,6 +323,8 @@ export async function loadYouTubePlatformSlice(
     !accountId || accountId === "all"
       ? accounts[0]
       : accounts.find((a) => a.externalAccountId === accountId) || null;
+  const selectedExternalAccountId = selectedAccount?.externalAccountId ?? null;
+  const hasSelectedAccount = Boolean(selectedExternalAccountId);
 
   const connection: PlatformConnectionStatus = {
     platform: "YOUTUBE",
@@ -351,20 +367,18 @@ export async function loadYouTubePlatformSlice(
 
   // Load latest metric map for selected account
   let metricMap = new Map<string, number>();
-  if (selectedAccount && selectedAccount.externalAccountId) {
+  if (selectedExternalAccountId) {
     try {
       const liveMetricMap = await getYouTubeLiveMetricMap(
-        selectedAccount.externalAccountId,
+        selectedExternalAccountId,
         dateRange,
       );
       metricMap =
         liveMetricMap ??
-        (await getYouTubeLatestMetricMap(selectedAccount.externalAccountId));
+        (await getYouTubeLatestMetricMap(selectedExternalAccountId));
     } catch {
       try {
-        metricMap = await getYouTubeLatestMetricMap(
-          selectedAccount.externalAccountId,
-        );
+        metricMap = await getYouTubeLatestMetricMap(selectedExternalAccountId);
       } catch {
         // ignore and fall back to empty map
       }
@@ -374,17 +388,17 @@ export async function loadYouTubePlatformSlice(
   const overviewKpis: KpiMetric[] = [
     {
       label: "Subscribers",
-      value: liveMetric(metricMap.get("subscribers_total")),
+      value: formatWholeMetric(metricMap.get("subscribers_total")),
       hint: "Current channel total",
     },
     {
       label: "Subscribers change",
-      value: liveMetric(metricMap.get("subscribers_net")),
+      value: formatWholeMetric(metricMap.get("subscribers_net")),
       hint: `${dateRangeLabel(dateRange)} (gained - lost)`,
     },
     {
       label: "Views",
-      value: liveMetric(metricMap.get("views")),
+      value: formatWholeMetric(metricMap.get("views")),
       hint: dateRangeLabel(dateRange),
     },
     {
@@ -392,7 +406,7 @@ export async function loadYouTubePlatformSlice(
       value: (() => {
         const watchTimeMinutes = metricMap.get("watch_time_minutes");
         return watchTimeMinutes !== undefined
-          ? `${watchTimeMinutes.toLocaleString("en-PH")} minutes`
+          ? `${formatWholeMetric(watchTimeMinutes)} minutes`
           : "No live data yet";
       })(),
       hint: dateRangeLabel(dateRange),
@@ -406,25 +420,25 @@ export async function loadYouTubePlatformSlice(
     },
     {
       label: "Likes",
-      value: liveMetric(metricMap.get("likes")),
+      value: formatWholeMetric(metricMap.get("likes")),
       hint: dateRangeLabel(dateRange),
     },
     {
       label: "Comments",
-      value: liveMetric(metricMap.get("comments")),
+      value: formatWholeMetric(metricMap.get("comments")),
       hint: dateRangeLabel(dateRange),
     },
     {
       label: "Shares",
-      value: liveMetric(metricMap.get("shares")),
+      value: formatWholeMetric(metricMap.get("shares")),
       hint: dateRangeLabel(dateRange),
     },
   ];
 
   const engagementKpis: KpiMetric[] = [
-    { label: "Likes", value: liveMetric(metricMap.get("likes")) },
-    { label: "Comments", value: liveMetric(metricMap.get("comments")) },
-    { label: "Shares", value: liveMetric(metricMap.get("shares")) },
+    { label: "Likes", value: formatWholeMetric(metricMap.get("likes")) },
+    { label: "Comments", value: formatWholeMetric(metricMap.get("comments")) },
+    { label: "Shares", value: formatWholeMetric(metricMap.get("shares")) },
     {
       label: "Average view duration",
       value: metricMap.get("avg_view_duration_seconds")
@@ -436,12 +450,12 @@ export async function loadYouTubePlatformSlice(
   const audienceInsightKpis: KpiMetric[] = [
     {
       label: "Subscribers",
-      value: liveMetric(metricMap.get("subscribers_total")),
+      value: formatWholeMetric(metricMap.get("subscribers_total")),
       hint: "Current channel total",
     },
     {
       label: "Subscribers change (28d)",
-      value: liveMetric(metricMap.get("subscribers_net")),
+      value: formatWholeMetric(metricMap.get("subscribers_net")),
       hint: `${dateRangeLabel(dateRange)} - gained minus lost`,
     },
     {
@@ -449,7 +463,7 @@ export async function loadYouTubePlatformSlice(
       value: (() => {
         const watchTimeMinutes = metricMap.get("watch_time_minutes");
         return watchTimeMinutes !== undefined
-          ? `${watchTimeMinutes.toLocaleString("en-PH")} minutes`
+          ? `${formatWholeMetric(watchTimeMinutes)} minutes`
           : "No live data yet";
       })(),
       hint: dateRangeLabel(dateRange),
@@ -458,19 +472,21 @@ export async function loadYouTubePlatformSlice(
 
   // Growth snapshots from metric snapshots
   const startOffset = dateRangeToStartOffset(dateRange);
-  const growthRes = await query<GrowthSnapshotQueryRow>(
-    `
-    SELECT metric_date, metric_value::numeric
-    FROM platform_metric_snapshot
-    WHERE platform = 'YOUTUBE'
-      AND metric_key = 'subscribers_total'
-      AND ($1::text IS NULL OR external_account_id = $1)
-      AND metric_date >= (CURRENT_DATE - $2::int)
-    ORDER BY metric_date DESC
-    LIMIT 30
-    `,
-    [selectedAccount?.externalAccountId ?? null, startOffset],
-  );
+  const growthRes = hasSelectedAccount
+    ? await query<GrowthSnapshotQueryRow>(
+        `
+        SELECT metric_date, metric_value::numeric
+        FROM platform_metric_snapshot
+        WHERE platform = 'YOUTUBE'
+          AND metric_key = 'subscribers_total'
+          AND external_account_id = $1
+          AND metric_date >= (CURRENT_DATE - $2::int)
+        ORDER BY metric_date DESC
+        LIMIT 30
+        `,
+        [selectedExternalAccountId, startOffset],
+      )
+    : { rows: [] as GrowthSnapshotQueryRow[] };
 
   const growthSnapshots: GrowthSnapshotRow[] = (
     growthRes.rows as GrowthSnapshotQueryRow[]
@@ -485,17 +501,19 @@ export async function loadYouTubePlatformSlice(
     .reverse();
 
   // Content performance
-  const contentRes = await query<ContentPerformanceQueryRow>(
-    `
-    SELECT external_content_id, title, published_at, views_count, likes_count, comments_count, shares_count, insights, thumbnail_url
-    FROM platform_content_performance
-    WHERE platform = 'YOUTUBE'
-      AND ($1::text IS NULL OR external_account_id = $1)
-    ORDER BY views_count DESC
-    LIMIT 50
-    `,
-    [selectedAccount?.externalAccountId ?? null],
-  );
+  const contentRes = hasSelectedAccount
+    ? await query<ContentPerformanceQueryRow>(
+        `
+        SELECT external_content_id, title, published_at, views_count, likes_count, comments_count, shares_count, insights, thumbnail_url
+        FROM platform_content_performance
+        WHERE platform = 'YOUTUBE'
+          AND external_account_id = $1
+        ORDER BY views_count DESC
+        LIMIT 50
+        `,
+        [selectedExternalAccountId],
+      )
+    : { rows: [] as ContentPerformanceQueryRow[] };
 
   const contentPerformance: ContentPerformanceRow[] = (
     contentRes.rows as ContentPerformanceQueryRow[]
@@ -513,34 +531,36 @@ export async function loadYouTubePlatformSlice(
     engaged: null,
     clicks: null,
     watchTime: r.insights?.watch_minutes
-      ? `${r.insights.watch_minutes} minutes`
+      ? `${formatWholeMetric(r.insights.watch_minutes)} minutes`
       : null,
     avgViewDuration: r.insights?.average_view_duration_seconds
       ? `${Math.round((r.insights.average_view_duration_seconds ?? 0) / 60)}m ${Math.round((r.insights.average_view_duration_seconds ?? 0) % 60)}s`
       : null,
     profileVisits: null,
     source: "Synced",
-    link: null,
+    link: youtubeVideoUrl(r.external_content_id),
     isDemo: false,
   }));
 
-  const trendRes = await query<YouTubeTrendRow>(
-    `
-    SELECT metric_date, metric_key, metric_value::numeric
-    FROM platform_metric_snapshot
-    WHERE platform = 'YOUTUBE'
-      AND ($1::text IS NULL OR external_account_id = $1)
-      AND metric_key IN ('views', 'watch_time_minutes', 'subscribers_total', 'subscribers_net')
-      AND metric_date >= (CURRENT_DATE - $2::int)
-    ORDER BY metric_date ASC
-    `,
-    [selectedAccount?.externalAccountId ?? null, startOffset],
-  );
+  const trendRes = hasSelectedAccount
+    ? await query<YouTubeTrendRow>(
+        `
+        SELECT metric_date, metric_key, metric_value::numeric
+        FROM platform_metric_snapshot
+        WHERE platform = 'YOUTUBE'
+          AND external_account_id = $1
+          AND metric_key IN ('views', 'watch_time_minutes', 'subscribers_total', 'subscribers_net')
+          AND metric_date >= (CURRENT_DATE - $2::int)
+        ORDER BY metric_date ASC
+        `,
+        [selectedExternalAccountId, startOffset],
+      )
+    : { rows: [] as YouTubeTrendRow[] };
 
   const viewsByDate = new Map<string, number>();
   for (const row of trendRes.rows) {
     if (row.metric_key === "views") {
-      viewsByDate.set(row.metric_date, row.metric_value);
+      viewsByDate.set(row.metric_date, toNumber(row.metric_value));
     }
   }
 

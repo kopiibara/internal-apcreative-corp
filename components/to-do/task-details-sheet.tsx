@@ -24,6 +24,7 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
@@ -142,7 +143,7 @@ type TaskActionsPanelProps = {
   onEditTask: () => void
 }
 
-function TaskActionsPanel({
+function TaskActionsFooter({
   assignment,
   canSubmitProof,
   canReportBlocker,
@@ -168,69 +169,58 @@ function TaskActionsPanel({
     canChangeStatus ||
     canEditTask
 
+  if (!hasActions) {
+    return null
+  }
+
   return (
-    <TaskDetailSection title="Available Actions">
-      {hasActions ? (
-        <div className="flex flex-wrap gap-2">
-          {canSubmitProof ? (
-            <Button type="button" onClick={onSubmitProof}>
-              {assignment.status === "REVISION" ? "Resubmit Proof" : "Submit Proof"}
-            </Button>
-          ) : null}
-          {canReportBlocker ? (
-            <Button
-              type="button"
-              variant="neutral"
-              onClick={onReportBlocker}
-            >
-              Report Blocker
-            </Button>
-          ) : null}
-          {canConfirmDone ? (
-            <Button type="button" onClick={onConfirmDone}>
-              Confirm Done
-            </Button>
-          ) : null}
-          {canRequestRevision ? (
-            <Button
-              type="button"
-              onClick={onRequestRevision}
-            >
-              Request Revision
-            </Button>
-          ) : null}
-          {canResolveBlocker ? (
-            <Button
-              type="button"
-              onClick={onResolveBlocker}
-            >
-              Confirm/Resolve Blocker
-            </Button>
-          ) : null}
-          {canChangeStatus ? (
-            <Button
-              type="button"
-              onClick={onChangeStatus}
-            >
-              Change Status
-            </Button>
-          ) : null}
-          {canEditTask ? (
-            <Button
-              type="button"
-              variant="neutral"
-              onClick={onEditTask}
-            >
-              Edit Task Details
-            </Button>
-          ) : null}
-        </div>
-      ) : (
-        <p className="rounded-lg border-2 border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-          No actions available for this task.
-        </p>
-      )}
-    </TaskDetailSection>
+    <div className="flex flex-wrap gap-2">
+      {canSubmitProof ? (
+        <Button type="button" size="sm" onClick={onSubmitProof}>
+          {assignment.status === "REVISION" ? "Resubmit Proof" : "Submit Proof"}
+        </Button>
+      ) : null}
+      {canReportBlocker ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="neutral"
+          onClick={onReportBlocker}
+        >
+          Report Blocker
+        </Button>
+      ) : null}
+      {canConfirmDone ? (
+        <Button type="button" size="sm" onClick={onConfirmDone}>
+          Confirm Done
+        </Button>
+      ) : null}
+      {canRequestRevision ? (
+        <Button type="button" size="sm" onClick={onRequestRevision}>
+          Request Revision
+        </Button>
+      ) : null}
+      {canResolveBlocker ? (
+        <Button type="button" size="sm" onClick={onResolveBlocker}>
+          Confirm/Resolve Blocker
+        </Button>
+      ) : null}
+      {canChangeStatus ? (
+        <Button type="button" size="sm" onClick={onChangeStatus}>
+          Change Status
+        </Button>
+      ) : null}
+      {canEditTask ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="neutral"
+          onClick={onEditTask}
+        >
+          Edit Task Details
+        </Button>
+      ) : null}
+    </div>
   )
 }
 
@@ -281,6 +271,14 @@ export function TaskDetailsSheet({
     Boolean(assignment) &&
     (permissions.canReview || permissions.canManageAll) &&
     assignment?.assignedToProfileId !== currentProfileId
+  const hasSheetActions =
+    canSubmitProof ||
+    canReportBlocker ||
+    canConfirmDone ||
+    canRequestRevision ||
+    canResolveBlocker ||
+    canChangeStatus ||
+    canEditTask
 
   function openStatusChange(status: TaskAssignmentStatus | null) {
     setNextStatus(status)
@@ -290,8 +288,8 @@ export function TaskDetailsSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden px-4 sm:max-w-4xl! sm:w-[50vw]! xl:max-w-6xl!">
-          <SheetHeader className="shrink-0 pb-4">
+        <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden  sm:max-w-4xl! sm:w-[50vw]! xl:max-w-6xl!">
+          <SheetHeader className="shrink-0 pb-4 px-4 border-b-2 border-border">
             {assignment ? (
               <>
                 <SheetTitle className="flex flex-wrap items-center gap-3 font-medium">
@@ -316,26 +314,9 @@ export function TaskDetailsSheet({
 
           {assignment ? (
             <ScrollArea className="min-h-0 flex-1 pr-3" scrollbars="vertical">
-              <div className="grid min-w-0 grid-cols-1 gap-4 pb-6 xl:grid-cols-[2fr_1fr]">
+              <div className="grid min-w-0 grid-cols-1 gap-4 py-4 xl:grid-cols-[2fr_1fr] px-4">
                 <div className="min-w-0 space-y-4">
                   <TaskDetailsSummary assignment={assignment} />
-                  <TaskActionsPanel
-                    assignment={assignment}
-                    canSubmitProof={canSubmitProof}
-                    canReportBlocker={canReportBlocker}
-                    canConfirmDone={canConfirmDone}
-                    canRequestRevision={canRequestRevision}
-                    canResolveBlocker={canResolveBlocker}
-                    canChangeStatus={canChangeStatus}
-                    canEditTask={canEditTask}
-                    onSubmitProof={() => setProofOpen(true)}
-                    onReportBlocker={() => setBlockerOpen(true)}
-                    onConfirmDone={() => openStatusChange("DONE")}
-                    onRequestRevision={() => setRevisionOpen(true)}
-                    onResolveBlocker={() => openStatusChange("ASSIGNED")}
-                    onChangeStatus={() => openStatusChange(null)}
-                    onEditTask={() => onEditTask(assignment)}
-                  />
                   <TaskProofSummary assignment={assignment} />
                   <TaskActivityTimeline logs={assignment.activityLogs} />
                 </div>
@@ -346,6 +327,28 @@ export function TaskDetailsSheet({
                 </aside>
               </div>
             </ScrollArea>
+          ) : null}
+
+          {assignment && hasSheetActions ? (
+            <SheetFooter className="sticky bottom-0 z-10 shrink-0 border-t-2 border-border bg-background/95 px-4 py-3 pb-4! backdrop-blur ">
+              <TaskActionsFooter
+                assignment={assignment}
+                canSubmitProof={canSubmitProof}
+                canReportBlocker={canReportBlocker}
+                canConfirmDone={canConfirmDone}
+                canRequestRevision={canRequestRevision}
+                canResolveBlocker={canResolveBlocker}
+                canChangeStatus={canChangeStatus}
+                canEditTask={canEditTask}
+                onSubmitProof={() => setProofOpen(true)}
+                onReportBlocker={() => setBlockerOpen(true)}
+                onConfirmDone={() => openStatusChange("DONE")}
+                onRequestRevision={() => setRevisionOpen(true)}
+                onResolveBlocker={() => openStatusChange("ASSIGNED")}
+                onChangeStatus={() => openStatusChange(null)}
+                onEditTask={() => onEditTask(assignment)}
+              />
+            </SheetFooter>
           ) : null}
         </SheetContent>
       </Sheet>

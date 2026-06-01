@@ -10,9 +10,10 @@ export const PLATFORM_NAV: { value: AnalyticsPlatform; label: string }[] = [
   { value: "GOOGLE", label: "Google" },
 ];
 
-export const PAGE_TITLE = "";
+export const PAGE_TITLE = "Platform Analytics";
 
-export const PAGE_SUBTITLE = "";
+export const PAGE_SUBTITLE =
+  "Compare connected social channels, inspect live metrics, and manage channel syncs from one dashboard.";
 
 export const PLATFORM_LABELS: Record<PlatformCode, string> = {
   META: "Meta",
@@ -42,9 +43,9 @@ export const PLATFORM_VIEW_COPY: Record<
   YOUTUBE: {
     title: "YouTube Analytics",
     subtitle:
-      "Track YouTube channel performance, subscribers, views, watch time, video engagement, and webhook activity once connected.",
+      "Track connected YouTube channel performance, subscribers, views, watch time, video engagement, and sync history.",
     liveBadge: "Live Integration",
-    demoBadge: "Demo Data",
+    demoBadge: "Not Connected",
   },
   GOOGLE: {
     title: "Google Ads Analytics",

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useRef, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { LayoutGrid, List, Plus, Search } from "lucide-react"
 import { toast } from "sonner"
@@ -51,7 +51,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -80,6 +79,9 @@ type AccountDataTableProps = {
 }
 
 type AccountViewMode = "table" | "cards"
+
+const ACCOUNT_TABLE_HEADER_HEIGHT = 52
+const ACCOUNT_TABLE_MIN_ROW_HEIGHT = 76
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -330,14 +332,23 @@ function AccountProfileCard({
   )
 }
 
+function estimateAccountRowHeight(account: AccountListItem) {
+  const badgeRows = Math.max(1, Math.ceil(account.brandAccess.length / 3))
+
+  return ACCOUNT_TABLE_MIN_ROW_HEIGHT + Math.max(0, badgeRows - 1) * 30
+}
+
 export function AccountDataTable({
   accounts,
   brands,
   roles,
 }: AccountDataTableProps) {
   const router = useRouter()
+  const tablePanelRef = useRef<HTMLDivElement>(null)
+  const paginationRef = useRef<HTMLDivElement>(null)
   const [sorting, setSorting] = useState<SortingState>([])
   const [viewMode, setViewMode] = useState<AccountViewMode>("table")
+  const [pageSize, setPageSize] = useState(4)
   const [isPending, startTransition] = useTransition()
   const {
     selectedAccount,
@@ -418,6 +429,13 @@ export function AccountDataTable({
     selectedStatusFilter,
   ])
 
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    selectedAccountTypeFilter !== "all" ||
+    selectedStatusFilter !== "all" ||
+    selectedBrandFilter !== "all" ||
+    selectedRoleFilter !== "all"
+
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredAccounts,
@@ -429,10 +447,54 @@ export function AccountDataTable({
     getPaginationRowModel: getPaginationRowModel(),
     initialState: {
       pagination: {
-        pageSize: 10,
+        pageSize,
       },
     },
   })
+
+  useEffect(() => {
+    if (viewMode !== "table") {
+      return
+    }
+
+    const panel = tablePanelRef.current
+
+    if (!panel) {
+      return
+    }
+
+    const panelElement = panel
+
+    function updatePageSize() {
+      const panelHeight = panelElement.clientHeight
+      const paginationHeight = paginationRef.current?.offsetHeight ?? 44
+      const availableRowHeight =
+        panelHeight - paginationHeight - ACCOUNT_TABLE_HEADER_HEIGHT - 24
+      const largestEstimatedRowHeight = Math.max(
+        ACCOUNT_TABLE_MIN_ROW_HEIGHT,
+        ...filteredAccounts.map(estimateAccountRowHeight),
+      )
+      const nextPageSize = Math.max(
+        1,
+        Math.floor(availableRowHeight / largestEstimatedRowHeight),
+      )
+
+      setPageSize((current) =>
+        current === nextPageSize ? current : nextPageSize,
+      )
+    }
+
+    updatePageSize()
+
+    const resizeObserver = new ResizeObserver(updatePageSize)
+    resizeObserver.observe(panelElement)
+
+    return () => resizeObserver.disconnect()
+  }, [filteredAccounts, viewMode])
+
+  useEffect(() => {
+    table.setPageSize(pageSize)
+  }, [pageSize, table])
 
   function handleDisableAccount() {
     if (!selectedAccount) {
@@ -454,12 +516,107 @@ export function AccountDataTable({
   }
 
   return (
-    <div className="min-w-0 space-y-6">
-      <Card className="w-full min-w-0 overflow-hidden">
-        <CardHeader className="gap-3">
-          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <CardTitle>Accounts</CardTitle>
-            <div className="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
+    <div className="flex h-full min-h-[calc(100dvh-7rem)] min-w-0 flex-1 flex-col">
+      <Card className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden  bg-white dark:bg-gray-900">
+        <CardHeader className="shrink-0 gap-0">
+          <div className="flex min-w-0 flex-col gap-0 xl:flex-row xl:items-center xl:justify-between">
+            <ScrollArea
+              className="min-w-0 flex-1 pb-1"
+              scrollbars="horizontal"
+            >
+              <div className="flex w-max max-w-full items-center gap-2 p-1">
+                <div className="relative w-[260px] max-w-[260px] md:w-[320px] md:max-w-[320px]">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search accounts"
+                    className="h-9 pl-9"
+                  />
+                </div>
+
+                <Select
+                  value={selectedAccountTypeFilter}
+                  onValueChange={setSelectedAccountTypeFilter}
+                >
+                  <SelectTrigger className="h-9 w-fit">
+                    <SelectValue placeholder="Account type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All account types</SelectItem>
+                    {accountTypes.map((accountType) => (
+                      <SelectItem key={accountType} value={accountType}>
+                        {accountType}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={selectedStatusFilter}
+                  onValueChange={setSelectedStatusFilter}
+                >
+                  <SelectTrigger className="h-9 w-fit">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    {profileStatuses.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={selectedBrandFilter}
+                  onValueChange={setSelectedBrandFilter}
+                >
+                  <SelectTrigger className="h-9 w-fit">
+                    <SelectValue placeholder="Brand" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All brands</SelectItem>
+                    {brands.map((brand) => (
+                      <SelectItem key={brand.id} value={String(brand.id)}>
+                        {brand.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={selectedRoleFilter}
+                  onValueChange={setSelectedRoleFilter}
+                >
+                  <SelectTrigger className="h-9 w-fit">
+                    <SelectValue placeholder="Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All roles</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={String(role.id)}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {hasActiveFilters ? (
+                  <Button
+                    variant="neutral"
+                    size="sm"
+                    className="h-9 whitespace-nowrap"
+                    onClick={resetAccountFilters}
+                  >
+                    Reset Filters
+                  </Button>
+                ) : null}
+              </div>
+            </ScrollArea>
+
+            <div className="flex shrink-0 flex-wrap items-center justify-start gap-2 xl:justify-end">
               {isPending ? (
                 <span className="hidden text-xs text-muted-foreground sm:inline">
                   Updating...
@@ -493,102 +650,18 @@ export function AccountDataTable({
               </Button>
             </div>
           </div>
-
-          <ScrollArea className="w-full pb-2" scrollbars="horizontal">
-            <div className="flex w-max min-w-full items-center gap-2 pr-3  py-1">
-              <div className="relative min-w-[260px] md:min-w-[320px]">
-                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search accounts"
-                  className="h-9 pl-9"
-                />
-              </div>
-
-              <Select
-                value={selectedAccountTypeFilter}
-                onValueChange={setSelectedAccountTypeFilter}
-              >
-                <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                  <SelectValue placeholder="Account type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All account types</SelectItem>
-                  {accountTypes.map((accountType) => (
-                    <SelectItem key={accountType} value={accountType}>
-                      {accountType}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={selectedStatusFilter}
-                onValueChange={setSelectedStatusFilter}
-              >
-                <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {profileStatuses.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={selectedBrandFilter}
-                onValueChange={setSelectedBrandFilter}
-              >
-                <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                  <SelectValue placeholder="Brand" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All brands</SelectItem>
-                  {brands.map((brand) => (
-                    <SelectItem key={brand.id} value={String(brand.id)}>
-                      {brand.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={selectedRoleFilter}
-                onValueChange={setSelectedRoleFilter}
-              >
-                <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
-                  <SelectValue placeholder="Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All roles</SelectItem>
-                  {roles.map((role) => (
-                    <SelectItem key={role.id} value={String(role.id)}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button
-                variant="neutral"
-                size="sm"
-                className="h-9 whitespace-nowrap"
-                onClick={resetAccountFilters}
-              >
-                Reset Filters
-              </Button>
-            </div>
-          </ScrollArea>
         </CardHeader>
 
-        <CardContent className="min-h-0 min-w-0 space-y-4">
+        <CardContent
+          ref={tablePanelRef}
+          className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden"
+        >
           {viewMode === "table" ? (
-            <DataTableScrollArea>
+            <DataTableScrollArea
+              fill
+              scrollbars="horizontal"
+              viewportClassName="h-auto max-h-none rounded-lg [&>div]:min-h-0"
+            >
               <Table className="min-w-[1600px] border-0">
                 <TableHeader className={DATA_TABLE_HEADER_CLASS}>
                   {table.getHeaderGroups().map((headerGroup) => (
@@ -647,7 +720,7 @@ export function AccountDataTable({
             </DataTableScrollArea>
           ) : (
             <ScrollArea
-              className="h-[calc(100vh-24rem)] min-h-[320px] max-h-[620px] w-full rounded-lg border-2 border-border bg-card"
+              className="min-h-0 w-full flex-1 rounded-lg border-2 border-border bg-card"
               scrollbars="vertical"
               viewportClassName="rounded-lg"
             >
@@ -669,14 +742,16 @@ export function AccountDataTable({
             </ScrollArea>
           )}
 
-          <DataTablePagination
-            pageIndex={table.getState().pagination.pageIndex}
-            pageCount={table.getPageCount()}
-            canPreviousPage={table.getCanPreviousPage()}
-            canNextPage={table.getCanNextPage()}
-            onPreviousPage={() => table.previousPage()}
-            onNextPage={() => table.nextPage()}
-          />
+          <div ref={paginationRef} className="shrink-0">
+            <DataTablePagination
+              pageIndex={table.getState().pagination.pageIndex}
+              pageCount={table.getPageCount()}
+              canPreviousPage={table.getCanPreviousPage()}
+              canNextPage={table.getCanNextPage()}
+              onPreviousPage={() => table.previousPage()}
+              onNextPage={() => table.nextPage()}
+            />
+          </div>
         </CardContent>
       </Card>
 
