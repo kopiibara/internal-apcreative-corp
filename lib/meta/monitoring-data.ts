@@ -7,8 +7,11 @@ import type {
   MetaFacebookPageRow,
   MetaPageDailySnapshotRow,
   MetaPostMetricsRow,
+  MetaSyncRunSummary,
   MetaWebhookEventRow,
 } from "@/lib/meta/types"
+
+export type { MetaSyncRunSummary } from "@/lib/meta/types"
 
 export type MetaPageInsightSummary = {
   pageImpressions: number | null
@@ -17,17 +20,6 @@ export type MetaPageInsightSummary = {
   pagePostEngagements: number | null
   pageViewsTotal: number | null
   pageFanAdds: number | null
-}
-
-export type MetaSyncRunSummary = {
-  id: number
-  sync_type: string
-  facebook_page_id: string | null
-  status: string
-  started_at: Date
-  finished_at: Date | null
-  records_affected: number
-  error_log: string | null
 }
 
 export type MetaMonitoringDashboardData = {

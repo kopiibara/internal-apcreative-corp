@@ -22,7 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import type { MetaBusinessPagePostRow } from "@/lib/meta/page-analytics"
+import type { MetaBusinessPagePostRow } from "@/lib/meta/page-analytics-types"
 import type { MetaPageConfigKey } from "@/lib/meta/pages-config"
 
 type MetaPostCommentsSheetProps = {

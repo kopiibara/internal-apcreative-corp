@@ -136,10 +136,10 @@ export type PlatformConnectionStatus = {
 };
 
 export type MetaSourceSyncStatus =
-  import("@/lib/meta/page-analytics").MetaSourceSyncStatus;
+  import("@/lib/meta/page-analytics-types").MetaSourceSyncStatus;
 
 export type MetaBusinessPageDashboard =
-  import("@/lib/meta/page-analytics").MetaBusinessPageDashboard;
+  import("@/lib/meta/page-analytics-types").MetaBusinessPageDashboard;
 
 export type TikTokBrandDashboard =
   import("@/lib/tiktok/dashboard-types").TikTokBrandDashboard;

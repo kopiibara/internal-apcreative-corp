@@ -91,3 +91,15 @@ export type MetaPostMetricsRow = {
   insights: Record<string, unknown>
   last_synced_at: Date
 }
+
+/** Sync run row shape for dashboards (safe to share with client components). */
+export type MetaSyncRunSummary = {
+  id: number
+  sync_type: string
+  facebook_page_id: string | null
+  status: string
+  started_at: Date | string
+  finished_at: Date | string | null
+  records_affected: number
+  error_log: string | null
+}
