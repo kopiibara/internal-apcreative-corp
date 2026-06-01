@@ -30,9 +30,10 @@ import {
 } from "@/lib/security/sanitize-text";
 import {
   assertBrandOfficerCanAssignToProfiles,
+  canBrandOfficerReviewAssignedTasks,
   profileHasBrandOfficerRole,
 } from "@/lib/tasks/brand-officer-task-assign";
-import { getGradedTaskReviewBlockReason } from "@/lib/tasks/task-review-guards";
+import { getGradedTaskReviewBlockReason, getTaskReviewBlockReason } from "@/lib/tasks/task-review-guards";
 import {
   canAssignGradedTasks,
   canReviewTaskAssignments,
@@ -122,6 +123,59 @@ async function authorizeTaskAction(permissionKeys: string[]) {
   );
 
   if (!allowedChecks.some(Boolean)) {
+    return {
+      error: {
+        success: false,
+        message: "You do not have permission to perform this action.",
+      } satisfies ActionResult,
+    };
+  }
+
+  return { context };
+}
+
+async function authorizeTaskReviewAction() {
+  const context = await getCurrentProfileContext();
+
+  if (!context) {
+    return {
+      error: {
+        success: false,
+        message: "You must be signed in to perform this action.",
+      } satisfies ActionResult,
+    };
+  }
+
+  if (context.profile.status !== "ACTIVE") {
+    return {
+      error: {
+        success: false,
+        message: "Your account is not active.",
+      } satisfies ActionResult,
+    };
+  }
+
+  if (context.profile.account_type === "FULL_STACK_DEVELOPER") {
+    return {
+      error: {
+        success: false,
+        message:
+          "Full Stack Developer accounts can only submit proof for assigned tasks.",
+      } satisfies ActionResult,
+    };
+  }
+
+  const [canReviewPermission, canManageAll, canBrandOfficerReview] =
+    await Promise.all([
+      can(context.profile.auth_user_id, "tasks.review"),
+      can(context.profile.auth_user_id, "tasks.manage_all"),
+      canBrandOfficerReviewAssignedTasks(
+        context.profile.auth_user_id,
+        context.profile.id,
+      ),
+    ]);
+
+  if (!canReviewPermission && !canManageAll && !canBrandOfficerReview) {
     return {
       error: {
         success: false,
@@ -950,10 +1004,7 @@ export async function reportTaskBlocker(
 export async function confirmTaskBlocker(
   input: unknown,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  const authorization = await authorizeTaskAction([
-    "tasks.review",
-    "tasks.manage_all",
-  ]);
+  const authorization = await authorizeTaskReviewAction();
 
   if (authorization.error) {
     return authorization.error;
@@ -1122,10 +1173,7 @@ export async function confirmTaskBlocker(
 export async function changeTaskAssignmentStatus(
   input: unknown,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  const authorization = await authorizeTaskAction([
-    "tasks.review",
-    "tasks.manage_all",
-  ]);
+  const authorization = await authorizeTaskReviewAction();
 
   if (authorization.error) {
     return authorization.error;
@@ -1269,10 +1317,7 @@ export async function changeTaskAssignmentStatus(
 export async function confirmTaskDone(
   input: unknown,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  const authorization = await authorizeTaskAction([
-    "tasks.review",
-    "tasks.manage_all",
-  ]);
+  const authorization = await authorizeTaskReviewAction();
 
   if (authorization.error) {
     return authorization.error;
@@ -1301,10 +1346,18 @@ export async function confirmTaskDone(
   }
 
   const { context } = authorization;
+  const canManageAll = await can(
+    context.profile.auth_user_id,
+    "tasks.manage_all",
+  );
 
-  const reviewBlockReason = getGradedTaskReviewBlockReason(
+  const reviewBlockReason = getTaskReviewBlockReason(
     assignment,
     context.profile.id,
+    {
+      isEmployeeReviewer: isEmployeeAccountType(context.profile.account_type),
+      canManageAll,
+    },
   );
 
   if (reviewBlockReason) {
@@ -1316,7 +1369,11 @@ export async function confirmTaskDone(
 
   if (
     !canReviewTaskAssignments(context.profile.account_type) &&
-    !(await can(context.profile.auth_user_id, "tasks.review"))
+    !(await can(context.profile.auth_user_id, "tasks.review")) &&
+    !(await canBrandOfficerReviewAssignedTasks(
+      context.profile.auth_user_id,
+      context.profile.id,
+    ))
   ) {
     return {
       success: false,
@@ -1378,10 +1435,7 @@ export async function confirmTaskDone(
 export async function requestTaskRevision(
   input: unknown,
 ): Promise<ActionResult<TaskAssignmentUpdateData>> {
-  const authorization = await authorizeTaskAction([
-    "tasks.review",
-    "tasks.manage_all",
-  ]);
+  const authorization = await authorizeTaskReviewAction();
 
   if (authorization.error) {
     return authorization.error;
@@ -1409,10 +1463,18 @@ export async function requestTaskRevision(
   }
 
   const { context } = authorization;
+  const canManageAll = await can(
+    context.profile.auth_user_id,
+    "tasks.manage_all",
+  );
 
-  const reviewBlockReason = getGradedTaskReviewBlockReason(
+  const reviewBlockReason = getTaskReviewBlockReason(
     assignment,
     context.profile.id,
+    {
+      isEmployeeReviewer: isEmployeeAccountType(context.profile.account_type),
+      canManageAll,
+    },
   );
 
   if (reviewBlockReason) {
@@ -1424,7 +1486,11 @@ export async function requestTaskRevision(
 
   if (
     !canReviewTaskAssignments(context.profile.account_type) &&
-    !(await can(context.profile.auth_user_id, "tasks.review"))
+    !(await can(context.profile.auth_user_id, "tasks.review")) &&
+    !(await canBrandOfficerReviewAssignedTasks(
+      context.profile.auth_user_id,
+      context.profile.id,
+    ))
   ) {
     return {
       success: false,
@@ -1500,7 +1566,11 @@ export async function getCanReviewTasks(): Promise<boolean> {
 
   return (
     canReviewTaskAssignments(context.profile.account_type) ||
-    (await can(context.profile.auth_user_id, "tasks.review"))
+    (await can(context.profile.auth_user_id, "tasks.review")) ||
+    (await canBrandOfficerReviewAssignedTasks(
+      context.profile.auth_user_id,
+      context.profile.id,
+    ))
   );
 }
 

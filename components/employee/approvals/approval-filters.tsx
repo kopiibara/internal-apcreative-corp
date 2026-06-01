@@ -72,7 +72,7 @@ export function EmployeeApprovalFilters({
         </div>
 
         <Select value={selectedBrandFilter} onValueChange={setSelectedBrandFilter}>
-          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
+          <SelectTrigger className="h-9 w-fit">
             <SelectValue placeholder="Brand" />
           </SelectTrigger>
           <SelectContent>
@@ -89,7 +89,7 @@ export function EmployeeApprovalFilters({
           value={selectedContentTypeFilter}
           onValueChange={setSelectedContentTypeFilter}
         >
-          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
+          <SelectTrigger className="h-9 w-fit">
             <SelectValue placeholder="Content type" />
           </SelectTrigger>
           <SelectContent>
@@ -106,7 +106,7 @@ export function EmployeeApprovalFilters({
           value={selectedPlatformFilter}
           onValueChange={setSelectedPlatformFilter}
         >
-          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
+          <SelectTrigger className="h-9 w-fit">
             <SelectValue placeholder="Platform" />
           </SelectTrigger>
           <SelectContent>
@@ -123,7 +123,7 @@ export function EmployeeApprovalFilters({
           value={selectedSupervisorStatusFilter}
           onValueChange={setSelectedSupervisorStatusFilter}
         >
-          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
+          <SelectTrigger className="h-9 w-fit">
             <SelectValue placeholder="Supervisor status" />
           </SelectTrigger>
           <SelectContent>
@@ -140,7 +140,7 @@ export function EmployeeApprovalFilters({
           value={selectedDirectorStatusFilter}
           onValueChange={setSelectedDirectorStatusFilter}
         >
-          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
+          <SelectTrigger className="h-9 w-fit">
             <SelectValue placeholder="Director status" />
           </SelectTrigger>
           <SelectContent>
@@ -157,7 +157,7 @@ export function EmployeeApprovalFilters({
           value={selectedPublishStatusFilter}
           onValueChange={setSelectedPublishStatusFilter}
         >
-          <SelectTrigger className="h-9 w-[150px] max-w-[150px] md:w-[160px] md:max-w-[160px]">
+          <SelectTrigger className="h-9 w-fit">
             <SelectValue placeholder="Publish status" />
           </SelectTrigger>
           <SelectContent>

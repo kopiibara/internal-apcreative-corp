@@ -23,6 +23,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { StatusBadge } from "@/components/shared/status-badge"
+import {
+  DATA_TABLE_BODY_CLASS,
+  DATA_TABLE_HEADER_CLASS,
+  DataTableScrollArea,
+} from "@/components/shared/data-table-scroll-area"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -263,8 +268,9 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
         </CardHeader>
 
         <CardContent>
-          <Table>
-            <TableHeader>
+          <DataTableScrollArea scrollbars="horizontal">
+          <Table className="min-w-[1200px] border-0">
+            <TableHeader className={DATA_TABLE_HEADER_CLASS}>
               <TableRow>
                 <TableHead>Date Submitted</TableHead>
                 <TableHead>Content Type</TableHead>
@@ -276,7 +282,7 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
                 <TableHead className="w-12 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className={DATA_TABLE_BODY_CLASS}>
               {filteredReports.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
@@ -369,6 +375,7 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
               )}
             </TableBody>
           </Table>
+          </DataTableScrollArea>
         </CardContent>
       </Card>
 

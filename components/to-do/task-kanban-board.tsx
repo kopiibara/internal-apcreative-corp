@@ -21,6 +21,7 @@ import {
   KANBAN_OVERLAY_CLASS,
 } from "@/components/shared/kanban-board-scroll"
 import { filterTaskAssignments } from "@/lib/tasks/task-filters"
+import { canReviewTaskAssignment } from "@/lib/tasks/task-review-guards"
 import { TASK_KANBAN_COLUMNS } from "@/lib/tasks/task-type"
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
@@ -39,16 +40,33 @@ type TaskKanbanBoardProps = {
 
 const TASK_BOARD_ROW_CLASS = cn(KANBAN_BOARD_FIT_ROW_CLASS, "px-3 pb-1 sm:px-6")
 
+function canDragTaskAssignment(
+  assignment: TaskAssignmentRecord,
+  currentProfileId: number,
+  permissions: TaskPermissionFlags,
+  enableDrag: boolean,
+) {
+  if (!enableDrag) {
+    return false
+  }
+
+  return canReviewTaskAssignment({
+    assignment,
+    actorProfileId: currentProfileId,
+    permissions,
+  })
+}
+
 function renderTaskColumns({
   columns,
-  canDragCards,
+  enableDragBoard,
   permissions,
   currentProfileId,
   showAssigneeOnCards,
   onOpenDetails,
 }: {
   columns: Record<string, TaskAssignmentRecord[]>
-  canDragCards: boolean
+  enableDragBoard: boolean
   permissions: TaskPermissionFlags
   currentProfileId: number
   showAssigneeOnCards: boolean
@@ -60,7 +78,7 @@ function renderTaskColumns({
       id={column.id}
       title={column.title}
       count={columns[column.id]?.length ?? 0}
-      enableDrag={canDragCards}
+      enableDrag={enableDragBoard}
     >
       {(columns[column.id] ?? []).map((assignment) => {
         const card = (
@@ -73,8 +91,14 @@ function renderTaskColumns({
             onOpenDetails={onOpenDetails}
           />
         )
+        const canDragCard = canDragTaskAssignment(
+          assignment,
+          currentProfileId,
+          permissions,
+          enableDragBoard,
+        )
 
-        return canDragCards ? (
+        return canDragCard ? (
           <KanbanItem
             key={assignment.assignmentId}
             value={String(assignment.assignmentId)}
@@ -85,7 +109,9 @@ function renderTaskColumns({
             </KanbanItemHandle>
           </KanbanItem>
         ) : (
-          <div className={KANBAN_COLUMN_ITEM_CLASS}>{card}</div>
+          <div key={assignment.assignmentId} className={KANBAN_COLUMN_ITEM_CLASS}>
+            {card}
+          </div>
         )
       })}
     </TaskKanbanColumn>
@@ -146,6 +172,18 @@ export function TaskKanbanBoard({
 
   const canDragCards =
     enableDrag && (permissions.canReview || permissions.canManageAll)
+  const hasDraggableCards = useMemo(
+    () =>
+      filteredAssignments.some((assignment) =>
+        canDragTaskAssignment(
+          assignment,
+          currentProfileId,
+          permissions,
+          canDragCards,
+        ),
+      ),
+    [canDragCards, currentProfileId, filteredAssignments, permissions],
+  )
 
   function handleMove({ activeContainer, overContainer, activeIndex }: KanbanMoveEvent) {
     if (!canDragCards || activeContainer === overContainer) {
@@ -154,7 +192,15 @@ export function TaskKanbanBoard({
 
     const assignment = columns[activeContainer]?.[activeIndex]
 
-    if (!assignment) {
+    if (
+      !assignment ||
+      !canDragTaskAssignment(
+        assignment,
+        currentProfileId,
+        permissions,
+        canDragCards,
+      )
+    ) {
       return
     }
 
@@ -166,7 +212,7 @@ export function TaskKanbanBoard({
 
   const columnNodes = renderTaskColumns({
     columns,
-    canDragCards,
+    enableDragBoard: canDragCards && hasDraggableCards,
     permissions,
     currentProfileId,
     showAssigneeOnCards,
@@ -175,7 +221,7 @@ export function TaskKanbanBoard({
 
   return (
     <>
-      {canDragCards ? (
+      {canDragCards && hasDraggableCards ? (
         <KanbanBoardShell columnLayout="fit">
           <Kanban
             className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col"

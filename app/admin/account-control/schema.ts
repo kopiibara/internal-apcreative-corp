@@ -71,7 +71,8 @@ export function validateBrandAssignments(
     context.addIssue({
       code: "custom",
       path: ["brandAssignments"],
-      message: "CLIENT and EMPLOYEE accounts need at least one active brand.",
+      message:
+        "CLIENT, EMPLOYEE, and PR accounts need at least one active brand.",
     });
   }
 
@@ -80,7 +81,7 @@ export function validateBrandAssignments(
       code: "custom",
       path: ["brandAssignments"],
       message:
-        "CLIENT and EMPLOYEE accounts need exactly one primary active brand.",
+        "CLIENT, EMPLOYEE, and PR accounts need exactly one primary active brand.",
     });
   }
 }

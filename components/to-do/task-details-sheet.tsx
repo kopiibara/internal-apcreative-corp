@@ -28,6 +28,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { canReviewTaskAssignment } from "@/lib/tasks/task-review-guards"
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
@@ -260,17 +261,23 @@ export function TaskDetailsSheet({
     permissions.canSubmitProof &&
     (assignment?.status === "ASSIGNED" || assignment?.status === "REVISION")
   const canReportBlocker = canSubmitProof && permissions.canReportBlocker
-  const canReview =
-    Boolean(assignment) &&
-    permissions.canReview &&
-    assignment?.assignedToProfileId !== currentProfileId
+  const canReview = assignment
+    ? canReviewTaskAssignment({
+      assignment,
+      actorProfileId: currentProfileId,
+      permissions,
+    })
+    : false
   const canConfirmDone = canReview && assignment?.status === "PENDING"
   const canRequestRevision = canReview && assignment?.status === "PENDING"
   const canResolveBlocker = canReview && assignment?.status === "BLOCKER"
-  const canChangeStatus =
-    Boolean(assignment) &&
-    (permissions.canReview || permissions.canManageAll) &&
-    assignment?.assignedToProfileId !== currentProfileId
+  const canChangeStatus = assignment
+    ? canReviewTaskAssignment({
+      assignment,
+      actorProfileId: currentProfileId,
+      permissions,
+    })
+    : false
   const hasSheetActions =
     canSubmitProof ||
     canReportBlocker ||

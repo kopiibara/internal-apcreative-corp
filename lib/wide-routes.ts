@@ -8,6 +8,8 @@ export const WIDE_LAYOUT_ROUTES = [
   "/admin/platform-analytics",
   "/employee/platform-analytics",
   "/admin/daily-progress",
+  "/employee/pr",
+  "/admin/pr",
 ] as const
 
 export function isWideLayoutRoute(pathname: string) {

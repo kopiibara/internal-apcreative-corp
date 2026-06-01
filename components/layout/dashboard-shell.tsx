@@ -105,6 +105,7 @@ type DashboardUser = {
     canAccessReminders?: boolean
     canAccessDailyProgress?: boolean
     canAccessPlatformAnalytics?: boolean
+    canAccessPR?: boolean
     imageUrl?: string | null
     mustChangePassword?: boolean
 }
@@ -176,6 +177,7 @@ export function DashboardShell({
                         canAccessReminders: user.canAccessReminders,
                         canAccessDailyProgress: user.canAccessDailyProgress,
                         canAccessPlatformAnalytics: user.canAccessPlatformAnalytics,
+                        canAccessPR: user.canAccessPR,
                         imageUrl: user.imageUrl,
                     }}
                 />
