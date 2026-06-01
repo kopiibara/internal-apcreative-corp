@@ -40,14 +40,11 @@ export function StaffAccountabilityDashboard({
 
       <StaffAccountabilitySummaryCards data={data} />
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-1 xl:grid-cols-2">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-1 xl:grid-cols-1">
         <div className="min-w-0">
           <StaffAccountabilityLeaderboard summaries={data.summaries} />
         </div>
 
-        <div className="min-w-0">
-          <StaffAccountabilityCompletionChart summaries={data.summaries} />
-        </div>
       </div>
 
       <StaffAccountabilityBrandSummary data={data} />

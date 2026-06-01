@@ -103,10 +103,14 @@ export function StaffAccountabilityLeaderboard({
             No graded task data found for the active filters.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-lg border-2 border-border ">
-            <ScrollArea className="w-full" scrollbars="horizontal">
+          <div className="overflow-hidden rounded-lg border-2 border-border">
+            <ScrollArea
+              className="h-[min(540px,60vh)] min-h-[320px] w-full"
+              scrollbars="both"
+              viewportClassName="h-full"
+            >
               <Table className="min-w-[1040px]">
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-card shadow-[0_2px_0_0_var(--border)]">
                   <TableRow>
                     <TableHead className="w-20">Rank</TableHead>
                     <TableHead>Employee</TableHead>
@@ -257,24 +261,33 @@ export function StaffAccountabilityCompletionChart({
     totalAssignedTasks: summary.totalAssignedTasks,
   }))
   const axisWidth = getCategoryAxisWidth(chartData.map((item) => item.fullName))
-  const chartHeight = getCategoryChartHeight(chartData.length)
+  const chartHeight = getCategoryChartHeight(chartData.length, {
+    rowHeight: 32,
+    padding: 44,
+    min: 220,
+    max: 420,
+  })
 
   return (
-    <Card className="flex h-full min-w-0 flex-col shadow-none">
+    <Card className="min-w-0 self-start shadow-none">
       <CardHeader>
         <CardTitle>Team Completion Distribution</CardTitle>
         <CardDescription>
           Completion rate by employee, with points in the tooltip.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col">
+      <CardContent className="min-w-0">
         {chartData.length === 0 ? (
           <p className="text-sm text-muted-foreground">No chart data found.</p>
         ) : (
-          <>
+          <ScrollArea
+            className="w-full"
+            scrollbars="horizontal"
+            viewportClassName="pb-3"
+          >
             <ChartContainer
               config={completionChartConfig}
-              className="aspect-auto w-full min-w-0"
+              className="aspect-auto !min-h-0 min-w-[560px] w-full justify-start"
               style={{ height: `${chartHeight}px` }}
             >
               <BarChart
@@ -311,8 +324,7 @@ export function StaffAccountabilityCompletionChart({
                 />
               </BarChart>
             </ChartContainer>
-            <CompletionCompactSummary items={chartData} />
-          </>
+          </ScrollArea>
         )}
       </CardContent>
     </Card>
