@@ -87,6 +87,12 @@ function metricNote(state: MetaMetricDisplayState): string | null {
   if (state === "unavailable") {
     return "Unavailable"
   }
+  if (state === "no_baseline") {
+    return "No baseline data yet"
+  }
+  if (state === "meta_unavailable") {
+    return "Metric unavailable from Meta"
+  }
   if (state === "sync_failed") {
     return "Sync failed for this metric"
   }

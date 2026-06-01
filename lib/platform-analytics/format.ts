@@ -4,6 +4,8 @@ export type MetaMetricDisplayState =
   | "permission"
   | "sync_failed"
   | "unavailable"
+  | "no_baseline"
+  | "meta_unavailable"
 
 export function liveMetric(value: number | null | undefined): string {
   if (value === null || value === undefined) {
@@ -70,6 +72,10 @@ export function formatMetaMetricDisplay(
       return "Sync failed"
     case "unavailable":
       return "Unavailable"
+    case "no_baseline":
+      return "No baseline data yet"
+    case "meta_unavailable":
+      return "Metric unavailable from Meta"
     case "no_data":
       return "No live data yet"
     case "available":
