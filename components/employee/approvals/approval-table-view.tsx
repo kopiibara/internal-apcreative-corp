@@ -304,8 +304,12 @@ export function EmployeeApprovalTableView({
   })
 
   return (
-    <div className="min-w-0 space-y-4">
-      <DataTableScrollArea>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+      <DataTableScrollArea
+        fill
+        scrollbars="horizontal"
+        viewportClassName="h-auto max-h-none rounded-lg [&>div]:min-h-0"
+      >
         <Table className="min-w-[1600px] border-0">
           <TableHeader className={DATA_TABLE_HEADER_CLASS}>
             {table.getHeaderGroups().map((headerGroup) => (

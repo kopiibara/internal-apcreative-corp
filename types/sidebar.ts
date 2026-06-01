@@ -11,6 +11,7 @@ import {
   UserRoundCog,
   type LucideIcon,
   CalendarCheck,
+  Handshake,
 } from "lucide-react";
 
 export type SidebarMode = "admin" | "employee";
@@ -62,6 +63,11 @@ export const adminGroups: SidebarGroupItem[] = [
         title: "Brands",
         href: "/admin/brands",
         icon: Building2,
+      },
+      {
+        title: "PR",
+        href: "/admin/pr",
+        icon: Handshake,
       },
     ],
   },
@@ -131,6 +137,11 @@ export const employeeGroups: SidebarGroupItem[] = [
         title: "Approvals",
         href: "/employee/approvals",
         icon: CheckCircle2,
+      },
+      {
+        title: "PR",
+        href: "/employee/pr",
+        icon: Handshake,
       },
       {
         title: "Platform Analytics",

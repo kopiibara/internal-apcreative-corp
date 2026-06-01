@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { RichTextRenderer } from "@/components/ui/rich-text-renderer"
+import { RichTextPreview } from "@/components/ui/rich-text-renderer"
 import type { ReminderRecord } from "@/lib/reminders/reminders"
 import { useReminderStore } from "@/stores/use-reminder-store"
 
@@ -118,12 +118,10 @@ export function ReminderCard({ reminder }: { reminder: ReminderRecord }) {
         </div>
 
         {reminder.description ? (
-          <div
-            className="max-h-24 overflow-hidden text-xs text-muted-foreground [&_h2]:text-sm [&_h3]:text-xs [&_li]:leading-snug [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:my-0 [&_p]:leading-snug [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-4"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <RichTextRenderer value={reminder.description} />
-          </div>
+          <RichTextPreview
+            value={reminder.description}
+            onSeeMore={() => openEditDialog(reminder)}
+          />
         ) : null}
 
         <div className="flex flex-wrap gap-1.5">

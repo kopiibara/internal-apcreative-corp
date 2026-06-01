@@ -84,7 +84,7 @@ function DailyProgressKanbanCard({
       }}
       onKeyDown={handleKeyDown}
       className={cn(
-        "rounded-lg border-2 border-border bg-background p-3 text-left shadow-[var(--shadow-hard-sm)] transition",
+        "rounded-lg border-2 border-border bg-background py-3 text-left shadow-shadow-hard-sm transition",
         isClickable &&
         "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         muted && "opacity-70 grayscale-[0.2]",
@@ -104,6 +104,7 @@ function DailyProgressKanbanCard({
         value={report.summary}
         fallback={report.excusedReason}
         compact
+        onSeeMore={onClick}
       />
 
       <div className="mt-3 rounded-lg border-2 border-border bg-muted/20 p-2">
@@ -369,7 +370,7 @@ export function AdminDailyProgressKanbanBoard({
         getItemValue={(report) => String(report.id)}
         onMove={onMove}
       >
-        <KanbanBoard className={cn(KANBAN_BOARD_FIT_ROW_3_CLASS, "min-h-0 flex-1 px-3 pb-1 sm:px-6")}>
+        <KanbanBoard className={cn(KANBAN_BOARD_FIT_ROW_3_CLASS, "min-h-0 flex-1 px-0 pb-1 ")}>
           {DAILY_PROGRESS_STATUS_COLUMNS.map((column) => {
             const columnReports = columns[column.key] ?? [];
 

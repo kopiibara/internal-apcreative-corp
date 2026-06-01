@@ -784,7 +784,10 @@ export function AdsCampaignsDashboard({
         </CardHeader>
 
         <CardContent className="min-h-0">
-          <DataTableScrollArea className="h-[320px] max-h-[320px] md:h-[420px] md:max-h-[420px]">
+          <DataTableScrollArea
+            className="h-[320px] max-h-[320px] md:h-[420px] md:max-h-[420px]"
+            scrollbars="both"
+          >
             <Table className="min-w-[980px] border-0">
               <TableHeader className={DATA_TABLE_HEADER_CLASS}>
                 <TableRow>

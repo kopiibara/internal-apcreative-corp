@@ -62,8 +62,8 @@ export function ApprovalDetailsSheet({
         }
       }}
     >
-      <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden px-0 sm:max-w-4xl! sm:w-[50vw]! xl:max-w-6xl!">
-        <SheetHeader className="sticky top-0 z-20 shrink-0 border-b-2 border-border bg-background px-4 py-4">
+      <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden sm:max-w-4xl! sm:w-[50vw]! xl:max-w-6xl!">
+        <SheetHeader className="shrink-0 border-b-2 border-border px-4 pb-4">
           {resolvedApproval ? (
             <ApprovalSheetHeader
               report={resolvedApproval}
@@ -82,27 +82,23 @@ export function ApprovalDetailsSheet({
         </SheetHeader>
 
         {resolvedApproval ? (
-          <ScrollArea
-            className="min-h-0 flex-1"
-            viewportClassName="h-full"
-            scrollbars="vertical"
-          >
-            <div className="space-y-4 px-4 py-4 pr-6">
-              <ApprovalDetailsGrid
-                main={
-                  <>
-                    <ApprovalNeedsRevisionPanel report={resolvedApproval} />
-                    <ApprovalMainDetails report={resolvedApproval} />
-                    <ApprovalCommentsSection report={resolvedApproval} />
-                    <ApprovalActivitySection report={resolvedApproval} />
-                  </>
-                }
-                sidebar={
-                  <>
-                    <ApprovalMetadataPanel report={resolvedApproval} />
-                  </>
-                }
-              />
+          <ScrollArea className="min-h-0 flex-1 pr-3" scrollbars="vertical">
+            <ApprovalDetailsGrid
+              main={
+                <>
+                  <ApprovalNeedsRevisionPanel report={resolvedApproval} />
+                  <ApprovalMainDetails report={resolvedApproval} />
+                  <ApprovalCommentsSection report={resolvedApproval} />
+                  <ApprovalActivitySection report={resolvedApproval} />
+                </>
+              }
+              sidebar={
+                <>
+                  <ApprovalMetadataPanel report={resolvedApproval} />
+                </>
+              }
+            />
+            <div className="px-4 pb-4">
               <AdminApprovalReviewActionsPanel
                 report={resolvedApproval}
                 accountType={accountType}

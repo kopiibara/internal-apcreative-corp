@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { SheetTitle } from "@/components/ui/sheet"
+import { SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import {
   getApprovalKanbanStage,
   getApprovalWorkflowStageLabel,
@@ -148,6 +148,10 @@ export function ApprovalSheetHeader({
   position,
 }: ApprovalSheetHeaderProps) {
   const kanbanStage = getKanbanStageLabel(report, variant, accountType, position)
+  const description =
+    variant === "employee"
+      ? "View the submitted report, approval status, and review notes."
+      : "Review the full content report and update approvals from this panel."
 
   return (
     <>
@@ -157,7 +161,7 @@ export function ApprovalSheetHeader({
         </span>
         <Badge className={kanbanStage.badgeClassName}>{kanbanStage.label}</Badge>
       </SheetTitle>
-
+      <SheetDescription>{description}</SheetDescription>
     </>
   )
 }
@@ -169,7 +173,7 @@ type ApprovalDetailsGridProps = {
 
 export function ApprovalDetailsGrid({ main, sidebar }: ApprovalDetailsGridProps) {
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-4 pb-6 xl:grid-cols-[2fr_1fr]">
+    <div className="grid min-w-0 grid-cols-1 gap-4 px-4 py-4 xl:grid-cols-[2fr_1fr]">
       <div className="min-w-0 space-y-4">{main}</div>
       <aside className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:self-start">
         {sidebar}

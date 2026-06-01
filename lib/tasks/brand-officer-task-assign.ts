@@ -6,6 +6,7 @@ import {
 } from "@/lib/brand-access/effective-brand-access";
 import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import { query } from "@/lib/db";
+import { can } from "@/lib/permissions";
 import type { AssignableProfile, AssigneeBrandAccess } from "@/lib/tasks/tasks";
 
 const BRAND_OFFICER_ROLE_SLUG = "brand-officer";
@@ -43,6 +44,18 @@ export async function profileHasBrandOfficerRole(profileId: number) {
   );
 
   return Boolean(result.rows[0]?.has_role);
+}
+
+/** Brand Officers who assign graded tasks may review assignments they created. */
+export async function canBrandOfficerReviewAssignedTasks(
+  authUserId: string,
+  profileId: number,
+) {
+  if (!(await profileHasBrandOfficerRole(profileId))) {
+    return false;
+  }
+
+  return can(authUserId, "tasks.assign");
 }
 
 export async function getBrandOfficerAssignableProfiles(

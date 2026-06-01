@@ -15,7 +15,9 @@ import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { RichTextPreview } from "@/components/ui/rich-text-renderer"
 import { getApprovalDisplayStatus } from "@/lib/approvals/approval-kanban"
+import { isRichTextEmpty } from "@/lib/rich-text/rich-text"
 import {
   getRevisionAreaCount,
   getRevisionSummaryLabel,
@@ -92,6 +94,22 @@ export function ApprovalKanbanCard({
           </Badge>
           <Badge variant="neutral">{report.platform}</Badge>
         </div>
+
+        {!isRichTextEmpty(report.contentInspo) ? (
+          <RichTextPreview
+            value={report.contentInspo}
+            onSeeMore={onClick}
+          />
+        ) : !isRichTextEmpty(report.employeeComments) ? (
+          <RichTextPreview
+            value={report.employeeComments}
+            onSeeMore={onClick}
+          />
+        ) : report.caption ? (
+          <p className="line-clamp-2 text-xs text-muted-foreground">
+            {report.caption}
+          </p>
+        ) : null}
 
         <ApprovalStatusBadges
           supervisorStatus={report.supervisorStatus}

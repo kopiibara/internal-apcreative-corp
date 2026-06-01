@@ -126,7 +126,7 @@ export function TaskBoard({
             currentProfileId={currentProfileId}
             permissions={permissions}
             showAssigneeOnCards={!isEmployeeView}
-            enableDrag={!isEmployeeView}
+            enableDrag={!isEmployeeView || permissions.canReview}
             onOpenDetails={setDetailsAssignment}
             onAssignmentUpdated={updateTaskAssignmentInStore}
           />

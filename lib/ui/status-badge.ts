@@ -98,6 +98,8 @@ const STATUS_COLOR_MAP: Record<string, string> = {
     "border-blue-700 bg-blue-600 text-white dark:border-blue-600 dark:bg-blue-700",
   EMPLOYEE:
     "border-orange-600 bg-orange-500 text-white dark:border-orange-500 dark:bg-orange-600",
+  PR:
+    "border-fuchsia-700 bg-fuchsia-600 text-white dark:border-fuchsia-600 dark:bg-fuchsia-700",
   READY_TO_PUBLISH:
     "border-violet-700 bg-violet-600 text-white dark:border-violet-600 dark:bg-violet-700",
 }

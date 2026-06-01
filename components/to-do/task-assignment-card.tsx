@@ -19,7 +19,8 @@ import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { richTextExcerpt } from "@/lib/rich-text/rich-text"
+import { RichTextPreview } from "@/components/ui/rich-text-renderer"
+import { canReviewTaskAssignment } from "@/lib/tasks/task-review-guards"
 import { shouldOpenProofInDialog } from "@/lib/proof/proof-media"
 import { getTaskLateSubmissionDisplay } from "@/lib/tasks/task-late-submission"
 import { isAssignmentSubmittedOnTime } from "@/lib/tasks/task-type"
@@ -84,7 +85,11 @@ export function TaskAssignmentCard({
       assignment.createdByProfileId === currentProfileId)
   const canDeleteTask = canEditTask && permissions.canDelete
   const canUpdateTask = canEditTask && permissions.canUpdate
-  const canReviewTask = permissions.canReview && !isAssignee
+  const canReviewTask = canReviewTaskAssignment({
+    assignment,
+    actorProfileId: currentProfileId,
+    permissions,
+  })
   const hasProof =
     Boolean(assignment.proofUrl) || Boolean(assignment.proofNote)
   const hasBlocker = Boolean(assignment.blockerNote)
@@ -126,21 +131,36 @@ export function TaskAssignmentCard({
               <h1 className="line-clamp-2 min-w-0 font-bold leading-snug">
                 {assignment.title}
               </h1>
-              {assignment.priority ? (
-                <StatusBadge
-                  status={assignment.priority}
-                  type="priority"
-                  size="sm"
-                  prefix="Priority"
-                />
-              ) : null}
+              <div className="flex flex-col gap-1 items-end ">
+                {assignment.priority ? (
+                  <StatusBadge
+                    status={assignment.priority}
+                    type="priority"
+                    size="sm"
+                    className="h-fit"
+                    prefix="Priority"
+                  />
+                ) : null}
+
+                {hasProof ? (
+                  <StatusBadge status="SUBMITTED" type="proof" size="sm" className="h-fit" />
+                ) : null}
+
+                {hasBlocker ? (
+                  <StatusBadge status="BLOCKER" type="task" size="sm" className="h-fit">
+                    Blocker reported
+                  </StatusBadge>
+                ) : null}
+
+              </div>
 
             </div>
 
             {assignment.description ? (
-              <p className="line-clamp-2 text-sm text-muted-foreground">
-                {richTextExcerpt(assignment.description, 110)}
-              </p>
+              <RichTextPreview
+                value={assignment.description}
+                onSeeMore={() => onOpenDetails?.(assignment)}
+              />
             ) : null}
             <div className="flex min-w-0 flex-wrap gap-1">
               <TaskTypeBadge taskType={assignment.taskType} />
@@ -171,22 +191,6 @@ export function TaskAssignmentCard({
             ) : null}
           </div>
 
-          {hasProof ? (
-            <StatusBadge status="SUBMITTED" type="proof" size="sm" />
-          ) : null}
-
-          {hasBlocker ? (
-            <StatusBadge status="BLOCKER" type="task" size="sm">
-              Blocker reported
-            </StatusBadge>
-          ) : null}
-
-          {assignment.revisionNote ? (
-            <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-              {assignment.revisionNote}
-            </p>
-          ) : null}
-
           {assignment.status === "DONE" && onTimeStatus !== null ? (
             <StatusBadge
               status={onTimeStatus ? "ON_TIME" : "LATE"}
@@ -202,7 +206,7 @@ export function TaskAssignmentCard({
           ) : null}
 
           <div
-            className="grid w-full min-w-0 grid-cols-2 gap-1.5 pt-1 [&_button]:h-8 [&_button]:min-w-0 [&_button]:px-2 [&_button]:text-[11px] [&_svg]:size-3"
+            className="grid w-full min-w-0 grid-cols-2 gap-1.5  [&_button]:h-8 [&_button]:min-w-0 [&_button]:px-2 [&_button]:text-[11px] [&_svg]:size-3"
             onClick={(event) => event.stopPropagation()}
           >
             {isAssignee &&
@@ -269,7 +273,7 @@ export function TaskAssignmentCard({
                   {assignment.proofType === "IMAGE" ? "View image" : "View proof"}
                 </Button>
               ) : (
-                <Button type="button" size="sm" variant="neutral" asChild>
+                <Button type="button" size="sm" variant="neutral" className="h-fit py-1" asChild>
                   <a
                     href={assignment.proofUrl}
                     target="_blank"

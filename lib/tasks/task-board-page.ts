@@ -139,7 +139,7 @@ export async function loadEmployeeTaskBoardPageData(profile: {
     permissions: {
       ...permissions,
       canAssign: canAssignBrandTeamTasks,
-      canReview: false,
+      canReview: canAssignBrandTeamTasks,
       canViewAll: false,
       canManageAll: false,
       canDelete: false,
