@@ -51,6 +51,7 @@ export type PlatformChartConfig = {
   data: ChartPoint[];
   keys: Array<{ key: string; label: string; color: string }>;
   chartType: "line" | "bar" | "area";
+  valueFormat?: "whole" | "decimal";
 };
 
 export type GrowthSnapshotRow = {

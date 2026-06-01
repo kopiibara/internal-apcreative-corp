@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -39,6 +40,7 @@ import {
   PLATFORM_NAV,
   PLATFORM_VIEW_COPY,
 } from "@/lib/platform-analytics/constants";
+import { formatWholeMetric } from "@/lib/platform-analytics/format";
 import type {
   AnalyticsDateRange,
   AnalyticsPlatform,
@@ -117,6 +119,20 @@ const PLATFORM_TABS: Record<PlatformCode, { value: string; label: string }[]> =
   ],
 };
 
+const YOUTUBE_CONTENT_SPEC = {
+  selectedChannelLabel: "Selected channel",
+  metricSummary:
+    "Showing subscribers, views, watch time, average view duration, likes, comments, and shares from the selected YouTube date range.",
+  overviewDescription:
+    "Summary metrics are shown above for the selected YouTube channel and date range. Open Video Performance for synced video rows and source links.",
+  contentDescription:
+    "Synced YouTube video performance for the selected channel. Titles open the source video in a new tab.",
+  contentEmptyState:
+    "No YouTube videos synced yet. Connect YouTube, then run Sync YouTube or Sync Videos.",
+  chartEmptyState:
+    "No YouTube chart data yet. Connect the selected channel and run Sync YouTube.",
+} as const;
+
 export function PlatformAnalyticsDashboard({
   initialData,
   canManage,
@@ -162,18 +178,29 @@ export function PlatformAnalyticsDashboard({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const oauthStatus = params.get("tiktok_oauth");
+    const oauthStatus =
+      params.get("youtube_oauth") ?? params.get("tiktok_oauth");
     if (!oauthStatus) {
       return;
     }
 
-    const message = params.get("tiktok_message");
+    const isYouTube = params.has("youtube_oauth");
+    const message = isYouTube
+      ? params.get("youtube_message")
+      : params.get("tiktok_message");
     if (oauthStatus === "success") {
-      toast.success(message ?? "TikTok connected.");
+      toast.success(message ?? (isYouTube ? "YouTube connected." : "TikTok connected."));
     } else {
-      toast.error(message ?? "TikTok connection failed.");
+      toast.error(
+        message ??
+          (isYouTube
+            ? "YouTube connection failed."
+            : "TikTok connection failed."),
+      );
     }
 
+    params.delete("youtube_oauth");
+    params.delete("youtube_message");
     params.delete("tiktok_oauth");
     params.delete("tiktok_message");
     const next = `${window.location.pathname}?${params.toString()}`.replace(
@@ -182,16 +209,6 @@ export function PlatformAnalyticsDashboard({
     );
     window.history.replaceState({}, "", next);
   }, []);
-
-  useEffect(() => {
-    if (
-      platform === "TIKTOK" &&
-      data.tiktokBrandAnalytics.length === 1 &&
-      tiktokBrandKey === "all"
-    ) {
-      setTikTokBrandKey(String(data.tiktokBrandAnalytics[0].brandId));
-    }
-  }, [platform, data.tiktokBrandAnalytics, tiktokBrandKey]);
 
   function reload(
     nextPlatform?: AnalyticsPlatform,
@@ -307,8 +324,15 @@ export function PlatformAnalyticsDashboard({
     });
   }
 
+  const effectiveTikTokBrandKey =
+    platform === "TIKTOK" &&
+    data.tiktokBrandAnalytics.length === 1 &&
+    tiktokBrandKey === "all"
+      ? String(data.tiktokBrandAnalytics[0].brandId)
+      : tiktokBrandKey;
+
   const selectedTikTokBrandId =
-    tiktokBrandKey === "all" ? null : Number(tiktokBrandKey);
+    effectiveTikTokBrandKey === "all" ? null : Number(effectiveTikTokBrandKey);
 
   const selectedTikTokBrand =
     selectedTikTokBrandId != null
@@ -319,10 +343,17 @@ export function PlatformAnalyticsDashboard({
 
   const tiktokIsConnected =
     selectedTikTokBrand?.connectionStatus === "Connected" ||
-    (tiktokBrandKey === "all" &&
+    (effectiveTikTokBrandKey === "all" &&
       data.tiktokBrandAnalytics.some(
         (brand) => brand.connectionStatus === "Connected",
       ));
+
+  const selectedYouTubeAccount =
+    platform === "YOUTUBE"
+      ? accountId === "all"
+        ? data.accounts[0]
+        : data.accounts.find((account) => account.externalAccountId === accountId)
+      : null;
 
   function handleTikTokConnect() {
     if (selectedTikTokBrandId == null) {
@@ -546,7 +577,9 @@ export function PlatformAnalyticsDashboard({
               )}
             </div>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              {copy.subtitle}
+              {platform === "YOUTUBE" && selectedYouTubeAccount
+                ? `${copy.subtitle} ${YOUTUBE_CONTENT_SPEC.selectedChannelLabel}: ${selectedYouTubeAccount.accountName}. ${YOUTUBE_CONTENT_SPEC.metricSummary}`
+                : copy.subtitle}
             </p>
           </div>
 
@@ -621,7 +654,9 @@ export function PlatformAnalyticsDashboard({
                 type="button"
                 size="sm"
                 variant={
-                  tiktokBrandKey === String(brand.brandId) ? "default" : "neutral"
+                  effectiveTikTokBrandKey === String(brand.brandId)
+                    ? "default"
+                    : "neutral"
                 }
                 disabled={isPending}
                 onClick={() => {
@@ -632,6 +667,37 @@ export function PlatformAnalyticsDashboard({
                 {brand.brandName}
               </Button>
             ))}
+          </div>
+        ) : null}
+
+        {platform === "YOUTUBE" && data.accounts.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {YOUTUBE_CONTENT_SPEC.selectedChannelLabel}:
+            </span>
+            {data.accounts.map((account) => {
+              const isSelected =
+                accountId === "all"
+                  ? account.externalAccountId ===
+                    data.accounts[0]?.externalAccountId
+                  : account.externalAccountId === accountId;
+
+              return (
+                <Button
+                  key={account.externalAccountId}
+                  type="button"
+                  size="sm"
+                  variant={isSelected ? "default" : "neutral"}
+                  disabled={isPending}
+                  onClick={() => {
+                    setAccountId(account.externalAccountId);
+                    reload("YOUTUBE", account.externalAccountId);
+                  }}
+                >
+                  {account.accountName}
+                </Button>
+              );
+            })}
           </div>
         ) : null}
 
@@ -700,27 +766,35 @@ export function PlatformAnalyticsDashboard({
               </CardContent>
             </Card>
           ) : (
-            (tiktokBrandKey === "all"
+            (effectiveTikTokBrandKey === "all"
               ? data.tiktokBrandAnalytics
               : data.tiktokBrandAnalytics.filter(
-                  (brand) => String(brand.brandId) === tiktokBrandKey,
+                  (brand) => String(brand.brandId) === effectiveTikTokBrandKey,
                 )
             ).map((brand) => <TikTokBrandCard key={brand.brandId} brand={brand} />)
           )}
         </section>
       ) : (
-        <>
-          <KpiGrid metrics={data.overviewKpis} />
-          <PlatformAnalyticsCharts
-            charts={data.charts}
-            isDemo={data.isDemo}
-            emptyMessage={
-              data.isDemo
-                ? undefined
-                : "No live data yet - run sync after connecting the selected platform."
-            }
-          />
-        </>
+        <section className="space-y-6">
+          {platform === "YOUTUBE" && isPending ? (
+            <YouTubeAnalyticsLoadingSkeleton />
+          ) : (
+            <>
+              <KpiGrid metrics={data.overviewKpis} />
+              <PlatformAnalyticsCharts
+                charts={data.charts}
+                isDemo={data.isDemo}
+                emptyMessage={
+                  platform === "YOUTUBE"
+                    ? YOUTUBE_CONTENT_SPEC.chartEmptyState
+                    : data.isDemo
+                      ? undefined
+                      : "No live data yet - run sync after connecting the selected platform."
+                }
+              />
+            </>
+          )}
+        </section>
       )}
 
       <Tabs defaultValue={platform === "META" ? "sync" : "overview"}>
@@ -736,14 +810,17 @@ export function PlatformAnalyticsDashboard({
           <>
             <TabsContent value="overview" className="space-y-4 pt-4">
               <p className="text-sm text-muted-foreground">
-                Summary metrics are shown above. Use the other tabs for detailed
-                tables and logs.
+                {platform === "YOUTUBE"
+                  ? YOUTUBE_CONTENT_SPEC.overviewDescription
+                  : "Summary metrics are shown above. Use the other tabs for detailed tables and logs."}
               </p>
             </TabsContent>
 
             <TabsContent value="content" className="pt-4">
               {platform === "GOOGLE" ? (
                 <PlaceholderPanel message="Content performance is not applicable for Google Ads." />
+              ) : platform === "YOUTUBE" && isPending ? (
+                <YouTubeContentTableSkeleton />
               ) : (
                 <ContentTable
                   platform={platformCode}
@@ -983,15 +1060,22 @@ function ConnectionStatusCard({
   connection: PlatformAnalyticsDashboardData["connection"];
   isDemo: boolean;
 }) {
+  const connectionLabel =
+    connection.platform === "META"
+      ? "Facebook pages configured"
+      : connection.platform === "YOUTUBE"
+        ? "YouTube channel connected"
+        : connection.platform === "TIKTOK"
+          ? "TikTok brand connected"
+          : "Google Ads connected";
+
   return (
     <Card className="border-border/80 bg-background/50">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Platform connection status</CardTitle>
         <div className="flex flex-wrap gap-2 pt-1">
           <Badge variant={connection.apiConnected ? "default" : "neutral"}>
-            {connection.apiConnected
-              ? "Facebook pages configured"
-              : "Not configured"}
+            {connection.apiConnected ? connectionLabel : "Not connected"}
           </Badge>
           {isDemo ? <DemoBadge /> : null}
           <Badge variant="neutral">Sync: {connection.syncHealth}</Badge>
@@ -1096,6 +1180,9 @@ function formatContentMetric(
   if (value == null) {
     return platform === "TIKTOK" ? "No live data yet" : "-";
   }
+  if (platform === "YOUTUBE") {
+    return formatWholeMetric(value);
+  }
   return value.toLocaleString("en-PH");
 }
 
@@ -1120,7 +1207,10 @@ function ContentTable({
         </CardTitle>
         {isYouTube || isTikTok ? (
           <CardDescription>
-            Synced content performance. Last synced: {lastSyncedAt ?? "Never"}
+            {isYouTube
+              ? YOUTUBE_CONTENT_SPEC.contentDescription
+              : "Synced content performance."}{" "}
+            Last synced: {lastSyncedAt ?? "Never"}
           </CardDescription>
         ) : null}
       </CardHeader>
@@ -1154,14 +1244,33 @@ function ContentTable({
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={12} className="py-6 text-muted-foreground">
-                    {isGoogle ? "N/A" : "No synced data yet"}
+                    {isGoogle
+                      ? "N/A"
+                      : isYouTube
+                        ? YOUTUBE_CONTENT_SPEC.contentEmptyState
+                        : "No synced data yet"}
                   </td>
                 </tr>
               ) : (
                 rows.map((row) => (
                   <tr key={row.id} className="border-b align-top">
                     <td className="max-w-xs py-2 pr-4">
-                      <span className="line-clamp-2">{row.title}</span>
+                      {isYouTube && row.link ? (
+                        <a
+                          href={row.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex max-w-xs items-start gap-1.5 text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
+                        >
+                          <span className="line-clamp-2">{row.title}</span>
+                          <ExternalLink
+                            className="mt-0.5 size-3.5 shrink-0"
+                            aria-hidden
+                          />
+                        </a>
+                      ) : (
+                        <span className="line-clamp-2">{row.title}</span>
+                      )}
                     </td>
                     <td className="py-2 pr-4">
                       {row.publishedAt
@@ -1591,6 +1700,64 @@ function AnalyticsCustomDateRange({
         Apply range
       </Button>
     </div>
+  );
+}
+
+function YouTubeAnalyticsLoadingSkeleton() {
+  return (
+    <div className="space-y-6" aria-label="Loading YouTube analytics">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <Card key={index}>
+            <CardHeader className="space-y-3 pb-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-8 w-32" />
+              <Skeleton className="h-3 w-24" />
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Card key={index}>
+            <CardHeader className="space-y-3 pb-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-64 max-w-full" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="aspect-video min-h-55 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function YouTubeContentTableSkeleton() {
+  return (
+    <Card aria-label="Loading YouTube video performance">
+      <CardHeader className="space-y-3">
+        <Skeleton className="h-5 w-36" />
+        <Skeleton className="h-4 w-96 max-w-full" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div
+              key={index}
+              className="grid grid-cols-[minmax(12rem,1.4fr)_repeat(6,minmax(5rem,0.6fr))] gap-4 border-b pb-3"
+            >
+              <Skeleton className="h-5 w-full" />
+              {Array.from({ length: 6 }).map((__, cellIndex) => (
+                <Skeleton key={cellIndex} className="h-5 w-full" />
+              ))}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

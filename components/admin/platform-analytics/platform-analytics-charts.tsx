@@ -27,6 +27,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { formatChartMetric } from "@/lib/platform-analytics/format";
 import type { PlatformChartConfig } from "@/lib/platform-analytics/types";
 
 type PlatformAnalyticsChartsProps = {
@@ -70,6 +71,32 @@ function ChartCard({
     acc[key.key] = { label: key.label, color: key.color };
     return acc;
   }, {} as ChartConfig);
+  const formatValue = (value: string | number) =>
+    formatChartMetric(value, { format: chart.valueFormat });
+  const renderTooltipValue = (
+    value: string | number,
+    name: string | number,
+    item: { dataKey?: string | number; color?: string },
+  ) => {
+    const itemConfig = config[String(item.dataKey ?? name)];
+
+    return (
+      <>
+        <div
+          className="size-2.5 shrink-0 rounded-[2px]"
+          style={{ backgroundColor: item.color }}
+        />
+        <div className="flex flex-1 items-center justify-between gap-2 leading-none">
+          <span className="text-muted-foreground">
+            {itemConfig?.label ?? name}
+          </span>
+          <span className="font-mono font-medium tabular-nums text-foreground">
+            {formatValue(value)}
+          </span>
+        </div>
+      </>
+    );
+  };
 
   return (
     <Card>
@@ -103,8 +130,13 @@ function ChartCard({
                 axisLine={false}
                 fontSize={11}
                 width={40}
+                tickFormatter={formatValue}
               />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent formatter={renderTooltipValue} />
+                }
+              />
               <ChartLegend content={<ChartLegendContent />} />
               {chart.keys.map((key) => (
                 <Bar
@@ -129,8 +161,13 @@ function ChartCard({
                 axisLine={false}
                 fontSize={11}
                 width={40}
+                tickFormatter={formatValue}
               />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent formatter={renderTooltipValue} />
+                }
+              />
               <ChartLegend content={<ChartLegendContent />} />
               {chart.keys.map((key) => (
                 <Area
@@ -157,8 +194,13 @@ function ChartCard({
                 axisLine={false}
                 fontSize={11}
                 width={40}
+                tickFormatter={formatValue}
               />
-              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent formatter={renderTooltipValue} />
+                }
+              />
               <ChartLegend content={<ChartLegendContent />} />
               {chart.keys.map((key) => (
                 <Line

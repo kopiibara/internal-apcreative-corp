@@ -12,6 +12,46 @@ export function liveMetric(value: number | null | undefined): string {
   return value.toLocaleString("en-PH")
 }
 
+export function formatWholeMetric(value: number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return "No live data yet"
+  }
+
+  return Math.round(value).toLocaleString("en-PH", {
+    maximumFractionDigits: 0,
+  })
+}
+
+export function formatChartMetric(
+  value: string | number | null | undefined,
+  options?: { format?: "whole" | "decimal" },
+): string {
+  if (value === null || value === undefined || value === "") {
+    return "-"
+  }
+
+  const parsed = typeof value === "number" ? value : Number(value)
+  if (!Number.isFinite(parsed)) {
+    return String(value)
+  }
+
+  if (options?.format === "decimal") {
+    return parsed.toLocaleString("en-PH", {
+      maximumFractionDigits: 2,
+    })
+  }
+
+  if (options?.format === "whole" || Number.isInteger(parsed)) {
+    return Math.round(parsed).toLocaleString("en-PH", {
+      maximumFractionDigits: 0,
+    })
+  }
+
+  return parsed.toLocaleString("en-PH", {
+    maximumFractionDigits: 2,
+  })
+}
+
 export function liveText(value: string | null | undefined): string {
   if (!value || value === "—") {
     return "No live data yet"
