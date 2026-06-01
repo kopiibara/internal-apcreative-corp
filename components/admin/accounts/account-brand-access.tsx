@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useTransition } from "react"
+import { useEffect, useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Plus, Trash2 } from "lucide-react"
@@ -61,6 +61,10 @@ function createEmptyAssignment(): EditableBrandAssignment {
     isPrimary: false,
     isActive: true,
   }
+}
+
+function getEditableAccess(access: AccountBrandAccess[]) {
+  return access.filter((item) => item.isActive && item.revokedAt === null)
 }
 
 function BrandSelect({
@@ -223,10 +227,12 @@ function EditAccessRow({
   profileId,
   access,
   roles,
+  onRemoved,
 }: {
   profileId: number
   access: AccountBrandAccess
   roles: RoleOption[]
+  onRemoved: (brandId: number) => void
 }) {
   const router = useRouter()
   const [roleId, setRoleId] = useState(String(access.roleId))
@@ -246,6 +252,9 @@ function EditAccessRow({
 
       if (result.success) {
         toast.success(result.message)
+        if (!isActive) {
+          onRemoved(access.brandId)
+        }
         router.refresh()
         return
       }
@@ -263,6 +272,7 @@ function EditAccessRow({
 
       if (result.success) {
         toast.success(result.message)
+        onRemoved(access.brandId)
         router.refresh()
         return
       }
@@ -325,12 +335,28 @@ function EditAccessRow({
 
 function EditBrandAccess({ profileId, brands, roles, access }: EditBrandAccessProps) {
   const router = useRouter()
+  const [localAccess, setLocalAccess] = useState(() => getEditableAccess(access))
+  const [locallyRevokedBrandIds, setLocallyRevokedBrandIds] = useState<
+    Set<number>
+  >(() => new Set())
   const [newAssignment, setNewAssignment] = useState(createEmptyAssignment)
   const [isPending, startTransition] = useTransition()
   const existingBrandIds = useMemo(
-    () => new Set(access.map((item) => String(item.brandId))),
-    [access]
+    () => new Set(localAccess.map((item) => String(item.brandId))),
+    [localAccess]
   )
+
+  useEffect(() => {
+    setLocalAccess(
+      getEditableAccess(access).filter(
+        (item) => !locallyRevokedBrandIds.has(item.brandId)
+      )
+    )
+  }, [access, locallyRevokedBrandIds])
+
+  useEffect(() => {
+    setLocallyRevokedBrandIds(new Set())
+  }, [profileId])
 
   function handleAssign() {
     startTransition(async () => {
@@ -344,6 +370,11 @@ function EditBrandAccess({ profileId, brands, roles, access }: EditBrandAccessPr
 
       if (result.success) {
         toast.success(result.message)
+        setLocallyRevokedBrandIds((current) => {
+          const next = new Set(current)
+          next.delete(Number(newAssignment.brandId))
+          return next
+        })
         setNewAssignment(createEmptyAssignment())
         router.refresh()
         return
@@ -358,17 +389,27 @@ function EditBrandAccess({ profileId, brands, roles, access }: EditBrandAccessPr
       <Label>Brand access</Label>
 
       <div className="space-y-3">
-        {access.length === 0 ? (
+        {localAccess.length === 0 ? (
           <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
             No brand access has been assigned.
           </div>
         ) : (
-          access.map((item) => (
+          localAccess.map((item) => (
             <EditAccessRow
               key={item.id}
               profileId={profileId}
               access={item}
               roles={roles}
+              onRemoved={(brandId) => {
+                setLocallyRevokedBrandIds((current) => {
+                  const next = new Set(current)
+                  next.add(brandId)
+                  return next
+                })
+                setLocalAccess((current) =>
+                  current.filter((accessItem) => accessItem.brandId !== brandId)
+                )
+              }}
             />
           ))
         )}

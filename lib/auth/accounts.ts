@@ -156,7 +156,10 @@ export async function getAccounts() {
       ) AS account_logs
     FROM profile p
     JOIN "user" u ON u.id = p.auth_user_id
-    LEFT JOIN user_brand_access uba ON uba.profile_id = p.id
+    LEFT JOIN user_brand_access uba
+      ON uba.profile_id = p.id
+      AND uba.is_active = true
+      AND uba.revoked_at IS NULL
     LEFT JOIN brand b ON b.id = uba.brand_id
     LEFT JOIN "role" r ON r.id = uba.role_id
     GROUP BY p.id, u.image

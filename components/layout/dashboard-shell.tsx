@@ -108,6 +108,18 @@ type DashboardUser = {
     canAccessPR?: boolean
     imageUrl?: string | null
     mustChangePassword?: boolean
+    performanceSummary?: DashboardPerformanceSummary | null
+}
+
+type DashboardPerformanceSummary = {
+    rank: number
+    totalPoints: number
+    taskPoints: number
+    grossTaskPoints: number
+    lateTaskDeductionPoints: number
+    dailyProgressNetPoints: number
+    dailyProgressPoints: number
+    dailyProgressDeductions: number
 }
 
 type DashboardShellProps = {
@@ -179,6 +191,7 @@ export function DashboardShell({
                         canAccessPlatformAnalytics: user.canAccessPlatformAnalytics,
                         canAccessPR: user.canAccessPR,
                         imageUrl: user.imageUrl,
+                        performanceSummary: user.performanceSummary,
                     }}
                 />
 

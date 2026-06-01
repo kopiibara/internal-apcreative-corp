@@ -257,7 +257,7 @@ export function AccountFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} >
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-2xl sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -401,7 +401,7 @@ export function AccountFormDialog({
                   updateField("status", value as ProfileStatus)
                 }
               >
-                <SelectTrigger className="max-w-xs">
+                <SelectTrigger className="w-fit">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>

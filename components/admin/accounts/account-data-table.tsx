@@ -69,7 +69,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { AccountListItem, BrandOption, RoleOption } from "@/lib/auth/accounts"
+import type {
+  AccountBrandAccess,
+  AccountListItem,
+  BrandOption,
+  RoleOption,
+} from "@/lib/auth/accounts"
 import { useAccountStore } from "@/stores/use-account-store"
 
 type AccountDataTableProps = {
@@ -92,6 +97,10 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   year: "numeric",
 })
+
+function getActiveBrandAccess(access: AccountBrandAccess[]) {
+  return access.filter((item) => item.isActive && item.revokedAt === null)
+}
 
 function SortButton({
   label,
@@ -408,7 +417,12 @@ export function AccountDataTable({
   const filteredAccounts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
 
-    return accounts.filter((account) => {
+    const visibleAccounts = accounts.map((account) => ({
+      ...account,
+      brandAccess: getActiveBrandAccess(account.brandAccess),
+    }))
+
+    return visibleAccounts.filter((account) => {
       const matchesSearch =
         query.length === 0 ||
         account.fullName.toLowerCase().includes(query) ||

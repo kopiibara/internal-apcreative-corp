@@ -89,6 +89,11 @@ export function AccountDetailsSheet({
   onForcePassword,
   onSoftDelete,
 }: AccountDetailsSheetProps) {
+  const activeBrandAccess =
+    account?.brandAccess.filter(
+      (access) => access.isActive && access.revokedAt === null,
+    ) ?? []
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden px-4 sm:max-w-4xl! sm:w-[50vw]! xl:max-w-6xl!">
@@ -152,13 +157,13 @@ export function AccountDetailsSheet({
                 </Section>
 
                 <Section title="Brand Access">
-                  {account.brandAccess.length === 0 ? (
+                  {activeBrandAccess.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       No brand access assigned.
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {account.brandAccess.map((access) => (
+                      {activeBrandAccess.map((access) => (
                         <div
                           key={access.id}
                           className="flex flex-wrap items-center gap-2 rounded-lg border-2 border-border bg-muted/20 p-3"
