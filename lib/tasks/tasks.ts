@@ -80,7 +80,12 @@ export type StaffAccountabilitySummary = {
   dailyProgressDeductions: number;
   dailyProgressNetPoints: number;
   totalPoints: number;
-  performanceLabel: "Excellent" | "Good" | "Needs Review" | "Critical";
+  performanceLabel:
+    | "Excellent"
+    | "Good"
+    | "Needs Review"
+    | "Critical"
+    | "No Tasks";
 };
 
 export type StaffAccountabilityTeamSummary = {
@@ -506,6 +511,9 @@ export async function getAssignableProfilesWithBrands(options?: {
   const includeSupervisorFullStack =
     options?.viewerAccountType === "SUPERVISOR" &&
     options.viewerProfileId != null;
+  const includeFullStackPeers =
+    options?.viewerAccountType === "FULL_STACK_DEVELOPER" &&
+    options.viewerProfileId != null;
   const result = await query<{
     id: number;
     full_name: string;
@@ -542,24 +550,38 @@ export async function getAssignableProfilesWithBrands(options?: {
     LEFT JOIN brand b ON b.id = uba.brand_id AND b.is_active = true
     WHERE p.status = 'ACTIVE'
       AND (
-        p.account_type IN ('CLIENT', 'EMPLOYEE')
-        OR (
-          $1::boolean = true
+        (
+          $2::boolean = true
           AND p.account_type = 'FULL_STACK_DEVELOPER'
-          AND EXISTS (
-            SELECT 1
-            FROM user_brand_access assignee_access
-            JOIN role assignee_role ON assignee_role.id = assignee_access.role_id
-            WHERE assignee_access.profile_id = p.id
-              AND assignee_access.is_active = true
-              AND assignee_role.slug = 'full-stack-developer'
+          AND p.id <> $3::int
+        )
+        OR (
+          $2::boolean = false
+          AND (
+            p.account_type IN ('CLIENT', 'EMPLOYEE')
+            OR (
+              $1::boolean = true
+              AND p.account_type = 'FULL_STACK_DEVELOPER'
+              AND EXISTS (
+                SELECT 1
+                FROM user_brand_access assignee_access
+                JOIN role assignee_role ON assignee_role.id = assignee_access.role_id
+                WHERE assignee_access.profile_id = p.id
+                  AND assignee_access.is_active = true
+                  AND assignee_role.slug = 'full-stack-developer'
+              )
+            )
           )
         )
       )
     GROUP BY p.id, u.image
     ORDER BY p.full_name ASC, p.id ASC
     `,
-    [includeSupervisorFullStack],
+    [
+      includeSupervisorFullStack,
+      includeFullStackPeers,
+      options?.viewerProfileId ?? 0,
+    ],
   );
 
   return Promise.all(
@@ -692,7 +714,11 @@ export async function getStaffAccountabilityFilterOptions() {
   };
 }
 
-function getPerformanceLabel(completionRate: number) {
+function getPerformanceLabel(completionRate: number, totalAssignedTasks: number) {
+  if (totalAssignedTasks <= 0) {
+    return "No Tasks";
+  }
+
   if (completionRate >= 90) {
     return "Excellent";
   }
@@ -1030,7 +1056,10 @@ export async function getStaffAccountabilityData({
         dailyProgressDeductions,
         dailyProgressNetPoints,
         totalPoints: metrics.taskPoints + dailyProgressNetPoints,
-        performanceLabel: getPerformanceLabel(metrics.completionRate),
+        performanceLabel: getPerformanceLabel(
+          metrics.completionRate,
+          metrics.total,
+        ),
       };
     }),
   );

@@ -29,6 +29,7 @@ type DetermineTaskTypeInput = {
   creatorProfileId: number;
   assignedToProfileIds: number[];
   canAssignTeamTasks?: boolean;
+  canAssignFullStackPeerTasks?: boolean;
 };
 
 export function determineTaskType({
@@ -36,8 +37,16 @@ export function determineTaskType({
   creatorProfileId,
   assignedToProfileIds,
   canAssignTeamTasks = false,
+  canAssignFullStackPeerTasks = false,
 }: DetermineTaskTypeInput): TaskType {
   const uniqueAssignees = [...new Set(assignedToProfileIds)];
+
+  if (
+    creatorAccountType === "FULL_STACK_DEVELOPER" &&
+    canAssignFullStackPeerTasks
+  ) {
+    return "NON_GRADED";
+  }
 
   if (uniqueAssignees.length === 1 && uniqueAssignees[0] === creatorProfileId) {
     return "NON_GRADED";

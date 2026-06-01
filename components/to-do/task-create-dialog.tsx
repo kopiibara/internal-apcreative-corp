@@ -71,19 +71,22 @@ export function TaskCreateDialog({
   const [dueDate, setDueDate] = useState<string | null>(null)
   const [priority, setPriority] = useState<string>("none")
   const [assigneePickerOpen, setAssigneePickerOpen] = useState(false)
+  const isFullStackPeerTask = currentAccountType === "FULL_STACK_DEVELOPER"
 
   const assigneeOptions = useMemo(() => {
     const map = new Map<number, AssignableProfile>()
 
-    map.set(currentProfileId, {
-      id: currentProfileId,
-      fullName: "Myself",
-      email: "",
-      imageUrl: null,
-      accountType: currentAccountType,
-      status: "ACTIVE",
-      brands: [],
-    })
+    if (!isFullStackPeerTask) {
+      map.set(currentProfileId, {
+        id: currentProfileId,
+        fullName: "Myself",
+        email: "",
+        imageUrl: null,
+        accountType: currentAccountType,
+        status: "ACTIVE",
+        brands: [],
+      })
+    }
 
     for (const assignee of assignees) {
       map.set(assignee.id, assignee)
@@ -92,7 +95,7 @@ export function TaskCreateDialog({
     return [...map.values()].sort((left, right) =>
       left.fullName.localeCompare(right.fullName)
     )
-  }, [assignees, currentAccountType, currentProfileId])
+  }, [assignees, currentAccountType, currentProfileId, isFullStackPeerTask])
 
   const resolvedTaskType = useMemo(
     () =>
@@ -103,12 +106,14 @@ export function TaskCreateDialog({
           ? [currentProfileId]
           : selectedAssigneeIds,
         canAssignTeamTasks,
+        canAssignFullStackPeerTasks: isFullStackPeerTask,
       }),
     [
       canAssignTeamTasks,
       currentAccountType,
       currentProfileId,
       personalOnly,
+      isFullStackPeerTask,
       selectedAssigneeIds,
     ]
   )
@@ -176,12 +181,18 @@ export function TaskCreateDialog({
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {personalOnly ? "Create Personal Task" : "Create Task"}
+            {personalOnly
+              ? "Create Personal Task"
+              : isFullStackPeerTask
+                ? "Create Full Stack Task"
+                : "Create Task"}
           </DialogTitle>
           <DialogDescription>
             {personalOnly
               ? "Personal tasks are private, assigned only to you, and are hidden from admin review boards."
-              : canAssignTeamTasks
+              : isFullStackPeerTask
+                ? "Assign non-graded work to another Full Stack Developer. Only involved Full Stack accounts can see it."
+                : canAssignTeamTasks
                 ? "Assign graded work to Multimedia or Content Creator accounts on your shared brands."
                 : resolvedTaskType === "GRADED"
                   ? "This task will count toward staff accountability scoring."
@@ -230,7 +241,9 @@ export function TaskCreateDialog({
                       className="w-full justify-between"
                       disabled={isPending}
                     >
-                      Select employees
+                      {isFullStackPeerTask
+                        ? "Select Full Stack Developers"
+                        : "Select employees"}
                       <ChevronsUpDown className="size-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
