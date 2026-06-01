@@ -555,7 +555,7 @@ const INSIGHT_METRIC_GROUPS = [
   },
   {
     key: "new_likes",
-    metrics: ["page_fan_adds"] as const,
+    metrics: ["page_fan_adds", "page_fan_adds_unique"] as const,
   },
   {
     key: "new_followers",
@@ -662,6 +662,21 @@ export async function syncDailyInsights(facebookPageId?: string) {
           anySuccess = true
         } else {
           anyFailure = true
+          if (group.key === "new_likes") {
+            const failedKeys = group.metrics
+              .map((metric) => `new_likes:${metric}`)
+              .filter((key) => metricErrors[key])
+            console.warn("[meta-new-likes-sync]", {
+              page: page.page_name,
+              facebookPageId: page.facebook_page_id,
+              dateRange: `${window.since}..${window.until}`,
+              failedMetrics: failedKeys.length
+                ? Object.fromEntries(
+                    failedKeys.map((key) => [key, metricErrors[key]])
+                  )
+                : metricErrors,
+            })
+          }
         }
       }
 
