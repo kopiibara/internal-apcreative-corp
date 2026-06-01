@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { MetaPostsPageData } from "@/lib/meta/posts-analytics"
-import type { MetaBusinessPagePostRow } from "@/lib/meta/page-analytics"
+import type { MetaBusinessPagePostRow } from "@/lib/meta/page-analytics-types"
 import type { MetaPageConfigKey } from "@/lib/meta/pages-config"
 import type { MetaPostsSort } from "@/lib/meta/posts-analytics"
 

@@ -2,7 +2,7 @@ import Link from "next/link"
 
 import { ClientDateTime } from "@/components/shared/client-date-time"
 import { Button } from "@/components/ui/button"
-import type { MetaBusinessPagePostRow } from "@/lib/meta/page-analytics"
+import type { MetaBusinessPagePostRow } from "@/lib/meta/page-analytics-types"
 
 export function MetaPostThumbnail({
   post,
