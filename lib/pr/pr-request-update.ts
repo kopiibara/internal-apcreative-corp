@@ -30,6 +30,7 @@ export function buildPRUpdatePayload(
   return {
     requestId: request.id,
     brandId: patch.brandId ?? request.brandId,
+    requestedByProfileId: request.requestedByProfileId,
     requestType,
     influencerSize:
       requestType === "BRAND_PARTNERSHIP"

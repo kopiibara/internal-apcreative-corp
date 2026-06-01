@@ -34,7 +34,11 @@ export function PRRequestTimeline({ request }: PRRequestTimelineProps) {
         {events.length === 0 ? (
           <p className="text-sm text-muted-foreground">No timeline events yet.</p>
         ) : (
-          <ScrollArea className="max-h-[320px] pr-3" scrollbars="vertical">
+          <ScrollArea
+            className="h-[min(360px,45vh)] pr-3"
+            scrollbars="vertical"
+            viewportClassName="h-full"
+          >
             <Timeline defaultValue={events.length} className="w-full min-w-0">
               {events.map((event, index) => (
                 <TimelineItem key={event.id} step={index + 1}>
