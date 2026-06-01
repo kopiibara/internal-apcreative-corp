@@ -193,9 +193,9 @@ export function PlatformAnalyticsDashboard({
     } else {
       toast.error(
         message ??
-          (isYouTube
-            ? "YouTube connection failed."
-            : "TikTok connection failed."),
+        (isYouTube
+          ? "YouTube connection failed."
+          : "TikTok connection failed."),
       );
     }
 
@@ -326,8 +326,8 @@ export function PlatformAnalyticsDashboard({
 
   const effectiveTikTokBrandKey =
     platform === "TIKTOK" &&
-    data.tiktokBrandAnalytics.length === 1 &&
-    tiktokBrandKey === "all"
+      data.tiktokBrandAnalytics.length === 1 &&
+      tiktokBrandKey === "all"
       ? String(data.tiktokBrandAnalytics[0].brandId)
       : tiktokBrandKey;
 
@@ -337,8 +337,8 @@ export function PlatformAnalyticsDashboard({
   const selectedTikTokBrand =
     selectedTikTokBrandId != null
       ? data.tiktokBrandAnalytics.find(
-          (brand) => brand.brandId === selectedTikTokBrandId,
-        )
+        (brand) => brand.brandId === selectedTikTokBrandId,
+      )
       : null;
 
   const tiktokIsConnected =
@@ -467,15 +467,6 @@ export function PlatformAnalyticsDashboard({
   return (
     <div className={KANBAN_BOARD_PAGE_CLASS}>
       <header className="shrink-0 space-y-4 pb-2">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-normal">
-            {PAGE_TITLE}
-          </h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-            {PAGE_SUBTITLE}
-          </p>
-        </div>
-
         <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-start xl:justify-between xl:gap-4">
           <PlatformAnalyticsFilterBar
             brandScopeUi={brandScopeUi}
@@ -560,317 +551,317 @@ export function PlatformAnalyticsDashboard({
         viewportClassName="h-full max-h-full"
       >
         <div className="min-w-0 space-y-6 pr-2 pb-4">
-      <section className="space-y-4 rounded-lg border border-border bg-card/40 p-4 sm:p-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-semibold">{copy.title}</h2>
-              <PlatformBadge platform={platformCode} />
-              {data.isDemo ? (
-                <DemoBadge />
-              ) : (
-                <Badge variant="default">
-                  {data.connection.apiConnected
-                    ? copy.liveBadge
-                    : copy.demoBadge}
-                </Badge>
-              )}
+          <section className="space-y-4 rounded-lg border border-border bg-card/40 p-4 sm:p-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-semibold">{copy.title}</h2>
+                  <PlatformBadge platform={platformCode} />
+                  {data.isDemo ? (
+                    <DemoBadge />
+                  ) : (
+                    <Badge variant="default">
+                      {data.connection.apiConnected
+                        ? copy.liveBadge
+                        : copy.demoBadge}
+                    </Badge>
+                  )}
+                </div>
+                <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+                  {platform === "YOUTUBE" && selectedYouTubeAccount
+                    ? `${copy.subtitle} ${YOUTUBE_CONTENT_SPEC.selectedChannelLabel}: ${selectedYouTubeAccount.accountName}. ${YOUTUBE_CONTENT_SPEC.metricSummary}`
+                    : copy.subtitle}
+                </p>
+              </div>
+
+              {platform === "META" ? (
+                <div className="flex flex-wrap gap-1">
+                  {META_SCOPE_OPTIONS.map((scope) => (
+                    <Button
+                      key={scope.value}
+                      type="button"
+                      size="sm"
+                      variant={metaScope === scope.value ? "default" : "neutral"}
+                      disabled={isPending}
+                      onClick={() => handleMetaScopeChange(scope.value)}
+                    >
+                      {scope.label}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
             </div>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              {platform === "YOUTUBE" && selectedYouTubeAccount
-                ? `${copy.subtitle} ${YOUTUBE_CONTENT_SPEC.selectedChannelLabel}: ${selectedYouTubeAccount.accountName}. ${YOUTUBE_CONTENT_SPEC.metricSummary}`
-                : copy.subtitle}
-            </p>
-          </div>
+
+            {platform === "META" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">Sync target:</span>
+                {brandScopeUi.showAllPagesOption ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={metaPageKey === "all" ? "default" : "neutral"}
+                    disabled={isPending}
+                    onClick={() => setMetaPageKey("all")}
+                  >
+                    All enabled pages
+                  </Button>
+                ) : null}
+                {data.metaBusinessPages.map((page) => (
+                  <Button
+                    key={page.key}
+                    type="button"
+                    size="sm"
+                    variant={metaPageKey === page.key ? "default" : "neutral"}
+                    disabled={isPending}
+                    onClick={() => setMetaPageKey(page.key)}
+                  >
+                    {page.displayName}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+
+            {platform === "TIKTOK" ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">Brand:</span>
+                {brandScopeUi.hasAllBrandsAccess &&
+                  data.tiktokBrandAnalytics.length > 1 ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={tiktokBrandKey === "all" ? "default" : "neutral"}
+                    disabled={isPending}
+                    onClick={() => {
+                      setTikTokBrandKey("all");
+                      reload("TIKTOK", "all");
+                    }}
+                  >
+                    All brands
+                  </Button>
+                ) : null}
+                {data.tiktokBrandAnalytics.map((brand) => (
+                  <Button
+                    key={brand.brandId}
+                    type="button"
+                    size="sm"
+                    variant={
+                      effectiveTikTokBrandKey === String(brand.brandId)
+                        ? "default"
+                        : "neutral"
+                    }
+                    disabled={isPending}
+                    onClick={() => {
+                      setTikTokBrandKey(String(brand.brandId));
+                      reload("TIKTOK", String(brand.brandId));
+                    }}
+                  >
+                    {brand.brandName}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+
+            {platform === "YOUTUBE" && data.accounts.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {YOUTUBE_CONTENT_SPEC.selectedChannelLabel}:
+                </span>
+                {data.accounts.map((account) => {
+                  const isSelected =
+                    accountId === "all"
+                      ? account.externalAccountId ===
+                      data.accounts[0]?.externalAccountId
+                      : account.externalAccountId === accountId;
+
+                  return (
+                    <Button
+                      key={account.externalAccountId}
+                      type="button"
+                      size="sm"
+                      variant={isSelected ? "default" : "neutral"}
+                      disabled={isPending}
+                      onClick={() => {
+                        setAccountId(account.externalAccountId);
+                        reload("YOUTUBE", account.externalAccountId);
+                      }}
+                    >
+                      {account.accountName}
+                    </Button>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            <ConnectionStatusCard
+              connection={data.connection}
+              isDemo={data.isDemo}
+            />
+
+            {!data.isDemo &&
+              data.metaNeedsBootstrap &&
+              canManage &&
+              platform === "META" ? (
+              <p className="text-sm text-muted-foreground">
+                Connect Meta to start syncing analytics. Use{" "}
+                <strong>Connect Meta</strong> above after setting environment
+                variables in your host.
+              </p>
+            ) : null}
+          </section>
 
           {platform === "META" ? (
-            <div className="flex flex-wrap gap-1">
-              {META_SCOPE_OPTIONS.map((scope) => (
-                <Button
-                  key={scope.value}
-                  type="button"
-                  size="sm"
-                  variant={metaScope === scope.value ? "default" : "neutral"}
-                  disabled={isPending}
-                  onClick={() => handleMetaScopeChange(scope.value)}
-                >
-                  {scope.label}
-                </Button>
+            <section className="space-y-6">
+              {isPending ? (
+                <MetaAnalyticsLoadingSkeleton />
+              ) : data.metaBusinessPages.length === 0 ? (
+                <Card>
+                  <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                    {brandScopeUi.hasAllBrandsAccess ? (
+                      <>
+                        No Meta business pages are enabled. Set{" "}
+                        <code className="text-xs">*_META_ENABLED=true</code> (e.g.{" "}
+                        <code className="text-xs">PRO_GROUP_META_ENABLED</code>) and
+                        configure the matching Page ID and Page Access Token.
+                      </>
+                    ) : (
+                      <>
+                        No Meta pages are available for{" "}
+                        <strong>{brandScopeUi.scopeDescription}</strong>. Ask an admin
+                        to connect the Facebook page for your assigned brand(s), or
+                        confirm your brand assignment matches the configured Meta
+                        pages.
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              ) : (
+                (metaPageKey === "all"
+                  ? data.metaBusinessPages
+                  : data.metaBusinessPages.filter((page) => page.key === metaPageKey)
+                ).map((page) => (
+                  <MetaBusinessPageCard
+                    key={page.key}
+                    page={page}
+                    analyticsBasePath={analyticsBasePath}
+                  />
+                ))
+              )}
+            </section>
+          ) : platform === "TIKTOK" ? (
+            <section className="space-y-6">
+              {data.tiktokBrandAnalytics.length === 0 ? (
+                <Card>
+                  <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                    No brands are available for TikTok analytics in your current
+                    scope.
+                  </CardContent>
+                </Card>
+              ) : (
+                (effectiveTikTokBrandKey === "all"
+                  ? data.tiktokBrandAnalytics
+                  : data.tiktokBrandAnalytics.filter(
+                    (brand) => String(brand.brandId) === effectiveTikTokBrandKey,
+                  )
+                ).map((brand) => <TikTokBrandCard key={brand.brandId} brand={brand} />)
+              )}
+            </section>
+          ) : (
+            <section className="space-y-6">
+              {platform === "YOUTUBE" && isPending ? (
+                <YouTubeAnalyticsLoadingSkeleton />
+              ) : (
+                <>
+                  <KpiGrid metrics={data.overviewKpis} />
+                  <PlatformAnalyticsCharts
+                    charts={data.charts}
+                    isDemo={data.isDemo}
+                    emptyMessage={
+                      platform === "YOUTUBE"
+                        ? YOUTUBE_CONTENT_SPEC.chartEmptyState
+                        : data.isDemo
+                          ? undefined
+                          : "No live data yet - run sync after connecting the selected platform."
+                    }
+                  />
+                </>
+              )}
+            </section>
+          )}
+
+          <Tabs defaultValue={platform === "META" ? "sync" : "overview"}>
+            <TabsList className="flex h-auto flex-wrap gap-1">
+              {tabs.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value}>
+                  {tab.label}
+                </TabsTrigger>
               ))}
-            </div>
-          ) : null}
-        </div>
+            </TabsList>
 
-        {platform === "META" ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Sync target:</span>
-            {brandScopeUi.showAllPagesOption ? (
-              <Button
-                type="button"
-                size="sm"
-                variant={metaPageKey === "all" ? "default" : "neutral"}
-                disabled={isPending}
-                onClick={() => setMetaPageKey("all")}
-              >
-                All enabled pages
-              </Button>
+            {platform !== "META" ? (
+              <>
+                <TabsContent value="overview" className="space-y-4 pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    {platform === "YOUTUBE"
+                      ? YOUTUBE_CONTENT_SPEC.overviewDescription
+                      : "Summary metrics are shown above. Use the other tabs for detailed tables and logs."}
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="content" className="pt-4">
+                  {platform === "GOOGLE" ? (
+                    <PlaceholderPanel message="Content performance is not applicable for Google Ads." />
+                  ) : platform === "YOUTUBE" && isPending ? (
+                    <YouTubeContentTableSkeleton />
+                  ) : (
+                    <ContentTable
+                      platform={platformCode}
+                      rows={data.contentPerformance}
+                      lastSyncedAt={data.connection.lastSyncAt}
+                    />
+                  )}
+                </TabsContent>
+
+                <TabsContent value="audience" className="space-y-4 pt-4">
+                  <KpiGrid metrics={data.audienceInsightKpis} />
+                  {platform !== "GOOGLE" ? (
+                    <GrowthTable rows={data.growthSnapshots} isDemo={data.isDemo} />
+                  ) : null}
+                </TabsContent>
+
+                <TabsContent value="engagement" className="space-y-4 pt-4">
+                  {platform === "GOOGLE" ? (
+                    <PlaceholderPanel message="Engagement metrics are not applicable for Google Ads." />
+                  ) : (
+                    <KpiGrid metrics={data.engagementKpis} />
+                  )}
+                </TabsContent>
+              </>
             ) : null}
-            {data.metaBusinessPages.map((page) => (
-              <Button
-                key={page.key}
-                type="button"
-                size="sm"
-                variant={metaPageKey === page.key ? "default" : "neutral"}
-                disabled={isPending}
-                onClick={() => setMetaPageKey(page.key)}
-              >
-                {page.displayName}
-              </Button>
-            ))}
-          </div>
-        ) : null}
 
-        {platform === "TIKTOK" ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Brand:</span>
-            {brandScopeUi.hasAllBrandsAccess &&
-            data.tiktokBrandAnalytics.length > 1 ? (
-              <Button
-                type="button"
-                size="sm"
-                variant={tiktokBrandKey === "all" ? "default" : "neutral"}
-                disabled={isPending}
-                onClick={() => {
-                  setTikTokBrandKey("all");
-                  reload("TIKTOK", "all");
-                }}
-              >
-                All brands
-              </Button>
-            ) : null}
-            {data.tiktokBrandAnalytics.map((brand) => (
-              <Button
-                key={brand.brandId}
-                type="button"
-                size="sm"
-                variant={
-                  effectiveTikTokBrandKey === String(brand.brandId)
-                    ? "default"
-                    : "neutral"
-                }
-                disabled={isPending}
-                onClick={() => {
-                  setTikTokBrandKey(String(brand.brandId));
-                  reload("TIKTOK", String(brand.brandId));
-                }}
-              >
-                {brand.brandName}
-              </Button>
-            ))}
-          </div>
-        ) : null}
-
-        {platform === "YOUTUBE" && data.accounts.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {YOUTUBE_CONTENT_SPEC.selectedChannelLabel}:
-            </span>
-            {data.accounts.map((account) => {
-              const isSelected =
-                accountId === "all"
-                  ? account.externalAccountId ===
-                    data.accounts[0]?.externalAccountId
-                  : account.externalAccountId === accountId;
-
-              return (
-                <Button
-                  key={account.externalAccountId}
-                  type="button"
-                  size="sm"
-                  variant={isSelected ? "default" : "neutral"}
-                  disabled={isPending}
-                  onClick={() => {
-                    setAccountId(account.externalAccountId);
-                    reload("YOUTUBE", account.externalAccountId);
-                  }}
-                >
-                  {account.accountName}
-                </Button>
-              );
-            })}
-          </div>
-        ) : null}
-
-        <ConnectionStatusCard
-          connection={data.connection}
-          isDemo={data.isDemo}
-        />
-
-        {!data.isDemo &&
-          data.metaNeedsBootstrap &&
-          canManage &&
-          platform === "META" ? (
-          <p className="text-sm text-muted-foreground">
-            Connect Meta to start syncing analytics. Use{" "}
-            <strong>Connect Meta</strong> above after setting environment
-            variables in your host.
-          </p>
-        ) : null}
-      </section>
-
-      {platform === "META" ? (
-        <section className="space-y-6">
-          {isPending ? (
-            <MetaAnalyticsLoadingSkeleton />
-          ) : data.metaBusinessPages.length === 0 ? (
-            <Card>
-              <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                {brandScopeUi.hasAllBrandsAccess ? (
-                  <>
-                    No Meta business pages are enabled. Set{" "}
-                    <code className="text-xs">*_META_ENABLED=true</code> (e.g.{" "}
-                    <code className="text-xs">PRO_GROUP_META_ENABLED</code>) and
-                    configure the matching Page ID and Page Access Token.
-                  </>
-                ) : (
-                  <>
-                    No Meta pages are available for{" "}
-                    <strong>{brandScopeUi.scopeDescription}</strong>. Ask an admin
-                    to connect the Facebook page for your assigned brand(s), or
-                    confirm your brand assignment matches the configured Meta
-                    pages.
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            (metaPageKey === "all"
-              ? data.metaBusinessPages
-              : data.metaBusinessPages.filter((page) => page.key === metaPageKey)
-            ).map((page) => (
-              <MetaBusinessPageCard
-                key={page.key}
-                page={page}
-                analyticsBasePath={analyticsBasePath}
-              />
-            ))
-          )}
-        </section>
-      ) : platform === "TIKTOK" ? (
-        <section className="space-y-6">
-          {data.tiktokBrandAnalytics.length === 0 ? (
-            <Card>
-              <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                No brands are available for TikTok analytics in your current
-                scope.
-              </CardContent>
-            </Card>
-          ) : (
-            (effectiveTikTokBrandKey === "all"
-              ? data.tiktokBrandAnalytics
-              : data.tiktokBrandAnalytics.filter(
-                  (brand) => String(brand.brandId) === effectiveTikTokBrandKey,
-                )
-            ).map((brand) => <TikTokBrandCard key={brand.brandId} brand={brand} />)
-          )}
-        </section>
-      ) : (
-        <section className="space-y-6">
-          {platform === "YOUTUBE" && isPending ? (
-            <YouTubeAnalyticsLoadingSkeleton />
-          ) : (
-            <>
-              <KpiGrid metrics={data.overviewKpis} />
-              <PlatformAnalyticsCharts
-                charts={data.charts}
-                isDemo={data.isDemo}
-                emptyMessage={
-                  platform === "YOUTUBE"
-                    ? YOUTUBE_CONTENT_SPEC.chartEmptyState
-                    : data.isDemo
-                      ? undefined
-                      : "No live data yet - run sync after connecting the selected platform."
-                }
-              />
-            </>
-          )}
-        </section>
-      )}
-
-      <Tabs defaultValue={platform === "META" ? "sync" : "overview"}>
-        <TabsList className="flex h-auto flex-wrap gap-1">
-          {tabs.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {platform !== "META" ? (
-          <>
-            <TabsContent value="overview" className="space-y-4 pt-4">
-              <p className="text-sm text-muted-foreground">
-                {platform === "YOUTUBE"
-                  ? YOUTUBE_CONTENT_SPEC.overviewDescription
-                  : "Summary metrics are shown above. Use the other tabs for detailed tables and logs."}
-              </p>
+            <TabsContent value="campaigns" className="pt-4">
+              <CampaignTable rows={data.campaignPerformance} />
             </TabsContent>
 
-            <TabsContent value="content" className="pt-4">
-              {platform === "GOOGLE" ? (
-                <PlaceholderPanel message="Content performance is not applicable for Google Ads." />
-              ) : platform === "YOUTUBE" && isPending ? (
-                <YouTubeContentTableSkeleton />
-              ) : (
-                <ContentTable
-                  platform={platformCode}
-                  rows={data.contentPerformance}
-                  lastSyncedAt={data.connection.lastSyncAt}
-                />
-              )}
+            <TabsContent value="adgroups" className="pt-4">
+              <PlaceholderPanel message="Ad group performance will appear here once Google Ads is connected." />
             </TabsContent>
 
-            <TabsContent value="audience" className="space-y-4 pt-4">
+            <TabsContent value="keywords" className="pt-4">
+              <PlaceholderPanel message="Keyword reporting will appear here once Google Ads is connected." />
+            </TabsContent>
+
+            <TabsContent value="conversions" className="pt-4">
               <KpiGrid metrics={data.audienceInsightKpis} />
-              {platform !== "GOOGLE" ? (
-                <GrowthTable rows={data.growthSnapshots} isDemo={data.isDemo} />
-              ) : null}
             </TabsContent>
 
-            <TabsContent value="engagement" className="space-y-4 pt-4">
-              {platform === "GOOGLE" ? (
-                <PlaceholderPanel message="Engagement metrics are not applicable for Google Ads." />
-              ) : (
-                <KpiGrid metrics={data.engagementKpis} />
-              )}
+            <TabsContent value="logs" className="pt-4">
+              <ActivityLogs logs={data.activityLogs} />
             </TabsContent>
-          </>
-        ) : null}
 
-        <TabsContent value="campaigns" className="pt-4">
-          <CampaignTable rows={data.campaignPerformance} />
-        </TabsContent>
-
-        <TabsContent value="adgroups" className="pt-4">
-          <PlaceholderPanel message="Ad group performance will appear here once Google Ads is connected." />
-        </TabsContent>
-
-        <TabsContent value="keywords" className="pt-4">
-          <PlaceholderPanel message="Keyword reporting will appear here once Google Ads is connected." />
-        </TabsContent>
-
-        <TabsContent value="conversions" className="pt-4">
-          <KpiGrid metrics={data.audienceInsightKpis} />
-        </TabsContent>
-
-        <TabsContent value="logs" className="pt-4">
-          <ActivityLogs logs={data.activityLogs} />
-        </TabsContent>
-
-        <TabsContent value="sync" className="pt-4">
-          <SyncHistoryTable rows={data.syncHistory} />
-        </TabsContent>
-      </Tabs>
+            <TabsContent value="sync" className="pt-4">
+              <SyncHistoryTable rows={data.syncHistory} />
+            </TabsContent>
+          </Tabs>
         </div>
       </ScrollArea>
     </div>
@@ -1630,7 +1621,7 @@ function PlatformAnalyticsFilterBar({
         ) : null}
 
         {hasBrandFilters ||
-        (dateRangeOptions && dateRangeOptions.length > 0) ? (
+          (dateRangeOptions && dateRangeOptions.length > 0) ? (
           <FilterBarSeparator />
         ) : null}
 

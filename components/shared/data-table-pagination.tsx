@@ -20,7 +20,7 @@ export function DataTablePagination({
   onNextPage,
 }: DataTablePaginationProps) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between p-1">
       <p className="text-sm text-muted-foreground">
         Page {pageIndex + 1} of {pageCount || 1}
       </p>

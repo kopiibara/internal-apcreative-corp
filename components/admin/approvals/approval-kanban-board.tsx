@@ -29,7 +29,7 @@ import {
   KanbanOverlay,
   type KanbanMoveEvent,
 } from "@/components/reui/kanban"
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardHeader } from "@/components/ui/card"
 import {
   Tabs,
   TabsContent,
@@ -239,20 +239,17 @@ export function ApprovalKanbanBoard({
         className={KANBAN_BOARD_TABS_CLASS}
       >
         <BoardSection className={KANBAN_BOARD_SECTION_CLASS}>
-          <CardHeader className="min-w-0 shrink-0 gap-3">
-            <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <CardTitle className="shrink-0 text-card-foreground">
-                Approval board
-              </CardTitle>
+          <CardHeader className="min-w-0 shrink-0 gap-0">
+            {hasNoReports ? (
+              <p className="max-w-2xl rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-center text-sm text-muted-foreground">
+                No approval submissions yet. Reports will appear here once
+                brand officers submit creative work.
+              </p>
+            ) : null}
 
-              {hasNoReports ? (
-                <p className="min-w-0 flex-1 max-w-2xl rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-center text-sm text-muted-foreground">
-                  No approval submissions yet. Reports will appear here once
-                  brand officers submit creative work.
-                </p>
-              ) : null}
-
-              <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-start gap-3 lg:justify-end">
+            <ApprovalFilters
+              reports={currentReports}
+              actions={
                 <TabsList>
                   <TabsTrigger value="kanban">
                     Kanban Board
@@ -264,10 +261,8 @@ export function ApprovalKanbanBoard({
                   </TabsTrigger>
                   <TabsTrigger value="table">Table View</TabsTrigger>
                 </TabsList>
-              </div>
-            </div>
-
-            <ApprovalFilters reports={currentReports} />
+              }
+            />
           </CardHeader>
 
           <TabsContent value="kanban" className={KANBAN_BOARD_TAB_PANEL_CLASS}>

@@ -13,7 +13,7 @@ import {
   KANBAN_BOARD_SECTION_CLASS,
 } from "@/components/shared/kanban-board-scroll"
 import { Button } from "@/components/ui/button"
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardHeader } from "@/components/ui/card"
 import { richTextToPlainText } from "@/lib/rich-text/rich-text"
 import type { ReminderRecord } from "@/lib/reminders/reminders"
 import { useReminderStore } from "@/stores/use-reminder-store"
@@ -102,15 +102,15 @@ export function ReminderBoard({ reminders }: ReminderBoardProps) {
   return (
     <div className={KANBAN_BOARD_PAGE_CLASS}>
       <BoardSection className={KANBAN_BOARD_SECTION_CLASS}>
-        <CardHeader className="min-w-0 shrink-0 gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <CardTitle className="text-card-foreground">Reminder board</CardTitle>
-            <Button onClick={openCreateDialog}>
-              <Plus className="size-4" />
-              Add Reminder
-            </Button>
-          </div>
-          <ReminderFilters />
+        <CardHeader className="min-w-0 shrink-0 gap-0">
+          <ReminderFilters
+            actions={
+              <Button onClick={openCreateDialog}>
+                <Plus className="size-4" />
+                Add Reminder
+              </Button>
+            }
+          />
         </CardHeader>
         <CardContent className={KANBAN_BOARD_CONTENT_CLASS}>
           <ReminderKanbanBoard reminders={filteredReminders} />

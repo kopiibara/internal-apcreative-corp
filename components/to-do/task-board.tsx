@@ -18,7 +18,7 @@ import {
 } from "@/components/shared/kanban-board-scroll"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardHeader } from "@/components/ui/card"
 import type { AccountType } from "@/lib/auth/account-type"
 import type { AssignableProfile, TaskAssignmentRecord } from "@/lib/tasks/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
@@ -34,11 +34,9 @@ type TaskBoardProps = {
 
 const COPY = {
   admin: {
-    cardTitle: "Task board",
     createLabel: "Add Task",
   },
   employee: {
-    cardTitle: "My tasks",
     createLabel: "Add Personal Task",
     teamCreateLabel: "Assign Task",
   },
@@ -54,7 +52,6 @@ export function TaskBoard({
 }: TaskBoardProps) {
   const [detailsAssignment, setDetailsAssignment] =
     useState<TaskAssignmentRecord | null>(null)
-  const copy = COPY[variant]
   const isEmployeeView = variant === "employee"
   const canAssignTeamTasks = isEmployeeView && permissions.canAssign
   const showCreateButton = isEmployeeView
@@ -104,28 +101,23 @@ export function TaskBoard({
   return (
     <div className={KANBAN_BOARD_PAGE_CLASS}>
       <BoardSection className={KANBAN_BOARD_SECTION_CLASS}>
-        <CardHeader className="min-w-0 shrink-0 gap-3 ">
-          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <CardTitle className="shrink-0 text-card-foreground">
-              {copy.cardTitle}
-            </CardTitle>
-
-            {hasNoTasks ? (
-              <p className="min-w-0 flex-1 max-w-2xl rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-center text-sm text-muted-foreground">
-                {emptyMessage}
-              </p>
-            ) : null}
-
-            {showCreateButton ? (
-              <Button className="shrink-0" onClick={openCreateDialog}>
-                <Plus className="size-4" />
-                {createLabel}
-              </Button>
-            ) : null}
-          </div>
+        <CardHeader className="min-w-0 shrink-0 gap-0 pb-0">
+          {hasNoTasks ? (
+            <p className="max-w-2xl rounded-lg border-2 border-dashed border-border bg-muted/20 px-4 py-3 text-center text-sm text-muted-foreground">
+              {emptyMessage}
+            </p>
+          ) : null}
           <TaskFilters
             assignees={assignees}
             showAssigneeFilter={!isEmployeeView}
+            actions={
+              showCreateButton ? (
+                <Button className="shrink-0" onClick={openCreateDialog}>
+                  <Plus className="size-4" />
+                  {createLabel}
+                </Button>
+              ) : null
+            }
           />
         </CardHeader>
         <CardContent className={KANBAN_BOARD_CONTENT_CLASS}>

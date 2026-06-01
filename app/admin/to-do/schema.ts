@@ -5,6 +5,7 @@ import {
   proofTypeFieldSchema,
   proofUrlFieldSchema,
 } from "@/lib/proof/proof-schema";
+import { richTextToPlainText } from "@/lib/rich-text/rich-text";
 import { TASK_PRIORITIES, TASK_PROOF_SUBMIT_TYPES } from "@/lib/tasks/task-type";
 import { TASK_STATUSES } from "@/lib/tasks/task-statuses";
 
@@ -18,7 +19,13 @@ const optionalText = z
 const proofText = (maxLength: number) =>
   z.preprocess(
     (value) => (value === null || value === undefined ? "" : value),
-    z.string().trim().max(maxLength),
+    z
+      .string()
+      .trim()
+      .max(50_000, "Proof note is too large.")
+      .refine((value) => richTextToPlainText(value).length <= maxLength, {
+        message: `Proof note must be ${maxLength.toLocaleString()} characters or less.`,
+      }),
   );
 
 export const createTaskSchema = z

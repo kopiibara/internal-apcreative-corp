@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { ExternalLink, Pencil, Trash2, } from "lucide-react"
 import { toast } from "sonner"
@@ -57,6 +57,7 @@ export function TaskAssignmentCard({
   const [revisionOpen, setRevisionOpen] = useState(false)
   const [doneDialogOpen, setDoneDialogOpen] = useState(false)
   const [proofViewOpen, setProofViewOpen] = useState(false)
+  const [nowMs, setNowMs] = useState<number | null>(null)
   const openProofInDialog = shouldOpenProofInDialog(
     assignment.proofType,
     assignment.proofUrl,
@@ -87,6 +88,17 @@ export function TaskAssignmentCard({
   const hasProof =
     Boolean(assignment.proofUrl) || Boolean(assignment.proofNote)
   const hasBlocker = Boolean(assignment.blockerNote)
+  const isOverdue =
+    assignment.taskType === "GRADED" &&
+    Boolean(assignment.dueDate) &&
+    !assignment.submittedAt &&
+    ["ASSIGNED", "REVISION", "BLOCKER"].includes(assignment.status) &&
+    nowMs !== null &&
+    new Date(assignment.dueDate as string).getTime() < nowMs
+
+  useEffect(() => {
+    setNowMs(Date.now())
+  }, [])
 
   function handleDelete() {
     startTransition(async () => {
@@ -105,14 +117,26 @@ export function TaskAssignmentCard({
   return (
     <>
       <Card
-        className="box-border w-full min-w-0 max-w-full gap-0 cursor-pointer overflow-hidden rounded-lg bg-white px-0 py-2 transition-all hover:-translate-y-0.5 hover:bg-muted dark:bg-gray-900"
+        className="box-border w-full min-w-0 max-w-full gap-0 cursor-pointer overflow-hidden rounded-lg  px-0 py-2 transition-all hover:-translate-y-0.5 hover:bg-muted bg-white dark:bg-gray-900"
         onClick={() => onOpenDetails?.(assignment)}
       >
         <CardContent className="min-w-0 space-y-2.5 px-3 py-2 sm:px-4">
           <div className="flex min-w-0 flex-col gap-1.5">
-            <h1 className="line-clamp-2 min-w-0 font-bold leading-snug">
-              {assignment.title}
-            </h1>
+            <div className="w-full flex justify-between">
+              <h1 className="line-clamp-2 min-w-0 font-bold leading-snug">
+                {assignment.title}
+              </h1>
+              {assignment.priority ? (
+                <StatusBadge
+                  status={assignment.priority}
+                  type="priority"
+                  size="sm"
+                  prefix="Priority"
+                />
+              ) : null}
+
+            </div>
+
             {assignment.description ? (
               <p className="line-clamp-2 text-sm text-muted-foreground">
                 {richTextExcerpt(assignment.description, 110)}
@@ -135,22 +159,17 @@ export function TaskAssignmentCard({
             <span className="text-muted-foreground">Created by:</span>{" "}
             <span className="font-medium"> {assignment.createdByName}</span>
           </p>
-          <p className="text-xs">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-muted-foreground">Due:</span>{" "}
             <span className="font-medium">
               {assignment.dueDate
                 ? dateFormatter.format(new Date(assignment.dueDate))
                 : "—"}
             </span>
-          </p>
-          {assignment.priority ? (
-            <StatusBadge
-              status={assignment.priority}
-              type="priority"
-              size="sm"
-              prefix="Priority"
-            />
-          ) : null}
+            {isOverdue ? (
+              <StatusBadge status="OVERDUE" type="proof" size="sm" />
+            ) : null}
+          </div>
 
           {hasProof ? (
             <StatusBadge status="SUBMITTED" type="proof" size="sm" />

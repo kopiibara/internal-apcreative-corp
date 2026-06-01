@@ -5,6 +5,7 @@ import {
   validateProofUrl,
 } from "@/lib/proof/proof-media";
 import { PROOF_SUBMIT_TYPES } from "@/lib/proof/proof-types";
+import { richTextToPlainText } from "@/lib/rich-text/rich-text";
 
 export const proofUrlFieldSchema = z.preprocess(
   (value) => (value === null || value === undefined ? "" : value),
@@ -26,9 +27,10 @@ export function addProofSubmissionRefinement<
   return schema.superRefine((value, context) => {
     const proofNote =
       typeof value.proofNote === "string" ? value.proofNote.trim() : "";
+    const proofNoteText = richTextToPlainText(proofNote);
 
     if (value.proofType === "NOTE") {
-      if (options?.requireProof !== false && !proofNote) {
+      if (options?.requireProof !== false && !proofNoteText) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
           message: "Please add proof notes before submitting.",

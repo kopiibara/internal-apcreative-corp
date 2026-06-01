@@ -4,6 +4,7 @@ import { TaskProofFileField } from "@/components/to-do/task-proof-file-field"
 import { TaskProofDisplay } from "@/components/shared/task-proof-display"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import {
   Select,
   SelectContent,
@@ -11,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { PROOF_SUBMIT_TYPES, type ProofSubmitType } from "@/lib/proof/proof-types"
 
 type ProofSubmissionFieldsProps = {
@@ -41,7 +41,6 @@ export function ProofSubmissionFields({
   showPreview = true,
   linkLabel = "Proof URL",
   noteLabel = "Proof note",
-  noteMaxLength = 5000,
 }: ProofSubmissionFieldsProps) {
   function handleProofTypeChange(nextType: ProofSubmitType) {
     onProofTypeChange(nextType)
@@ -105,17 +104,16 @@ export function ProofSubmissionFields({
       ) : null}
 
       {proofType === "NOTE" ? (
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-note`}>{noteLabel}</Label>
-          <Textarea
-            id={`${idPrefix}-note`}
-            value={proofNote}
-            onChange={(event) => onProofNoteChange(event.target.value)}
-            className="min-h-24"
-            disabled={disabled}
-            maxLength={noteMaxLength}
-          />
-        </div>
+        <RichTextEditor
+          id={`${idPrefix}-note`}
+          value={proofNote}
+          onChange={onProofNoteChange}
+          label={noteLabel}
+          placeholder="Add proof notes..."
+          disabled={disabled}
+          minHeight={120}
+          maxHeight={240}
+        />
       ) : null}
     </div>
   )

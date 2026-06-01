@@ -3,10 +3,9 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import { authClient } from "@/lib/auth/auth-client"
-import { isWideLayoutRoute } from "@/lib/wide-routes"
 import { useTheme } from "@/components/ui/theme-provider"
 import { UserAvatar } from "@/components/shared/user-avatar"
 
@@ -81,7 +80,10 @@ function formatSidebarBadge(count: number) {
 }
 
 const sidebarNavActiveClass =
-    "border-2 border-border bg-sidebar-primary font-medium text-sidebar-primary-foreground shadow-[var(--shadow-hard-sm)] hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+    "border-2 border-border bg-sidebar-primary font-medium text-sidebar-primary-foreground shadow-[var(--shadow-hard-sm)] hover:bg-sidebar-primary hover:text-sidebar-primary-foreground transition-all duration-200 "
+
+const sidebarNavHoverClass =
+    "border-2 border-transparent hover:border-border hover:bg-sidebar-accent  transition-all duration-200 hover:translate-x-1"
 
 function SidebarNavCountBadge({
     count,
@@ -115,7 +117,7 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
     const router = useRouter()
     const pathname = usePathname()
-    const { state, isMobile, setOpen } = useSidebar()
+    const { state, isMobile } = useSidebar()
     const { resolvedTheme, setTheme } = useTheme()
 
     const [mounted, setMounted] = useState(false)
@@ -159,7 +161,7 @@ export function DashboardSidebar({
 
                             const subItems = item.subItems?.map((subItem) =>
                                 isFullStackDeveloper &&
-                                subItem.href === "/admin/to-do/tasks"
+                                    subItem.href === "/admin/to-do/tasks"
                                     ? { ...subItem, badge: taskBadge }
                                     : subItem
                             )
@@ -183,6 +185,16 @@ export function DashboardSidebar({
                             (item) =>
                                 item.href !== "/employee/platform-analytics" ||
                                 canSeePlatformAnalytics
+                        )
+                        .filter(
+                            (item) =>
+                                item.href !== "/employee/to-do/tasks" ||
+                                canSeeTaskBoard
+                        )
+                        .filter(
+                            (item) =>
+                                item.href !== "/employee/to-do/reminders" ||
+                                canSeeReminders
                         )
                         .filter(
                             (item) =>
@@ -248,26 +260,6 @@ export function DashboardSidebar({
 
         return () => cancelAnimationFrame(frame)
     }, [])
-
-    const previousPathnameRef = useRef<string | null>(null)
-
-    useEffect(() => {
-        if (isMobile) {
-            previousPathnameRef.current = pathname
-            return
-        }
-
-        const previousPathname = previousPathnameRef.current
-        const enteredWideLayoutRoute =
-            isWideLayoutRoute(pathname) &&
-            (previousPathname === null || !isWideLayoutRoute(previousPathname))
-
-        previousPathnameRef.current = pathname
-
-        if (enteredWideLayoutRoute) {
-            setOpen(false)
-        }
-    }, [isMobile, pathname, setOpen])
 
     function isRouteActive(href: string) {
         const cleanPathname = pathname.replace(/\/$/, "")
@@ -365,6 +357,7 @@ export function DashboardSidebar({
                                                                 isActive={isActive}
                                                                 className={cn(
                                                                     "mx-auto h-8 w-8 justify-center rounded-xl px-0",
+                                                                    sidebarNavHoverClass,
                                                                     isActive &&
                                                                     sidebarNavActiveClass
                                                                 )}
@@ -425,6 +418,7 @@ export function DashboardSidebar({
                                                         isCollapsed
                                                             ? "mx-auto h-8 w-8 justify-center rounded-xl px-0"
                                                             : "h-10 rounded-xl px-3",
+                                                        sidebarNavHoverClass,
                                                         isActive &&
                                                         sidebarNavActiveClass
                                                     )}
@@ -472,6 +466,11 @@ export function DashboardSidebar({
                                                                             isActive={
                                                                                 isSubActive
                                                                             }
+                                                                            className={cn(
+                                                                                sidebarNavHoverClass,
+                                                                                isSubActive &&
+                                                                                sidebarNavActiveClass
+                                                                            )}
                                                                         >
                                                                             <Link
                                                                                 href={
@@ -521,6 +520,7 @@ export function DashboardSidebar({
                                                     isCollapsed
                                                         ? "mx-auto h-8 w-8 justify-center rounded-xl px-0"
                                                         : "h-10 rounded-xl px-3",
+                                                    sidebarNavHoverClass,
                                                     isActive &&
                                                     sidebarNavActiveClass
                                                 )}

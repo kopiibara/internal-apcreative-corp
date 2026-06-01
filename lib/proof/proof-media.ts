@@ -1,4 +1,5 @@
 import type { ProofSubmitType } from "@/lib/proof/proof-types";
+import { richTextToPlainText } from "@/lib/rich-text/rich-text";
 
 export const PROOF_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 
@@ -106,7 +107,7 @@ export function hasValidProofSubmission(
   proofNote: string,
 ): boolean {
   if (proofType === "NOTE") {
-    return proofNote.trim().length > 0;
+    return richTextToPlainText(proofNote).length > 0;
   }
 
   if (proofType === "LINK" || proofType === "IMAGE") {

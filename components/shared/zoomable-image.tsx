@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { Minus, Plus, RotateCcw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -27,6 +27,10 @@ export function ZoomableImage({
 }: ZoomableImageProps) {
   const [scale, setScale] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [imageSize, setImageSize] = useState<{
+    width: number
+    height: number
+  } | null>(null)
   const dragging = useRef(false)
   const lastPoint = useRef({ x: 0, y: 0 })
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -87,6 +91,13 @@ export function ZoomableImage({
   }
 
   const canPan = scale > MIN_SCALE
+  const aspectRatio = useMemo(() => {
+    if (!imageSize?.width || !imageSize.height) {
+      return undefined
+    }
+
+    return `${imageSize.width} / ${imageSize.height}`
+  }, [imageSize])
 
   return (
     <div className={cn("flex min-w-0 flex-col gap-2", className)}>
@@ -133,10 +144,11 @@ export function ZoomableImage({
       <div
         ref={viewportRef}
         className={cn(
-          "relative min-h-40 touch-none overflow-hidden rounded-lg border-2 border-border bg-muted/20",
+          "relative min-h-40 w-full touch-none overflow-hidden rounded-lg border-2 border-border bg-muted/20",
           canPan ? "cursor-grab active:cursor-grabbing" : "cursor-default",
           viewportClassName,
         )}
+        style={{ aspectRatio }}
         onWheel={onWheel}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -150,8 +162,15 @@ export function ZoomableImage({
             src={src}
             alt={alt}
             draggable={false}
+            onLoad={(event) => {
+              const image = event.currentTarget
+              setImageSize({
+                width: image.naturalWidth,
+                height: image.naturalHeight,
+              })
+            }}
             className={cn(
-              "max-h-full max-w-full select-none object-contain transition-transform duration-75",
+              "h-auto max-h-full w-full max-w-full select-none object-contain transition-transform duration-75",
               imageClassName,
             )}
             style={{
