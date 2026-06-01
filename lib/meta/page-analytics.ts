@@ -13,6 +13,13 @@ import {
   sumParsedMetricsWithFallback,
 } from "@/lib/meta/insights-aggregate"
 import {
+  logNewLikesMetricDiagnostic,
+  metaNewLikesMetricUnavailable,
+  NEW_LIKES_INSIGHT_METRICS,
+  resolveNewLikesDisplayState,
+  type NewLikesComputation,
+} from "@/lib/meta/new-likes-metric"
+import {
   resolveEffectivePageAccessToken,
   type ResolvedPageTokenSource,
 } from "@/lib/meta/page-token"
@@ -376,6 +383,8 @@ async function loadPageAnalytics(
     topPostsRows,
     allTimeTopPostRows,
     latestPostsRows,
+    periodStartPageLikesRow,
+    periodEndPageLikesRow,
     previousSnapshotRow,
     recentSyncRuns,
   ] = await Promise.all([
@@ -529,6 +538,30 @@ async function loadPageAnalytics(
         `,
         [pageId]
       ),
+      query<{ page_likes: number | null }>(
+        `
+        SELECT page_likes
+        FROM meta_page_daily_snapshot
+        WHERE facebook_page_id = $1
+          AND page_likes IS NOT NULL
+          AND snapshot_date <= $2::date
+        ORDER BY snapshot_date DESC
+        LIMIT 1
+        `,
+        [pageId, window.since]
+      ),
+      query<{ page_likes: number | null }>(
+        `
+        SELECT page_likes
+        FROM meta_page_daily_snapshot
+        WHERE facebook_page_id = $1
+          AND page_likes IS NOT NULL
+          AND snapshot_date <= $3::date
+        ORDER BY snapshot_date DESC
+        LIMIT 1
+        `,
+        [pageId, window.since, window.until]
+      ),
       query<{ followers_count: number | null; page_likes: number | null }>(
         `
         SELECT followers_count, page_likes
@@ -597,10 +630,35 @@ async function loadPageAnalytics(
   )
   const newLikesFromInsights = sumParsedMetricsWithFallback(
     snapshots.rows,
-    ["page_fan_adds"],
+    [...NEW_LIKES_INSIGHT_METRICS],
     window.since,
     window.until
   )
+  let newLikesInsightMetric: NewLikesComputation["insightMetric"] = null
+  if (newLikesFromInsights !== null) {
+    for (const metricName of NEW_LIKES_INSIGHT_METRICS) {
+      const total = sumParsedMetricsInSnapshots(
+        snapshots.rows,
+        metricName,
+        window.since,
+        window.until
+      )
+      if (total !== null) {
+        newLikesInsightMetric = metricName
+        break
+      }
+    }
+  }
+
+  const insightMetricErrors = snapshots.rows.reduce<
+    Record<string, string> | null
+  >((latest, row) => {
+    const errors = row.metrics?.insight_metric_errors
+    if (errors && typeof errors === "object" && !Array.isArray(errors)) {
+      return errors as Record<string, string>
+    }
+    return latest
+  }, null)
   const newFollowersFromInsights = sumParsedMetricsWithFallback(
     snapshots.rows,
     ["page_daily_follows", "page_daily_follows_unique", "page_follows"],
@@ -738,18 +796,57 @@ async function loadPageAnalytics(
   }
 
   const previousSnapshot = previousSnapshotRow.rows[0]
+  const periodStartPageLikes = periodStartPageLikesRow.rows[0]?.page_likes ?? null
+  const periodEndPageLikes = periodEndPageLikesRow.rows[0]?.page_likes ?? null
+  const hasPeriodStartBaseline = periodStartPageLikes !== null
+
   const newFollowersFromSnapshots =
     totalFollowers !== null &&
     previousSnapshot?.followers_count != null
       ? totalFollowers - previousSnapshot.followers_count
       : null
   const newLikesFromSnapshots =
-    pageLikes !== null && previousSnapshot?.page_likes != null
-      ? pageLikes - previousSnapshot.page_likes
+    periodEndPageLikes !== null && periodStartPageLikes !== null
+      ? periodEndPageLikes - periodStartPageLikes
       : null
 
   const newFollowers = newFollowersFromInsights ?? newFollowersFromSnapshots
   const newLikes = newLikesFromInsights ?? newLikesFromSnapshots
+
+  const newLikesComputation: NewLikesComputation = {
+    value: newLikes,
+    source:
+      newLikesFromInsights !== null
+        ? "insights"
+        : newLikesFromSnapshots !== null
+          ? "snapshot_delta"
+          : null,
+    insightMetric: newLikesInsightMetric,
+  }
+
+  const newLikesDisplayState = resolveNewLikesDisplayState({
+    value: newLikes,
+    permissionDenied: insightsPermissionDenied,
+    hasPeriodStartBaseline,
+    insightsFromFanAdds: newLikesFromInsights,
+    metaMetricUnavailable: metaNewLikesMetricUnavailable({
+      insightMetricErrors,
+      insightsMetricAttempted,
+      insightsFromFanAdds: newLikesFromInsights,
+    }),
+  })
+
+  logNewLikesMetricDiagnostic({
+    displayName: config.displayName,
+    facebookPageId: pageId,
+    dateRange: window.label,
+    computation: newLikesComputation,
+    displayState: newLikesDisplayState,
+    hasPeriodStartBaseline,
+    periodStartPageLikes,
+    periodEndPageLikes,
+    insightMetricErrors,
+  })
 
   const postEngagementsFromPosts =
     totalPostsStored > 0 ? reactions + comments + shares : null
@@ -819,15 +916,7 @@ async function loadPageAnalytics(
           metricAttempted:
             insightsMetricAttempted || newFollowersFromSnapshots !== null,
         }),
-        newLikes: metricState({
-          value: newLikes,
-          sourceStatus: insightsSyncStatus,
-          permissionDenied: insightsPermissionDenied,
-          unavailable:
-            insightsMetricAttempted &&
-            newLikes === null &&
-            insightsSyncStatus !== "failed",
-        }),
+        newLikes: newLikesDisplayState,
         postEngagements: metricState({
           value: postEngagements,
           sourceStatus: postEngagementsFromPostsData

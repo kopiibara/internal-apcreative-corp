@@ -13,6 +13,7 @@
     "meta:register-page": "tsx scripts/meta-register-page.ts",
     "meta:verify-schema": "tsx scripts/verify-meta-schema.ts",
     "meta:test-webhook": "tsx scripts/meta-test-webhook.ts",
+    "meta:debug-new-likes": "tsx scripts/meta-debug-new-likes.ts",
     "db:seed-approval-kanban": "tsx scripts/seed-approval-kanban-demo.ts",
     "db:clear-approval-kanban": "tsx scripts/clear-approval-kanban-demo.ts",
     "db:test:clean": "tsx scripts/reset-testing-db.ts",
