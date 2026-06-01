@@ -134,10 +134,10 @@ function SidebarPointsSummary({
     onExpandedChange: (expanded: boolean) => void
 }) {
     return (
-        <div className="mb-3 overflow-hidden rounded-lg border-2 border-border bg-background shadow-shadow-hard-sm transition-all duration-300 ease-out">
+        <div className="relative mb-3">
             <button
                 type="button"
-                className="flex w-full cursor-pointer items-start justify-between gap-3 p-3 text-left"
+                className="flex w-full cursor-pointer items-start justify-between gap-3 rounded-lg border-2 border-border bg-background p-3 text-left shadow-shadow-hard-sm transition-all duration-300 ease-out hover:-translate-y-0.5"
                 aria-expanded={expanded}
                 onClick={() => onExpandedChange(!expanded)}
             >
@@ -172,46 +172,53 @@ function SidebarPointsSummary({
 
             <div
                 className={cn(
-                    "grid transition-[grid-template-rows] duration-300 ease-out",
-                    expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                    "absolute right-0 bottom-[calc(100%+0.75rem)] left-0 z-50 rounded-lg border-2 border-border bg-background p-3 shadow-shadow-hard transition-all duration-300 ease-out",
+                    expanded
+                        ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
+                        : "pointer-events-none translate-y-2 scale-95 opacity-0"
                 )}
             >
-                <div className="overflow-hidden">
-                    <div className="space-y-2 px-3 pb-3">
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="rounded-md border-2 border-border bg-muted/20 p-2">
-                                <p className="font-bold tabular-nums">
-                                    {summary.taskPoints} pts
-                                </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                    Task points
-                                </p>
-                            </div>
-                            <div className="rounded-md border-2 border-border bg-muted/20 p-2">
-                                <p className="font-bold tabular-nums">
-                                    {summary.dailyProgressNetPoints} pts
-                                </p>
-                                <p className="text-[10px] text-muted-foreground">
-                                    Daily points
-                                </p>
-                            </div>
-                        </div>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                        Points detail
+                    </p>
+                    <Badge variant="neutral" className="px-1.5 py-0 tabular-nums">
+                        #{summary.rank}
+                    </Badge>
+                </div>
 
-                        <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
-                            <Badge
-                                variant="destructive"
-                                className="px-1.5 py-0 tabular-nums"
-                            >
-                                Late -{summary.lateTaskDeductionPoints}
-                            </Badge>
-                            <Badge
-                                variant="destructive"
-                                className="px-1.5 py-0 tabular-nums"
-                            >
-                                Daily -{summary.dailyProgressDeductions}
-                            </Badge>
-                        </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-md border-2 border-border bg-muted/20 p-2">
+                        <p className="font-bold tabular-nums">
+                            {summary.taskPoints} pts
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                            Task points
+                        </p>
                     </div>
+                    <div className="rounded-md border-2 border-border bg-muted/20 p-2">
+                        <p className="font-bold tabular-nums">
+                            {summary.dailyProgressNetPoints} pts
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                            Daily points
+                        </p>
+                    </div>
+                </div>
+
+                <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-bold">
+                    <Badge
+                        variant="destructive"
+                        className="px-1.5 py-0 tabular-nums"
+                    >
+                        Late -{summary.lateTaskDeductionPoints}
+                    </Badge>
+                    <Badge
+                        variant="destructive"
+                        className="px-1.5 py-0 tabular-nums"
+                    >
+                        Daily -{summary.dailyProgressDeductions}
+                    </Badge>
                 </div>
             </div>
         </div>
@@ -251,7 +258,7 @@ export function DashboardSidebar({
 
     const [mounted, setMounted] = useState(false)
     const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({})
-    const [isPointsExpanded, setIsPointsExpanded] = useState(true)
+    const [isPointsExpanded, setIsPointsExpanded] = useState(false)
 
     const isCollapsed = !isMobile && state === "collapsed"
     const canSeeAccountControl =
