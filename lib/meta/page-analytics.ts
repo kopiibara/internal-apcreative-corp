@@ -556,11 +556,11 @@ async function loadPageAnalytics(
         FROM meta_page_daily_snapshot
         WHERE facebook_page_id = $1
           AND page_likes IS NOT NULL
-          AND snapshot_date <= $3::date
+          AND snapshot_date <= $2::date
         ORDER BY snapshot_date DESC
         LIMIT 1
         `,
-        [pageId, window.since, window.until]
+        [pageId, window.until]
       ),
       query<{ followers_count: number | null; page_likes: number | null }>(
         `
