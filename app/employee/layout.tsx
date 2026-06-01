@@ -8,6 +8,7 @@ import {
 } from "@/lib/tasks/employee-task-access"
 import { getEmployeeActionableTaskCount } from "@/lib/tasks/tasks"
 import { canAccessPRPage } from "@/lib/pr/pr-permissions"
+import { getSidebarPerformanceSummary } from "@/lib/staff-accountability/sidebar-performance"
 
 export default async function EmployeeLayout({
     children,
@@ -22,6 +23,7 @@ export default async function EmployeeLayout({
         canAccessDailyProgress,
         canAccessPlatformAnalytics,
         canAccessPR,
+        performanceSummary,
     ] =
         await Promise.all([
             canAccessEmployeeToDoTaskBoard(
@@ -44,6 +46,7 @@ export default async function EmployeeLayout({
                 profile.account_type,
             ),
             canAccessPRPage(profile),
+            getSidebarPerformanceSummary(profile.id),
         ])
     const actionableTaskCount = canAccessTaskBoard
         ? await getEmployeeActionableTaskCount(profile.id)
@@ -67,6 +70,7 @@ export default async function EmployeeLayout({
                 canAccessPR,
                 imageUrl: user.image ?? null,
                 mustChangePassword: profile.must_change_password,
+                performanceSummary,
             }}
         >
             {children}

@@ -5,6 +5,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell"
 import { can } from "@/lib/permissions"
 import { getEmployeeActionableTaskCount } from "@/lib/tasks/tasks"
 import { canAccessPRPage } from "@/lib/pr/pr-permissions"
+import { getSidebarPerformanceSummary } from "@/lib/staff-accountability/sidebar-performance"
 
 type RoleSlugRow = {
     slug: string
@@ -31,7 +32,13 @@ export default async function AdminLayout({
     children: React.ReactNode
 }) {
     const { profile, user } = await requireAdmin()
-    const [roleSlugs, canAccessDailyProgress, canAccessPR, actionableTaskCount] =
+    const [
+        roleSlugs,
+        canAccessDailyProgress,
+        canAccessPR,
+        actionableTaskCount,
+        performanceSummary,
+    ] =
         await Promise.all([
             getActiveRoleSlugs(profile.id),
             Promise.all([
@@ -42,6 +49,7 @@ export default async function AdminLayout({
             isFullStackDeveloperAccountType(profile.account_type)
                 ? getEmployeeActionableTaskCount(profile.id)
                 : Promise.resolve(0),
+            getSidebarPerformanceSummary(profile.id),
         ])
 
     return (
@@ -59,6 +67,7 @@ export default async function AdminLayout({
                 canAccessPR,
                 imageUrl: user.image ?? null,
                 mustChangePassword: profile.must_change_password,
+                performanceSummary,
             }}
         >
             {children}

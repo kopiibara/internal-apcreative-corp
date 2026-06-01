@@ -14,6 +14,7 @@ import {
     ChevronsUpDown,
     LogOut,
     Moon,
+    Trophy,
     Settings,
     Sun,
 } from "lucide-react"
@@ -64,12 +65,24 @@ type SidebarUser = {
     canAccessPlatformAnalytics?: boolean
     canAccessPR?: boolean
     imageUrl?: string | null
+    performanceSummary?: SidebarPerformanceSummary | null
 }
 
 type DashboardSidebarProps = {
     mode: SidebarMode
     user?: SidebarUser | null
     employeeActionableTaskCount?: number
+}
+
+type SidebarPerformanceSummary = {
+    rank: number
+    totalPoints: number
+    taskPoints: number
+    grossTaskPoints: number
+    lateTaskDeductionPoints: number
+    dailyProgressNetPoints: number
+    dailyProgressPoints: number
+    dailyProgressDeductions: number
 }
 
 function formatSidebarBadge(count: number) {
@@ -111,6 +124,121 @@ function SidebarNavCountBadge({
     )
 }
 
+function SidebarPointsSummary({
+    summary,
+    expanded,
+    onExpandedChange,
+}: {
+    summary: SidebarPerformanceSummary
+    expanded: boolean
+    onExpandedChange: (expanded: boolean) => void
+}) {
+    return (
+        <div className="mb-3 overflow-hidden rounded-lg border-2 border-border bg-background shadow-shadow-hard-sm transition-all duration-300 ease-out">
+            <button
+                type="button"
+                className="flex w-full cursor-pointer items-start justify-between gap-3 p-3 text-left"
+                aria-expanded={expanded}
+                onClick={() => onExpandedChange(!expanded)}
+            >
+                <div className="min-w-0">
+                    <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                        Leaderboard
+                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                        <Trophy className="size-4 shrink-0 text-blue" />
+                        <span className="text-md font-black tabular-nums">
+                            #{summary.rank}
+                        </span>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                        Total
+                    </p>
+                    <div className="flex items-center justify-end gap-2">
+                        <p className="text-md font-black tabular-nums">
+                            {summary.totalPoints}
+                        </p>
+                        <ChevronDown
+                            className={cn(
+                                "size-4 shrink-0 transition-transform duration-300",
+                                expanded && "rotate-180"
+                            )}
+                        />
+                    </div>
+                </div>
+            </button>
+
+            <div
+                className={cn(
+                    "grid transition-[grid-template-rows] duration-300 ease-out",
+                    expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                )}
+            >
+                <div className="overflow-hidden">
+                    <div className="space-y-2 px-3 pb-3">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded-md border-2 border-border bg-muted/20 p-2">
+                                <p className="font-bold tabular-nums">
+                                    {summary.taskPoints} pts
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                    Task points
+                                </p>
+                            </div>
+                            <div className="rounded-md border-2 border-border bg-muted/20 p-2">
+                                <p className="font-bold tabular-nums">
+                                    {summary.dailyProgressNetPoints} pts
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">
+                                    Daily points
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
+                            <Badge
+                                variant="destructive"
+                                className="px-1.5 py-0 tabular-nums"
+                            >
+                                Late -{summary.lateTaskDeductionPoints}
+                            </Badge>
+                            <Badge
+                                variant="destructive"
+                                className="px-1.5 py-0 tabular-nums"
+                            >
+                                Daily -{summary.dailyProgressDeductions}
+                            </Badge>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function SidebarPointsCollapsed({
+    summary,
+}: {
+    summary: SidebarPerformanceSummary
+}) {
+    return (
+        <div
+            className="mb-3 flex flex-col items-center gap-1 rounded-lg border-2 border-border bg-background px-1.5 py-2 text-center shadow-[var(--shadow-hard-sm)] transition-all duration-300 ease-out text-sm"
+            title={`Rank #${summary.rank} · ${summary.totalPoints} total points`}
+        >
+            <Trophy className="size-4 text-blue" />
+            <span className="text-[11px] font-black leading-none tabular-nums">
+                #{summary.rank}
+            </span>
+            <span className="text-[10px] font-bold leading-none tabular-nums text-muted-foreground">
+                {summary.totalPoints}
+            </span>
+        </div>
+    )
+}
+
 export function DashboardSidebar({
     mode,
     user,
@@ -123,6 +251,7 @@ export function DashboardSidebar({
 
     const [mounted, setMounted] = useState(false)
     const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({})
+    const [isPointsExpanded, setIsPointsExpanded] = useState(true)
 
     const isCollapsed = !isMobile && state === "collapsed"
     const canSeeAccountControl =
@@ -565,7 +694,18 @@ export function DashboardSidebar({
                 ))}
             </SidebarContent>
 
-            <SidebarFooter className={isCollapsed ? "px-2 py-4" : "p-4"}>
+            <SidebarFooter className={isCollapsed ? "px-2 py-4" : "p-3"}>
+                {user?.performanceSummary ? (
+                    isCollapsed ? (
+                        <SidebarPointsCollapsed summary={user.performanceSummary} />
+                    ) : (
+                        <SidebarPointsSummary
+                            summary={user.performanceSummary}
+                            expanded={isPointsExpanded}
+                            onExpandedChange={setIsPointsExpanded}
+                        />
+                    )
+                ) : null}
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <DropdownMenu>
