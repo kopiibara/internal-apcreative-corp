@@ -6,6 +6,7 @@ import {
 } from "@/lib/brand-access/effective-brand-access";
 import { query } from "@/lib/db";
 import type { MetaBusinessPageDashboard } from "@/lib/meta/page-analytics";
+import type { TikTokBrandDashboard } from "@/lib/tiktok/dashboard-types";
 import {
   getMetaPageByFacebookPageId,
   getMetaPageByKey,
@@ -178,6 +179,28 @@ export function isFacebookPageIdAllowed(
   return isMetaPageKeyAllowed(config.key, scope);
 }
 
+export function isBrandIdAllowed(
+  brandId: number,
+  scope: PlatformAnalyticsBrandScope,
+): boolean {
+  if (scope.hasAllBrandsAccess) {
+    return true;
+  }
+
+  return scope.allowedBrandIds.includes(brandId);
+}
+
+export function filterTikTokBrandsByScope(
+  brands: TikTokBrandDashboard[],
+  scope: PlatformAnalyticsBrandScope,
+): TikTokBrandDashboard[] {
+  if (scope.hasAllBrandsAccess) {
+    return brands;
+  }
+
+  return brands.filter((brand) => isBrandIdAllowed(brand.brandId, scope));
+}
+
 export function filterMetaBusinessPagesByScope(
   pages: MetaBusinessPageDashboard[],
   scope: PlatformAnalyticsBrandScope,
@@ -249,6 +272,7 @@ function buildEmptyNonMetaSlice(
   | "charts"
   | "metaNeedsBootstrap"
   | "metaBusinessPages"
+  | "tiktokBrandAnalytics"
 > {
   return {
     isDemo: false,
@@ -278,6 +302,7 @@ function buildEmptyNonMetaSlice(
     charts: [],
     metaNeedsBootstrap: false,
     metaBusinessPages: [],
+    tiktokBrandAnalytics: [],
   };
 }
 
@@ -287,6 +312,42 @@ export function applyBrandScopeToDashboardData(
 ): PlatformAnalyticsDashboardData {
   if (scope.hasAllBrandsAccess) {
     return data;
+  }
+
+  if (data.platform === "TIKTOK") {
+    const tiktokBrandAnalytics = filterTikTokBrandsByScope(
+      data.tiktokBrandAnalytics,
+      scope,
+    );
+    const allowedBrandIds = new Set(
+      tiktokBrandAnalytics.map((brand) => brand.brandId),
+    );
+
+    return {
+      ...data,
+      tiktokBrandAnalytics,
+      accounts: data.accounts.filter((account) =>
+        allowedBrandIds.has(Number(account.id)),
+      ),
+      contentPerformance: tiktokBrandAnalytics.flatMap(
+        (brand) => brand.contentPerformance,
+      ),
+      overviewKpis: tiktokBrandAnalytics[0]?.overviewKpis ?? [],
+      engagementKpis: tiktokBrandAnalytics[0]?.engagementKpis ?? [],
+      connection: {
+        ...data.connection,
+        connectedAccountsCount: tiktokBrandAnalytics.filter(
+          (brand) => brand.connectionStatus === "Connected",
+        ).length,
+        lastSyncAt:
+          tiktokBrandAnalytics
+            .map((brand) => brand.lastSyncAt)
+            .filter(Boolean)
+            .sort()
+            .reverse()[0] ?? null,
+        statusRows: tiktokBrandAnalytics[0]?.statusRows ?? data.connection.statusRows,
+      },
+    };
   }
 
   if (data.platform !== "META") {

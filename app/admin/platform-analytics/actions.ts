@@ -27,6 +27,7 @@ import {
   canViewPlatformAnalytics,
 } from "@/lib/platform-analytics/access";
 import {
+  isBrandIdAllowed,
   isMetaPageKeyAllowed,
   getPlatformAnalyticsBrandScope,
 } from "@/lib/platform-analytics/brand-scope";
@@ -43,6 +44,8 @@ import {
   runMetaSyncJobForPage,
 } from "@/lib/meta/sync";
 import { syncYouTubeAnalytics } from "@/lib/platform-analytics/youtube-sync";
+import { disconnectTikTokIntegration } from "@/lib/tiktok/integration-db";
+import { syncTikTokForBrand, syncAllTikTokIntegrations } from "@/lib/tiktok/sync";
 import type { MetaSyncType } from "@/lib/meta/types";
 import { buildYouTubeOAuthUrl } from "@/lib/platform-analytics/youtube-client";
 
@@ -491,6 +494,100 @@ export async function syncYouTubeAction(input?: {
     return {
       success: false,
       message: error instanceof Error ? error.message : "YouTube sync failed.",
+    };
+  }
+}
+
+async function assertBrandAccess(
+  profileId: number,
+  brandId: number,
+): Promise<MetaMonitoringActionResult<never> | null> {
+  const scope = await getPlatformAnalyticsBrandScope(profileId);
+
+  if (!isBrandIdAllowed(brandId, scope)) {
+    return {
+      success: false,
+      message: "You do not have access to analytics for this brand.",
+    };
+  }
+
+  return null;
+}
+
+export async function syncTikTokAction(input?: {
+  brandId?: number | null;
+}): Promise<MetaMonitoringActionResult> {
+  const authError = await authorizeMetaManage();
+  if (authError) {
+    return authError;
+  }
+
+  const viewAuth = await authorizeMetaView();
+  if ("success" in viewAuth) {
+    return viewAuth;
+  }
+
+  try {
+    if (input?.brandId != null) {
+      const brandError = await assertBrandAccess(viewAuth.profileId, input.brandId);
+      if (brandError) {
+        return brandError;
+      }
+
+      const result = await syncTikTokForBrand(input.brandId);
+      revalidatePlatformAnalyticsPaths();
+      return {
+        success: true,
+        message: result.message,
+        data: result,
+      };
+    }
+
+    const result = await syncAllTikTokIntegrations();
+    revalidatePlatformAnalyticsPaths();
+    return {
+      success: true,
+      message: result.message,
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "TikTok sync failed.",
+    };
+  }
+}
+
+export async function disconnectTikTokAction(input: {
+  brandId: number;
+}): Promise<MetaMonitoringActionResult> {
+  const authError = await authorizeMetaManage();
+  if (authError) {
+    return authError;
+  }
+
+  const viewAuth = await authorizeMetaView();
+  if ("success" in viewAuth) {
+    return viewAuth;
+  }
+
+  const brandError = await assertBrandAccess(viewAuth.profileId, input.brandId);
+  if (brandError) {
+    return brandError;
+  }
+
+  try {
+    await disconnectTikTokIntegration(input.brandId);
+    revalidatePlatformAnalyticsPaths();
+    return {
+      success: true,
+      message: "TikTok account disconnected for this brand.",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : "TikTok disconnect failed.",
     };
   }
 }

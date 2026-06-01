@@ -35,9 +35,9 @@ export const PLATFORM_VIEW_COPY: Record<
   TIKTOK: {
     title: "TikTok Analytics",
     subtitle:
-      "Track TikTok account performance, video views, followers, engagement, profile activity, and webhook activity once connected.",
+      "Connect a TikTok account per brand to sync profile metrics, videos, and performance snapshots from the official TikTok API.",
     liveBadge: "Live Integration",
-    demoBadge: "Demo Data",
+    demoBadge: "Not Connected",
   },
   YOUTUBE: {
     title: "YouTube Analytics",

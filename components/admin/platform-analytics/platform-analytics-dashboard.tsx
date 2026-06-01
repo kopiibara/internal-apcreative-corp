@@ -5,14 +5,17 @@ import { toast } from "sonner";
 
 import {
   bootstrapMetaMonitoringAction,
+  disconnectTikTokAction,
   disconnectYouTubeAction,
   fetchPlatformAnalyticsAction,
   syncAllMetaMonitoringAction,
   syncMetaPageMonitoringAction,
+  syncTikTokAction,
   syncYouTubeAction,
   triggerMetaSyncAction,
 } from "@/app/admin/platform-analytics/actions";
 import { MetaBusinessPageCard } from "@/components/admin/platform-analytics/meta-business-page-card";
+import { TikTokBrandCard } from "@/components/admin/platform-analytics/tiktok-brand-card";
 import { PlatformAnalyticsCharts } from "@/components/admin/platform-analytics/platform-analytics-charts";
 import { KANBAN_BOARD_PAGE_CLASS } from "@/components/shared/kanban-board-scroll";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -136,6 +139,7 @@ export function PlatformAnalyticsDashboard({
   const [metaPageKey, setMetaPageKey] = useState<string>(
     brandScopeUi.defaultMetaPageKey,
   );
+  const [tiktokBrandKey, setTikTokBrandKey] = useState<string>("all");
   const [accountId, setAccountId] = useState("all");
   const [dateRange, setDateRange] = useState<AnalyticsDateRange>("28d");
   const [customDateFrom, setCustomDateFrom] = useState("");
@@ -155,6 +159,39 @@ export function PlatformAnalyticsDashboard({
       }
     }
   }, [bootstrapMessage]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthStatus = params.get("tiktok_oauth");
+    if (!oauthStatus) {
+      return;
+    }
+
+    const message = params.get("tiktok_message");
+    if (oauthStatus === "success") {
+      toast.success(message ?? "TikTok connected.");
+    } else {
+      toast.error(message ?? "TikTok connection failed.");
+    }
+
+    params.delete("tiktok_oauth");
+    params.delete("tiktok_message");
+    const next = `${window.location.pathname}?${params.toString()}`.replace(
+      /\?$/,
+      "",
+    );
+    window.history.replaceState({}, "", next);
+  }, []);
+
+  useEffect(() => {
+    if (
+      platform === "TIKTOK" &&
+      data.tiktokBrandAnalytics.length === 1 &&
+      tiktokBrandKey === "all"
+    ) {
+      setTikTokBrandKey(String(data.tiktokBrandAnalytics[0].brandId));
+    }
+  }, [platform, data.tiktokBrandAnalytics, tiktokBrandKey]);
 
   function reload(
     nextPlatform?: AnalyticsPlatform,
@@ -270,6 +307,76 @@ export function PlatformAnalyticsDashboard({
     });
   }
 
+  const selectedTikTokBrandId =
+    tiktokBrandKey === "all" ? null : Number(tiktokBrandKey);
+
+  const selectedTikTokBrand =
+    selectedTikTokBrandId != null
+      ? data.tiktokBrandAnalytics.find(
+          (brand) => brand.brandId === selectedTikTokBrandId,
+        )
+      : null;
+
+  const tiktokIsConnected =
+    selectedTikTokBrand?.connectionStatus === "Connected" ||
+    (tiktokBrandKey === "all" &&
+      data.tiktokBrandAnalytics.some(
+        (brand) => brand.connectionStatus === "Connected",
+      ));
+
+  function handleTikTokConnect() {
+    if (selectedTikTokBrandId == null) {
+      toast.error("Select a brand before connecting TikTok.");
+      return;
+    }
+
+    window.location.href = `/api/integrations/tiktok/connect?brandId=${selectedTikTokBrandId}`;
+  }
+
+  function handleTikTokDisconnect() {
+    if (selectedTikTokBrandId == null) {
+      toast.error("Select a brand before disconnecting TikTok.");
+      return;
+    }
+
+    startTransition(async () => {
+      if (!window.confirm("Disconnect TikTok for this brand?")) {
+        return;
+      }
+
+      const result = await disconnectTikTokAction({
+        brandId: selectedTikTokBrandId,
+      });
+
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success(result.message);
+      reload("TIKTOK", String(selectedTikTokBrandId));
+    });
+  }
+
+  function handleTikTokSync() {
+    startTransition(async () => {
+      const result = await syncTikTokAction({
+        brandId: selectedTikTokBrandId,
+      });
+
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success(result.message);
+      reload(
+        "TIKTOK",
+        selectedTikTokBrandId != null ? String(selectedTikTokBrandId) : "all",
+      );
+    });
+  }
+
   function handleYouTubeSync() {
     startTransition(async () => {
       const result = await syncYouTubeAction({
@@ -350,24 +457,41 @@ export function PlatformAnalyticsDashboard({
           />
           <PlatformActions
             platform={platform}
-            isConnected={data.connection.apiConnected}
             showAdminSyncActions={
               showAdminSyncActions && brandScopeUi.hasAllBrandsAccess
             }
             isPending={isPending}
             onConnect={
-              platform === "YOUTUBE" ? handleYouTubeConnect : handleBootstrap
+              platform === "TIKTOK"
+                ? handleTikTokConnect
+                : platform === "YOUTUBE"
+                  ? handleYouTubeConnect
+                  : handleBootstrap
             }
             onDisconnect={
-              platform === "YOUTUBE" ? handleYouTubeDisconnect : undefined
+              platform === "TIKTOK"
+                ? handleTikTokDisconnect
+                : platform === "YOUTUBE"
+                  ? handleYouTubeDisconnect
+                  : undefined
             }
             onSyncAll={
-              platform === "YOUTUBE" ? handleYouTubeSync : handleSyncAll
+              platform === "TIKTOK"
+                ? handleTikTokSync
+                : platform === "YOUTUBE"
+                  ? handleYouTubeSync
+                  : handleSyncAll
+            }
+            tiktokConnectDisabled={platform === "TIKTOK" && selectedTikTokBrandId == null}
+            isConnected={
+              platform === "TIKTOK" ? tiktokIsConnected : data.connection.apiConnected
             }
             onSyncPosts={() =>
-              platform === "YOUTUBE"
-                ? handleYouTubeSync()
-                : handleSync("hourly_posts")
+              platform === "TIKTOK"
+                ? handleTikTokSync()
+                : platform === "YOUTUBE"
+                  ? handleYouTubeSync()
+                  : handleSync("hourly_posts")
             }
             onSyncPage={() => handleSync("daily_page")}
             onSyncInsights={() =>
@@ -473,6 +597,44 @@ export function PlatformAnalyticsDashboard({
           </div>
         ) : null}
 
+        {platform === "TIKTOK" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">Brand:</span>
+            {brandScopeUi.hasAllBrandsAccess &&
+            data.tiktokBrandAnalytics.length > 1 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant={tiktokBrandKey === "all" ? "default" : "neutral"}
+                disabled={isPending}
+                onClick={() => {
+                  setTikTokBrandKey("all");
+                  reload("TIKTOK", "all");
+                }}
+              >
+                All brands
+              </Button>
+            ) : null}
+            {data.tiktokBrandAnalytics.map((brand) => (
+              <Button
+                key={brand.brandId}
+                type="button"
+                size="sm"
+                variant={
+                  tiktokBrandKey === String(brand.brandId) ? "default" : "neutral"
+                }
+                disabled={isPending}
+                onClick={() => {
+                  setTikTokBrandKey(String(brand.brandId));
+                  reload("TIKTOK", String(brand.brandId));
+                }}
+              >
+                {brand.brandName}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+
         <ConnectionStatusCard
           connection={data.connection}
           isDemo={data.isDemo}
@@ -526,6 +688,24 @@ export function PlatformAnalyticsDashboard({
                 analyticsBasePath={analyticsBasePath}
               />
             ))
+          )}
+        </section>
+      ) : platform === "TIKTOK" ? (
+        <section className="space-y-6">
+          {data.tiktokBrandAnalytics.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                No brands are available for TikTok analytics in your current
+                scope.
+              </CardContent>
+            </Card>
+          ) : (
+            (tiktokBrandKey === "all"
+              ? data.tiktokBrandAnalytics
+              : data.tiktokBrandAnalytics.filter(
+                  (brand) => String(brand.brandId) === tiktokBrandKey,
+                )
+            ).map((brand) => <TikTokBrandCard key={brand.brandId} brand={brand} />)
           )}
         </section>
       ) : (
@@ -628,6 +808,7 @@ function PlatformActions({
   isConnected,
   showAdminSyncActions,
   isPending,
+  tiktokConnectDisabled = false,
   onConnect,
   onDisconnect,
   onSyncAll,
@@ -639,6 +820,7 @@ function PlatformActions({
   isConnected: boolean;
   showAdminSyncActions: boolean;
   isPending: boolean;
+  tiktokConnectDisabled?: boolean;
   onConnect: () => void;
   onDisconnect?: () => void;
   onSyncAll: () => void;
@@ -700,13 +882,38 @@ function PlatformActions({
   if (platform === "TIKTOK") {
     return (
       <div className={PLATFORM_ACTIONS_ROW_CLASS}>
-        <Button type="button" variant="neutral" disabled>
-          Connect TikTok
+        <Button
+          type="button"
+          variant={isConnected ? "neutral" : "default"}
+          disabled={isPending || tiktokConnectDisabled || isConnected}
+          onClick={onConnect}
+        >
+          {isConnected ? "Connected" : "Connect TikTok"}
         </Button>
-        <Button type="button" variant="neutral" disabled>
+        {isConnected && onDisconnect ? (
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={isPending || tiktokConnectDisabled}
+            onClick={onDisconnect}
+          >
+            Disconnect TikTok
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="neutral"
+          disabled={isPending || !isConnected}
+          onClick={onSyncAll}
+        >
           Sync TikTok
         </Button>
-        <Button type="button" variant="neutral" disabled>
+        <Button
+          type="button"
+          variant="neutral"
+          disabled={isPending || !isConnected}
+          onClick={onSyncPosts}
+        >
           Sync Videos
         </Button>
       </div>
@@ -882,6 +1089,16 @@ function GrowthTable({
   );
 }
 
+function formatContentMetric(
+  value: number | null | undefined,
+  platform: PlatformCode,
+) {
+  if (value == null) {
+    return platform === "TIKTOK" ? "No live data yet" : "-";
+  }
+  return value.toLocaleString("en-PH");
+}
+
 function ContentTable({
   platform,
   rows,
@@ -893,14 +1110,15 @@ function ContentTable({
 }) {
   const isGoogle = platform === "GOOGLE";
   const isYouTube = platform === "YOUTUBE";
+  const isTikTok = platform === "TIKTOK";
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">
-          {isYouTube ? "Video performance" : "Content performance"}
+          {isYouTube || isTikTok ? "Video performance" : "Content performance"}
         </CardTitle>
-        {isYouTube ? (
+        {isYouTube || isTikTok ? (
           <CardDescription>
             Synced content performance. Last synced: {lastSyncedAt ?? "Never"}
           </CardDescription>
@@ -923,13 +1141,13 @@ function ContentTable({
                 <th className="py-2 pr-4">Likes</th>
                 <th className="py-2 pr-4">Comments</th>
                 <th className="py-2 pr-4">Shares</th>
-                {platform === "TIKTOK" ? (
-                  <>
-                    <th className="py-2 pr-4">Engagement</th>
-                    <th className="py-2 pr-4">Profile visits</th>
-                  </>
+                {isTikTok ? (
+                  <th className="py-2 pr-4">Engagement rate</th>
                 ) : null}
-                <th className="py-2 pr-4">Source</th>
+                {isTikTok ? (
+                  <th className="py-2 pr-4">Video link</th>
+                ) : null}
+                {!isTikTok ? <th className="py-2 pr-4">Source</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -950,7 +1168,9 @@ function ContentTable({
                         ? dateFormatter.format(new Date(row.publishedAt))
                         : "-"}
                     </td>
-                    <td className="py-2 pr-4">{row.views ?? "-"}</td>
+                    <td className="py-2 pr-4">
+                      {formatContentMetric(row.views, platform)}
+                    </td>
                     {isYouTube ? (
                       <>
                         <td className="py-2 pr-4">{row.watchTime ?? "-"}</td>
@@ -959,20 +1179,39 @@ function ContentTable({
                         </td>
                       </>
                     ) : null}
-                    <td className="py-2 pr-4">{row.likes}</td>
-                    <td className="py-2 pr-4">{row.comments}</td>
-                    <td className="py-2 pr-4">{row.shares}</td>
-                    {platform === "TIKTOK" ? (
-                      <>
-                        <td className="py-2 pr-4">
-                          {row.engagementRate ?? "-"}
-                        </td>
-                        <td className="py-2 pr-4">
-                          {row.profileVisits ?? "-"}
-                        </td>
-                      </>
+                    <td className="py-2 pr-4">
+                      {formatContentMetric(row.likes, platform)}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {formatContentMetric(row.comments, platform)}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {formatContentMetric(row.shares, platform)}
+                    </td>
+                    {isTikTok ? (
+                      <td className="py-2 pr-4">
+                        {row.engagementRate ?? "No live data yet"}
+                      </td>
                     ) : null}
-                    <td className="py-2 pr-4">{row.source}</td>
+                    {isTikTok ? (
+                      <td className="py-2 pr-4">
+                        {row.link ? (
+                          <a
+                            href={row.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary underline"
+                          >
+                            Open
+                          </a>
+                        ) : (
+                          "No live data yet"
+                        )}
+                      </td>
+                    ) : null}
+                    {!isTikTok ? (
+                      <td className="py-2 pr-4">{row.source}</td>
+                    ) : null}
                   </tr>
                 ))
               )}
