@@ -2,7 +2,7 @@
 
 import { useMemo, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { Plus } from "lucide-react"
+import { Columns3, Plus, Table2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { cancelContentReport } from "@/app/employee/approvals/actions"
@@ -185,16 +185,30 @@ export function EmployeeApprovalKanbanBoard({
               reports={reports}
               actions={
                 <>
-                <TabsList>
-                  <TabsTrigger value="kanban">
-                    Kanban Board
+                <TabsList className="h-11 gap-1">
+                  <TabsTrigger
+                    value="kanban"
+                    aria-label="Kanban Board"
+                    title="Kanban Board"
+                    className="relative size-8 px-0 py-0"
+                  >
+                    <Columns3 className="size-4" />
+                    <span className="sr-only">Kanban Board</span>
                     {readyToPublishCount > 0 ? (
-                      <span className="ml-2 rounded-md border border-border bg-background px-1.5 text-xs">
+                      <span className="absolute -right-1.5 -top-1.5 min-w-4 rounded-full border border-border bg-background px-1 text-[10px] leading-4 text-foreground">
                         {readyToPublishCount}
                       </span>
                     ) : null}
                   </TabsTrigger>
-                  <TabsTrigger value="table">Table View</TabsTrigger>
+                  <TabsTrigger
+                    value="table"
+                    aria-label="Table View"
+                    title="Table View"
+                    className="size-8 px-0 py-0"
+                  >
+                    <Table2 className="size-4" />
+                    <span className="sr-only">Table View</span>
+                  </TabsTrigger>
                 </TabsList>
                 {canCreateContentReport ? (
                   <Button className="shrink-0" onClick={openCreateDialog}>

@@ -34,7 +34,7 @@ export function DataTableScrollArea({
   className,
   fill = false,
   viewportClassName,
-  scrollbars = "both",
+  scrollbars = "horizontal",
 }: DataTableScrollAreaProps) {
   return (
     <ScrollArea

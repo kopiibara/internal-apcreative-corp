@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import {
   CalendarClock,
   Clipboard,
+  ExternalLink,
   Eye,
   FilePenLine,
   MoreHorizontal,
@@ -292,8 +293,9 @@ function getApprovalColumns({
             href={row.original.assetLink}
             target="_blank"
             rel="noreferrer"
-            className="text-sm underline-offset-4 hover:underline"
+            className="text-sm underline-offset-4 hover:underline flex flex-row items-center gap-1"
           >
+            <ExternalLink className="size-3" />
             Open asset
           </a>
         ) : (
@@ -327,7 +329,7 @@ function getApprovalColumns({
     {
       accessorKey: "supervisorStatus",
       header: ({ column }) => (
-        <SortButton label="Marketing Supervisor Status" column={column} />
+        <SortButton label="Supervisor" column={column} />
       ),
       cell: ({ row }) => (
         <StatusBadge status={row.original.supervisorStatus} type="approval" />
@@ -336,7 +338,7 @@ function getApprovalColumns({
     {
       accessorKey: "directorStatus",
       header: ({ column }) => (
-        <SortButton label="Director of Marketing Status" column={column} />
+        <SortButton label="Director" column={column} />
       ),
       cell: ({ row }) => (
         <StatusBadge status={row.original.directorStatus} type="approval" />

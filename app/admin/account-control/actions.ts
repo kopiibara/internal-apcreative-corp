@@ -74,6 +74,7 @@ type RoleRow = {
 const accountActionRanks: Record<AccountType, number> = {
   CLIENT: 10,
   EMPLOYEE: 20,
+  PR: 30,
   SUPERVISOR: 70,
   MANAGER: 80,
   DIRECTOR: 85,
@@ -424,11 +425,11 @@ function validateEmployeeAccessSummary(
   }
 
   if (summary.active_count < 1) {
-    return "CLIENT and EMPLOYEE accounts need at least one active brand.";
+    return "CLIENT, EMPLOYEE, and PR accounts need at least one active brand.";
   }
 
   if (summary.active_primary_count !== 1) {
-    return "CLIENT and EMPLOYEE accounts need exactly one primary active brand.";
+    return "CLIENT, EMPLOYEE, and PR accounts need exactly one primary active brand.";
   }
 
   return null;
@@ -1096,7 +1097,7 @@ export async function removeBrandAccess(input: unknown): Promise<ActionResult> {
 
         if (remainingCount < 1) {
           throw new Error(
-            "CLIENT and EMPLOYEE accounts need at least one active brand.",
+            "CLIENT, EMPLOYEE, and PR accounts need at least one active brand.",
           );
         }
       }

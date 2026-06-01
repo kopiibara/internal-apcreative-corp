@@ -1,3 +1,5 @@
+import { Columns3, Table2 } from "lucide-react";
+
 import {
   Select,
   SelectContent,
@@ -33,10 +35,7 @@ export function AdminDailyProgressViewControls({
 }) {
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2 p-1">
-      <TabsList className="h-fit w-auto shrink-0 ">
-        <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
-        <TabsTrigger value="table">Table View</TabsTrigger>
-      </TabsList>
+
 
       <Select value={employeeFilter} onValueChange={onEmployeeFilterChange}>
         <SelectTrigger
@@ -88,6 +87,27 @@ export function AdminDailyProgressViewControls({
           ))}
         </SelectContent>
       </Select>
+
+      <TabsList className="h-11 w-auto shrink-0 gap-1">
+        <TabsTrigger
+          value="kanban"
+          aria-label="Kanban Board"
+          title="Kanban Board"
+          className="size-8 px-0 py-0"
+        >
+          <Columns3 className="size-4" />
+          <span className="sr-only">Kanban Board</span>
+        </TabsTrigger>
+        <TabsTrigger
+          value="table"
+          aria-label="Table View"
+          title="Table View"
+          className="size-8 px-0 py-0"
+        >
+          <Table2 className="size-4" />
+          <span className="sr-only">Table View</span>
+        </TabsTrigger>
+      </TabsList>
     </div>
   );
 }

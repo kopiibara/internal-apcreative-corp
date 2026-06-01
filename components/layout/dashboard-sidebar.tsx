@@ -62,6 +62,7 @@ type SidebarUser = {
     canAccessReminders?: boolean
     canAccessDailyProgress?: boolean
     canAccessPlatformAnalytics?: boolean
+    canAccessPR?: boolean
     imageUrl?: string | null
 }
 
@@ -140,6 +141,7 @@ export function DashboardSidebar({
         mode === "admin"
             ? user?.canAccessDailyProgress !== false
             : user?.canAccessDailyProgress === true
+    const canSeePR = user?.canAccessPR === true
     const isFullStackDeveloper = user?.accountType === "FULL_STACK_DEVELOPER"
     const groups =
         mode === "admin"
@@ -152,7 +154,8 @@ export function DashboardSidebar({
                                 (item.href !== "/admin/account-control" ||
                                     canSeeAccountControl) &&
                                 (item.href !== "/admin/daily-progress" ||
-                                    canSeeDailyProgress)
+                                    canSeeDailyProgress) &&
+                                (item.href !== "/admin/pr" || canSeePR)
                         )
                         .map((item) => {
                             if (item.title !== "To-Do") {
@@ -200,6 +203,10 @@ export function DashboardSidebar({
                             (item) =>
                                 item.href !== "/employee/daily-progress" ||
                                 canSeeDailyProgress
+                        )
+                        .filter(
+                            (item) =>
+                                item.href !== "/employee/pr" || canSeePR
                         )
                         .map((item) => {
                             if (item.title !== "To-Do") {

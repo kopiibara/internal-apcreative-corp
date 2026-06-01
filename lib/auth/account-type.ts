@@ -3,6 +3,7 @@ import { ADMIN_ROLE_SLUGS } from "@/lib/auth/account-defaults";
 export const accountTypes = [
   "CLIENT",
   "EMPLOYEE",
+  "PR",
   "SUPERVISOR",
   "MANAGER",
   "EXECUTIVE",
@@ -12,7 +13,7 @@ export const accountTypes = [
 
 export type AccountType = (typeof accountTypes)[number];
 
-const employeeAccountTypes: AccountType[] = ["CLIENT", "EMPLOYEE"];
+const employeeAccountTypes: AccountType[] = ["CLIENT", "EMPLOYEE", "PR"];
 
 /** Admin-side account types that use the admin dashboard and permission bypass. */
 export const ADMIN_ACCOUNT_TYPES = [
@@ -73,6 +74,10 @@ const accountTypePriority: {
     accountType: "SUPERVISOR",
   },
   {
+    match: (slugs) => slugs.includes("pr"),
+    accountType: "PR",
+  },
+  {
     match: (slugs) => slugs.includes("client-viewer"),
     accountType: "CLIENT",
   },
@@ -108,6 +113,7 @@ export function derivePositionFromRoles(roles: RoleRecord[]): string | null {
     "executive",
     "manager",
     "supervisor",
+    "pr",
     "client-viewer",
   ] as const;
 

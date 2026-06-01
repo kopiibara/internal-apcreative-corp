@@ -82,6 +82,10 @@ type AccountViewMode = "table" | "cards"
 
 const ACCOUNT_TABLE_HEADER_HEIGHT = 52
 const ACCOUNT_TABLE_MIN_ROW_HEIGHT = 76
+const ACCOUNT_TABLE_MIN_PAGE_SIZE = 10
+const ACCOUNT_TABLE_MAX_PAGE_SIZE = 25
+const ACCOUNT_TABLE_PAGING_ROW_HEIGHT_CAP =
+  ACCOUNT_TABLE_MIN_ROW_HEIGHT + 40
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -338,6 +342,25 @@ function estimateAccountRowHeight(account: AccountListItem) {
   return ACCOUNT_TABLE_MIN_ROW_HEIGHT + Math.max(0, badgeRows - 1) * 30
 }
 
+function getTypicalRowHeightForPaging(accounts: AccountListItem[]) {
+  if (accounts.length === 0) {
+    return ACCOUNT_TABLE_MIN_ROW_HEIGHT
+  }
+
+  const averageHeight =
+    accounts.reduce(
+      (total, account) =>
+        total +
+        Math.min(
+          estimateAccountRowHeight(account),
+          ACCOUNT_TABLE_PAGING_ROW_HEIGHT_CAP,
+        ),
+      0,
+    ) / accounts.length
+
+  return Math.max(ACCOUNT_TABLE_MIN_ROW_HEIGHT, averageHeight)
+}
+
 export function AccountDataTable({
   accounts,
   brands,
@@ -348,7 +371,7 @@ export function AccountDataTable({
   const paginationRef = useRef<HTMLDivElement>(null)
   const [sorting, setSorting] = useState<SortingState>([])
   const [viewMode, setViewMode] = useState<AccountViewMode>("table")
-  const [pageSize, setPageSize] = useState(4)
+  const [pageSize, setPageSize] = useState(ACCOUNT_TABLE_MIN_PAGE_SIZE)
   const [isPending, startTransition] = useTransition()
   const {
     selectedAccount,
@@ -470,13 +493,13 @@ export function AccountDataTable({
       const paginationHeight = paginationRef.current?.offsetHeight ?? 44
       const availableRowHeight =
         panelHeight - paginationHeight - ACCOUNT_TABLE_HEADER_HEIGHT - 24
-      const largestEstimatedRowHeight = Math.max(
-        ACCOUNT_TABLE_MIN_ROW_HEIGHT,
-        ...filteredAccounts.map(estimateAccountRowHeight),
-      )
-      const nextPageSize = Math.max(
-        1,
-        Math.floor(availableRowHeight / largestEstimatedRowHeight),
+      const typicalRowHeight = getTypicalRowHeightForPaging(filteredAccounts)
+      const nextPageSize = Math.min(
+        ACCOUNT_TABLE_MAX_PAGE_SIZE,
+        Math.max(
+          ACCOUNT_TABLE_MIN_PAGE_SIZE,
+          Math.floor(availableRowHeight / typicalRowHeight),
+        ),
       )
 
       setPageSize((current) =>
@@ -659,7 +682,7 @@ export function AccountDataTable({
           {viewMode === "table" ? (
             <DataTableScrollArea
               fill
-              scrollbars="horizontal"
+              scrollbars="both"
               viewportClassName="h-auto max-h-none rounded-lg [&>div]:min-h-0"
             >
               <Table className="min-w-[1600px] border-0">
