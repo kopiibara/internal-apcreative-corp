@@ -42,8 +42,8 @@ async function loadTaskPermissions(
 
   if (accountType === "FULL_STACK_DEVELOPER") {
     return {
-      canCreate: false,
-      canAssign: false,
+      canCreate: true,
+      canAssign: true,
       canUpdate: false,
       canDelete: false,
       canViewAll: canViewAllPermission,

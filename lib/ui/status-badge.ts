@@ -86,6 +86,8 @@ const STATUS_COLOR_MAP: Record<string, string> = {
     "border-amber-600 bg-amber-500 text-white dark:border-amber-500 dark:bg-amber-600",
   CRITICAL:
     "border-red-700 bg-red-600 text-white dark:border-red-600 dark:bg-red-700",
+  NO_TASKS:
+    "border-border bg-zinc-300 text-zinc-900 dark:bg-zinc-600 dark:text-zinc-50",
   UNKNOWN: UNKNOWN_BADGE_CLASS,
   GRADED:
     "border-violet-700 bg-violet-600 text-white dark:border-violet-600 dark:bg-violet-700",
@@ -168,6 +170,7 @@ const EXPLICIT_LABELS: Record<string, string> = {
   MISSING_PROOF: "Missing proof",
   BLOCKER_REPORTED: "Blocker reported",
   NEEDS_REVIEW: "Needs Review",
+  NO_TASKS: "No Tasks",
   READY_TO_PUBLISH: "Ready to Publish",
 }
 
