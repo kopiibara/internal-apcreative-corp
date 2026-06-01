@@ -1,7 +1,11 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Copy, Pencil } from "lucide-react";
+import { toast } from "sonner";
 
+import { duplicatePRRequest } from "@/app/employee/pr/actions";
 import { PRRequestTimeline } from "@/components/pr/pr-request-timeline";
 import {
   PRCollaborationStatusBadge,
@@ -32,6 +36,8 @@ type PRRequestDetailsSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   canManage: boolean;
+  canCreate: boolean;
+  currentProfileId: number;
   onEdit?: (request: PRRequestRecord) => void;
 };
 
@@ -104,8 +110,36 @@ export function PRRequestDetailsSheet({
   open,
   onOpenChange,
   canManage,
+  canCreate,
+  currentProfileId,
   onEdit,
 }: PRRequestDetailsSheetProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const canEdit =
+    Boolean(request) &&
+    Boolean(onEdit) &&
+    (canManage || (canCreate && request?.createdByProfileId === currentProfileId));
+  const canDuplicate = Boolean(request) && canCreate;
+
+  function handleDuplicate() {
+    if (!request) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await duplicatePRRequest({ requestId: request.id });
+
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success(result.message);
+      router.refresh();
+    });
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-svh w-[95vw] flex-col gap-0 overflow-hidden sm:max-w-4xl! sm:w-[50vw]! xl:max-w-6xl!">
@@ -161,17 +195,33 @@ export function PRRequestDetailsSheet({
           </ScrollArea>
         ) : null}
 
-        {request && canManage && onEdit ? (
+        {request && (canEdit || canDuplicate) ? (
           <SheetFooter className="sticky bottom-0 z-10 shrink-0 border-t-2 border-border bg-background/95 px-4  backdrop-blur">
-            <Button
-              type="button"
-              variant="default"
-              onClick={() => onEdit(request)}
-              className="mr-auto"
-            >
-              <Pencil className="size-4" />
-              Edit request
-            </Button>
+            <div className="flex w-full flex-col  gap-2 sm:flex-row sm:justify-start">
+              {canDuplicate ? (
+                <Button
+                  type="button"
+                  variant="neutral"
+                  onClick={handleDuplicate}
+                  disabled={isPending}
+                  className="w-full sm:w-auto"
+                >
+                  <Copy className="size-4" />
+                  Duplicate request
+                </Button>
+              ) : null}
+              {canEdit && onEdit ? (
+                <Button
+                  type="button"
+                  variant="default"
+                  onClick={() => onEdit(request)}
+                  className="w-full sm:w-auto"
+                >
+                  <Pencil className="size-4" />
+                  Edit request
+                </Button>
+              ) : null}
+            </div>
           </SheetFooter>
         ) : null}
       </SheetContent>

@@ -13,6 +13,7 @@ import { query } from "@/lib/db";
 import {
   canCreatePRRequest,
   canManagePRRequests,
+  isLeadershipReadOnlyPRAccount,
 } from "@/lib/pr/pr-permissions";
 import {
   getPRRequestById,
@@ -108,6 +109,8 @@ export async function createPRRequest(
   }
 
   const canManage = await canManagePRRequests(context.profile);
+  const canUseActionSection =
+    canManage || (await canCreatePRRequest(context.profile));
   const requester = await getPRRequesterOptionById(
     parsed.data.requestedByProfileId,
   );
@@ -121,6 +124,7 @@ export async function createPRRequest(
 
   if (
     !canManage &&
+    !isLeadershipReadOnlyPRAccount(context.profile.account_type) &&
     !(await profileHasBrandAccess(context.profile.id, sanitized.brandId))
   ) {
     return {
@@ -129,8 +133,8 @@ export async function createPRRequest(
     };
   }
 
-  const contactStatus = canManage ? parsed.data.contactStatus : "PENDING";
-  const collaborationStatus = canManage
+  const contactStatus = canUseActionSection ? parsed.data.contactStatus : "PENDING";
+  const collaborationStatus = canUseActionSection
     ? parsed.data.collaborationStatus
     : "PENDING";
 
@@ -167,10 +171,10 @@ export async function createPRRequest(
         requester.id,
         requester.fullName,
         contactStatus,
-        canManage ? parseDateOfVisit(parsed.data.dateOfVisit) : null,
+        canUseActionSection ? parseDateOfVisit(parsed.data.dateOfVisit) : null,
         collaborationStatus,
-        canManage ? sanitized.followUpNotes : null,
-        canManage ? sanitized.declinedReason : null,
+        canUseActionSection ? sanitized.followUpNotes : null,
+        canUseActionSection ? sanitized.declinedReason : null,
         context.profile.id,
       ],
     );
@@ -206,13 +210,6 @@ export async function updatePRRequestAction(
 
   const { context } = auth;
 
-  if (!(await canManagePRRequests(context.profile))) {
-    return {
-      success: false,
-      message: "You do not have permission to manage PR requests.",
-    };
-  }
-
   const parsed = updatePRRequestActionSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -226,6 +223,18 @@ export async function updatePRRequestAction(
 
   if (!existing) {
     return { success: false, message: "PR request was not found." };
+  }
+
+  const canManage = await canManagePRRequests(context.profile);
+  const canEditOwnCreatedRequest =
+    existing.createdByProfileId === context.profile.id &&
+    (await canCreatePRRequest(context.profile));
+
+  if (!canManage && !canEditOwnCreatedRequest) {
+    return {
+      success: false,
+      message: "You can only edit PR requests you created.",
+    };
   }
 
   const sanitized = sanitizePRRequestInput(parsed.data);

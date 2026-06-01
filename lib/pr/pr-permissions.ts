@@ -138,6 +138,10 @@ export async function canCreatePRRequest(profile: PRPermissionProfile) {
     return true;
   }
 
+  if (isLeadershipReadOnlyPRAccount(profile.account_type)) {
+    return true;
+  }
+
   return hasExplicitPermission(profile.auth_user_id, "pr_requests.create");
 }
 

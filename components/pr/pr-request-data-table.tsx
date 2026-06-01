@@ -60,6 +60,7 @@ type PRRequestDataTableProps = {
   requests: PRRequestRecord[];
   canManage: boolean;
   canCreate: boolean;
+  currentProfileId: number;
   readOnlyMode: boolean;
   onOpenDetails: (request: PRRequestRecord) => void;
   onEditRequest: (request: PRRequestRecord) => void;
@@ -194,12 +195,14 @@ function RowActions({
   request,
   canManage,
   canCreate,
+  currentProfileId,
   onOpenDetails,
   onEditRequest,
 }: {
   request: PRRequestRecord;
   canManage: boolean;
   canCreate: boolean;
+  currentProfileId: number;
   onOpenDetails: (request: PRRequestRecord) => void;
   onEditRequest: (request: PRRequestRecord) => void;
 }) {
@@ -232,7 +235,7 @@ function RowActions({
           <Copy className="size-3.5" />
         </Button>
       ) : null}
-      {canManage ? (
+      {canManage || (canCreate && request.createdByProfileId === currentProfileId) ? (
         <Button
           type="button"
           size="icon-sm"
@@ -250,6 +253,7 @@ function RowActions({
 function getColumns(options: {
   canManage: boolean;
   canCreate: boolean;
+  currentProfileId: number;
   readOnlyMode: boolean;
   onOpenDetails: (request: PRRequestRecord) => void;
   onEditRequest: (request: PRRequestRecord) => void;
@@ -351,6 +355,7 @@ function getColumns(options: {
           request={row.original}
           canManage={options.canManage}
           canCreate={options.canCreate}
+          currentProfileId={options.currentProfileId}
           onOpenDetails={options.onOpenDetails}
           onEditRequest={options.onEditRequest}
         />
@@ -364,6 +369,7 @@ export function PRRequestDataTable({
   requests,
   canManage,
   canCreate,
+  currentProfileId,
   readOnlyMode,
   onOpenDetails,
   onEditRequest,
@@ -377,11 +383,12 @@ export function PRRequestDataTable({
       getColumns({
         canManage,
         canCreate,
+        currentProfileId,
         readOnlyMode,
         onOpenDetails,
         onEditRequest,
       }),
-    [canCreate, canManage, onEditRequest, onOpenDetails, readOnlyMode],
+    [canCreate, canManage, currentProfileId, onEditRequest, onOpenDetails, readOnlyMode],
   );
 
   const table = useReactTable({

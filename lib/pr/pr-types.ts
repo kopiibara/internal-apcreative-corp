@@ -20,6 +20,7 @@ export type PRRequestRecord = {
   collaborationStatus: PRCollaborationStatus;
   followUpNotes: string | null;
   declinedReason: string | null;
+  createdByProfileId: number;
   createdAt: string;
   updatedAt: string;
 };

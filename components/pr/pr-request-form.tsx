@@ -60,6 +60,7 @@ type PRRequestFormProps = {
   brands: { id: number; name: string }[];
   requesterOptions: PRRequesterOption[];
   currentProfileId: number;
+  canCreate: boolean;
   canManage: boolean;
   mode: "create" | "edit";
   request?: PRRequestRecord | null;
@@ -117,6 +118,7 @@ export function PRRequestForm({
   brands,
   requesterOptions,
   currentProfileId,
+  canCreate,
   canManage,
   mode,
   request,
@@ -124,7 +126,13 @@ export function PRRequestForm({
   const [formState, setFormState] = useState<FormState>(getDefaultFormState);
   const [isPending, startTransition] = useTransition();
   const isCreateMode = mode === "create";
-  const showActionSection = canManage && (isCreateMode || mode === "edit");
+  const showActionSection = (isCreateMode && canCreate) || canManage;
+  const warmControlClassName =
+    "border-yellow-950 bg-white text-yellow-950 placeholder:text-yellow-950/45 focus-visible:ring-yellow-950 dark:border-yellow-900 dark:bg-yellow-50 dark:text-yellow-950";
+  const orangeControlClassName =
+    "border-orange-950 bg-white text-orange-950 placeholder:text-orange-950/45 focus-visible:ring-orange-950 dark:border-orange-900 dark:bg-orange-50 dark:text-orange-950";
+  const inactiveWarmButtonClassName =
+    "border-yellow-950 bg-yellow-50 text-yellow-950 hover:bg-yellow-100 dark:border-yellow-900 dark:bg-yellow-50 dark:text-yellow-950";
 
   useEffect(() => {
     if (!open) {
@@ -216,7 +224,7 @@ export function PRRequestForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
             {isCreateMode ? "Add PR Request" : "Edit PR Request"}
@@ -224,9 +232,9 @@ export function PRRequestForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className={dialogFormClassName}>
-          <DialogBody>
+          <DialogBody className="px-4 sm:px-6">
             <div className="flex flex-col gap-6 pb-1">
-              <section className="space-y-5 rounded-lg border-2 border-border bg-yellow-100 p-5 text-yellow-950">
+              <section className="space-y-5 rounded-lg border-2 border-yellow-950 bg-yellow-100 p-4 text-yellow-950 dark:border-yellow-800 dark:bg-yellow-200 sm:p-5">
                 <h3 className="text-sm font-bold uppercase tracking-wide">
                   Yellow Section — Requestor / Company Action
                 </h3>
@@ -238,7 +246,7 @@ export function PRRequestForm({
                     onValueChange={(value) => updateForm("brandId", value)}
                     disabled={isPending}
                   >
-                    <SelectTrigger id="pr-brand" className="bg-white">
+                    <SelectTrigger id="pr-brand" className={warmControlClassName}>
                       <SelectValue placeholder="Select branch" />
                     </SelectTrigger>
                     <SelectContent>
@@ -251,9 +259,9 @@ export function PRRequestForm({
                   </Select>
                 </div>
 
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+                <div className="grid gap-4 md:grid-cols-2">
                   <PRStatusButtonGroup
-                    className="min-w-0 sm:flex-1"
+                    className="min-w-0"
                     label="Request type"
                     value={formState.requestType}
                     options={PR_REQUEST_TYPES.map((type) => ({
@@ -269,11 +277,14 @@ export function PRRequestForm({
                       }
                     }}
                     disabled={isPending}
+                    getOptionClassName={(_, isActive) =>
+                      isActive ? "" : inactiveWarmButtonClassName
+                    }
                   />
 
                   {formState.requestType === "INFLUENCER" ? (
                     <PRStatusButtonGroup
-                      className="min-w-0 sm:flex-1"
+                      className="min-w-0"
                       label="Influencer size"
                       value={formState.influencerSize ?? "MICRO"}
                       options={PR_INFLUENCER_SIZES.map((size) => ({
@@ -282,6 +293,9 @@ export function PRRequestForm({
                       }))}
                       onChange={(value) => updateForm("influencerSize", value)}
                       disabled={isPending}
+                      getOptionClassName={(_, isActive) =>
+                        isActive ? "" : inactiveWarmButtonClassName
+                      }
                     />
                   ) : null}
                 </div>
@@ -297,7 +311,10 @@ export function PRRequestForm({
                     }
                     disabled={isPending || requesterOptions.length === 0}
                   >
-                    <SelectTrigger id="pr-requested-by" className="bg-white">
+                    <SelectTrigger
+                      id="pr-requested-by"
+                      className={warmControlClassName}
+                    >
                       <SelectValue placeholder="Select requester" />
                     </SelectTrigger>
                     <SelectContent>
@@ -324,7 +341,7 @@ export function PRRequestForm({
                       updateForm("recommendation", event.target.value)
                     }
                     disabled={isPending}
-                    className="bg-white"
+                    className={warmControlClassName}
                   />
                 </div>
 
@@ -338,20 +355,20 @@ export function PRRequestForm({
                     }
                     disabled={isPending}
                     placeholder="Add campaign idea, audience fit, offer idea, or request context."
-                    className="min-h-[88px] bg-white"
+                    className={warmControlClassName}
                   />
                 </div>
               </section>
 
               {showActionSection ? (
-                <section className="space-y-5 rounded-lg border-2 border-border bg-orange-100 p-5 text-orange-950">
+                <section className="space-y-5 rounded-lg border-2 border-orange-950 bg-orange-100 p-4 text-orange-950 dark:border-orange-800 dark:bg-orange-200 sm:p-5">
                   <h3 className="text-sm font-bold uppercase tracking-wide">
                     Orange Section — PR / Follow-up Action
                   </h3>
 
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <PRStatusButtonGroup
-                      className="min-w-0 sm:flex-1"
+                      className="min-w-0"
                       label="Contact status"
                       value={formState.contactStatus}
                       options={PR_CONTACT_STATUSES.map((status) => ({
@@ -367,7 +384,7 @@ export function PRRequestForm({
 
                     {formState.contactStatus === "CONTACTED" ? (
                       <PRStatusButtonGroup
-                        className="min-w-0 sm:flex-1"
+                        className="min-w-0"
                         label="Collaboration status"
                         value={formState.collaborationStatus}
                         options={PR_COLLABORATION_STATUSES.map((status) => ({
@@ -395,7 +412,7 @@ export function PRRequestForm({
                         value={formState.dateOfVisit}
                         onChange={(value) => updateForm("dateOfVisit", value)}
                         disabled={isPending}
-                        className="min-w-0 flex-1 bg-white sm:max-w-xs"
+                        className={`min-w-0 flex-1 sm:max-w-xs ${orangeControlClassName}`}
                       />
                     </div>
                   ) : null}
@@ -420,7 +437,7 @@ export function PRRequestForm({
                         }
                       }}
                       disabled={isPending}
-                      className="min-h-[88px] bg-white"
+                      className={orangeControlClassName}
                     />
                   </div>
                 </section>
