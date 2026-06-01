@@ -22,7 +22,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { RequiredLabel } from "@/components/ui/required-label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { RichTextRenderer } from "@/components/ui/rich-text-renderer";
+import {
+  RichTextPreview,
+  RichTextRenderer,
+} from "@/components/ui/rich-text-renderer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -37,7 +40,6 @@ import type {
   DailyProgressReportRecord,
 } from "@/lib/daily-progress-report/daily-progress-report";
 import { DAILY_PROGRESS_SCORING_START_DATE_KEY } from "@/lib/daily-progress-report/constants";
-import { richTextExcerpt } from "@/lib/rich-text/rich-text";
 import { cn } from "@/lib/utils";
 
 export type EmployeeDailyProgressDashboardProps = {
@@ -332,12 +334,16 @@ function DailyProgressHistory({
                 </div>
 
                 {firstReport?.blockers ? (
-                  <p className="line-clamp-2 text-muted-foreground">
+                  <div className="text-muted-foreground">
                     <span className="font-semibold text-foreground">
                       Blockers:
                     </span>{" "}
-                    {richTextExcerpt(firstReport.blockers, 120)}
-                  </p>
+                    <RichTextPreview
+                      value={firstReport.blockers}
+                      className="mt-1 inline-block w-full"
+                      onSeeMore={() => onReportClick(firstReport)}
+                    />
+                  </div>
                 ) : null}
 
                 {firstReport?.lateReason ? (

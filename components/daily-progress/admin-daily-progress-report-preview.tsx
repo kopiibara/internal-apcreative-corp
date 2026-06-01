@@ -1,16 +1,19 @@
-import { RichTextRenderer } from "@/components/ui/rich-text-renderer";
+import {
+  RichTextPreview,
+} from "@/components/ui/rich-text-renderer";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import type { DailyProgressReportRecord } from "@/lib/daily-progress-report/daily-progress-report";
-import { cn } from "@/lib/utils";
 
 export function DailyProgressSummaryPreview({
   value,
   fallback,
   compact = false,
+  onSeeMore,
 }: {
   value: string | null | undefined;
   fallback?: string | null;
   compact?: boolean;
+  onSeeMore?: () => void;
 }) {
   if (!value?.trim()) {
     return (
@@ -21,17 +24,12 @@ export function DailyProgressSummaryPreview({
   }
 
   return (
-    <div
-      className={cn(
-        "mt-2 text-sm text-muted-foreground",
-        "[&_ul]:list-disc [&_ul]:pl-5",
-        "[&_ol]:list-decimal [&_ol]:pl-5",
-        "[&_li]:my-0 [&_p]:my-0",
-        compact && "max-h-12 overflow-hidden",
-      )}
-    >
-      <RichTextRenderer value={value} />
-    </div>
+    <RichTextPreview
+      value={value}
+      className="mt-2 text-sm"
+      maxHeightClass={compact ? "max-h-12" : undefined}
+      onSeeMore={onSeeMore}
+    />
   );
 }
 
