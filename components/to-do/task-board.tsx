@@ -53,13 +53,16 @@ export function TaskBoard({
   const [detailsAssignment, setDetailsAssignment] =
     useState<TaskAssignmentRecord | null>(null)
   const isEmployeeView = variant === "employee"
+  const isFullStackView = currentAccountType === "FULL_STACK_DEVELOPER"
   const canAssignTeamTasks = isEmployeeView && permissions.canAssign
   const showCreateButton = isEmployeeView
     ? canAssignTeamTasks
     : permissions.canCreate
   const createLabel = isEmployeeView
     ? COPY.employee.teamCreateLabel
-    : COPY.admin.createLabel
+    : isFullStackView
+      ? "Add Full Stack Task"
+      : COPY.admin.createLabel
   const {
     isCreateDialogOpen,
     isEditDialogOpen,
@@ -96,6 +99,8 @@ export function TaskBoard({
     ? canAssignTeamTasks
       ? "No team tasks yet. Assign work to Multimedia or Content Creator teammates on your shared brands."
       : "No tasks assigned yet. Use Reminders for personal follow-ups."
+    : isFullStackView
+      ? "No full stack tasks yet. Assign non-graded work to another Full Stack Developer."
     : "No tasks yet. Add a task to assign work and start the review workflow."
 
   return (

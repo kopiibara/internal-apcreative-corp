@@ -88,8 +88,6 @@ export function StaffAccountabilityLeaderboard({
 }: {
   summaries: StaffAccountabilitySummary[]
 }) {
-  const topFive = summaries.slice(0, 5)
-
   return (
     <Card className="h-full min-w-0 shadow-none">
       <CardHeader>
@@ -100,7 +98,7 @@ export function StaffAccountabilityLeaderboard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {topFive.length === 0 ? (
+        {summaries.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No graded task data found for the active filters.
           </p>
@@ -122,7 +120,7 @@ export function StaffAccountabilityLeaderboard({
                   </TableRow>
                 </TableHeader>
                 <TableBody className="bg-white dark:bg-gray-900">
-                  {topFive.map((employee) => (
+                  {summaries.map((employee) => (
                     <TableRow key={employee.profileId}>
                       <TableCell>
                         <span

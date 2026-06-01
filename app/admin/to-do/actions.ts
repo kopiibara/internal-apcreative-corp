@@ -134,6 +134,68 @@ async function authorizeTaskAction(permissionKeys: string[]) {
   return { context };
 }
 
+async function authorizeCreateTaskAction() {
+  const context = await getCurrentProfileContext();
+
+  if (!context) {
+    return {
+      error: {
+        success: false,
+        message: "You must be signed in to perform this action.",
+      } satisfies ActionResult,
+    };
+  }
+
+  if (context.profile.status !== "ACTIVE") {
+    return {
+      error: {
+        success: false,
+        message: "Your account is not active.",
+      } satisfies ActionResult,
+    };
+  }
+
+  if (context.profile.account_type === "FULL_STACK_DEVELOPER") {
+    return { context };
+  }
+
+  return authorizeTaskAction(["tasks.create", "tasks.assign"]);
+}
+
+async function assertFullStackPeerTaskAssignees(
+  creatorProfileId: number,
+  assigneeProfileIds: number[],
+) {
+  if (assigneeProfileIds.includes(creatorProfileId)) {
+    return {
+      ok: false as const,
+      message: "Select a fellow Full Stack Developer, not your own account.",
+    };
+  }
+
+  const result = await query<{ id: number }>(
+    `
+    SELECT id
+    FROM profile
+    WHERE id = ANY($1::int[])
+      AND account_type = 'FULL_STACK_DEVELOPER'
+      AND status = 'ACTIVE'
+    `,
+    [assigneeProfileIds],
+  );
+  const activeFullStackIds = new Set(result.rows.map((row) => row.id));
+
+  if (assigneeProfileIds.some((assigneeId) => !activeFullStackIds.has(assigneeId))) {
+    return {
+      ok: false as const,
+      message:
+        "Full Stack Developer tasks can only be assigned to active Full Stack Developer accounts.",
+    };
+  }
+
+  return { ok: true as const };
+}
+
 async function authorizeTaskReviewAction() {
   const context = await getCurrentProfileContext();
 
@@ -351,10 +413,7 @@ function assertAdminTransitionAllowed(
 }
 
 export async function createTask(input: unknown): Promise<ActionResult> {
-  const authorization = await authorizeTaskAction([
-    "tasks.create",
-    "tasks.assign",
-  ]);
+  const authorization = await authorizeCreateTaskAction();
 
   if (authorization.error) {
     return authorization.error;
@@ -376,8 +435,22 @@ export async function createTask(input: unknown): Promise<ActionResult> {
   const canAssignTeamTasks =
     isBrandOfficer &&
     (await can(context.profile.auth_user_id, "tasks.assign"));
+  const canAssignFullStackPeerTasks =
+    context.profile.account_type === "FULL_STACK_DEVELOPER";
 
-  if (isEmployeeAccountType(context.profile.account_type)) {
+  if (canAssignFullStackPeerTasks) {
+    const assigneeCheck = await assertFullStackPeerTaskAssignees(
+      context.profile.id,
+      uniqueAssignees,
+    );
+
+    if (!assigneeCheck.ok) {
+      return {
+        success: false,
+        message: assigneeCheck.message,
+      };
+    }
+  } else if (isEmployeeAccountType(context.profile.account_type)) {
     const isPersonalSelfTask =
       uniqueAssignees.length === 1 && uniqueAssignees[0] === context.profile.id;
 
@@ -427,6 +500,7 @@ export async function createTask(input: unknown): Promise<ActionResult> {
     creatorProfileId: context.profile.id,
     assignedToProfileIds: uniqueAssignees,
     canAssignTeamTasks,
+    canAssignFullStackPeerTasks,
   });
 
   if (taskType === "GRADED") {
