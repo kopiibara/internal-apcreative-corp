@@ -4,10 +4,12 @@ import { revalidatePath } from "next/cache";
 
 import {
   createPRRequestSchema,
+  deletePRRequestSchema,
   duplicatePRRequestSchema,
   sanitizePRRequestInput,
   updatePRRequestActionSchema,
 } from "@/lib/pr/pr-schema";
+import { isPRRequestActive } from "@/lib/pr/pr-types";
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import { query } from "@/lib/db";
 import {
@@ -225,6 +227,13 @@ export async function updatePRRequestAction(
     return { success: false, message: "PR request was not found." };
   }
 
+  if (!isPRRequestActive(existing)) {
+    return {
+      success: false,
+      message: "Deleted PR requests cannot be updated.",
+    };
+  }
+
   const canManage = await canManagePRRequests(context.profile);
   const canEditOwnCreatedRequest =
     existing.createdByProfileId === context.profile.id &&
@@ -367,4 +376,74 @@ export async function duplicatePRRequest(
     declinedReason: null,
     dateOfVisit: null,
   });
+}
+
+export async function deletePRRequest(
+  input: unknown,
+): Promise<PRActionResult> {
+  const auth = await requirePRProfile();
+
+  if (auth.error) {
+    return auth.error;
+  }
+
+  const { context } = auth;
+
+  const parsed = deletePRRequestSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid delete request.",
+    };
+  }
+
+  const existing = await getPRRequestById(parsed.data.requestId);
+
+  if (!existing) {
+    return { success: false, message: "PR request was not found." };
+  }
+
+  if (!isPRRequestActive(existing)) {
+    return { success: false, message: "PR request is already deleted." };
+  }
+
+  const canDeleteOwn =
+    existing.createdByProfileId === context.profile.id &&
+    (await canCreatePRRequest(context.profile));
+
+  if (!canDeleteOwn) {
+    return {
+      success: false,
+      message: "You can only delete PR requests you created.",
+    };
+  }
+
+  try {
+    await query(
+      `
+      UPDATE pr_request
+      SET
+        status = 'DELETED',
+        updated_by_profile_id = $2,
+        updated_at = now()
+      WHERE id = $1
+      `,
+      [parsed.data.requestId, context.profile.id],
+    );
+
+    revalidatePRRoutes();
+
+    return { success: true, message: "PR request deleted successfully." };
+  } catch (error) {
+    console.error("deletePRRequest failed:", error);
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    };
+  }
 }

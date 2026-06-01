@@ -2,9 +2,10 @@ import {
   getPRCollaborationStatusLabel,
   getPRContactStatusLabel,
   getPRInfluencerSizeLabel,
+  getPRRequestStatusLabel,
   getPRRequestTypeLabel,
 } from "@/lib/pr/pr-labels";
-import type { PRRequestRecord } from "@/lib/pr/pr-types";
+import { isPRRequestActive, type PRRequestRecord } from "@/lib/pr/pr-types";
 
 export type PRTimelineEvent = {
   id: string;
@@ -93,7 +94,19 @@ export function buildPRRequestTimeline(
     });
   }
 
-  if (request.updatedAt !== request.createdAt) {
+  if (!isPRRequestActive(request)) {
+    events.push({
+      id: "deleted",
+      title: `Marked ${getPRRequestStatusLabel(request.status)}`,
+      description: "This request was soft deleted by its creator.",
+      occurredAt: request.updatedAt,
+    });
+  }
+
+  if (
+    isPRRequestActive(request) &&
+    request.updatedAt !== request.createdAt
+  ) {
     events.push({
       id: "updated",
       title: "Request updated",
