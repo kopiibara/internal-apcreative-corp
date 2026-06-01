@@ -5,7 +5,7 @@ import {
   profileHasAllBrandsAccess,
 } from "@/lib/brand-access/effective-brand-access";
 import { query } from "@/lib/db";
-import type { MetaBusinessPageDashboard } from "@/lib/meta/page-analytics";
+import type { MetaBusinessPageDashboard } from "@/lib/meta/page-analytics-types";
 import type { TikTokBrandDashboard } from "@/lib/tiktok/dashboard-types";
 import {
   getMetaPageByFacebookPageId,
