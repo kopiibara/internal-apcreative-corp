@@ -76,16 +76,7 @@ export default async function AdminDashboardPage({
 
   return (
     <div className="min-w-0 space-y-4 overflow-hidden">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Dashboard
-          </h2>
-        </div>
-        <p className="rounded-lg border-2 border-border bg-background px-3 py-2 text-xs font-black uppercase tracking-[0.16em]">
-          {bounds.label}
-        </p>
-      </div>
+
 
       <DashboardFilterBar
         brands={brands}

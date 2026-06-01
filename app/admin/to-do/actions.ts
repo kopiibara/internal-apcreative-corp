@@ -789,7 +789,9 @@ export async function submitTaskProof(
         ? parsed.data.proofUrl
         : null;
     const proofNote =
-      parsed.data.proofType === "NOTE" ? parsed.data.proofNote : null;
+      parsed.data.proofType === "NOTE"
+        ? normalizeRichTextForStorage(parsed.data.proofNote)
+        : null;
 
     await transaction(async (client) => {
       await client.query(

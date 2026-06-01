@@ -26,6 +26,7 @@ type DataTableScrollAreaProps = {
   /** Use flex height from parent instead of a fixed viewport calc height. */
   fill?: boolean
   viewportClassName?: string
+  scrollbars?: "vertical" | "horizontal" | "both" | "none"
 }
 
 export function DataTableScrollArea({
@@ -33,6 +34,7 @@ export function DataTableScrollArea({
   className,
   fill = false,
   viewportClassName,
+  scrollbars = "both",
 }: DataTableScrollAreaProps) {
   return (
     <ScrollArea
@@ -40,7 +42,7 @@ export function DataTableScrollArea({
         fill ? DATA_TABLE_FILL_CLASS : DATA_TABLE_SCROLL_AREA_CLASS,
         className,
       )}
-      scrollbars="both"
+      scrollbars={scrollbars}
       viewportClassName={cn(DATA_TABLE_VIEWPORT_CLASS, viewportClassName)}
     >
       {children}

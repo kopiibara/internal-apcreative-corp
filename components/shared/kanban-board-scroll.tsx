@@ -9,7 +9,7 @@ export const KANBAN_BOARD_PAGE_CLASS =
 
 /** White board card — grows to fill remaining viewport height. */
 export const KANBAN_BOARD_SECTION_CLASS =
-  "flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden gap-2 pb-1"
+  "flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden gap-2"
 
 /** Kanban area below filters inside the board card. */
 export const KANBAN_BOARD_CONTENT_CLASS =
@@ -44,6 +44,9 @@ export const KANBAN_BOARD_FIT_ROW_4_CLASS =
   "flex h-full max-h-full min-h-0 min-w-max items-stretch gap-4 xl:grid xl:h-full xl:max-h-full xl:w-full xl:min-w-0 xl:grid-cols-4 xl:grid-rows-1 xl:items-stretch"
 
 /** Flex row for scroll boards — horizontal overflow inside ScrollArea. */
+export const KANBAN_BOARD_FIT_ROW_3_CLASS =
+  "flex h-full max-h-full min-h-0 min-w-max items-stretch gap-4 xl:grid xl:h-full xl:max-h-full xl:w-full xl:min-w-0 xl:grid-cols-3 xl:grid-rows-1 xl:items-stretch"
+
 export const KANBAN_BOARD_SCROLL_ROW_CLASS =
   "flex h-full max-h-full min-h-0 min-w-max items-stretch gap-4"
 
@@ -85,7 +88,7 @@ export const KANBAN_BOARD_SHELL_FIT_VIEWPORT_CLASS = cn(
 
 /** Vertical card list inside a Kanban column. */
 export const KANBAN_COLUMN_LIST_CLASS =
-  "flex w-full min-w-0 flex-col gap-3 p-0"
+  "flex w-full min-w-0 flex-col gap-3 px-0 pt-0 pb-0 after:block after:h-1 after:shrink-0 after:content-['']"
 
 /** Drag overlay while dragging Kanban cards. */
 export const KANBAN_OVERLAY_CLASS =

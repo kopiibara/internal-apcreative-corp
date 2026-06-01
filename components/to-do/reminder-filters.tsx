@@ -19,7 +19,7 @@ import {
 } from "@/lib/reminders/reminder-statuses"
 import { useReminderStore } from "@/stores/use-reminder-store"
 
-export function ReminderFilters() {
+export function ReminderFilters({ actions }: { actions?: React.ReactNode }) {
   const {
     searchQuery,
     selectedStatusFilter,
@@ -32,10 +32,16 @@ export function ReminderFilters() {
     resetReminderFilters,
   } = useReminderStore()
 
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    selectedStatusFilter !== "all" ||
+    selectedPriorityFilter !== "all" ||
+    selectedDateRange !== "all"
+
   return (
-    <ScrollArea className="w-full pb-2" scrollbars="horizontal">
+    <ScrollArea className="w-full pb-1" scrollbars="horizontal">
       <div className="flex w-max min-w-full items-center gap-2 p-1">
-        <div className="relative min-w-[260px] md:min-w-[320px]">
+        <div className="relative w-[260px] max-w-[260px] md:w-[320px] md:max-w-[320px]">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchQuery}
@@ -51,7 +57,7 @@ export function ReminderFilters() {
             setSelectedStatusFilter(value as typeof selectedStatusFilter)
           }
         >
-          <SelectTrigger className="h-9 min-w-[150px]">
+          <SelectTrigger className="h-9 w-[150px] max-w-[150px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -70,7 +76,7 @@ export function ReminderFilters() {
             setSelectedPriorityFilter(value as typeof selectedPriorityFilter)
           }
         >
-          <SelectTrigger className="h-9 min-w-[150px]">
+          <SelectTrigger className="h-9 w-[150px] max-w-[150px]">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -89,7 +95,7 @@ export function ReminderFilters() {
             setSelectedDateRange(value as typeof selectedDateRange)
           }
         >
-          <SelectTrigger className="h-9 min-w-[150px]">
+          <SelectTrigger className="h-9 w-[150px] max-w-[150px]">
             <SelectValue placeholder="Date" />
           </SelectTrigger>
           <SelectContent>
@@ -100,16 +106,24 @@ export function ReminderFilters() {
           </SelectContent>
         </Select>
 
-        <Button
-          type="button"
-          variant="neutral"
-          size="sm"
-          className="h-9 whitespace-nowrap"
-          onClick={resetReminderFilters}
-        >
-          <RotateCcw className="size-4" />
-          Reset Filters
-        </Button>
+        {hasActiveFilters ? (
+          <Button
+            type="button"
+            variant="neutral"
+            size="sm"
+            className="h-9 whitespace-nowrap"
+            onClick={resetReminderFilters}
+          >
+            <RotateCcw className="size-4" />
+            Reset Filters
+          </Button>
+        ) : null}
+
+        {actions ? (
+          <div className="ml-auto flex shrink-0 items-center gap-2 pl-2">
+            {actions}
+          </div>
+        ) : null}
       </div>
     </ScrollArea>
   )

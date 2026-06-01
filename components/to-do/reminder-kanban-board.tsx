@@ -18,6 +18,7 @@ import {
 import {
   KanbanBoardShell,
   KANBAN_BOARD_FIT_ROW_4_CLASS,
+  KANBAN_COLUMN_ITEM_CLASS,
   KANBAN_OVERLAY_CLASS,
 } from "@/components/shared/kanban-board-scroll"
 import {
@@ -90,12 +91,13 @@ export function ReminderKanbanBoard({ reminders }: ReminderKanbanBoardProps) {
   return (
     <KanbanBoardShell columnLayout="fit">
       <Kanban
+        className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col"
         value={columns}
         onValueChange={() => undefined}
         getItemValue={(reminder) => String(reminder.id)}
         onMove={handleMove}
       >
-        <KanbanBoard className={REMINDER_BOARD_ROW_CLASS}>
+        <KanbanBoard className={cn(REMINDER_BOARD_ROW_CLASS, "min-h-0 flex-1")}>
           {REMINDER_KANBAN_COLUMNS.map((column) => {
             const items = columns[column.id] ?? []
 
@@ -107,8 +109,12 @@ export function ReminderKanbanBoard({ reminders }: ReminderKanbanBoardProps) {
                 count={items.length}
               >
                 {items.map((reminder) => (
-                  <KanbanItem key={reminder.id} value={String(reminder.id)}>
-                    <KanbanItemHandle>
+                  <KanbanItem
+                    key={reminder.id}
+                    value={String(reminder.id)}
+                    className={KANBAN_COLUMN_ITEM_CLASS}
+                  >
+                    <KanbanItemHandle className={KANBAN_COLUMN_ITEM_CLASS}>
                       <ReminderCard reminder={reminder} />
                     </KanbanItemHandle>
                   </KanbanItem>

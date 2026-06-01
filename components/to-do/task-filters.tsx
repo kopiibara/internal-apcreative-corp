@@ -24,11 +24,13 @@ import { useTaskStore } from "@/stores/use-task-store"
 type TaskFiltersProps = {
   assignees?: AssignableProfile[]
   showAssigneeFilter?: boolean
+  actions?: React.ReactNode
 }
 
 export function TaskFilters({
   assignees = [],
   showAssigneeFilter = true,
+  actions,
 }: TaskFiltersProps) {
   const {
     searchQuery,
@@ -44,10 +46,17 @@ export function TaskFilters({
     resetTaskFilters,
   } = useTaskStore()
 
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    selectedStatusFilter !== "all" ||
+    selectedTypeFilter !== "all" ||
+    selectedAssigneeFilter !== "all" ||
+    selectedPriorityFilter !== "all"
+
   return (
-    <ScrollArea className="w-full pb-2" scrollbars="horizontal">
-      <div className="flex w-max min-w-full items-center gap-2 py-1 pr-1">
-        <div className="relative min-w-[260px] md:min-w-[320px]">
+    <ScrollArea className="w-full pb-1" scrollbars="horizontal">
+      <div className="flex w-max min-w-full items-center gap-2 p-1">
+        <div className="relative w-[260px] max-w-[260px] md:w-[320px] md:max-w-[320px]">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchQuery}
@@ -63,7 +72,7 @@ export function TaskFilters({
             setSelectedStatusFilter(value as typeof selectedStatusFilter)
           }
         >
-          <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+          <SelectTrigger className="h-9 w-fit">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -82,7 +91,7 @@ export function TaskFilters({
             setSelectedTypeFilter(value as typeof selectedTypeFilter)
           }
         >
-          <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+          <SelectTrigger className="h-9 w-fit">
             <SelectValue placeholder="Task type" />
           </SelectTrigger>
           <SelectContent>
@@ -100,7 +109,7 @@ export function TaskFilters({
             value={selectedAssigneeFilter}
             onValueChange={setSelectedAssigneeFilter}
           >
-            <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+            <SelectTrigger className="h-9 w-fit">
               <SelectValue placeholder="Assignee" />
             </SelectTrigger>
             <SelectContent>
@@ -120,7 +129,7 @@ export function TaskFilters({
             setSelectedPriorityFilter(value as typeof selectedPriorityFilter)
           }
         >
-          <SelectTrigger className="h-9 min-w-[150px] md:min-w-[160px]">
+          <SelectTrigger className="h-9 w-fit">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -133,16 +142,24 @@ export function TaskFilters({
           </SelectContent>
         </Select>
 
-        <Button
-          type="button"
-          variant="neutral"
-          size="sm"
-          className="h-9 whitespace-nowrap"
-          onClick={resetTaskFilters}
-        >
-          <RotateCcw className="size-4" />
-          Reset Filters
-        </Button>
+        {hasActiveFilters ? (
+          <Button
+            type="button"
+            variant="neutral"
+            size="sm"
+            className="h-9 whitespace-nowrap"
+            onClick={resetTaskFilters}
+          >
+            <RotateCcw className="size-4" />
+            Reset Filters
+          </Button>
+        ) : null}
+
+        {actions ? (
+          <div className="ml-auto flex shrink-0 items-center gap-2 pl-2">
+            {actions}
+          </div>
+        ) : null}
       </div>
     </ScrollArea>
   )

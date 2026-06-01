@@ -257,7 +257,7 @@ export function AccountFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange} >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -268,151 +268,151 @@ export function AccountFormDialog({
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <DialogBody className="space-y-5">
-          <section className="space-y-3">
-            <div className="text-sm font-medium">Basic account information</div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor={`${mode}-full-name`}>Full name</Label>
-                <Input
-                  id={`${mode}-full-name`}
-                  value={formState.fullName}
-                  onChange={(event) =>
-                    updateField("fullName", event.target.value)
-                  }
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor={`${mode}-email`}>Email</Label>
-                <Input
-                  id={`${mode}-email`}
-                  type="email"
-                  value={formState.email}
-                  onChange={(event) => updateField("email", event.target.value)}
-                  disabled={!isCreateMode}
-                  required
-                />
-              </div>
-
-              {isCreateMode ? (
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor={`${mode}-password`}>Temporary password</Label>
+            <section className="space-y-1">
+              <div className="text-sm font-medium">Basic account information</div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor={`${mode}-full-name`}>Full name</Label>
                   <Input
-                    id={`${mode}-password`}
-                    value=""
-                    disabled
-                    readOnly
-                    placeholder="Default temporary password will be assigned automatically."
+                    id={`${mode}-full-name`}
+                    value={formState.fullName}
+                    onChange={(event) =>
+                      updateField("fullName", event.target.value)
+                    }
+                    required
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Default temporary password will be assigned automatically.
-                  </p>
                 </div>
-              ) : null}
-            </div>
-          </section>
 
-          {!isCreateMode && account ? (
-            <section className="space-y-2 rounded-xl border p-3">
-              <div className="text-sm font-medium">System access</div>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Role:</span>
-                <span className="font-medium">
-                  {editPrimaryRoleName ?? "No active role"}
-                </span>
-                <Badge variant="neutral">
-                  {getSystemAccessLabel(account.accountType)}
-                </Badge>
+                <div className="space-y-2">
+                  <Label htmlFor={`${mode}-email`}>Email</Label>
+                  <Input
+                    id={`${mode}-email`}
+                    type="email"
+                    value={formState.email}
+                    onChange={(event) => updateField("email", event.target.value)}
+                    disabled={!isCreateMode}
+                    required
+                  />
+                </div>
+
+                {isCreateMode ? (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor={`${mode}-password`}>Temporary password</Label>
+                    <Input
+                      id={`${mode}-password`}
+                      value=""
+                      disabled
+                      readOnly
+                      placeholder="Default temporary password will be assigned automatically."
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Default temporary password will be assigned automatically.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </section>
-          ) : null}
 
-          <Separator />
+            {!isCreateMode && account ? (
+              <section className="space-y-2 rounded-xl border p-3">
+                <div className="text-sm font-medium">System access</div>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Role:</span>
+                  <span className="font-medium">
+                    {editPrimaryRoleName ?? "No active role"}
+                  </span>
+                  <Badge variant="neutral">
+                    {getSystemAccessLabel(account.accountType)}
+                  </Badge>
+                </div>
+              </section>
+            ) : null}
 
-          <section className="space-y-3">
-            <div className="text-sm font-medium">Department and contact</div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor={`${mode}-department`}>Department</Label>
-                <Input
-                  id={`${mode}-department`}
-                  value={formState.department}
-                  onChange={(event) =>
-                    updateField("department", event.target.value)
-                  }
-                  disabled={!canEditDepartment}
-                />
+            <Separator />
+
+            <section className="space-y-3">
+              <div className="text-sm font-medium">Department and contact</div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor={`${mode}-department`}>Department</Label>
+                  <Input
+                    id={`${mode}-department`}
+                    value={formState.department}
+                    onChange={(event) =>
+                      updateField("department", event.target.value)
+                    }
+                    disabled={!canEditDepartment}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor={`${mode}-phone`}>Phone</Label>
+                  <Input
+                    id={`${mode}-phone`}
+                    value={formState.phoneNumber}
+                    onChange={(event) =>
+                      updateField("phoneNumber", event.target.value)
+                    }
+                  />
+                </div>
               </div>
+            </section>
 
-              <div className="space-y-2">
-                <Label htmlFor={`${mode}-phone`}>Phone</Label>
-                <Input
-                  id={`${mode}-phone`}
-                  value={formState.phoneNumber}
-                  onChange={(event) =>
-                    updateField("phoneNumber", event.target.value)
-                  }
+            <Separator />
+
+            <section className="space-y-4 pt-2">
+              {isCreateMode ? (
+                <AccountBrandAccess
+                  mode="create"
+                  brands={brands}
+                  roles={roles}
+                  assignments={brandAssignments}
+                  onAssignmentsChange={handleBrandAssignmentsChange}
                 />
-              </div>
-            </div>
-          </section>
+              ) : account ? (
+                <AccountBrandAccess
+                  mode="edit"
+                  profileId={account.id}
+                  brands={brands}
+                  roles={roles}
+                  access={account.brandAccess}
+                />
+              ) : null}
 
-          <Separator />
+              {isCreateMode && roleDashboardHint ? (
+                <p className="text-xs text-muted-foreground">{roleDashboardHint}</p>
+              ) : null}
 
-          <section className="space-y-3">
-            {isCreateMode ? (
-              <AccountBrandAccess
-                mode="create"
-                brands={brands}
-                roles={roles}
-                assignments={brandAssignments}
-                onAssignmentsChange={handleBrandAssignmentsChange}
-              />
-            ) : account ? (
-              <AccountBrandAccess
-                mode="edit"
-                profileId={account.id}
-                brands={brands}
-                roles={roles}
-                access={account.brandAccess}
-              />
-            ) : null}
+              {isCreateMode && selectedBrandIds.length > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Duplicate brand selection is blocked here and validated again on
+                  the server.
+                </p>
+              ) : null}
+            </section>
 
-            {isCreateMode && roleDashboardHint ? (
-              <p className="text-xs text-muted-foreground">{roleDashboardHint}</p>
-            ) : null}
+            <Separator />
 
-            {isCreateMode && selectedBrandIds.length > 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Duplicate brand selection is blocked here and validated again on
-                the server.
-              </p>
-            ) : null}
-          </section>
-
-          <Separator />
-
-          <section className="space-y-2">
-            <Label>Status</Label>
-            <Select
-              value={formState.status}
-              onValueChange={(value) =>
-                updateField("status", value as ProfileStatus)
-              }
-            >
-              <SelectTrigger className="max-w-xs">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                {profileStatuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </section>
+            <section className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={formState.status}
+                onValueChange={(value) =>
+                  updateField("status", value as ProfileStatus)
+                }
+              >
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {profileStatuses.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </section>
           </DialogBody>
 
           <DialogFooter>

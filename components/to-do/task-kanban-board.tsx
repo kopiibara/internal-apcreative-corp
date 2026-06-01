@@ -178,7 +178,7 @@ export function TaskKanbanBoard({
       {canDragCards ? (
         <KanbanBoardShell columnLayout="fit">
           <Kanban
-            className="flex h-full min-h-0 flex-col"
+            className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col"
             value={columns}
             onValueChange={() => undefined}
             getItemValue={(assignment) => String(assignment.assignmentId)}
