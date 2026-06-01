@@ -257,7 +257,7 @@ function RowActions({
           <Button
             type="button"
             size="icon-sm"
-            variant="neutral"
+            variant="destructive"
             disabled={isPending}
             title="Delete"
             onClick={() => setDeleteOpen(true)}
