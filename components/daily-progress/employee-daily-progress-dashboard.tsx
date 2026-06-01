@@ -64,6 +64,13 @@ const LATE_REASON_OPTIONS: LateReasonCategory[] = [
   "Others",
 ];
 
+const brandOptionClassName =
+  "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border-2 border-border bg-background px-3 py-2 text-xs font-bold text-foreground transition hover:bg-muted/30";
+const brandOptionSelectedClassName =
+  "border-blue-700 bg-blue-50 text-blue-950 ring-2 ring-blue-700 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-50 dark:ring-blue-400";
+const brandCheckboxClassName =
+  "size-5 rounded-full bg-background dark:bg-gray-950 data-[state=checked]:bg-blue-700 data-[state=checked]:text-white dark:data-[state=checked]:bg-blue-500";
+
 function getReportLabel(report?: DailyProgressReportRecord) {
   if (!report) {
     return { label: "Not submitted yet", tone: "neutral" as const };
@@ -707,14 +714,14 @@ export function EmployeeDailyProgressDashboard({
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label
                     className={cn(
-                      "flex cursor-pointer items-center gap-3 rounded-lg border-2 border-border bg-white p-3 text-xs font-semibold transition",
-                      "hover:bg-muted/30",
-                      isNoBrandSelected && "bg-blue-50 ring-2 ring-blue-700",
+                      brandOptionClassName,
+                      isNoBrandSelected && brandOptionSelectedClassName,
                       isSelectedPastReportLocked &&
                       "cursor-not-allowed opacity-60",
                     )}
                   >
                     <Checkbox
+                      className={brandCheckboxClassName}
                       checked={isNoBrandSelected}
                       disabled={isSelectedPastReportLocked}
                       onCheckedChange={(checked) =>
@@ -732,14 +739,14 @@ export function EmployeeDailyProgressDashboard({
                       <label
                         key={brand.id}
                         className={cn(
-                          "flex cursor-pointer items-center gap-3 rounded-lg border-2 border-border bg-white p-3 text-xs font-semibold transition",
-                          "hover:bg-muted/30",
-                          isChecked && "bg-blue-50 ring-2 ring-blue-700",
+                          brandOptionClassName,
+                          isChecked && brandOptionSelectedClassName,
                           isSelectedPastReportLocked &&
                           "cursor-not-allowed opacity-60",
                         )}
                       >
                         <Checkbox
+                          className={brandCheckboxClassName}
                           checked={isChecked}
                           disabled={isSelectedPastReportLocked}
                           onCheckedChange={(checked) =>
