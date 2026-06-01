@@ -35,6 +35,7 @@ type PRRequestRow = {
   collaboration_status: PRCollaborationStatus;
   follow_up_notes: string | null;
   declined_reason: string | null;
+  created_by_profile_id: number;
   created_at: Date;
   updated_at: Date;
 };
@@ -55,6 +56,7 @@ const PR_REQUEST_SELECT = `
     pr.collaboration_status,
     pr.follow_up_notes,
     pr.declined_reason,
+    pr.created_by_profile_id,
     pr.created_at,
     pr.updated_at
   FROM pr_request pr
@@ -80,6 +82,7 @@ function mapPRRequestRow(row: PRRequestRow): PRRequestRecord {
     collaborationStatus: row.collaboration_status,
     followUpNotes: row.follow_up_notes,
     declinedReason: row.declined_reason,
+    createdByProfileId: row.created_by_profile_id,
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
@@ -122,7 +125,7 @@ export async function getPRRequesterOptions() {
     LEFT JOIN role r ON r.id = uba.role_id
     WHERE p.status = 'ACTIVE'
       AND (
-        p.account_type IN ('EXECUTIVE', 'DIRECTOR', 'SUPERVISOR', 'PR')
+        p.account_type IN ('EXECUTIVE', 'DIRECTOR', 'MANAGER', 'SUPERVISOR', 'PR')
         OR r.slug = 'pr'
       )
     GROUP BY p.id
@@ -130,8 +133,9 @@ export async function getPRRequesterOptions() {
       CASE p.account_type
         WHEN 'EXECUTIVE' THEN 1
         WHEN 'DIRECTOR' THEN 2
-        WHEN 'SUPERVISOR' THEN 3
-        WHEN 'PR' THEN 4
+        WHEN 'MANAGER' THEN 3
+        WHEN 'SUPERVISOR' THEN 4
+        WHEN 'PR' THEN 5
         ELSE 5
       END,
       p.full_name ASC,
@@ -172,7 +176,7 @@ export async function getPRRequesterOptionById(profileId: number) {
       AND p.status = 'ACTIVE'
     GROUP BY p.id
     HAVING
-      p.account_type IN ('EXECUTIVE', 'DIRECTOR', 'SUPERVISOR', 'PR')
+      p.account_type IN ('EXECUTIVE', 'DIRECTOR', 'MANAGER', 'SUPERVISOR', 'PR')
       OR bool_or(r.slug = 'pr')
     LIMIT 1
     `,

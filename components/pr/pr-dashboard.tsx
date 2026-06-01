@@ -90,7 +90,7 @@ export function PRDashboard({
           <CardTitle className="text-base font-bold">PR Request Tracker</CardTitle>
         </CardHeader>
         <CardContent className="flex min-h-0 flex-1 flex-col gap-4 px-4 py-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
             <div className="min-w-0 flex-1">
               <PRFilters
                 brands={brands}
@@ -114,6 +114,7 @@ export function PRDashboard({
             requests={filteredRequests}
             canManage={canManage}
             canCreate={canCreate}
+            currentProfileId={currentProfileId}
             readOnlyMode={readOnlyMode}
             onOpenDetails={openDetails}
             onEditRequest={openEditForm}
@@ -126,7 +127,9 @@ export function PRDashboard({
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
         canManage={canManage}
-        onEdit={canManage ? handleEditFromSheet : undefined}
+        canCreate={canCreate}
+        currentProfileId={currentProfileId}
+        onEdit={handleEditFromSheet}
       />
 
       <PRRequestForm
@@ -135,6 +138,7 @@ export function PRDashboard({
         brands={brands}
         requesterOptions={requesterOptions}
         currentProfileId={currentProfileId}
+        canCreate={canCreate}
         canManage={canManage}
         mode={formMode}
         request={selectedRequest}
