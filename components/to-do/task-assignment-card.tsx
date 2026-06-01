@@ -19,7 +19,7 @@ import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { richTextExcerpt } from "@/lib/rich-text/rich-text"
+import { RichTextPreview } from "@/components/ui/rich-text-renderer"
 import { shouldOpenProofInDialog } from "@/lib/proof/proof-media"
 import { getTaskLateSubmissionDisplay } from "@/lib/tasks/task-late-submission"
 import { isAssignmentSubmittedOnTime } from "@/lib/tasks/task-type"
@@ -138,9 +138,10 @@ export function TaskAssignmentCard({
             </div>
 
             {assignment.description ? (
-              <p className="line-clamp-2 text-sm text-muted-foreground">
-                {richTextExcerpt(assignment.description, 110)}
-              </p>
+              <RichTextPreview
+                value={assignment.description}
+                onSeeMore={() => onOpenDetails?.(assignment)}
+              />
             ) : null}
             <div className="flex min-w-0 flex-wrap gap-1">
               <TaskTypeBadge taskType={assignment.taskType} />
@@ -202,7 +203,7 @@ export function TaskAssignmentCard({
           ) : null}
 
           <div
-            className="grid w-full min-w-0 grid-cols-2 gap-1.5 pt-1 [&_button]:h-8 [&_button]:min-w-0 [&_button]:px-2 [&_button]:text-[11px] [&_svg]:size-3"
+            className="grid w-full min-w-0 grid-cols-2 gap-1.5  [&_button]:h-8 [&_button]:min-w-0 [&_button]:px-2 [&_button]:text-[11px] [&_svg]:size-3"
             onClick={(event) => event.stopPropagation()}
           >
             {isAssignee &&

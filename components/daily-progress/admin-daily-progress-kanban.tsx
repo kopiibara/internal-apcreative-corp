@@ -104,6 +104,7 @@ function DailyProgressKanbanCard({
         value={report.summary}
         fallback={report.excusedReason}
         compact
+        onSeeMore={onClick}
       />
 
       <div className="mt-3 rounded-lg border-2 border-border bg-muted/20 p-2">

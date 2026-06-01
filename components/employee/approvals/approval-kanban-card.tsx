@@ -16,12 +16,14 @@ import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { RichTextPreview } from "@/components/ui/rich-text-renderer"
 import { getApprovalDisplayStatus } from "@/lib/approvals/approval-kanban"
 import { getApprovalPublishingPermissions } from "@/lib/approvals/approval-publishing-permissions"
 import {
   getRevisionAreaCount,
   getRevisionSummaryLabel,
 } from "@/lib/approvals/approval-revision"
+import { isRichTextEmpty } from "@/lib/rich-text/rich-text"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 import { canEmployeeEditOwnReport } from "@/types/content-report"
 import type { ContentReport } from "@/types/content-report"
@@ -89,6 +91,22 @@ export function EmployeeApprovalKanbanCard({
             <Badge variant="neutral">{report.platform}</Badge>
           </div>
         </div>
+
+        {!isRichTextEmpty(report.contentInspo) ? (
+          <RichTextPreview
+            value={report.contentInspo}
+            onSeeMore={() => onOpenDetails(report)}
+          />
+        ) : !isRichTextEmpty(report.employeeComments) ? (
+          <RichTextPreview
+            value={report.employeeComments}
+            onSeeMore={() => onOpenDetails(report)}
+          />
+        ) : report.caption ? (
+          <p className="line-clamp-2 text-xs text-muted-foreground">
+            {report.caption}
+          </p>
+        ) : null}
 
         <p className="text-xs text-muted-foreground">
           Submitted:{" "}
