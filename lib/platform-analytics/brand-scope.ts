@@ -12,7 +12,14 @@ import {
   getMetaPageByKey,
   type MetaPageConfigKey,
 } from "@/lib/meta/pages-config";
+import type { YouTubeChannelDashboard } from "@/lib/youtube/channel-analytics-types";
+import {
+  getYouTubeChannelByKey,
+  type YouTubeChannelConfigKey,
+} from "@/lib/youtube/channels-config";
 import type { PlatformAnalyticsDashboardData } from "@/lib/platform-analytics/types";
+import { buildYouTubeDisplaySliceFromChannels } from "@/lib/platform-analytics/adapters/youtube-adapter";
+import { buildYouTubeAccountsFromChannels } from "@/lib/youtube/combine-channel-analytics";
 
 export type PlatformAnalyticsBrandScope = {
   hasAllBrandsAccess: boolean;
@@ -25,6 +32,8 @@ export type PlatformAnalyticsBrandScopeUi = {
   hasAllBrandsAccess: boolean;
   defaultMetaPageKey: string;
   showAllPagesOption: boolean;
+  defaultYouTubeChannelKey: string;
+  showAllYouTubeChannelsOption: boolean;
   assignedBrandNames: string[];
   scopeDescription: string;
 };
@@ -212,10 +221,54 @@ export function filterMetaBusinessPagesByScope(
   return pages.filter((page) => isMetaPageKeyAllowed(page.key, scope));
 }
 
+export function isYouTubeChannelKeyAllowed(
+  channelKey: YouTubeChannelConfigKey,
+  scope: PlatformAnalyticsBrandScope,
+): boolean {
+  if (scope.hasAllBrandsAccess) {
+    return true;
+  }
+
+  const config = getYouTubeChannelByKey(channelKey);
+  if (!config) {
+    return false;
+  }
+
+  return (
+    slugMatchesAllowedBrand(
+      config.brandSlug,
+      scope.allowedBrandSlugs,
+      scope.allowedBrandIds,
+    ) ||
+    slugMatchesAllowedBrand(
+      channelKey,
+      scope.allowedBrandSlugs,
+      scope.allowedBrandIds,
+    ) ||
+    slugMatchesAllowedBrand(
+      config.displayName,
+      scope.allowedBrandSlugs,
+      scope.allowedBrandIds,
+    )
+  );
+}
+
+export function filterYouTubeChannelsByScope(
+  channels: YouTubeChannelDashboard[],
+  scope: PlatformAnalyticsBrandScope,
+): YouTubeChannelDashboard[] {
+  if (scope.hasAllBrandsAccess) {
+    return channels;
+  }
+
+  return channels.filter((channel) => isYouTubeChannelKeyAllowed(channel.key, scope));
+}
+
 export async function toPlatformAnalyticsBrandScopeUi(
   scope: PlatformAnalyticsBrandScope,
   allowedPages: MetaBusinessPageDashboard[],
   profileId: number,
+  allowedYouTubeChannels: YouTubeChannelDashboard[] = [],
 ): Promise<PlatformAnalyticsBrandScopeUi> {
   const effectiveBrands = await getEffectiveBrandAccessForProfile(profileId);
   const assignedBrandNames = effectiveBrands.map((brand) => brand.brandName);
@@ -225,6 +278,8 @@ export async function toPlatformAnalyticsBrandScopeUi(
       hasAllBrandsAccess: true,
       defaultMetaPageKey: "all",
       showAllPagesOption: true,
+      defaultYouTubeChannelKey: "all",
+      showAllYouTubeChannelsOption: allowedYouTubeChannels.length > 1,
       assignedBrandNames,
       scopeDescription: "All brands",
     };
@@ -235,20 +290,32 @@ export async function toPlatformAnalyticsBrandScopeUi(
       ? assignedBrandNames.join(", ")
       : "No brands assigned";
 
-  if (allowedPages.length <= 1) {
-    return {
-      hasAllBrandsAccess: false,
-      defaultMetaPageKey: allowedPages[0]?.key ?? "all",
-      showAllPagesOption: false,
-      assignedBrandNames,
-      scopeDescription,
-    };
-  }
+  const metaDefaults =
+    allowedPages.length <= 1
+      ? {
+          defaultMetaPageKey: allowedPages[0]?.key ?? "all",
+          showAllPagesOption: false,
+        }
+      : {
+          defaultMetaPageKey: allowedPages[0]?.key ?? "all",
+          showAllPagesOption: false,
+        };
+
+  const youtubeDefaults =
+    allowedYouTubeChannels.length <= 1
+      ? {
+          defaultYouTubeChannelKey: allowedYouTubeChannels[0]?.key ?? "all",
+          showAllYouTubeChannelsOption: false,
+        }
+      : {
+          defaultYouTubeChannelKey: allowedYouTubeChannels[0]?.key ?? "all",
+          showAllYouTubeChannelsOption: false,
+        };
 
   return {
     hasAllBrandsAccess: false,
-    defaultMetaPageKey: allowedPages[0]?.key ?? "all",
-    showAllPagesOption: false,
+    ...metaDefaults,
+    ...youtubeDefaults,
     assignedBrandNames,
     scopeDescription,
   };
@@ -273,6 +340,7 @@ function buildEmptyNonMetaSlice(
   | "metaNeedsBootstrap"
   | "metaBusinessPages"
   | "tiktokBrandAnalytics"
+  | "youtubeChannelAnalytics"
 > {
   return {
     isDemo: false,
@@ -303,6 +371,7 @@ function buildEmptyNonMetaSlice(
     metaNeedsBootstrap: false,
     metaBusinessPages: [],
     tiktokBrandAnalytics: [],
+    youtubeChannelAnalytics: [],
   };
 }
 
@@ -347,6 +416,53 @@ export function applyBrandScopeToDashboardData(
             .reverse()[0] ?? null,
         statusRows: tiktokBrandAnalytics[0]?.statusRows ?? data.connection.statusRows,
       },
+    };
+  }
+
+  if (data.platform === "YOUTUBE") {
+    const youtubeChannelAnalytics = filterYouTubeChannelsByScope(
+      data.youtubeChannelAnalytics,
+      scope,
+    );
+    const allowedKeys = new Set(
+      youtubeChannelAnalytics.map((channel) => channel.key),
+    );
+    const allowedExternalIds = new Set(
+      youtubeChannelAnalytics
+        .map((channel) => channel.channelId)
+        .filter((id): id is string => Boolean(id)),
+    );
+
+    const selectedChannelKey =
+      !data.accountId || data.accountId === "all" ? "all" : data.accountId;
+    const allowedSelectedKey =
+      selectedChannelKey === "all" ||
+      allowedKeys.has(selectedChannelKey)
+        ? selectedChannelKey
+        : (youtubeChannelAnalytics[0]?.key ?? "all");
+
+    const display = buildYouTubeDisplaySliceFromChannels(
+      youtubeChannelAnalytics,
+      allowedSelectedKey === "all" ? null : allowedSelectedKey,
+    );
+
+    return {
+      ...data,
+      accountId: allowedSelectedKey === "all" ? null : allowedSelectedKey,
+      youtubeChannelAnalytics,
+      accounts: buildYouTubeAccountsFromChannels(youtubeChannelAnalytics),
+      syncHistory: display.syncHistory.filter(
+        (row) =>
+          !row.accountId || allowedExternalIds.has(row.accountId),
+      ),
+      connection: display.connection,
+      overviewKpis: display.overviewKpis,
+      engagementKpis: display.engagementKpis,
+      audienceInsightKpis: display.audienceInsightKpis,
+      growthSnapshots: display.growthSnapshots,
+      contentPerformance: display.contentPerformance,
+      activityLogs: display.activityLogs,
+      charts: display.charts,
     };
   }
 

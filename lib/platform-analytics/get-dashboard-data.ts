@@ -15,7 +15,7 @@ import {
 } from "@/lib/platform-analytics/adapters/tiktok-adapter";
 import {
   loadYouTubePlatformSlice,
-  youtubeAccountIdFromFilter,
+  youtubeChannelKeyFromFilter,
 } from "@/lib/platform-analytics/adapters/youtube-adapter";
 import { buildDemoPlatformSlice } from "@/lib/platform-analytics/demo-data";
 import { getDemoCharts } from "@/lib/platform-analytics/platform-charts";
@@ -51,21 +51,64 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     // For non-Meta platforms, prefer live data where available (YouTube supported),
     // otherwise fall back to demo data.
     if (platform === "YOUTUBE") {
-      const youtube = await loadYouTubePlatformSlice(
-        youtubeAccountIdFromFilter(accountId),
-        input?.dateRange,
-      );
-      const data = {
-        platform,
-        accountId,
-        ...youtube,
-        metaBusinessPages: [],
-        tiktokBrandAnalytics: [],
-      };
+      try {
+        const youtube = await loadYouTubePlatformSlice(
+          youtubeChannelKeyFromFilter(accountId),
+          input?.dateRange,
+        );
+        const data = {
+          platform,
+          accountId,
+          ...youtube,
+          metaBusinessPages: [],
+          tiktokBrandAnalytics: [],
+          youtubeChannelAnalytics: youtube.youtubeChannelAnalytics ?? [],
+        };
 
-      return brandScope
-        ? applyBrandScopeToDashboardData(data, brandScope)
-        : data;
+        return brandScope
+          ? applyBrandScopeToDashboardData(data, brandScope)
+          : data;
+      } catch (error) {
+        console.error("[platform-analytics] YouTube dashboard load failed:", error);
+        const data = {
+          platform,
+          accountId,
+          isDemo: false,
+          accounts: [],
+          connection: {
+            platform: "YOUTUBE" as const,
+            isDemo: false,
+            apiConnected: false,
+            webhookSupported: true,
+            webhookConfigured: false,
+            cronConfigured: true,
+            connectedAccountsCount: 0,
+            lastSyncAt: null,
+            lastSyncError:
+              "YouTube analytics could not be loaded. Run migration 068_youtube_channel_key.sql.",
+            tokenStatus: "Missing" as const,
+            syncHealth: "Failed" as const,
+            statusRows: [],
+          },
+          overviewKpis: [],
+          engagementKpis: [],
+          audienceInsightKpis: [],
+          growthSnapshots: [],
+          contentPerformance: [],
+          campaignPerformance: [],
+          activityLogs: [],
+          syncHistory: [],
+          charts: [],
+          metaNeedsBootstrap: false,
+          metaBusinessPages: [],
+          tiktokBrandAnalytics: [],
+          youtubeChannelAnalytics: [],
+        };
+
+        return brandScope
+          ? applyBrandScopeToDashboardData(data, brandScope)
+          : data;
+      }
     }
 
     if (platform === "TIKTOK") {
@@ -77,6 +120,8 @@ export async function getPlatformAnalyticsDashboardData(input?: {
         platform,
         accountId,
         ...tiktok,
+        metaBusinessPages: [],
+        youtubeChannelAnalytics: [],
       };
 
       return brandScope
@@ -103,6 +148,7 @@ export async function getPlatformAnalyticsDashboardData(input?: {
       metaNeedsBootstrap: false,
       metaBusinessPages: [],
       tiktokBrandAnalytics: [],
+      youtubeChannelAnalytics: [],
     };
 
     return brandScope ? applyBrandScopeToDashboardData(data, brandScope) : data;
@@ -132,6 +178,7 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     metaNeedsBootstrap: meta.metaNeedsBootstrap,
     metaBusinessPages: meta.metaBusinessPages,
     tiktokBrandAnalytics: [],
+    youtubeChannelAnalytics: [],
   };
 
   return brandScope ? applyBrandScopeToDashboardData(data, brandScope) : data;

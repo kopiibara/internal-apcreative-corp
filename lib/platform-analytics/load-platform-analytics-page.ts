@@ -12,7 +12,15 @@ import {
   toPlatformAnalyticsBrandScopeUi,
 } from "@/lib/platform-analytics/brand-scope";
 import { getPlatformAnalyticsDashboardData } from "@/lib/platform-analytics/get-dashboard-data";
+import type { AnalyticsPlatform } from "@/lib/platform-analytics/types";
 import { redirect } from "next/navigation";
+
+function parseInitialPlatform(value?: string | null): AnalyticsPlatform {
+  if (value === "YOUTUBE" || value === "TIKTOK" || value === "GOOGLE") {
+    return value;
+  }
+  return "META";
+}
 
 type PlatformAnalyticsProfile = {
   id: number;
@@ -24,12 +32,14 @@ export type PlatformAnalyticsPageOptions = {
   profile: PlatformAnalyticsProfile;
   analyticsBasePath: "/admin/platform-analytics" | "/employee/platform-analytics";
   unauthorizedPath: string;
+  initialPlatform?: AnalyticsPlatform;
 };
 
 export async function loadPlatformAnalyticsPage({
   profile,
   analyticsBasePath,
   unauthorizedPath,
+  initialPlatform: initialPlatformOption,
 }: PlatformAnalyticsPageOptions) {
   const allowed = await canViewPlatformAnalytics(
     profile.auth_user_id,
@@ -51,8 +61,10 @@ export async function loadPlatformAnalyticsPage({
     ),
   ]);
 
+  const initialPlatform = parseInitialPlatform(initialPlatformOption);
+
   let initialData = await getPlatformAnalyticsDashboardData({
-    platform: "META",
+    platform: initialPlatform,
     accountId: null,
     metaScope: "combined",
     profileId: profile.id,
@@ -63,6 +75,7 @@ export async function loadPlatformAnalyticsPage({
     brandScope,
     initialData.metaBusinessPages,
     profile.id,
+    initialData.youtubeChannelAnalytics ?? [],
   );
 
   let bootstrapMessage: string | null = null;
@@ -95,6 +108,7 @@ export async function loadPlatformAnalyticsPage({
 
   return {
     initialData,
+    initialPlatform,
     canManage,
     showAdminSyncActions,
     bootstrapMessage,

@@ -29,6 +29,7 @@ import {
 import {
   isBrandIdAllowed,
   isMetaPageKeyAllowed,
+  isYouTubeChannelKeyAllowed,
   getPlatformAnalyticsBrandScope,
 } from "@/lib/platform-analytics/brand-scope";
 import { getPlatformAnalyticsDashboardData } from "@/lib/platform-analytics/get-dashboard-data";
@@ -44,6 +45,8 @@ import {
   runMetaSyncJobForPage,
 } from "@/lib/meta/sync";
 import { syncYouTubeAnalytics } from "@/lib/platform-analytics/youtube-sync";
+import { listYouTubeIntegrations } from "@/lib/youtube/integration-db";
+import { getYouTubeChannelByKey } from "@/lib/youtube/channels-config";
 import { disconnectTikTokIntegration } from "@/lib/tiktok/integration-db";
 import { syncTikTokForBrand, syncAllTikTokIntegrations } from "@/lib/tiktok/sync";
 import type { MetaSyncType } from "@/lib/meta/types";
@@ -159,17 +162,28 @@ export async function fetchPlatformAnalyticsAction(input?: {
     };
   }
 
-  const data = await getPlatformAnalyticsDashboardData({
-    platform: parsed.data.platform,
-    accountId: parsed.data.accountId ?? null,
-    metaScope: parsed.data.metaScope,
-    dateRange: parsed.data.dateRange,
-    customDateFrom: parsed.data.customDateFrom,
-    customDateTo: parsed.data.customDateTo,
-    profileId: authResult.profileId,
-  });
+  try {
+    const data = await getPlatformAnalyticsDashboardData({
+      platform: parsed.data.platform,
+      accountId: parsed.data.accountId ?? null,
+      metaScope: parsed.data.metaScope,
+      dateRange: parsed.data.dateRange,
+      customDateFrom: parsed.data.customDateFrom,
+      customDateTo: parsed.data.customDateTo,
+      profileId: authResult.profileId,
+    });
 
-  return { success: true, message: "Platform analytics loaded.", data };
+    return { success: true, message: "Platform analytics loaded.", data };
+  } catch (error) {
+    console.error("[platform-analytics] fetch failed:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Platform analytics could not be loaded.",
+    };
+  }
 }
 
 export async function fetchMetaMonitoringAction(input?: {
@@ -469,8 +483,25 @@ export async function syncMetaPageMonitoringAction(input: {
   }
 }
 
+async function assertYouTubeChannelAccess(
+  profileId: number,
+  channelKey: string,
+): Promise<MetaMonitoringActionResult<never> | null> {
+  const scope = await getPlatformAnalyticsBrandScope(profileId);
+
+  if (!isYouTubeChannelKeyAllowed(channelKey, scope)) {
+    return {
+      success: false,
+      message: "You do not have access to analytics for this YouTube channel.",
+    };
+  }
+
+  return null;
+}
+
 export async function syncYouTubeAction(input?: {
   accountId?: string | null;
+  channelKey?: string | null;
   dateRange?: AnalyticsDateRange;
 }) {
   const authError = await authorizeMetaManage();
@@ -478,9 +509,28 @@ export async function syncYouTubeAction(input?: {
     return authError;
   }
 
+  const viewAuth = await authorizeMetaView();
+  if ("success" in viewAuth) {
+    return viewAuth;
+  }
+
+  const channelKey =
+    input?.channelKey ??
+    (input?.accountId && input.accountId !== "all" ? input.accountId : null);
+
+  if (channelKey) {
+    const channelError = await assertYouTubeChannelAccess(
+      viewAuth.profileId,
+      channelKey,
+    );
+    if (channelError) {
+      return channelError;
+    }
+  }
+
   try {
     const result = await syncYouTubeAnalytics({
-      accountId: input?.accountId ?? null,
+      channelKey: channelKey ?? null,
       dateRange: input?.dateRange,
     });
     revalidatePlatformAnalyticsPaths();
@@ -594,15 +644,65 @@ export async function disconnectTikTokAction(input: {
 
 export async function disconnectYouTubeAction(input?: {
   accountId?: string | null;
+  channelKey?: string | null;
 }): Promise<MetaMonitoringActionResult> {
   const authError = await authorizeMetaManage();
   if (authError) {
     return authError;
   }
 
+  const viewAuth = await authorizeMetaView();
+  if ("success" in viewAuth) {
+    return viewAuth;
+  }
+
+  const channelKey =
+    input?.channelKey ??
+    (input?.accountId && input.accountId !== "all" ? input.accountId : null);
   const accountId = input?.accountId ?? null;
 
+  if (channelKey) {
+    const channelError = await assertYouTubeChannelAccess(
+      viewAuth.profileId,
+      channelKey,
+    );
+    if (channelError) {
+      return channelError;
+    }
+  }
+
   try {
+    const allIntegrations = await listYouTubeIntegrations();
+    const channelConfig = channelKey ? getYouTubeChannelByKey(channelKey) : null;
+    const targets =
+      !channelKey && !accountId
+        ? allIntegrations
+        : allIntegrations.filter((row) => {
+            if (accountId && row.external_account_id === accountId) {
+              return true;
+            }
+            if (channelKey && row.channel_key === channelKey) {
+              return true;
+            }
+            if (
+              channelKey &&
+              !row.channel_key &&
+              channelConfig?.channelId &&
+              row.external_account_id === channelConfig.channelId
+            ) {
+              return true;
+            }
+            return false;
+          });
+
+    if (targets.length === 0) {
+      return {
+        success: false,
+        message: "No matching YouTube channel found to disconnect.",
+      };
+    }
+
+    const ids = targets.map((row) => row.id);
     await query(
       `
       UPDATE platform_integration
@@ -610,20 +710,18 @@ export async function disconnectYouTubeAction(input?: {
         status = 'INACTIVE',
         token_reference = NULL,
         updated_at = now()
-      WHERE platform = 'YOUTUBE'
-        AND status IN ('ACTIVE', 'ERROR')
-        AND ($1::text IS NULL OR external_account_id = $1)
+      WHERE id = ANY($1::int[])
       `,
-      [accountId],
+      [ids],
     );
 
     revalidatePlatformAnalyticsPaths();
 
     return {
       success: true,
-      message: accountId
-        ? "YouTube account disconnected."
-        : "All YouTube accounts disconnected.",
+      message: channelKey || accountId
+        ? "YouTube channel disconnected."
+        : "All YouTube channels disconnected.",
     };
   } catch (error) {
     return {
