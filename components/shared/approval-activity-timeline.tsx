@@ -8,11 +8,10 @@ import {
   TimelineSeparator,
   TimelineTitle,
 } from "@/components/reui/timeline"
-import { StatusBadge } from "@/components/shared/status-badge"
 import { UserAvatar } from "@/components/shared/user-avatar"
-import { Badge } from "@/components/ui/badge"
 import { RichTextRenderer } from "@/components/ui/rich-text-renderer"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import { cn } from "@/lib/utils"
 import { getApprovalRevisionAreaLabel } from "@/lib/approvals/approval-revision"
 import type { ApprovalRevisionAreaId } from "@/lib/approvals/approval-revision"
@@ -78,6 +77,24 @@ function getActorRole(log: ApprovalActivityLog) {
   return log.actorPosition || log.actorAccountType
 }
 
+function getTimelineTitle(log: ApprovalActivityLog) {
+  const label = getActionLabel(log.action, log.metadata)
+
+  if (!log.fromStatus && !log.toStatus) {
+    return label
+  }
+
+  if (log.fromStatus && log.toStatus) {
+    return `${label} from ${log.fromStatus} to ${log.toStatus}`
+  }
+
+  if (log.toStatus) {
+    return `${label} to ${log.toStatus}`
+  }
+
+  return label
+}
+
 function getEditedFields(metadata: Record<string, unknown> | null) {
   const changedFields = metadata?.changedFields
 
@@ -121,29 +138,13 @@ export function ApprovalActivityTimeline({
       <Timeline defaultValue={logs.length} className={className ?? "w-full min-w-0 pr-3"}>
         {logs.map((log, index) => (
           <TimelineItem key={log.id} step={index + 1}>
-            <TimelineHeader>
-              <TimelineDate>
-                {dateTimeFormatter.format(new Date(log.createdAt))}
-              </TimelineDate>
-              <TimelineTitle className="flex flex-row w-full justify-between">
-                {getActionLabel(log.action, log.metadata)}
-                <div className="flex flex-wrap gap-2 text-xs">
-                  {log.fromStatus ? (
-                    <StatusBadge
-                      status={log.fromStatus}
-                      type="approval"
-                      prefix="From"
-                    />
-                  ) : null}
-                  {log.toStatus ? (
-                    <StatusBadge
-                      status={log.toStatus}
-                      type="approval"
-                      prefix="To"
-                    />
-                  ) : null}
-                </div>
+            <TimelineHeader className="flex min-w-0 items-start justify-between gap-3">
+              <TimelineTitle className="min-w-0 break-words">
+                {getTimelineTitle(log)}
               </TimelineTitle>
+              <TimelineDate className="mb-0 shrink-0 text-right">
+                {formatRecentOrDateTime(log.createdAt, dateTimeFormatter)}
+              </TimelineDate>
             </TimelineHeader>
             <TimelineIndicator />
             <TimelineSeparator />

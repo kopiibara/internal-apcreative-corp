@@ -1,13 +1,13 @@
 "use client"
 
+import type { ComponentProps, ReactNode } from "react"
 import {
   CalendarClock,
   CheckCircle2,
-  Clock,
   ExternalLink,
-  Eye,
-  Paperclip,
   PenLine,
+  RotateCcw,
+  XCircle,
 } from "lucide-react"
 
 import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges"
@@ -15,24 +15,40 @@ import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { RichTextPreview } from "@/components/ui/rich-text-renderer"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { getApprovalDisplayStatus } from "@/lib/approvals/approval-kanban"
-import { isRichTextEmpty } from "@/lib/rich-text/rich-text"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import {
   getRevisionAreaCount,
   getRevisionSummaryLabel,
 } from "@/lib/approvals/approval-revision"
+import type { ReviewStatus } from "@/app/employee/approvals/schema"
 import type { ContentReport } from "@/types/content-report"
 
 type ApprovalKanbanCardProps = {
   report: ContentReport
   onClick: () => void
+  canSupervisorReview?: boolean
+  canDirectorReview?: boolean
+  readOnly?: boolean
+  onReviewAction?: (
+    report: ContentReport,
+    reviewer: "supervisor" | "director",
+    status: ReviewStatus,
+  ) => void
 }
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 function hasText(value: string | null) {
@@ -40,18 +56,80 @@ function hasText(value: string | null) {
 }
 
 function getScheduledLabel(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Scheduled"
+  return value ? formatRecentOrDateTime(value, dateFormatter) : "Scheduled"
+}
+
+function ReviewIconButton({
+  label,
+  disabled,
+  variant,
+  onClick,
+  children,
+}: {
+  label: string
+  disabled: boolean
+  variant: ComponentProps<typeof Button>["variant"]
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant={variant}
+          className="size-8 shrink-0"
+          aria-label={label}
+          title={label}
+          disabled={disabled}
+          onClick={(event) => {
+            event.stopPropagation()
+            onClick()
+          }}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
 }
 
 export function ApprovalKanbanCard({
   report,
   onClick,
+  canSupervisorReview = false,
+  canDirectorReview = false,
+  readOnly = false,
+  onReviewAction,
 }: ApprovalKanbanCardProps) {
   const hasSupervisorNote = hasText(report.supervisorNotes)
   const hasDirectorNote = hasText(report.directorNotes)
   const displayStatus = getApprovalDisplayStatus(report)
   const revisionSummary = getRevisionSummaryLabel(report)
   const revisionItemCount = getRevisionAreaCount(report)
+  const reviewActions: {
+    reviewer: "supervisor" | "director"
+    label: string
+    currentStatus: ReviewStatus
+  }[] = []
+
+  if (!readOnly && canSupervisorReview) {
+    reviewActions.push({
+      reviewer: "supervisor",
+      label: "Supervisor",
+      currentStatus: report.supervisorStatus,
+    })
+  }
+
+  if (!readOnly && canDirectorReview) {
+    reviewActions.push({
+      reviewer: "director",
+      label: "Director",
+      currentStatus: report.directorStatus,
+    })
+  }
 
   return (
     <Card
@@ -59,17 +137,25 @@ export function ApprovalKanbanCard({
       onClick={onClick}
     >
       <CardContent className="min-w-0 space-y-2.5 px-4 py-2">
-        <p className="truncate text-md font-bold">
-          {report.brandName ?? "No brand"}
-        </p>
+        <div className="w-full flex flex-row justify-between">
+          <h2 className="line-clamp-2 font-bold leading-snug">
+            {report.brandName ?? "No brand"}
+          </h2>
+          <span
+            className="text-sm text-muted-foreground flex flex-row gap-1 items-center"
+            title={dateFormatter.format(new Date(report.dateSubmitted))}
+          >
+            {formatRecentOrDateTime(report.dateSubmitted, dateFormatter)}
+          </span>
+        </div>
 
         <div className="flex flex-row flex-wrap gap-2">
-          <Badge className="bg-gray-200 dark:bg-gray-800">
-            <Clock className="size-3" />
-            {dateFormatter.format(new Date(report.dateSubmitted))}
-          </Badge>
-
-          <Badge>
+          <Button
+            type="button"
+            size="sm"
+            variant="default"
+            asChild
+            className="flex h-fit items-center gap-1.5 py-1 text-xs w-fit">
             {report.assetLink ? (
               <a
                 href={report.assetLink}
@@ -84,32 +170,8 @@ export function ApprovalKanbanCard({
             ) : (
               <span className="text-xs text-muted-foreground">No asset link</span>
             )}
-          </Badge>
+          </Button>
         </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          <Badge variant="secondary">
-            <Paperclip className="size-3" />
-            {report.contentType}
-          </Badge>
-          <Badge variant="neutral">{report.platform}</Badge>
-        </div>
-
-        {!isRichTextEmpty(report.contentInspo) ? (
-          <RichTextPreview
-            value={report.contentInspo}
-            onSeeMore={onClick}
-          />
-        ) : !isRichTextEmpty(report.employeeComments) ? (
-          <RichTextPreview
-            value={report.employeeComments}
-            onSeeMore={onClick}
-          />
-        ) : report.caption ? (
-          <p className="line-clamp-2 text-xs text-muted-foreground">
-            {report.caption}
-          </p>
-        ) : null}
 
         <ApprovalStatusBadges
           supervisorStatus={report.supervisorStatus}
@@ -150,6 +212,34 @@ export function ApprovalKanbanCard({
           </div>
         ) : null}
 
+        <div className="flex flex-row gap-2 ">
+          {hasSupervisorNote ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="neutral"
+              className="h-8 gap-1 px-3 text-[11px] w-fit"
+              onClick={onClick}
+            >
+              <PenLine className="size-3" />
+              Sup. Note
+            </Button>
+          ) : null}
+          {hasDirectorNote ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="neutral"
+              className="h-8 gap-1 px-3 text-[11px] w-fit"
+              onClick={onClick}
+            >
+              <PenLine className="size-3" />
+              Dir. Note
+            </Button>
+          ) : null}
+        </div>
+
+
         <div
           className="flex items-center gap-2 pt-1"
           onClick={(event) => event.stopPropagation()}
@@ -167,31 +257,52 @@ export function ApprovalKanbanCard({
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-            {hasSupervisorNote ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="neutral"
-                className="h-8 gap-1 px-2 text-[11px]"
-                onClick={onClick}
-              >
-                <PenLine className="size-3" />
-                Sup. Note
-              </Button>
+            {reviewActions.length > 0 ? (
+              <TooltipProvider>
+                {reviewActions.map((action) => (
+                  <div
+                    key={action.reviewer}
+                    className="flex shrink-0 items-center gap-1.5"
+                  >
+                    {reviewActions.length > 1 ? (
+                      <span className="max-w-14 truncate text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                        {action.label}
+                      </span>
+                    ) : null}
+                    <ReviewIconButton
+                      label="Approve"
+                      variant="default"
+                      disabled={action.currentStatus === "Approved"}
+                      onClick={() =>
+                        onReviewAction?.(report, action.reviewer, "Approved")
+                      }
+                    >
+                      <CheckCircle2 className="size-4" />
+                    </ReviewIconButton>
+                    <ReviewIconButton
+                      label="Revision"
+                      variant="neutral"
+                      disabled={action.currentStatus === "Revision"}
+                      onClick={() =>
+                        onReviewAction?.(report, action.reviewer, "Revision")
+                      }
+                    >
+                      <RotateCcw className="size-4" />
+                    </ReviewIconButton>
+                    <ReviewIconButton
+                      label="Reject"
+                      variant="destructive"
+                      disabled={action.currentStatus === "Rejected"}
+                      onClick={() =>
+                        onReviewAction?.(report, action.reviewer, "Rejected")
+                      }
+                    >
+                      <XCircle className="size-4" />
+                    </ReviewIconButton>
+                  </div>
+                ))}
+              </TooltipProvider>
             ) : null}
-            {hasDirectorNote ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="neutral"
-                className="h-8 gap-1 px-2 text-[11px]"
-                onClick={onClick}
-              >
-                <PenLine className="size-3" />
-                Dir. Note
-              </Button>
-            ) : null}
-
           </div>
         </div>
       </CardContent>

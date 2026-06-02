@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { RichTextPreview } from "@/components/ui/rich-text-renderer"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { ReminderRecord } from "@/lib/reminders/reminders"
 import { useReminderStore } from "@/stores/use-reminder-store"
 
@@ -132,11 +133,11 @@ export function ReminderCard({ reminder }: { reminder: ReminderRecord }) {
         <p className="text-xs">
           <span className="text-muted-foreground">Remind:</span>{" "}
           {reminder.remindAt
-            ? dateFormatter.format(new Date(reminder.remindAt))
+            ? formatRecentOrDateTime(reminder.remindAt, dateFormatter)
             : "No date"}
         </p>
         <p className="text-xs text-muted-foreground">
-          Created {dateFormatter.format(new Date(reminder.createdAt))}
+          Created {formatRecentOrDateTime(reminder.createdAt, dateFormatter)}
         </p>
       </CardContent>
     </Card>

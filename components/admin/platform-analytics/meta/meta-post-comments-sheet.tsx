@@ -22,6 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { MetaBusinessPagePostRow } from "@/lib/meta/page-analytics-types"
 import type { MetaPageConfigKey } from "@/lib/meta/pages-config"
 
@@ -115,7 +116,7 @@ export function MetaPostCommentsSheet({
                     <span className="font-medium">{comment.authorName}</span>
                     {comment.createdAt ? (
                       <span className="text-xs text-muted-foreground">
-                        {new Date(comment.createdAt).toLocaleString("en-PH")}
+                        {formatRecentOrDateTime(comment.createdAt)}
                       </span>
                     ) : null}
                   </div>

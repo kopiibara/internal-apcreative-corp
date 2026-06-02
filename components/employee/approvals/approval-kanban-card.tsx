@@ -4,7 +4,6 @@ import {
   CalendarClock,
   CheckCircle2,
   ExternalLink,
-  Eye,
   PenLine,
   Pencil,
   Trash2,
@@ -16,14 +15,13 @@ import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { RichTextPreview } from "@/components/ui/rich-text-renderer"
 import { getApprovalDisplayStatus } from "@/lib/approvals/approval-kanban"
 import { getApprovalPublishingPermissions } from "@/lib/approvals/approval-publishing-permissions"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import {
   getRevisionAreaCount,
   getRevisionSummaryLabel,
 } from "@/lib/approvals/approval-revision"
-import { isRichTextEmpty } from "@/lib/rich-text/rich-text"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 import { canEmployeeEditOwnReport } from "@/types/content-report"
 import type { ContentReport } from "@/types/content-report"
@@ -38,10 +36,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 function getScheduledLabel(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Scheduled"
+  return value ? formatRecentOrDateTime(value, dateFormatter) : "Scheduled"
 }
 
 export function EmployeeApprovalKanbanCard({
@@ -66,54 +66,34 @@ export function EmployeeApprovalKanbanCard({
     >
       <CardContent className="space-y-3 px-4 py-2">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-col gap-1">
+          <div className="w-full flex flex-row justify-between">
             <h2 className="line-clamp-2 font-bold leading-snug">
               {report.brandName ?? "No brand"}
             </h2>
-            {report.assetLink ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                asChild
-                className="flex h-fit items-center gap-1.5 py-1 text-xs"
-              >
-                <a href={report.assetLink} target="_blank" rel="noreferrer">
-                  <ExternalLink className="size-3" />
-                  Open asset
-                </a>
-              </Button>
-            ) : null}
+            <span
+              className="text-sm text-muted-foreground flex flex-row gap-1 items-center"
+              title={dateFormatter.format(new Date(report.dateSubmitted))}
+            >
+              {formatRecentOrDateTime(report.dateSubmitted, dateFormatter)}
+            </span>
           </div>
 
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <Badge variant="secondary">{report.contentType}</Badge>
-            <Badge variant="neutral">{report.platform}</Badge>
-          </div>
+
         </div>
-
-        {!isRichTextEmpty(report.contentInspo) ? (
-          <RichTextPreview
-            value={report.contentInspo}
-            onSeeMore={() => onOpenDetails(report)}
-          />
-        ) : !isRichTextEmpty(report.employeeComments) ? (
-          <RichTextPreview
-            value={report.employeeComments}
-            onSeeMore={() => onOpenDetails(report)}
-          />
-        ) : report.caption ? (
-          <p className="line-clamp-2 text-xs text-muted-foreground">
-            {report.caption}
-          </p>
+        {report.assetLink ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="default"
+            asChild
+            className="flex h-fit items-center gap-1.5 py-1 text-xs w-fit"
+          >
+            <a href={report.assetLink} target="_blank" rel="noreferrer">
+              <ExternalLink className="size-3" />
+              Open asset
+            </a>
+          </Button>
         ) : null}
-
-        <p className="text-xs text-muted-foreground">
-          Submitted:{" "}
-          <span className="font-medium text-foreground">
-            {dateFormatter.format(new Date(report.dateSubmitted))}
-          </span>
-        </p>
 
         <ApprovalStatusBadges
           supervisorStatus={report.supervisorStatus}
@@ -154,6 +134,34 @@ export function EmployeeApprovalKanbanCard({
           </div>
         ) : null}
 
+        <div className="flex flex-row gap-2 ">
+          {hasSupervisorNote ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="neutral"
+              className="h-8 gap-1 px-2 text-[11px]"
+              onClick={() => onOpenDetails(report)}
+            >
+              <PenLine className="size-3" />
+              Sup. Note
+            </Button>
+          ) : null}
+
+          {hasDirectorNote ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="neutral"
+              className="h-8 gap-1 px-2 text-[11px]"
+              onClick={() => onOpenDetails(report)}
+            >
+              <PenLine className="size-3" />
+              Dir. Note
+            </Button>
+          ) : null}
+        </div>
+
         <div
           className="flex items-center gap-2 pt-1"
           onClick={(event) => event.stopPropagation()}
@@ -171,32 +179,6 @@ export function EmployeeApprovalKanbanCard({
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-            {hasSupervisorNote ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="neutral"
-                className="h-8 gap-1 px-2 text-[11px]"
-                onClick={() => onOpenDetails(report)}
-              >
-                <PenLine className="size-3" />
-                Sup. Note
-              </Button>
-            ) : null}
-
-            {hasDirectorNote ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="neutral"
-                className="h-8 gap-1 px-2 text-[11px]"
-                onClick={() => onOpenDetails(report)}
-              >
-                <PenLine className="size-3" />
-                Dir. Note
-              </Button>
-            ) : null}
-
             <ApprovalPublishingActions
               report={report}
               publishingPermissions={publishingPermissions}

@@ -75,6 +75,7 @@ import type {
   BrandOption,
   RoleOption,
 } from "@/lib/auth/accounts"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import { useAccountStore } from "@/stores/use-account-store"
 
 type AccountDataTableProps = {
@@ -96,6 +97,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 function getActiveBrandAccess(access: AccountBrandAccess[]) {
@@ -219,7 +222,7 @@ function getAccountColumns(): ColumnDef<AccountListItem>[] {
       ),
       cell: ({ row }) => (
         <span className="whitespace-nowrap text-muted-foreground">
-          {dateFormatter.format(new Date(row.original.createdAt))}
+          {formatRecentOrDateTime(row.original.createdAt, dateFormatter)}
         </span>
       ),
     },

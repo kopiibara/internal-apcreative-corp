@@ -30,6 +30,11 @@ export const TASK_KANBAN_STAGE_CONFIG = {
       "border-yellow-500/30 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300",
     badgeClassName: "border-yellow-500/30 bg-yellow-500/10",
   },
+  REJECTED: {
+    icon: "XCircle",
+    toneClassName: "border-destructive/40 bg-destructive/10 text-destructive",
+    badgeClassName: "border-destructive/40 bg-destructive/10",
+  },
 } satisfies Record<
   TaskAssignmentStatus,
   {

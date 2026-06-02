@@ -42,6 +42,7 @@ import {
   PLATFORM_VIEW_COPY,
 } from "@/lib/platform-analytics/constants";
 import { formatWholeMetric } from "@/lib/platform-analytics/format";
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp";
 import type {
   AnalyticsDateRange,
   AnalyticsPlatform,
@@ -1478,7 +1479,7 @@ function ContentTable({
                     </td>
                     <td className="py-2 pr-4">
                       {row.publishedAt
-                        ? dateFormatter.format(new Date(row.publishedAt))
+                        ? formatRecentOrDateTime(row.publishedAt, dateFormatter)
                         : "-"}
                     </td>
                     <td className="py-2 pr-4">
@@ -1649,7 +1650,7 @@ function ActivityLogs({
                     <StatusBadge status={log.status} />
                     <span className="font-medium">{log.eventType}</span>
                     <span className="text-muted-foreground">
-                      {dateFormatter.format(new Date(log.receivedAt))}
+                      {formatRecentOrDateTime(log.receivedAt, dateFormatter)}
                     </span>
                   </div>
                   <p className="mt-2 text-muted-foreground">{log.summary}</p>
@@ -1690,7 +1691,7 @@ function SyncHistoryTable({
               {rows.map((row) => (
                 <tr key={row.id} className="border-b">
                   <td className="py-2 pr-4">
-                    {dateFormatter.format(new Date(row.startedAt))}
+                    {formatRecentOrDateTime(row.startedAt, dateFormatter)}
                   </td>
                   <td className="py-2 pr-4">{row.syncType}</td>
                   <td className="py-2 pr-4 font-mono text-xs">

@@ -29,21 +29,6 @@ export function parseDashboardBrandId(value: string | undefined) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null
 }
 
-async function getActiveRealBrands() {
-  const result = await query<DailyReportBrandOption>(
-    `
-    SELECT id, name
-    FROM brand
-    WHERE is_active = true
-      AND slug <> $1
-    ORDER BY name ASC, id ASC
-    `,
-    [ALL_BRAND_SLUG]
-  )
-
-  return result.rows
-}
-
 async function getAssignedBrands(profileId: number) {
   const result = await query<AssignedBrandRow>(
     `

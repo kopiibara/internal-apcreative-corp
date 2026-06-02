@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { ExternalLink, Pencil, Trash2, } from "lucide-react"
+import { ExternalLink, Pencil, Trash2, XCircle } from "lucide-react"
 import { toast } from "sonner"
 
 import { deleteTask } from "@/app/admin/to-do/actions"
 import { ReportBlockerDialog } from "@/components/to-do/report-blocker-dialog"
 import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
 import { TaskProofDialog } from "@/components/to-do/task-proof-dialog"
+import { TaskRejectDialog } from "@/components/to-do/task-reject-dialog"
 import { TaskRevisionDialog } from "@/components/to-do/task-revision-dialog"
 import { TaskStatusChangeDialog } from "@/components/to-do/task-status-change-dialog"
 import { TaskProofViewDialog } from "@/components/shared/task-proof-view-dialog"
@@ -20,6 +21,7 @@ import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { RichTextPreview } from "@/components/ui/rich-text-renderer"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import { canReviewTaskAssignment } from "@/lib/tasks/task-review-guards"
 import { shouldOpenProofInDialog } from "@/lib/proof/proof-media"
 import { getTaskLateSubmissionDisplay } from "@/lib/tasks/task-late-submission"
@@ -56,6 +58,7 @@ export function TaskAssignmentCard({
   const [proofOpen, setProofOpen] = useState(false)
   const [blockerOpen, setBlockerOpen] = useState(false)
   const [revisionOpen, setRevisionOpen] = useState(false)
+  const [rejectOpen, setRejectOpen] = useState(false)
   const [doneDialogOpen, setDoneDialogOpen] = useState(false)
   const [proofViewOpen, setProofViewOpen] = useState(false)
   const [nowMs, setNowMs] = useState<number | null>(null)
@@ -128,40 +131,47 @@ export function TaskAssignmentCard({
         <CardContent className="min-w-0 space-y-2.5 px-3 py-2 sm:px-4">
           <div className="flex min-w-0 flex-col gap-1.5">
             <div className="w-full flex justify-between">
-              <h1 className="line-clamp-2 min-w-0 font-bold leading-snug">
+              <h1 className="line-clamp-1 min-w-0 max-w-36 truncate font-bold leading-snug">
                 {assignment.title}
               </h1>
-              <div className="flex flex-col gap-1 items-end ">
-                {assignment.priority ? (
-                  <StatusBadge
-                    status={assignment.priority}
-                    type="priority"
-                    size="sm"
-                    className="h-fit"
-                    prefix="Priority"
-                  />
-                ) : null}
+              <span
+                className="text-xs text-muted-foreground flex flex-row gap-1 items-center "
+                title={dateFormatter.format(new Date(assignment.createdAt))}
+              >
+                {formatRecentOrDateTime(assignment.createdAt, dateFormatter)}
+              </span>
+            </div>
+            <div className="flex flex-row gap-1 items-center ">
+              {assignment.priority ? (
+                <StatusBadge
+                  status={assignment.priority}
+                  type="priority"
+                  size="sm"
+                  className="h-fit"
+                  prefix="Priority"
+                />
+              ) : null}
 
-                {hasProof ? (
-                  <StatusBadge status="SUBMITTED" type="proof" size="sm" className="h-fit" />
-                ) : null}
+              {hasProof ? (
+                <StatusBadge status="SUBMITTED" type="proof" size="sm" className="h-fit" />
+              ) : null}
 
-                {hasBlocker ? (
-                  <StatusBadge status="BLOCKER" type="task" size="sm" className="h-fit">
-                    Blocker reported
-                  </StatusBadge>
-                ) : null}
+              {hasBlocker ? (
+                <StatusBadge status="BLOCKER" type="task" size="sm" className="h-fit">
+                  Blocker reported
+                </StatusBadge>
+              ) : null}
 
-              </div>
+              {assignment.status === "DONE" && onTimeStatus !== null ? (
+                <StatusBadge
+                  status={onTimeStatus ? "ON_TIME" : "LATE"}
+                  type="proof"
+                  size="sm"
+                />
+              ) : null}
 
             </div>
 
-            {assignment.description ? (
-              <RichTextPreview
-                value={assignment.description}
-                onSeeMore={() => onOpenDetails?.(assignment)}
-              />
-            ) : null}
             <div className="flex min-w-0 flex-wrap gap-1">
               <TaskTypeBadge taskType={assignment.taskType} />
               <TaskStatusBadge status={assignment.status} />
@@ -169,35 +179,32 @@ export function TaskAssignmentCard({
             </div>
           </div>
 
-          {!showAssignee ? (
-            <p className="text-xs">
-              <span className="text-muted-foreground">Assigned to:</span>{" "}
-              <span className="font-medium">{assignment.assignedToName}</span>
-            </p>
-          ) : null}
-          <p className="text-xs">
-            <span className="text-muted-foreground">Created by:</span>{" "}
-            <span className="font-medium"> {assignment.createdByName}</span>
-          </p>
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground">Due:</span>{" "}
-            <span className="font-medium">
-              {assignment.dueDate
-                ? dateFormatter.format(new Date(assignment.dueDate))
-                : "—"}
-            </span>
-            {isOverdue ? (
-              <StatusBadge status="OVERDUE" type="proof" size="sm" />
+          <div className="flex flex-col border rounded-lg border-border bg-muted px-3 py-2 text-xs font-medium leading-snug">
+            {!showAssignee ? (
+              <p className="text-xs">
+                <span className="text-muted-foreground">Assigned to:</span>{" "}
+                <span className="font-medium">{assignment.assignedToName}</span>
+              </p>
             ) : null}
+            <p className="text-xs">
+              <span className="text-muted-foreground">Created by:</span>{" "}
+              <span className="font-medium"> {assignment.createdByName}</span>
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground">Due:</span>{" "}
+              <span
+                className={cn(
+                  "font-bold",
+                  isOverdue && "text-destructive"
+                )}
+              >
+                {assignment.dueDate
+                  ? formatRecentOrDateTime(assignment.dueDate, dateFormatter)
+                  : "—"}
+              </span>
+            </div>
           </div>
 
-          {assignment.status === "DONE" && onTimeStatus !== null ? (
-            <StatusBadge
-              status={onTimeStatus ? "ON_TIME" : "LATE"}
-              type="proof"
-              size="sm"
-            />
-          ) : null}
 
           {lateSubmissionDisplay ? (
             <div className="rounded-lg border-2 border-border bg-muted/40 px-2.5 py-2 text-xs font-semibold leading-snug">
@@ -254,6 +261,16 @@ export function TaskAssignmentCard({
                   disabled={isPending}
                 >
                   Revision
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setRejectOpen(true)}
+                  disabled={isPending}
+                >
+                  <XCircle className="size-3" />
+                  Reject
                 </Button>
               </>
             ) : null}
@@ -367,6 +384,11 @@ export function TaskAssignmentCard({
         assignment={assignment}
         open={revisionOpen}
         onOpenChange={setRevisionOpen}
+      />
+      <TaskRejectDialog
+        assignment={assignment}
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
       />
       <TaskStatusChangeDialog
         assignment={assignment}

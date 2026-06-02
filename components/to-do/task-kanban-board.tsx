@@ -16,7 +16,7 @@ import {
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import {
   KanbanBoardShell,
-  KANBAN_BOARD_FIT_ROW_CLASS,
+  KANBAN_BOARD_SCROLL_ROW_CLASS,
   KANBAN_COLUMN_ITEM_CLASS,
   KANBAN_OVERLAY_CLASS,
 } from "@/components/shared/kanban-board-scroll"
@@ -38,7 +38,41 @@ type TaskKanbanBoardProps = {
   onAssignmentUpdated?: (assignment: TaskAssignmentRecord) => void
 }
 
-const TASK_BOARD_ROW_CLASS = cn(KANBAN_BOARD_FIT_ROW_CLASS, "px-3 pb-1 sm:px-6")
+const TASK_BOARD_ROW_CLASS = cn(KANBAN_BOARD_SCROLL_ROW_CLASS, "px-3 pb-1 sm:px-6")
+const TASK_COLUMN_CLASS =
+  "w-[300px] min-w-[300px] max-w-[300px] sm:w-[320px] sm:min-w-[320px] sm:max-w-[320px] lg:w-[340px] lg:min-w-[340px] lg:max-w-[340px] xl:w-[340px] xl:min-w-[340px] xl:max-w-[340px] xl:shrink-0"
+
+function getTaskColumnSortTime(assignment: TaskAssignmentRecord) {
+  const value =
+    assignment.status === "DONE"
+      ? assignment.completedAt ?? assignment.reviewedAt ?? assignment.updatedAt
+      : assignment.status === "PENDING"
+        ? assignment.submittedAt ?? assignment.updatedAt
+        : assignment.status === "BLOCKER"
+          ? assignment.blockerReportedAt ?? assignment.updatedAt
+          : assignment.status === "REVISION"
+            ? assignment.reviewedAt ?? assignment.updatedAt
+            : assignment.status === "REJECTED"
+              ? assignment.reviewedAt ?? assignment.updatedAt
+              : assignment.createdAt ?? assignment.updatedAt
+
+  return new Date(value).getTime()
+}
+
+function sortTaskAssignmentsNewestFirst(
+  assignments: TaskAssignmentRecord[],
+) {
+  return [...assignments].sort((left, right) => {
+    const timeDifference =
+      getTaskColumnSortTime(right) - getTaskColumnSortTime(left)
+
+    if (timeDifference !== 0) {
+      return timeDifference
+    }
+
+    return right.assignmentId - left.assignmentId
+  })
+}
 
 function canDragTaskAssignment(
   assignment: TaskAssignmentRecord,
@@ -79,6 +113,7 @@ function renderTaskColumns({
       title={column.title}
       count={columns[column.id]?.length ?? 0}
       enableDrag={enableDragBoard}
+      className={TASK_COLUMN_CLASS}
     >
       {(columns[column.id] ?? []).map((assignment) => {
         const card = (
@@ -163,8 +198,10 @@ export function TaskKanbanBoard({
     return TASK_KANBAN_COLUMNS.reduce<
       Record<string, TaskAssignmentRecord[]>
     >((result, column) => {
-      result[column.id] = filteredAssignments.filter(
-        (assignment) => assignment.status === column.id
+      result[column.id] = sortTaskAssignmentsNewestFirst(
+        filteredAssignments.filter(
+          (assignment) => assignment.status === column.id
+        )
       )
       return result
     }, {})
@@ -222,7 +259,7 @@ export function TaskKanbanBoard({
   return (
     <>
       {canDragCards && hasDraggableCards ? (
-        <KanbanBoardShell columnLayout="fit">
+        <KanbanBoardShell columnLayout="scroll">
           <Kanban
             className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col"
             value={columns}
@@ -237,8 +274,8 @@ export function TaskKanbanBoard({
           </Kanban>
         </KanbanBoardShell>
       ) : (
-        <KanbanBoardShell columnLayout="fit">
-          <div className={cn(TASK_BOARD_ROW_CLASS, "min-h-0 flex-1")}>
+        <KanbanBoardShell columnLayout="scroll">
+          <div className={cn(TASK_BOARD_ROW_CLASS, "min-h-20 flex-1")}>
             {columnNodes}
           </div>
         </KanbanBoardShell>

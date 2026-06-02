@@ -36,6 +36,7 @@ export function countGradedAssignmentMetrics(
   let pending = 0;
   let blockers = 0;
   let revisions = 0;
+  let rejected = 0;
   let completedOnTime = 0;
   let completedLate = 0;
   let completedTaskPriorityPoints = 0;
@@ -77,6 +78,8 @@ export function countGradedAssignmentMetrics(
     } else if (assignment.status === "REVISION") {
       revisions += 1;
       pending += 1;
+    } else if (assignment.status === "REJECTED") {
+      rejected += 1;
     } else {
       pending += 1;
     }
@@ -101,6 +104,7 @@ export function countGradedAssignmentMetrics(
     pending,
     blockers,
     revisions,
+    rejected,
     completionRate: computeSimpleCompletionRate(done, total),
     adjustedCompletionRate: performance.adjustedCompletionRate,
     completedTaskPriorityPoints,

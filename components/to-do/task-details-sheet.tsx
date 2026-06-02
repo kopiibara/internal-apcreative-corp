@@ -8,6 +8,7 @@ import { TaskBlockerSummary } from "@/components/to-do/task-blocker-summary"
 import { TaskDetailsSummary } from "@/components/to-do/task-details-summary"
 import { TaskProofDialog } from "@/components/to-do/task-proof-dialog"
 import { TaskProofSummary } from "@/components/to-do/task-proof-summary"
+import { TaskRejectDialog } from "@/components/to-do/task-reject-dialog"
 import { TaskRevisionDialog } from "@/components/to-do/task-revision-dialog"
 import { TaskStatusChangeDialog } from "@/components/to-do/task-status-change-dialog"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
@@ -28,6 +29,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
@@ -40,7 +42,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
 })
 
 function formatDate(value: string | null) {
-  return value ? dateTimeFormatter.format(new Date(value)) : "Not set"
+  return value ? formatRecentOrDateTime(value, dateTimeFormatter) : "Not set"
 }
 
 function TaskDetailSection({
@@ -131,6 +133,7 @@ type TaskActionsPanelProps = {
   canReportBlocker: boolean
   canConfirmDone: boolean
   canRequestRevision: boolean
+  canRejectTask: boolean
   canResolveBlocker: boolean
   canChangeStatus: boolean
   canEditTask: boolean
@@ -138,6 +141,7 @@ type TaskActionsPanelProps = {
   onReportBlocker: () => void
   onConfirmDone: () => void
   onRequestRevision: () => void
+  onRejectTask: () => void
   onResolveBlocker: () => void
   onChangeStatus: () => void
   onEditTask: () => void
@@ -149,6 +153,7 @@ function TaskActionsFooter({
   canReportBlocker,
   canConfirmDone,
   canRequestRevision,
+  canRejectTask,
   canResolveBlocker,
   canChangeStatus,
   canEditTask,
@@ -156,6 +161,7 @@ function TaskActionsFooter({
   onReportBlocker,
   onConfirmDone,
   onRequestRevision,
+  onRejectTask,
   onResolveBlocker,
   onChangeStatus,
   onEditTask,
@@ -165,6 +171,7 @@ function TaskActionsFooter({
     canReportBlocker ||
     canConfirmDone ||
     canRequestRevision ||
+    canRejectTask ||
     canResolveBlocker ||
     canChangeStatus ||
     canEditTask
@@ -198,6 +205,16 @@ function TaskActionsFooter({
       {canRequestRevision ? (
         <Button type="button" size="sm" onClick={onRequestRevision}>
           Request Revision
+        </Button>
+      ) : null}
+      {canRejectTask ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="destructive"
+          onClick={onRejectTask}
+        >
+          Reject Task
         </Button>
       ) : null}
       {canResolveBlocker ? (
@@ -244,6 +261,7 @@ export function TaskDetailsSheet({
   const [proofOpen, setProofOpen] = useState(false)
   const [blockerOpen, setBlockerOpen] = useState(false)
   const [revisionOpen, setRevisionOpen] = useState(false)
+  const [rejectOpen, setRejectOpen] = useState(false)
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [nextStatus, setNextStatus] = useState<TaskAssignmentStatus | null>(null)
 
@@ -266,6 +284,7 @@ export function TaskDetailsSheet({
     assignment?.assignedToProfileId !== currentProfileId
   const canConfirmDone = canReview && assignment?.status === "PENDING"
   const canRequestRevision = canReview && assignment?.status === "PENDING"
+  const canRejectTask = canReview && assignment?.status === "PENDING"
   const canResolveBlocker = canReview && assignment?.status === "BLOCKER"
   const canChangeStatus =
     Boolean(assignment) &&
@@ -276,6 +295,7 @@ export function TaskDetailsSheet({
     canReportBlocker ||
     canConfirmDone ||
     canRequestRevision ||
+    canRejectTask ||
     canResolveBlocker ||
     canChangeStatus ||
     canEditTask
@@ -337,6 +357,7 @@ export function TaskDetailsSheet({
                 canReportBlocker={canReportBlocker}
                 canConfirmDone={canConfirmDone}
                 canRequestRevision={canRequestRevision}
+                canRejectTask={canRejectTask}
                 canResolveBlocker={canResolveBlocker}
                 canChangeStatus={canChangeStatus}
                 canEditTask={canEditTask}
@@ -344,6 +365,7 @@ export function TaskDetailsSheet({
                 onReportBlocker={() => setBlockerOpen(true)}
                 onConfirmDone={() => openStatusChange("DONE")}
                 onRequestRevision={() => setRevisionOpen(true)}
+                onRejectTask={() => setRejectOpen(true)}
                 onResolveBlocker={() => openStatusChange("ASSIGNED")}
                 onChangeStatus={() => openStatusChange(null)}
                 onEditTask={() => onEditTask(assignment)}
@@ -367,6 +389,11 @@ export function TaskDetailsSheet({
         assignment={assignment}
         open={revisionOpen}
         onOpenChange={setRevisionOpen}
+      />
+      <TaskRejectDialog
+        assignment={assignment}
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
       />
       <TaskStatusChangeDialog
         key={`${assignment?.assignmentId ?? "none"}-${nextStatus ?? "select"}`}

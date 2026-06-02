@@ -49,6 +49,7 @@ import {
   getPRCollaborationStatusButtonClassName,
   getPRContactStatusButtonClassName,
 } from "@/lib/pr/pr-status-styles";
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp";
 import {
   PR_COLLABORATION_STATUSES,
   PR_CONTACT_STATUSES,
@@ -72,6 +73,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 });
 
 function getFollowUpPreview(request: PRRequestRecord) {
@@ -291,7 +294,7 @@ function getColumns(options: {
       header: "Date added",
       cell: ({ row }) => (
         <span className="whitespace-nowrap text-xs">
-          {dateFormatter.format(new Date(row.original.createdAt))}
+          {formatRecentOrDateTime(row.original.createdAt, dateFormatter)}
         </span>
       ),
     },

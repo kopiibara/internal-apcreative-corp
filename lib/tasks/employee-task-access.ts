@@ -40,6 +40,10 @@ export async function canAccessEmployeeToDoTaskBoard(
   authUserId: string,
   profileId: number,
 ) {
+  if (await canAccessEmployeeTaskPage(authUserId, "EMPLOYEE", profileId)) {
+    return true;
+  }
+
   if (await canUseEmployeeToDoTasks(authUserId, profileId)) {
     return true;
   }

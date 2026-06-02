@@ -9,12 +9,15 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { ContentReport } from "@/types/content-report"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 type PublishingReviewReadonlyProps = {
@@ -39,7 +42,10 @@ export function PublishingReviewReadonly({ report }: PublishingReviewReadonlyPro
           <div className="space-y-2">
             <Label>Scheduled / Published Date</Label>
             <p className="text-sm font-medium">
-              {dateFormatter.format(new Date(report.scheduledPublishedDate))}
+              {formatRecentOrDateTime(
+                report.scheduledPublishedDate,
+                dateFormatter
+              )}
             </p>
           </div>
         ) : null}

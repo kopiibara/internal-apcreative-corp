@@ -13,7 +13,7 @@ import {
 import { getTodayDateKeyInPhilippines } from "@/lib/daily-reports/daily-report-filters"
 import { getDailyReportData } from "@/lib/daily-reports/daily-reports"
 import { requireEmployee } from "@/lib/auth/auth-session"
-import { query } from "@/lib/db"
+import { getEmployeeDashboardBrandContext } from "@/lib/dashboard/employee-dashboard-brands"
 import { getStaffAccountabilityData } from "@/lib/tasks/tasks"
 
 type EmployeeDashboardPageProps = {
@@ -22,38 +22,19 @@ type EmployeeDashboardPageProps = {
     date?: string
     month?: string
     weekStart?: string
+    brandId?: string
   }>
-}
-
-type AssignedBrandRow = {
-  brand_id: number
-  brand_name: string
-}
-
-async function getPrimaryAssignedBrand(profileId: number) {
-  const result = await query<AssignedBrandRow>(
-    `
-    SELECT b.id AS brand_id, b.name AS brand_name
-    FROM user_brand_access uba
-    JOIN brand b ON b.id = uba.brand_id
-    WHERE uba.profile_id = $1
-      AND uba.is_active = true
-      AND b.is_active = true
-    ORDER BY uba.is_primary DESC, uba.granted_at ASC, b.name ASC
-    LIMIT 1
-    `,
-    [profileId]
-  )
-
-  return result.rows[0] ?? null
 }
 
 export default async function EmployeeDashboardPage({
   searchParams,
 }: EmployeeDashboardPageProps) {
   const { profile } = await requireEmployee()
-  const assignedBrand = await getPrimaryAssignedBrand(profile.id)
   const params = await searchParams
+  const brandContext = await getEmployeeDashboardBrandContext(
+    profile.id,
+    params.brandId
+  )
   const todayKey = getTodayDateKeyInPhilippines()
   const currentMonth = todayKey.slice(0, 7)
   const period = parseDashboardPeriod(params.period)
@@ -70,7 +51,7 @@ export default async function EmployeeDashboardPage({
     weekStartKey: weekStart,
   })
 
-  if (!assignedBrand) {
+  if (!brandContext) {
     return (
       <div className="min-w-0 space-y-4 overflow-hidden">
         <div>
@@ -90,13 +71,13 @@ export default async function EmployeeDashboardPage({
       dateKey,
       start: bounds.dailyStart,
       end: bounds.dailyEnd,
-      brandId: assignedBrand.brand_id,
+      brandId: brandContext.effectiveBrandId,
       employeeId: null,
     }),
     getStaffAccountabilityData({
       startDate: bounds.staffStart,
       endDate: bounds.staffEnd,
-      brandId: assignedBrand.brand_id,
+      brandId: brandContext.effectiveBrandId,
     }),
   ])
 
@@ -104,12 +85,14 @@ export default async function EmployeeDashboardPage({
     <div className="min-w-0 space-y-4 overflow-hidden">
 
       <DashboardFilterBar
+        brands={brandContext.brands}
         period={period}
         dateKey={dateKey}
         month={month}
         weekStart={weekStart}
-        showBrandFilter={false}
-        assignedBrandLabel={assignedBrand.brand_name}
+        brandId={brandContext.selectedBrandId}
+        showBrandFilter={brandContext.showBrandFilter}
+        assignedBrandLabel={brandContext.assignedBrandLabel}
       />
 
       <section className="space-y-3 pr-1">
