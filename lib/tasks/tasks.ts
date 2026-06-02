@@ -21,6 +21,7 @@ import {
   getEffectiveBrandAccessForProfile,
   profileHasAllBrandsAccess,
 } from "@/lib/brand-access/effective-brand-access";
+import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 
 export type AssigneeBrandAccess = {
   brandId: number;
@@ -472,8 +473,13 @@ export async function getTaskAssignmentsForViewer({
         WHEN 'REVISION' THEN 4
         WHEN 'DONE' THEN 5
       END,
-      t.due_date ASC NULLS LAST,
-      ta.updated_at DESC,
+      CASE ta.status
+        WHEN 'DONE' THEN COALESCE(ta.completed_at, ta.reviewed_at, ta.updated_at)
+        WHEN 'PENDING' THEN COALESCE(ta.submitted_at, ta.updated_at)
+        WHEN 'BLOCKER' THEN COALESCE(ta.blocker_reported_at, ta.updated_at)
+        WHEN 'REVISION' THEN COALESCE(ta.reviewed_at, ta.updated_at)
+        ELSE COALESCE(ta.created_at, ta.updated_at)
+      END DESC,
       ta.id DESC
     `,
     canViewAll ? [] : [profileId],
@@ -496,8 +502,13 @@ export async function getTaskAssignmentsForEmployee(profileId: number) {
         WHEN 'REVISION' THEN 4
         WHEN 'DONE' THEN 5
       END,
-      t.due_date ASC NULLS LAST,
-      ta.updated_at DESC,
+      CASE ta.status
+        WHEN 'DONE' THEN COALESCE(ta.completed_at, ta.reviewed_at, ta.updated_at)
+        WHEN 'PENDING' THEN COALESCE(ta.submitted_at, ta.updated_at)
+        WHEN 'BLOCKER' THEN COALESCE(ta.blocker_reported_at, ta.updated_at)
+        WHEN 'REVISION' THEN COALESCE(ta.reviewed_at, ta.updated_at)
+        ELSE COALESCE(ta.created_at, ta.updated_at)
+      END DESC,
       ta.id DESC
     `,
     [profileId],
@@ -687,8 +698,10 @@ export async function getStaffAccountabilityFilterOptions() {
       SELECT id, name
       FROM brand
       WHERE is_active = true
+        AND slug <> $1
       ORDER BY name ASC, id ASC
       `,
+      [ALL_BRAND_SLUG],
     ),
     query<{ id: number; full_name: string; email: string }>(
       `
@@ -871,10 +884,11 @@ export async function getStaffAccountabilityData({
       SELECT id AS brand_id, name AS brand_name
       FROM brand
       WHERE is_active = true
-        AND ($1::integer IS NULL OR id = $1::integer)
+        AND slug <> $1
+        AND ($2::integer IS NULL OR id = $2::integer)
       ORDER BY name ASC, id ASC
       `,
-        [brandId],
+        [ALL_BRAND_SLUG, brandId],
       ),
       query<StaffAccountabilityBrandTaskRow>(
         `
@@ -888,6 +902,7 @@ export async function getStaffAccountabilityData({
       JOIN brand derived_brand
         ON derived_brand.id = ${STAFF_ACCOUNTABILITY_DERIVED_BRAND_SQL}
         AND derived_brand.is_active = true
+        AND derived_brand.slug <> $5
       WHERE t.task_type = 'GRADED'
         AND assignee.status = 'ACTIVE'
         AND assignee.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
@@ -903,7 +918,7 @@ export async function getStaffAccountabilityData({
         AND ($3::integer IS NULL OR derived_brand.id = $3::integer)
         AND ($4::integer IS NULL OR ta.assigned_to_profile_id = $4::integer)
       `,
-        [...assignmentParams],
+        [...assignmentParams, ALL_BRAND_SLUG],
       ),
       query<StaffAccountabilityBrandApprovalRow>(
         `

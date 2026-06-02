@@ -137,3 +137,23 @@ export function filterApprovalReports(
     );
   });
 }
+
+function getApprovalSortTimestamp(report: ContentReport) {
+  const value = report.updatedAt || report.dateSubmitted || report.createdAt;
+  const timestamp = new Date(value).getTime();
+
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+export function sortApprovalReportsNewestFirst(reports: ContentReport[]) {
+  return [...reports].sort((left, right) => {
+    const timeDifference =
+      getApprovalSortTimestamp(right) - getApprovalSortTimestamp(left);
+
+    if (timeDifference !== 0) {
+      return timeDifference;
+    }
+
+    return right.id - left.id;
+  });
+}

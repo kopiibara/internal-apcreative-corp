@@ -1,6 +1,7 @@
 import "server-only";
 
 import { query } from "@/lib/db";
+import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import type { DailyReportFilterBounds } from "@/lib/daily-reports/daily-report-filters";
 import {
   countGradedAssignmentMetrics,
@@ -48,6 +49,10 @@ const DERIVED_BRAND_SQL = `
   (
     SELECT uba.brand_id
     FROM user_brand_access uba
+    JOIN brand derived_access_brand
+      ON derived_access_brand.id = uba.brand_id
+      AND derived_access_brand.is_active = true
+      AND derived_access_brand.slug <> 'all-brand'
     WHERE uba.profile_id = ta.assigned_to_profile_id
       AND uba.is_active = true
     ORDER BY uba.is_primary DESC, uba.brand_id ASC
@@ -236,8 +241,10 @@ export async function getDailyReportFilterOptions() {
       SELECT id, name
       FROM brand
       WHERE is_active = true
+        AND slug <> $1
       ORDER BY name ASC, id ASC
       `,
+      [ALL_BRAND_SLUG],
     ),
     query<{ id: number; full_name: string; email: string }>(
       `

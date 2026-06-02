@@ -40,6 +40,36 @@ type TaskKanbanBoardProps = {
 
 const TASK_BOARD_ROW_CLASS = cn(KANBAN_BOARD_FIT_ROW_CLASS, "px-3 pb-1 sm:px-6")
 
+function getTaskColumnSortTime(assignment: TaskAssignmentRecord) {
+  const value =
+    assignment.status === "DONE"
+      ? assignment.completedAt ?? assignment.reviewedAt ?? assignment.updatedAt
+      : assignment.status === "PENDING"
+        ? assignment.submittedAt ?? assignment.updatedAt
+        : assignment.status === "BLOCKER"
+          ? assignment.blockerReportedAt ?? assignment.updatedAt
+          : assignment.status === "REVISION"
+            ? assignment.reviewedAt ?? assignment.updatedAt
+            : assignment.createdAt ?? assignment.updatedAt
+
+  return new Date(value).getTime()
+}
+
+function sortTaskAssignmentsNewestFirst(
+  assignments: TaskAssignmentRecord[],
+) {
+  return [...assignments].sort((left, right) => {
+    const timeDifference =
+      getTaskColumnSortTime(right) - getTaskColumnSortTime(left)
+
+    if (timeDifference !== 0) {
+      return timeDifference
+    }
+
+    return right.assignmentId - left.assignmentId
+  })
+}
+
 function canDragTaskAssignment(
   assignment: TaskAssignmentRecord,
   currentProfileId: number,
@@ -163,8 +193,10 @@ export function TaskKanbanBoard({
     return TASK_KANBAN_COLUMNS.reduce<
       Record<string, TaskAssignmentRecord[]>
     >((result, column) => {
-      result[column.id] = filteredAssignments.filter(
-        (assignment) => assignment.status === column.id
+      result[column.id] = sortTaskAssignmentsNewestFirst(
+        filteredAssignments.filter(
+          (assignment) => assignment.status === column.id
+        )
       )
       return result
     }, {})

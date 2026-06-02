@@ -64,9 +64,9 @@ export function shouldHideSidebarLeaderboard(accountType: AccountType) {
 }
 
 export function hasOrganizationWideBrandAccess(accountType: AccountType) {
-  return (ORGANIZATION_WIDE_BRAND_ACCOUNT_TYPES as readonly AccountType[]).includes(
-    accountType,
-  );
+  return (
+    ORGANIZATION_WIDE_BRAND_ACCOUNT_TYPES as readonly AccountType[]
+  ).includes(accountType);
 }
 
 type RoleRecord = {
@@ -177,10 +177,4 @@ export function getSystemAccessLabel(accountType: AccountType) {
   return isAdminAccountType(accountType)
     ? "Admin Dashboard"
     : "Employee Dashboard";
-}
-
-export function getRoleDashboardHint(roleSlugs: string[]) {
-  return isAdminAccountType(deriveAccountTypeFromRoleSlugs(roleSlugs))
-    ? "This role will use the Admin Dashboard."
-    : "This role will use the Employee Dashboard.";
 }

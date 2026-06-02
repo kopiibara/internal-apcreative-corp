@@ -41,7 +41,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-import { filterApprovalReports } from "@/lib/approvals/approval-filters"
+import {
+  filterApprovalReports,
+  sortApprovalReportsNewestFirst,
+} from "@/lib/approvals/approval-filters"
 import {
   EMPLOYEE_APPROVAL_KANBAN_COLUMNS,
   getBrandOfficerReadyToPublishCount,
@@ -63,8 +66,10 @@ type EmployeeApprovalKanbanBoardProps = {
 function buildEmployeeColumns(reports: ContentReport[]) {
   return EMPLOYEE_APPROVAL_KANBAN_COLUMNS.reduce<Record<string, ContentReport[]>>(
     (columns, column) => {
-      columns[column.id] = reports.filter(
-        (report) => getEmployeeApprovalKanbanStage(report) === column.id
+      columns[column.id] = sortApprovalReportsNewestFirst(
+        reports.filter(
+          (report) => getEmployeeApprovalKanbanStage(report) === column.id
+        )
       )
       return columns
     },

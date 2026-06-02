@@ -45,6 +45,7 @@ import {
 import {
   filterApprovalReports,
   mergeApprovalReports,
+  sortApprovalReportsNewestFirst,
 } from "@/lib/approvals/approval-filters"
 import { getVisibleApprovalKanbanColumns } from "@/lib/approvals/approval-statuses"
 import type { AccountType } from "@/lib/auth/auth-session"
@@ -52,6 +53,7 @@ import { isFullStackDeveloperAdminReadOnly } from "@/lib/auth/full-stack-develop
 import { cn } from "@/lib/utils"
 import { useApprovalPollingRefresh } from "@/hooks/use-approval-polling-refresh"
 import { useApprovalStore } from "@/stores/use-approval-store"
+import type { ReviewStatus } from "@/app/employee/approvals/schema"
 import type { ContentReport } from "@/types/content-report"
 
 type ApprovalKanbanBoardProps = {
@@ -71,8 +73,10 @@ function buildColumns(
 ) {
   return columnsToShow.reduce<Record<string, ContentReport[]>>(
     (columns, column) => {
-      columns[column.id] = reports.filter(
-        (report) => getApprovalKanbanStage(report, viewerContext) === column.id
+      columns[column.id] = sortApprovalReportsNewestFirst(
+        reports.filter(
+          (report) => getApprovalKanbanStage(report, viewerContext) === column.id
+        )
       )
       return columns
     },
@@ -176,7 +180,7 @@ export function ApprovalKanbanBoard({
       filteredReports
         .map(
           (report) =>
-            `${report.id}:${report.supervisorStatus}:${report.directorStatus}:${report.publishStatus}`
+            `${report.id}:${report.supervisorStatus}:${report.directorStatus}:${report.publishStatus}:${report.updatedAt}`
         )
         .join("|"),
     [filteredReports]
@@ -222,6 +226,51 @@ export function ApprovalKanbanBoard({
           updateApprovalInStore(updatedApproval)
         }
       },
+    })
+  }
+
+  function handleCardReviewAction(
+    report: ContentReport,
+    reviewer: "supervisor" | "director",
+    status: ReviewStatus
+  ) {
+    if (adminReadOnly) {
+      return
+    }
+
+    if (reviewer === "supervisor" && !canSupervisorReview) {
+      toast.error("You do not have permission to update supervisor reviews.")
+      return
+    }
+
+    if (reviewer === "director" && !canDirectorReview) {
+      toast.error("You do not have permission to update director reviews.")
+      return
+    }
+
+    const onSaved = (updatedApproval?: ContentReport) => {
+      if (updatedApproval) {
+        updateApprovalInStore(updatedApproval)
+      }
+    }
+
+    if (reviewer === "supervisor") {
+      openVerificationDialog({
+        type: "supervisor",
+        report,
+        supervisorStatus: status,
+        notes: "",
+        onSaved,
+      })
+      return
+    }
+
+    openVerificationDialog({
+      type: "director",
+      report,
+      directorStatus: status,
+      notes: "",
+      onSaved,
     })
   }
 
@@ -306,6 +355,10 @@ export function ApprovalKanbanBoard({
                             <KanbanItemHandle>
                               <ApprovalKanbanCard
                                 report={report}
+                                canSupervisorReview={canSupervisorReview}
+                                canDirectorReview={canDirectorReview}
+                                readOnly={adminReadOnly}
+                                onReviewAction={handleCardReviewAction}
                                 onClick={() => {
                                   const merged =
                                     currentReports.find(
