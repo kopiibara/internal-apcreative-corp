@@ -1,5 +1,6 @@
 import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -11,7 +12,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 })
 
 function formatDate(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Not recorded"
+  return value ? formatRecentOrDateTime(value, dateFormatter) : "Not recorded"
 }
 
 export function TaskBlockerSummary({

@@ -12,12 +12,14 @@ import {
 import { Card } from "@/components/ui/card"
 import { getTaskKanbanStageConfig } from "@/lib/tasks/task-kanban-status"
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-type"
+import { cn } from "@/lib/utils"
 
 type TaskKanbanColumnProps = {
   id: TaskAssignmentStatus
   title: string
   count: number
   enableDrag?: boolean
+  className?: string
   children: React.ReactNode
 }
 
@@ -26,6 +28,7 @@ const EMPTY_COLUMN_MESSAGES: Record<TaskAssignmentStatus, string> = {
   BLOCKER: "No blocker tasks.",
   PENDING: "No pending tasks.",
   REVISION: "No revision tasks.",
+  REJECTED: "No rejected tasks.",
   DONE: "No completed tasks.",
 }
 
@@ -34,6 +37,7 @@ export function TaskKanbanColumn({
   title,
   count,
   enableDrag = false,
+  className,
   children,
 }: TaskKanbanColumnProps) {
   const config = getTaskKanbanStageConfig(id)
@@ -69,11 +73,11 @@ export function TaskKanbanColumn({
 
   if (enableDrag) {
     return (
-      <KanbanColumn value={id} className={KANBAN_COLUMN_FIT_CLASS}>
+      <KanbanColumn value={id} className={cn(KANBAN_COLUMN_FIT_CLASS, className)}>
         {content}
       </KanbanColumn>
     )
   }
 
-  return <div className={KANBAN_COLUMN_FIT_CLASS}>{content}</div>
+  return <div className={cn(KANBAN_COLUMN_FIT_CLASS, className)}>{content}</div>
 }

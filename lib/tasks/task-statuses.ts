@@ -3,6 +3,7 @@ export const TASK_STATUSES = [
   "BLOCKER",
   "PENDING",
   "REVISION",
+  "REJECTED",
   "DONE",
 ] as const;
 
@@ -13,6 +14,7 @@ export const TASK_STATUS_LABELS: Record<TaskAssignmentStatus, string> = {
   BLOCKER: "Blocker",
   PENDING: "Pending",
   REVISION: "Revision",
+  REJECTED: "Rejected",
   DONE: "Done",
 };
 
@@ -26,6 +28,7 @@ export const TASK_STATUS_BADGE_CLASS_NAMES: Record<
   BLOCKER: getStatusBadgeClassName("BLOCKER", "task"),
   PENDING: getStatusBadgeClassName("PENDING", "task"),
   REVISION: getStatusBadgeClassName("REVISION", "task"),
+  REJECTED: getStatusBadgeClassName("REJECTED", "task"),
   DONE: getStatusBadgeClassName("DONE", "task"),
 };
 
@@ -53,6 +56,11 @@ export const TASK_KANBAN_COLUMNS: {
     id: "REVISION",
     title: "Revision",
     description: "Proof needs changes before resubmission.",
+  },
+  {
+    id: "REJECTED",
+    title: "Rejected",
+    description: "Reviewer rejected the submitted task.",
   },
   {
     id: "DONE",

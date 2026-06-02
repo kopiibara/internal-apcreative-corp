@@ -55,11 +55,14 @@ export function TaskBoard({
   const isEmployeeView = variant === "employee"
   const isFullStackView = currentAccountType === "FULL_STACK_DEVELOPER"
   const canAssignTeamTasks = isEmployeeView && permissions.canAssign
+  const selfSubmitOnly = isEmployeeView && !canAssignTeamTasks
   const showCreateButton = isEmployeeView
-    ? canAssignTeamTasks
+    ? permissions.canCreate
     : permissions.canCreate
   const createLabel = isEmployeeView
-    ? COPY.employee.teamCreateLabel
+    ? canAssignTeamTasks
+      ? COPY.employee.teamCreateLabel
+      : "Submit Task"
     : isFullStackView
       ? "Add Full Stack Task"
       : COPY.admin.createLabel
@@ -74,6 +77,7 @@ export function TaskBoard({
     closeEditDialog,
     openEditDialog,
     updateTaskAssignmentInStore,
+    addTaskAssignmentsToStore,
   } = useTaskStore()
 
   const currentAssignments = useMemo(
@@ -98,7 +102,7 @@ export function TaskBoard({
   const emptyMessage = isEmployeeView
     ? canAssignTeamTasks
       ? "No team tasks yet. Assign work to Multimedia or Content Creator teammates on your shared brands."
-      : "No tasks assigned yet. Use Reminders for personal follow-ups."
+      : "No tasks yet. Submit your own completed work for supervisor review."
     : isFullStackView
       ? "No full stack tasks yet. Assign non-graded work to another Full Stack Developer."
     : "No tasks yet. Add a task to assign work and start the review workflow."
@@ -150,7 +154,9 @@ export function TaskBoard({
         currentAccountType={currentAccountType}
         permissions={permissions}
         personalOnly={false}
+        selfSubmitOnly={selfSubmitOnly}
         canAssignTeamTasks={canAssignTeamTasks}
+        onTaskCreated={addTaskAssignmentsToStore}
       />
 
       <TaskEditDialog

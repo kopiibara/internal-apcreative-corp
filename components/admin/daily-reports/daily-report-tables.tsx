@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import {
   Table,
   TableBody,
@@ -35,6 +36,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "Asia/Manila",
   month: "short",
   day: "numeric",
+  year: "numeric",
   hour: "numeric",
   minute: "2-digit",
 })
@@ -155,16 +157,16 @@ export function DailyReportTaskLogTable({
           status={entry.status}
           type="task"
         />,
-        entry.dueDate ? dateFormatter.format(new Date(entry.dueDate)) : "—",
+        entry.dueDate ? formatRecentOrDateTime(entry.dueDate, dateFormatter) : "—",
         entry.completedAt
-          ? dateFormatter.format(new Date(entry.completedAt))
+          ? formatRecentOrDateTime(entry.completedAt, dateFormatter)
           : "—",
         <StatusBadge
           key={`${entry.assignmentId}-proof`}
           status={entry.proofStatus}
           type="proof"
         />,
-        dateFormatter.format(new Date(entry.updatedAt)),
+        formatRecentOrDateTime(entry.updatedAt, dateFormatter),
       ])}
     />
   )
@@ -193,7 +195,7 @@ export function DailyReportApprovalLogTable({
         "Scheduled",
       ]}
       rows={entries.map((entry) => [
-        dateFormatter.format(new Date(entry.dateSubmitted)),
+        formatRecentOrDateTime(entry.dateSubmitted, dateFormatter),
         entry.submittedByName,
         entry.brandName ?? "—",
         entry.contentType,
@@ -215,7 +217,7 @@ export function DailyReportApprovalLogTable({
           type="publish"
         />,
         entry.scheduledPublishedDate
-          ? dateFormatter.format(new Date(entry.scheduledPublishedDate))
+          ? formatRecentOrDateTime(entry.scheduledPublishedDate, dateFormatter)
           : "—",
       ])}
     />
@@ -266,11 +268,11 @@ export function DailyReportBlockersSection({
                       <p className="mt-2 text-xs text-muted-foreground">
                         Reported{" "}
                         {blocker.reportedAt
-                          ? dateFormatter.format(new Date(blocker.reportedAt))
+                          ? formatRecentOrDateTime(blocker.reportedAt, dateFormatter)
                           : "—"}{" "}
                         · Assigned by {blocker.createdByName}
                         {blocker.dueDate
-                          ? ` · Due ${dateFormatter.format(new Date(blocker.dueDate))}`
+                          ? ` · Due ${formatRecentOrDateTime(blocker.dueDate, dateFormatter)}`
                           : ""}
                       </p>
                     </div>

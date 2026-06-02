@@ -1,6 +1,7 @@
 import "server-only";
 
 import { query } from "@/lib/db";
+import { ALL_BRAND_SLUG } from "@/lib/dashboard/employee-dashboard-brands";
 import type { DailyReportFilterBounds } from "@/lib/daily-reports/daily-report-filters";
 import {
   countGradedAssignmentMetrics,
@@ -48,6 +49,10 @@ const DERIVED_BRAND_SQL = `
   (
     SELECT uba.brand_id
     FROM user_brand_access uba
+    JOIN brand derived_access_brand
+      ON derived_access_brand.id = uba.brand_id
+      AND derived_access_brand.is_active = true
+      AND derived_access_brand.slug <> 'all-brand'
     WHERE uba.profile_id = ta.assigned_to_profile_id
       AND uba.is_active = true
     ORDER BY uba.is_primary DESC, uba.brand_id ASC
@@ -179,6 +184,7 @@ function formatTimelineAction(action: string) {
     BLOCKER_RESOLVED: "Blocker resolved",
     REVISION_REQUESTED: "Revision requested",
     TASK_MARKED_DONE: "Task marked done",
+    TASK_REJECTED: "Task rejected",
     TASK_REOPENED: "Task reopened",
     DEADLINE_CHANGED: "Deadline changed",
     supervisor_review_update: "Supervisor review updated",
@@ -236,8 +242,10 @@ export async function getDailyReportFilterOptions() {
       SELECT id, name
       FROM brand
       WHERE is_active = true
+        AND slug <> $1
       ORDER BY name ASC, id ASC
       `,
+      [ALL_BRAND_SLUG],
     ),
     query<{ id: number; full_name: string; email: string }>(
       `
@@ -348,7 +356,8 @@ export async function getDailyReportData(
           WHEN 'REVISION' THEN 2
           WHEN 'ASSIGNED' THEN 3
           WHEN 'PENDING' THEN 4
-          ELSE 5
+          WHEN 'REJECTED' THEN 5
+          ELSE 6
         END,
         t.due_date ASC NULLS LAST,
         ta.updated_at DESC,
@@ -659,7 +668,7 @@ export async function getDailyReportData(
     } else if (row.status === "BLOCKER") {
       existing.blockerTasks += 1;
       existing.pendingTasks += 1;
-    } else {
+    } else if (row.status !== "REJECTED") {
       existing.pendingTasks += 1;
     }
 
@@ -746,7 +755,7 @@ export async function getDailyReportData(
     } else if (row.status === "REVISION") {
       existing.revisionTasks += 1;
       existing.pendingTasks += 1;
-    } else {
+    } else if (row.status !== "REJECTED") {
       existing.pendingTasks += 1;
     }
 

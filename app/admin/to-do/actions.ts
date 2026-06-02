@@ -9,6 +9,7 @@ import {
   confirmTaskDoneSchema,
   createTaskSchema,
   deleteTaskSchema,
+  rejectTaskSchema,
   reportTaskBlockerSchema,
   requestTaskRevisionSchema,
   submitTaskProofSchema,
@@ -24,6 +25,7 @@ import { query, transaction } from "@/lib/db";
 import { assertSupervisorCanAssignTasksToUsers } from "@/lib/approvals/approval-permissions";
 import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
 import { normalizeRichTextForStorage } from "@/lib/rich-text/rich-text";
+import { richTextToPlainText } from "@/lib/rich-text/rich-text";
 import {
   sanitizeOptionalText,
   sanitizeRequiredText,
@@ -52,9 +54,10 @@ const ADMIN_TRANSITIONS: Record<TaskAssignmentStatus, TaskAssignmentStatus[]> =
   {
     ASSIGNED: ["BLOCKER", "PENDING"],
     BLOCKER: ["ASSIGNED", "PENDING"],
-    PENDING: ["DONE", "REVISION"],
+    PENDING: ["DONE", "REVISION", "REJECTED"],
     REVISION: ["ASSIGNED", "BLOCKER"],
-    DONE: ["ASSIGNED", "BLOCKER", "PENDING", "REVISION"],
+    REJECTED: ["ASSIGNED", "PENDING", "REVISION"],
+    DONE: ["ASSIGNED", "BLOCKER", "PENDING", "REVISION", "REJECTED"],
   };
 
 export type ActionResult<T = unknown> = {
@@ -68,6 +71,10 @@ type TaskAssignmentUpdateData = {
 };
 
 type TaskBoardLiveData = {
+  assignments: TaskAssignmentRecord[];
+};
+
+type CreateTaskData = {
   assignments: TaskAssignmentRecord[];
 };
 
@@ -155,11 +162,7 @@ async function authorizeCreateTaskAction() {
     };
   }
 
-  if (context.profile.account_type === "FULL_STACK_DEVELOPER") {
-    return { context };
-  }
-
-  return authorizeTaskAction(["tasks.create", "tasks.assign"]);
+  return { context };
 }
 
 async function assertFullStackTaskAssignees(
@@ -404,7 +407,7 @@ function assertAdminTransitionAllowed(
   return ADMIN_TRANSITIONS[fromStatus]?.includes(toStatus) === true;
 }
 
-export async function createTask(input: unknown): Promise<ActionResult> {
+export async function createTask(input: unknown): Promise<ActionResult<CreateTaskData>> {
   const authorization = await authorizeCreateTaskAction();
 
   if (authorization.error) {
@@ -422,6 +425,12 @@ export async function createTask(input: unknown): Promise<ActionResult> {
 
   const { context } = authorization;
   const uniqueAssignees = [...new Set(parsed.data.assignedToProfileIds)];
+  const isSelfAssignedTask =
+    uniqueAssignees.length === 1 && uniqueAssignees[0] === context.profile.id;
+  const isSelfSubmittedReviewTask =
+    isSelfAssignedTask &&
+    (isEmployeeAccountType(context.profile.account_type) ||
+      context.profile.account_type === "FULL_STACK_DEVELOPER");
 
   const isBrandOfficer = await profileHasBrandOfficerRole(context.profile.id);
   const canAssignTeamTasks =
@@ -440,34 +449,34 @@ export async function createTask(input: unknown): Promise<ActionResult> {
       };
     }
   } else if (isEmployeeAccountType(context.profile.account_type)) {
-    const isPersonalSelfTask =
-      uniqueAssignees.length === 1 && uniqueAssignees[0] === context.profile.id;
-
-    if (!canAssignTeamTasks) {
+    if (!isSelfSubmittedReviewTask && !canAssignTeamTasks) {
       return {
         success: false,
-        message: isPersonalSelfTask
-          ? "Use Reminders for personal follow-ups. You cannot create To-Do tasks."
-          : "You do not have permission to assign team tasks.",
+        message: "You do not have permission to assign team tasks.",
       };
     }
 
-    if (isPersonalSelfTask) {
-      return {
-        success: false,
-        message: "Use Reminders for personal follow-ups.",
-      };
+    if (!isSelfSubmittedReviewTask) {
+      const assigneeCheck = await assertBrandOfficerCanAssignToProfiles(
+        context.profile.id,
+        uniqueAssignees,
+      );
+
+      if (!assigneeCheck.ok) {
+        return {
+          success: false,
+          message: assigneeCheck.message,
+        };
+      }
     }
+  } else if (!canAssignFullStackPeerTasks) {
+    const canCreateTask = await can(context.profile.auth_user_id, "tasks.create");
+    const canAssignTask = await can(context.profile.auth_user_id, "tasks.assign");
 
-    const assigneeCheck = await assertBrandOfficerCanAssignToProfiles(
-      context.profile.id,
-      uniqueAssignees,
-    );
-
-    if (!assigneeCheck.ok) {
+    if (!canCreateTask && !canAssignTask) {
       return {
         success: false,
-        message: assigneeCheck.message,
+        message: "You do not have permission to create tasks.",
       };
     }
   }
@@ -484,20 +493,54 @@ export async function createTask(input: unknown): Promise<ActionResult> {
     };
   }
 
-  const taskType = determineTaskType({
-    creatorAccountType: context.profile.account_type,
-    creatorProfileId: context.profile.id,
-    assignedToProfileIds: uniqueAssignees,
-    canAssignTeamTasks,
-    canAssignFullStackPeerTasks,
-  });
+  const taskType = isSelfSubmittedReviewTask
+    ? "GRADED"
+    : determineTaskType({
+        creatorAccountType: context.profile.account_type,
+        creatorProfileId: context.profile.id,
+        assignedToProfileIds: uniqueAssignees,
+        canAssignTeamTasks,
+        canAssignFullStackPeerTasks,
+      });
+
+  if (isSelfSubmittedReviewTask) {
+    if (!parsed.data.description || !richTextToPlainText(parsed.data.description)) {
+      return {
+        success: false,
+        message: "Description is required for self-submitted tasks.",
+      };
+    }
+
+    if (!parsed.data.dueDate) {
+      return {
+        success: false,
+        message: "Due date is required for self-submitted tasks.",
+      };
+    }
+
+    if (!parsed.data.priority) {
+      return {
+        success: false,
+        message: "Priority is required for self-submitted tasks.",
+      };
+    }
+
+    if (!parsed.data.proofType) {
+      return {
+        success: false,
+        message: "Proof is required for self-submitted tasks.",
+      };
+    }
+  }
 
   if (taskType === "GRADED") {
     const canAssign = await can(context.profile.auth_user_id, "tasks.assign");
 
     if (
-      !canAssign ||
-      (!canAssignGradedTasks(context.profile.account_type) && !canAssignTeamTasks)
+      (!isSelfSubmittedReviewTask && !canAssign) ||
+      (!isSelfSubmittedReviewTask &&
+        !canAssignGradedTasks(context.profile.account_type) &&
+        !canAssignTeamTasks)
     ) {
       return {
         success: false,
@@ -524,6 +567,16 @@ export async function createTask(input: unknown): Promise<ActionResult> {
     const normalizedDescription = parsed.data.description
       ? normalizeRichTextForStorage(parsed.data.description)
       : null;
+    const proofUrl =
+      isSelfSubmittedReviewTask &&
+      (parsed.data.proofType === "LINK" || parsed.data.proofType === "IMAGE")
+        ? parsed.data.proofUrl ?? ""
+        : null;
+    const proofNote =
+      isSelfSubmittedReviewTask && parsed.data.proofType === "NOTE"
+        ? normalizeRichTextForStorage(parsed.data.proofNote ?? "")
+        : null;
+    const createdAssignmentIds: number[] = [];
 
     await transaction(async (client) => {
       const taskResult = await client.query<{ id: number }>(
@@ -561,24 +614,47 @@ export async function createTask(input: unknown): Promise<ActionResult> {
           INSERT INTO task_assignment (
             task_id,
             assigned_to_profile_id,
-            status
+            status,
+            proof_type,
+            proof_url,
+            proof_note,
+            submitted_at
           )
-          VALUES ($1, $2, 'ASSIGNED')
+          VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $3 = 'PENDING' THEN now() ELSE NULL END)
           RETURNING id
           `,
-          [taskId, assigneeId],
+          [
+            taskId,
+            assigneeId,
+            isSelfSubmittedReviewTask ? "PENDING" : "ASSIGNED",
+            isSelfSubmittedReviewTask ? parsed.data.proofType : null,
+            proofUrl,
+            proofNote,
+          ],
         );
 
         const assignmentId = assignmentResult.rows[0]?.id;
 
         if (assignmentId) {
+          createdAssignmentIds.push(assignmentId);
           await insertTaskActivityLog(client, {
             taskId,
             assignmentId,
             actorProfileId: context.profile.id,
-            action: "ASSIGNMENT_CREATED",
-            toStatus: "ASSIGNED",
-            notes: "Task assignment created.",
+            action: isSelfSubmittedReviewTask
+              ? "SELF_TASK_SUBMITTED"
+              : "ASSIGNMENT_CREATED",
+            toStatus: isSelfSubmittedReviewTask ? "PENDING" : "ASSIGNED",
+            notes: isSelfSubmittedReviewTask
+              ? "Employee submitted a self-created task for review."
+              : "Task assignment created.",
+            metadata: isSelfSubmittedReviewTask
+              ? {
+                  proofType: parsed.data.proofType,
+                  proofUrl,
+                  hasProofNote: Boolean(proofNote),
+                }
+              : null,
           });
         }
       }
@@ -592,13 +668,19 @@ export async function createTask(input: unknown): Promise<ActionResult> {
     });
 
     revalidateTaskRoutes();
+    const assignments = (
+      await Promise.all(createdAssignmentIds.map((id) => getTaskAssignmentById(id)))
+    ).filter((assignment): assignment is TaskAssignmentRecord => Boolean(assignment));
 
     return {
       success: true,
       message:
-        taskType === "GRADED"
+        isSelfSubmittedReviewTask
+          ? "Task submitted for review."
+          : taskType === "GRADED"
           ? "Graded task assigned successfully."
           : "Personal task created successfully.",
+      data: { assignments },
     };
   } catch (error) {
     console.error("createTask failed:", error);
@@ -1336,8 +1418,8 @@ export async function changeTaskAssignmentStatus(
         SET
           status = $2,
           completed_at = CASE WHEN $2 = 'DONE' THEN COALESCE(completed_at, now()) ELSE NULL END,
-          reviewed_by_profile_id = CASE WHEN $2 IN ('DONE', 'REVISION') THEN $3 ELSE reviewed_by_profile_id END,
-          reviewed_at = CASE WHEN $2 IN ('DONE', 'REVISION') THEN now() ELSE reviewed_at END,
+          reviewed_by_profile_id = CASE WHEN $2 IN ('DONE', 'REVISION', 'REJECTED') THEN $3 ELSE reviewed_by_profile_id END,
+          reviewed_at = CASE WHEN $2 IN ('DONE', 'REVISION', 'REJECTED') THEN now() ELSE reviewed_at END,
           updated_at = now()
         WHERE id = $1
         `,
@@ -1353,6 +1435,8 @@ export async function changeTaskAssignmentStatus(
             ? "TASK_REOPENED"
             : parsed.data.toStatus === "DONE"
               ? "TASK_MARKED_DONE"
+              : parsed.data.toStatus === "REJECTED"
+                ? "TASK_REJECTED"
               : "STATUS_CHANGED",
         fromStatus: assignment.status,
         toStatus: parsed.data.toStatus,
@@ -1605,6 +1689,123 @@ export async function requestTaskRevision(
     );
   } catch (error) {
     console.error("requestTaskRevision failed:", error);
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    };
+  }
+}
+
+export async function rejectTask(
+  input: unknown,
+): Promise<ActionResult<TaskAssignmentUpdateData>> {
+  const authorization = await authorizeTaskReviewAction();
+
+  if (authorization.error) {
+    return authorization.error;
+  }
+
+  const rateLimitError = await guardTaskMutationRateLimit("task:reject");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
+  const parsed = rejectTaskSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid rejection request.",
+    };
+  }
+
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId);
+
+  if (!assignment) {
+    return { success: false, message: "Task assignment was not found." };
+  }
+
+  const { context } = authorization;
+  const canManageAll = await can(
+    context.profile.auth_user_id,
+    "tasks.manage_all",
+  );
+
+  const reviewBlockReason = getTaskReviewBlockReason(
+    assignment,
+    context.profile.id,
+    {
+      isEmployeeReviewer: isEmployeeAccountType(context.profile.account_type),
+      canManageAll,
+    },
+  );
+
+  if (reviewBlockReason) {
+    return {
+      success: false,
+      message: reviewBlockReason,
+    };
+  }
+
+  if (
+    !canReviewTaskAssignments(context.profile.account_type) &&
+    !(await can(context.profile.auth_user_id, "tasks.review")) &&
+    !(await canBrandOfficerReviewAssignedTasks(
+      context.profile.auth_user_id,
+      context.profile.id,
+    ))
+  ) {
+    return {
+      success: false,
+      message: "You do not have permission to reject tasks.",
+    };
+  }
+
+  if (assignment.status !== "PENDING") {
+    return {
+      success: false,
+      message: "Only pending tasks can be rejected.",
+    };
+  }
+
+  try {
+    await transaction(async (client) => {
+      await client.query(
+        `
+        UPDATE task_assignment
+        SET
+          status = 'REJECTED',
+          completed_at = NULL,
+          reviewed_by_profile_id = $2,
+          reviewed_at = now(),
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [parsed.data.assignmentId, context.profile.id],
+      );
+
+      await insertTaskActivityLog(client, {
+        taskId: assignment.taskId,
+        assignmentId: assignment.assignmentId,
+        actorProfileId: context.profile.id,
+        action: "TASK_REJECTED",
+        fromStatus: assignment.status,
+        toStatus: "REJECTED",
+        notes: parsed.data.rejectionNote,
+      });
+    });
+
+    return buildTaskAssignmentUpdateResult(
+      parsed.data.assignmentId,
+      "Task rejected.",
+    );
+  } catch (error) {
+    console.error("rejectTask failed:", error);
 
     return {
       success: false,

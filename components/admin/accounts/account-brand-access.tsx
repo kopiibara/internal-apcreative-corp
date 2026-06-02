@@ -26,6 +26,7 @@ import type {
   BrandOption,
   RoleOption,
 } from "@/lib/auth/accounts"
+import { cn } from "@/lib/utils"
 
 export type EditableBrandAssignment = {
   id: string
@@ -73,19 +74,21 @@ function BrandSelect({
   onValueChange,
   disabledBrandIds,
   disabled,
+  className,
 }: {
   brands: BrandOption[]
   value: string
   onValueChange: (value: string) => void
   disabledBrandIds: Set<string>
   disabled?: boolean
+  className?: string
 }) {
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger className="w-fit">
+      <SelectTrigger className={cn("min-w-0", className)}>
         <SelectValue placeholder="Select brand" />
       </SelectTrigger>
-      <SelectContent className="w-fit">
+      <SelectContent>
         {brands.map((brand) => (
           <SelectItem
             key={brand.id}
@@ -118,44 +121,48 @@ function AssignmentRow({
   removeLabel?: string
 }) {
   return (
-    <div className="grid min-w-0 gap-3 rounded-lg border-2 border-black p-3 xl:grid-cols-[1.2fr_1fr_auto_auto_auto] xl:items-center">
+    <div className="grid min-w-0 gap-3 rounded-lg border-2 border-black p-3 md:grid-cols-[minmax(8rem,1fr)_minmax(8rem,1fr)_auto] md:items-center">
       <BrandSelect
         brands={brands}
         value={assignment.brandId}
         onValueChange={(brandId) => onChange({ ...assignment, brandId })}
         disabledBrandIds={disabledBrandIds}
+        className="w-full"
       />
 
       <AccountRoleSelect
         roles={roles}
         value={assignment.roleId}
         onValueChange={(roleId) => onChange({ ...assignment, roleId })}
+        className="w-full"
       />
 
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox
-          checked={assignment.isPrimary}
-          onCheckedChange={(checked) =>
-            onChange({ ...assignment, isPrimary: checked === true })
-          }
-        />
-        Primary
-      </label>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 md:justify-end">
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={assignment.isPrimary}
+            onCheckedChange={(checked) =>
+              onChange({ ...assignment, isPrimary: checked === true })
+            }
+          />
+          Primary
+        </label>
 
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox
-          checked={assignment.isActive}
-          onCheckedChange={(checked) =>
-            onChange({ ...assignment, isActive: checked === true })
-          }
-        />
-        Active
-      </label>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={assignment.isActive}
+            onCheckedChange={(checked) =>
+              onChange({ ...assignment, isActive: checked === true })
+            }
+          />
+          Active
+        </label>
 
-      <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
-        <Trash2 className="size-4" />
-        {removeLabel}
-      </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
+          <Trash2 className="size-4" />
+          {removeLabel}
+        </Button>
+      </div>
     </div>
   )
 }
@@ -282,53 +289,58 @@ function EditAccessRow({
   }
 
   return (
-    <div className="grid min-w-0 gap-3 rounded-lg border-2 border-black p-3 xl:grid-cols-[1.2fr_1fr_auto_auto_auto_auto] xl:items-center">
-      <div className="text-sm font-medium">{access.brandName}</div>
+    <div className="grid min-w-0 gap-3 rounded-lg border-2 border-black p-3 md:grid-cols-[minmax(8rem,1fr)_minmax(8rem,1fr)_auto] md:items-center">
+      <div className="min-w-0 text-sm font-medium">
+        <span className="block truncate">{access.brandName}</span>
+      </div>
 
       <AccountRoleSelect
         roles={roles}
         value={roleId}
         onValueChange={setRoleId}
         disabled={isPending}
+        className="w-full"
       />
 
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox
-          checked={isPrimary}
-          onCheckedChange={(checked) => setIsPrimary(checked === true)}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 md:justify-end">
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={isPrimary}
+            onCheckedChange={(checked) => setIsPrimary(checked === true)}
+            disabled={isPending}
+          />
+          Primary
+        </label>
+
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={isActive}
+            onCheckedChange={(checked) => setIsActive(checked === true)}
+            disabled={isPending}
+          />
+          Active
+        </label>
+
+        <Button
+          type="button"
+          size="sm"
           disabled={isPending}
-        />
-        Primary
-      </label>
+          onClick={handleSave}
+        >
+          {isPending ? "Saving..." : "Save"}
+        </Button>
 
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox
-          checked={isActive}
-          onCheckedChange={(checked) => setIsActive(checked === true)}
-          disabled={isPending}
-        />
-        Active
-      </label>
-
-      <Button
-        type="button"
-        size="sm"
-        disabled={isPending}
-        onClick={handleSave}
-      >
-        {isPending ? "Saving..." : "Save"}
-      </Button>
-
-      <Button
-        type="button"
-        variant="destructive"
-        size="sm"
-        disabled={isPending || !access.isActive}
-        onClick={handleRemove}
-      >
-        <Trash2 className="size-4" />
-        Revoke
-      </Button>
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          disabled={isPending || !access.isActive}
+          onClick={handleRemove}
+        >
+          <Trash2 className="size-4" />
+          Revoke
+        </Button>
+      </div>
     </div>
   )
 }
@@ -419,7 +431,7 @@ function EditBrandAccess({ profileId, brands, roles, access }: EditBrandAccessPr
 
       <div className="space-y-3">
         <div className="text-sm font-medium">Assign another brand</div>
-        <div className="grid min-w-0 gap-3 rounded-lg border-2 border-black p-3 xl:grid-cols-[1.2fr_1fr_auto_auto_auto] xl:items-center">
+        <div className="grid min-w-0 gap-3 rounded-lg border-2 border-black p-3 md:grid-cols-[minmax(8rem,1fr)_minmax(8rem,1fr)_auto] md:items-center">
           <BrandSelect
             brands={brands}
             value={newAssignment.brandId}
@@ -428,6 +440,7 @@ function EditBrandAccess({ profileId, brands, roles, access }: EditBrandAccessPr
             }
             disabledBrandIds={existingBrandIds}
             disabled={isPending}
+            className="w-full"
           />
 
           <AccountRoleSelect
@@ -437,47 +450,50 @@ function EditBrandAccess({ profileId, brands, roles, access }: EditBrandAccessPr
               setNewAssignment({ ...newAssignment, roleId })
             }
             disabled={isPending}
+            className="w-full"
           />
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={newAssignment.isPrimary}
-              onCheckedChange={(checked) =>
-                setNewAssignment({
-                  ...newAssignment,
-                  isPrimary: checked === true,
-                })
-              }
-              disabled={isPending}
-            />
-            Primary
-          </label>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 md:justify-end">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={newAssignment.isPrimary}
+                onCheckedChange={(checked) =>
+                  setNewAssignment({
+                    ...newAssignment,
+                    isPrimary: checked === true,
+                  })
+                }
+                disabled={isPending}
+              />
+              Primary
+            </label>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={newAssignment.isActive}
-              onCheckedChange={(checked) =>
-                setNewAssignment({
-                  ...newAssignment,
-                  isActive: checked === true,
-                })
-              }
-              disabled={isPending}
-            />
-            Active
-          </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={newAssignment.isActive}
+                onCheckedChange={(checked) =>
+                  setNewAssignment({
+                    ...newAssignment,
+                    isActive: checked === true,
+                  })
+                }
+                disabled={isPending}
+              />
+              Active
+            </label>
 
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleAssign}
-            disabled={
-              isPending || !newAssignment.brandId || !newAssignment.roleId
-            }
-          >
-            <Plus className="size-4" />
-            Assign
-          </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleAssign}
+              disabled={
+                isPending || !newAssignment.brandId || !newAssignment.roleId
+              }
+            >
+              <Plus className="size-4" />
+              Assign
+            </Button>
+          </div>
         </div>
       </div>
     </div>

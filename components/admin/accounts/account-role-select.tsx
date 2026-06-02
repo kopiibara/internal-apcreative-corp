@@ -8,12 +8,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { cn } from "@/lib/utils"
 
 type AccountRoleSelectProps = {
   roles: RoleOption[]
   value: string
   onValueChange: (value: string) => void
   disabled?: boolean
+  className?: string
 }
 
 export function AccountRoleSelect({
@@ -21,10 +23,11 @@ export function AccountRoleSelect({
   value,
   onValueChange,
   disabled,
+  className,
 }: AccountRoleSelectProps) {
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger>
+      <SelectTrigger className={cn("min-w-0", className)}>
         <SelectValue placeholder="Select role" />
       </SelectTrigger>
       <SelectContent>

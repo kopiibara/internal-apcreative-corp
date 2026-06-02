@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
+
 const dateTimeFormatter = new Intl.DateTimeFormat("en-PH", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -33,7 +35,7 @@ export function ClientDateTime({
       return
     }
 
-    setLabel(dateTimeFormatter.format(date))
+    setLabel(formatRecentOrDateTime(date, dateTimeFormatter))
   }, [value, placeholder])
 
   return <span className={className}>{label}</span>

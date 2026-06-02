@@ -70,6 +70,7 @@ import {
   filterApprovalReports,
   mergeApprovalReports,
 } from "@/lib/approvals/approval-filters"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import { useApprovalStore } from "@/stores/use-approval-store"
 
 type ApprovalDataTableProps = {
@@ -86,10 +87,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 function getDateLabel(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Not scheduled"
+  return value ? formatRecentOrDateTime(value, dateFormatter) : "Not scheduled"
 }
 
 function SortButton({
@@ -255,7 +258,7 @@ function getApprovalColumns({
       ),
       cell: ({ row }) => (
         <span className="whitespace-nowrap">
-          {dateFormatter.format(new Date(row.original.dateSubmitted))}
+          {formatRecentOrDateTime(row.original.dateSubmitted, dateFormatter)}
         </span>
       ),
     },

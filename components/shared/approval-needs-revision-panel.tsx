@@ -8,6 +8,7 @@ import {
   getOpenRevisionRequestsFromLogs,
   type ApprovalRevisionRequest,
 } from "@/lib/approvals/approval-revision"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { ContentReport } from "@/types/content-report"
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
@@ -36,7 +37,7 @@ function RevisionRequestCard({ request }: { request: ApprovalRevisionRequest }) 
           {request.requestedByName}
         </p>
         <p className="text-xs text-amber-900/80">
-          {dateTimeFormatter.format(new Date(request.requestedAt))}
+          {formatRecentOrDateTime(request.requestedAt, dateTimeFormatter)}
         </p>
       </div>
 

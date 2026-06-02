@@ -42,9 +42,13 @@ export function PRRequestTimeline({ request }: PRRequestTimelineProps) {
             <Timeline defaultValue={events.length} className="w-full min-w-0">
               {events.map((event, index) => (
                 <TimelineItem key={event.id} step={index + 1}>
-                  <TimelineHeader>
-                    <TimelineDate>{formatPRTimelineDate(event.occurredAt)}</TimelineDate>
-                    <TimelineTitle>{event.title}</TimelineTitle>
+                  <TimelineHeader className="flex min-w-0 items-start justify-between gap-3">
+                    <TimelineTitle className="min-w-0 break-words">
+                      {event.title}
+                    </TimelineTitle>
+                    <TimelineDate className="mb-0 shrink-0 text-right">
+                      {formatPRTimelineDate(event.occurredAt)}
+                    </TimelineDate>
                   </TimelineHeader>
                   <TimelineIndicator />
                   <TimelineSeparator />

@@ -10,9 +10,9 @@ import {
   TimelineSeparator,
   TimelineTitle,
 } from "@/components/reui/timeline"
-import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { DailyTimelineEntry } from "@/lib/daily-reports/daily-report-types"
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
@@ -44,30 +44,26 @@ export function DailyReportTimeline({ entries }: DailyReportTimelineProps) {
             <Timeline defaultValue={entries.length} className="w-full">
               {entries.map((entry, index) => (
                 <TimelineItem key={entry.id} step={index + 1}>
-                  <TimelineHeader>
-                    <TimelineDate>
-                      {dateTimeFormatter.format(new Date(entry.createdAt))}
+                  <TimelineHeader className="flex min-w-0 items-start justify-between gap-3">
+                    <TimelineTitle className="min-w-0 break-words">
+                      {entry.actionLabel}
+                    </TimelineTitle>
+                    <TimelineDate className="mb-0 shrink-0 text-right">
+                      {formatRecentOrDateTime(entry.createdAt, dateTimeFormatter)}
                     </TimelineDate>
-                    <TimelineTitle>{entry.actionLabel}</TimelineTitle>
                   </TimelineHeader>
                   <TimelineIndicator />
                   <TimelineSeparator />
                   <TimelineContent className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-foreground">
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground">
                         {entry.actorName}
-                      </span>
-                      <StatusBadge status={entry.module} size="sm" />
-                      {entry.brandName ? (
-                        <StatusBadge status="BRAND" size="sm">
-                          {entry.brandName}
-                        </StatusBadge>
-                      ) : null}
-                      {entry.employeeName ? (
-                        <StatusBadge status="EMPLOYEE" size="sm">
-                          {entry.employeeName}
-                        </StatusBadge>
-                      ) : null}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {[entry.module, entry.brandName, entry.employeeName]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
                     </div>
                     {entry.detail ? (
                       <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">

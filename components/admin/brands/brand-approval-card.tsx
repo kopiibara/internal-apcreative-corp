@@ -7,6 +7,7 @@ import { ApprovalStatusBadges } from "@/components/shared/approval-status-badges
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import type { RecentBrandApproval } from "@/lib/brands/brand-analytics"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import { cn } from "@/lib/utils"
 
 type BrandApprovalCardProps = {
@@ -17,6 +18,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 export function BrandApprovalCard({ approval }: BrandApprovalCardProps) {
@@ -47,7 +50,7 @@ export function BrandApprovalCard({ approval }: BrandApprovalCardProps) {
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{approval.submittedByName}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {dateFormatter.format(new Date(approval.dateSubmitted))}
+            {formatRecentOrDateTime(approval.dateSubmitted, dateFormatter)}
           </p>
         </div>
 

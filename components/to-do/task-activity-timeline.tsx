@@ -9,10 +9,10 @@ import {
   TimelineSeparator,
   TimelineTitle,
 } from "@/components/reui/timeline"
-import { StatusBadge } from "@/components/shared/status-badge"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { ProofSubmitType } from "@/lib/proof/proof-types"
 import type { TaskActivityLogRecord } from "@/lib/tasks/tasks"
 
@@ -38,8 +38,10 @@ const ACTION_LABELS: Record<string, string> = {
   BLOCKER_RESOLVED: "Blocker resolved",
   REVISION_REQUESTED: "Revision requested",
   TASK_MARKED_DONE: "Task marked done",
+  TASK_REJECTED: "Task rejected",
   TASK_REOPENED: "Task reopened",
   DEADLINE_CHANGED: "Deadline changed",
+  SELF_TASK_SUBMITTED: "Self-submitted task",
 }
 
 const PROOF_ACTIVITY_ACTIONS = new Set([
@@ -91,14 +93,24 @@ function formatMetadata(metadata: Record<string, unknown> | null) {
 
   if (typeof from === "string" || typeof to === "string") {
     const fromLabel =
-      typeof from === "string" ? dateFormatter.format(new Date(from)) : "None"
+      typeof from === "string" ? formatRecentOrDateTime(from, dateFormatter) : "None"
     const toLabel =
-      typeof to === "string" ? dateFormatter.format(new Date(to)) : "None"
+      typeof to === "string" ? formatRecentOrDateTime(to, dateFormatter) : "None"
 
     return `Deadline: ${fromLabel} to ${toLabel}`
   }
 
   return null
+}
+
+function getTimelineTitle(log: TaskActivityLogRecord) {
+  const label = ACTION_LABELS[log.action] ?? log.action
+
+  if (log.fromStatus && log.toStatus) {
+    return `${label} from ${log.fromStatus} to ${log.toStatus}`
+  }
+
+  return label
 }
 
 export function TaskActivityTimeline({
@@ -128,13 +140,13 @@ export function TaskActivityTimeline({
 
                 return (
                   <TimelineItem key={log.id} step={index + 1}>
-                    <TimelineHeader>
-                      <TimelineDate>
-                        {dateFormatter.format(new Date(log.createdAt))}
-                      </TimelineDate>
-                      <TimelineTitle>
-                        {ACTION_LABELS[log.action] ?? log.action}
+                    <TimelineHeader className="flex min-w-0 items-start justify-between gap-3">
+                      <TimelineTitle className="min-w-0 break-words">
+                        {getTimelineTitle(log)}
                       </TimelineTitle>
+                      <TimelineDate className="mb-0 shrink-0 text-right">
+                        {formatRecentOrDateTime(log.createdAt, dateFormatter)}
+                      </TimelineDate>
                     </TimelineHeader>
                     <TimelineIndicator />
                     <TimelineSeparator />
@@ -155,20 +167,6 @@ export function TaskActivityTimeline({
                               Task activity
                             </p>
                           </div>
-                          {log.fromStatus && log.toStatus ? (
-                            <div className="flex flex-wrap gap-2 text-xs">
-                              <StatusBadge
-                                status={log.fromStatus}
-                                type="task"
-                                prefix="From"
-                              />
-                              <StatusBadge
-                                status={log.toStatus}
-                                type="task"
-                                prefix="To"
-                              />
-                            </div>
-                          ) : null}
                         </div>
                       </div>
 

@@ -38,7 +38,7 @@ import {
   CLIENT_VIEWER_DEPARTMENT,
   DEFAULT_DEPARTMENT,
 } from "@/lib/auth/account-defaults"
-import { getRoleDashboardHint, getSystemAccessLabel } from "@/lib/auth/account-type"
+import { getSystemAccessLabel } from "@/lib/auth/account-type"
 import type { AccountListItem, BrandOption, RoleOption } from "@/lib/auth/accounts"
 
 const clientViewerSlugs = new Set(["client-viewer", "client_viewer"])
@@ -159,13 +159,7 @@ export function AccountFormDialog({
 
   const canEditDepartment = !isCreateMode || hasClientViewerRole
 
-  const roleDashboardHint = useMemo(
-    () =>
-      selectedRoleSlugs.length > 0
-        ? getRoleDashboardHint(selectedRoleSlugs)
-        : null,
-    [selectedRoleSlugs]
-  )
+
 
   const editPrimaryRoleName =
     !isCreateMode && account ? getPrimaryRoleName(account, roles) : null
@@ -377,10 +371,6 @@ export function AccountFormDialog({
                   roles={roles}
                   access={account.brandAccess}
                 />
-              ) : null}
-
-              {isCreateMode && roleDashboardHint ? (
-                <p className="text-xs text-muted-foreground">{roleDashboardHint}</p>
               ) : null}
 
               {isCreateMode && selectedBrandIds.length > 0 ? (

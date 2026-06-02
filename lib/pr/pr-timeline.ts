@@ -5,6 +5,7 @@ import {
   getPRRequestStatusLabel,
   getPRRequestTypeLabel,
 } from "@/lib/pr/pr-labels";
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp";
 import { isPRRequestActive, type PRRequestRecord } from "@/lib/pr/pr-types";
 
 export type PRTimelineEvent = {
@@ -24,7 +25,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 export function formatPRTimelineDate(value: string) {
-  return dateTimeFormatter.format(new Date(value));
+  return formatRecentOrDateTime(value, dateTimeFormatter);
 }
 
 export function buildPRRequestTimeline(

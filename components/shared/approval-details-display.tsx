@@ -25,15 +25,10 @@ import {
   getKanbanStageConfig,
 } from "@/lib/approvals/approval-kanban-status"
 import type { AccountType } from "@/lib/auth/account-type"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import { cn } from "@/lib/utils"
 import type { ApprovalActivityLog, ContentReport } from "@/types/content-report"
 import { Button } from "../ui/button"
-
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-})
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
@@ -44,7 +39,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
 })
 
 function formatDateLabel(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Not set"
+  return value ? formatRecentOrDateTime(value, dateTimeFormatter) : "Not set"
 }
 
 function hasText(value: string | null | undefined) {
@@ -329,7 +324,7 @@ function DiscussionCommentItem({ entry }: { entry: DiscussionEntry }) {
             </div>
           </div>
           <span className="text-xs text-muted-foreground">
-            {dateTimeFormatter.format(new Date(entry.at))}
+            {formatRecentOrDateTime(entry.at, dateTimeFormatter)}
           </span>
         </div>
       </div>
@@ -416,14 +411,14 @@ export function ApprovalMetadataPanel({ report }: ApprovalMetadataPanelProps) {
             </div>
           </DetailField>
           <DetailField label="Submitted date">
-            {dateTimeFormatter.format(new Date(report.dateSubmitted))}
+            {formatRecentOrDateTime(report.dateSubmitted, dateTimeFormatter)}
           </DetailField>
 
           {report.supervisorReviewedByName ? (
             <DetailField label="Supervisor reviewed by">
               {report.supervisorReviewedByName}
               {report.supervisorReviewedAt
-                ? ` · ${dateTimeFormatter.format(new Date(report.supervisorReviewedAt))}`
+                ? ` · ${formatRecentOrDateTime(report.supervisorReviewedAt, dateTimeFormatter)}`
                 : null}
             </DetailField>
           ) : null}
@@ -431,7 +426,7 @@ export function ApprovalMetadataPanel({ report }: ApprovalMetadataPanelProps) {
             <DetailField label="Director reviewed by">
               {report.directorReviewedByName}
               {report.directorReviewedAt
-                ? ` · ${dateTimeFormatter.format(new Date(report.directorReviewedAt))}`
+                ? ` · ${formatRecentOrDateTime(report.directorReviewedAt, dateTimeFormatter)}`
                 : null}
             </DetailField>
           ) : null}
@@ -446,10 +441,10 @@ export function ApprovalMetadataPanel({ report }: ApprovalMetadataPanelProps) {
           <DetailField label="Content type">{report.contentType}</DetailField>
           <DetailField label="Platform">{report.platform}</DetailField>
           <DetailField label="Created">
-            {dateTimeFormatter.format(new Date(report.createdAt))}
+            {formatRecentOrDateTime(report.createdAt, dateTimeFormatter)}
           </DetailField>
           <DetailField label="Last updated">
-            {dateTimeFormatter.format(new Date(report.updatedAt))}
+            {formatRecentOrDateTime(report.updatedAt, dateTimeFormatter)}
           </DetailField>
         </div>
       </ApprovalDetailSection>
@@ -467,7 +462,7 @@ export function ApprovalMetadataPanel({ report }: ApprovalMetadataPanelProps) {
               <DetailField label="Proof submitted by">
                 {report.publishingProofSubmittedByName}
                 {report.publishingProofSubmittedAt
-                  ? ` Â· ${dateTimeFormatter.format(new Date(report.publishingProofSubmittedAt))}`
+                  ? ` Â· ${formatRecentOrDateTime(report.publishingProofSubmittedAt, dateTimeFormatter)}`
                   : null}
               </DetailField>
             ) : null}
@@ -475,7 +470,7 @@ export function ApprovalMetadataPanel({ report }: ApprovalMetadataPanelProps) {
               <DetailField label="Published by">
                 {report.publishedByName}
                 {report.publishedAt
-                  ? ` Â· ${dateTimeFormatter.format(new Date(report.publishedAt))}`
+                  ? ` Â· ${formatRecentOrDateTime(report.publishedAt, dateTimeFormatter)}`
                   : null}
               </DetailField>
             ) : null}

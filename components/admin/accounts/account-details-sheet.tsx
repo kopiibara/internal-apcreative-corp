@@ -24,6 +24,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { AccountListItem } from "@/lib/auth/accounts"
 
 type AccountDetailsSheetProps = {
@@ -48,7 +49,7 @@ function formatDateTime(value: string | null) {
     return "Not recorded"
   }
 
-  return dateTimeFormatter.format(new Date(value))
+  return formatRecentOrDateTime(value, dateTimeFormatter)
 }
 
 function Section({

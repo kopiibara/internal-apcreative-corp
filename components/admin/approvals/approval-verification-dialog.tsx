@@ -249,7 +249,7 @@ function ApprovalVerificationDialogContent({
   }
 
   return (
-    <DialogContent className="sm:max-w-2xl">
+    <DialogContent className="sm:max-w-xl">
       <DialogHeader>
         <DialogTitle>
           {isRevisionRequest ? "Request Revision" : "Approval Verification"}
@@ -261,7 +261,7 @@ function ApprovalVerificationDialogContent({
         onSubmit={handleSubmit}
         className="flex min-h-0 flex-1 flex-col overflow-hidden"
       >
-        <DialogBody className="space-y-4">
+        <DialogBody className="space-y-4 gap-2">
           {isRevisionRequest ? (
             <ApprovalRevisionRequestFields
               report={payload.report}
@@ -289,7 +289,7 @@ function ApprovalVerificationDialogContent({
             </div>
           )}
 
-          <div className="flex items-start gap-3 rounded-lg border p-3">
+          <div className="flex items-start gap-3 rounded-lg border p-3 mt-2">
             <Checkbox
               id="approval-confirmation-accepted"
               checked={confirmationAccepted}
