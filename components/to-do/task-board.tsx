@@ -62,7 +62,7 @@ export function TaskBoard({
   const createLabel = isEmployeeView
     ? canAssignTeamTasks
       ? COPY.employee.teamCreateLabel
-      : "Submit Task"
+      : "Create Task"
     : isFullStackView
       ? "Add Full Stack Task"
       : COPY.admin.createLabel

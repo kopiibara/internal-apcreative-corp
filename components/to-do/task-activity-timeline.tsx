@@ -12,7 +12,10 @@ import {
 import { UserAvatar } from "@/components/shared/user-avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
+import {
+  formatAbsoluteDateTime,
+  formatRecentOrDateTime,
+} from "@/lib/date-time/relative-timestamp"
 import type { ProofSubmitType } from "@/lib/proof/proof-types"
 import type { TaskActivityLogRecord } from "@/lib/tasks/tasks"
 
@@ -93,9 +96,9 @@ function formatMetadata(metadata: Record<string, unknown> | null) {
 
   if (typeof from === "string" || typeof to === "string") {
     const fromLabel =
-      typeof from === "string" ? formatRecentOrDateTime(from, dateFormatter) : "None"
+      typeof from === "string" ? formatAbsoluteDateTime(from, dateFormatter) : "None"
     const toLabel =
-      typeof to === "string" ? formatRecentOrDateTime(to, dateFormatter) : "None"
+      typeof to === "string" ? formatAbsoluteDateTime(to, dateFormatter) : "None"
 
     return `Deadline: ${fromLabel} to ${toLabel}`
   }
