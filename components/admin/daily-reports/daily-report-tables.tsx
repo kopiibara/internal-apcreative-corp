@@ -16,7 +16,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
+import {
+  formatAbsoluteDateTime,
+  formatRecentOrDateTime,
+} from "@/lib/date-time/relative-timestamp"
 import {
   Table,
   TableBody,
@@ -157,7 +160,7 @@ export function DailyReportTaskLogTable({
           status={entry.status}
           type="task"
         />,
-        entry.dueDate ? formatRecentOrDateTime(entry.dueDate, dateFormatter) : "—",
+        entry.dueDate ? formatAbsoluteDateTime(entry.dueDate, dateFormatter) : "—",
         entry.completedAt
           ? formatRecentOrDateTime(entry.completedAt, dateFormatter)
           : "—",
@@ -272,7 +275,7 @@ export function DailyReportBlockersSection({
                           : "—"}{" "}
                         · Assigned by {blocker.createdByName}
                         {blocker.dueDate
-                          ? ` · Due ${formatRecentOrDateTime(blocker.dueDate, dateFormatter)}`
+                          ? ` · Due ${formatAbsoluteDateTime(blocker.dueDate, dateFormatter)}`
                           : ""}
                       </p>
                     </div>

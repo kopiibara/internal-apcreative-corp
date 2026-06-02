@@ -524,13 +524,6 @@ export async function createTask(input: unknown): Promise<ActionResult<CreateTas
         message: "Priority is required for self-submitted tasks.",
       };
     }
-
-    if (!parsed.data.proofType) {
-      return {
-        success: false,
-        message: "Proof is required for self-submitted tasks.",
-      };
-    }
   }
 
   if (taskType === "GRADED") {
@@ -567,15 +560,6 @@ export async function createTask(input: unknown): Promise<ActionResult<CreateTas
     const normalizedDescription = parsed.data.description
       ? normalizeRichTextForStorage(parsed.data.description)
       : null;
-    const proofUrl =
-      isSelfSubmittedReviewTask &&
-      (parsed.data.proofType === "LINK" || parsed.data.proofType === "IMAGE")
-        ? parsed.data.proofUrl ?? ""
-        : null;
-    const proofNote =
-      isSelfSubmittedReviewTask && parsed.data.proofType === "NOTE"
-        ? normalizeRichTextForStorage(parsed.data.proofNote ?? "")
-        : null;
     const createdAssignmentIds: number[] = [];
 
     await transaction(async (client) => {
@@ -623,14 +607,7 @@ export async function createTask(input: unknown): Promise<ActionResult<CreateTas
           VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $3 = 'PENDING' THEN now() ELSE NULL END)
           RETURNING id
           `,
-          [
-            taskId,
-            assigneeId,
-            isSelfSubmittedReviewTask ? "PENDING" : "ASSIGNED",
-            isSelfSubmittedReviewTask ? parsed.data.proofType : null,
-            proofUrl,
-            proofNote,
-          ],
+          [taskId, assigneeId, "ASSIGNED", null, null, null],
         );
 
         const assignmentId = assignmentResult.rows[0]?.id;
@@ -641,20 +618,11 @@ export async function createTask(input: unknown): Promise<ActionResult<CreateTas
             taskId,
             assignmentId,
             actorProfileId: context.profile.id,
-            action: isSelfSubmittedReviewTask
-              ? "SELF_TASK_SUBMITTED"
-              : "ASSIGNMENT_CREATED",
-            toStatus: isSelfSubmittedReviewTask ? "PENDING" : "ASSIGNED",
+            action: "ASSIGNMENT_CREATED",
+            toStatus: "ASSIGNED",
             notes: isSelfSubmittedReviewTask
-              ? "Employee submitted a self-created task for review."
+              ? "Self-created task assigned. Submit proof when ready for supervisor review."
               : "Task assignment created.",
-            metadata: isSelfSubmittedReviewTask
-              ? {
-                  proofType: parsed.data.proofType,
-                  proofUrl,
-                  hasProofNote: Boolean(proofNote),
-                }
-              : null,
           });
         }
       }
@@ -676,7 +644,7 @@ export async function createTask(input: unknown): Promise<ActionResult<CreateTas
       success: true,
       message:
         isSelfSubmittedReviewTask
-          ? "Task submitted for review."
+          ? "Task created. Submit proof when ready for supervisor review."
           : taskType === "GRADED"
           ? "Graded task assigned successfully."
           : "Personal task created successfully.",

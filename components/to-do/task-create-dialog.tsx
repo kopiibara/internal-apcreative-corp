@@ -6,7 +6,6 @@ import { Check, ChevronsUpDown, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { createTask } from "@/app/admin/to-do/actions"
-import { ProofSubmissionFields } from "@/components/shared/proof-submission-fields"
 import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
 import { UserAvatar } from "@/components/shared/user-avatar"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
@@ -40,8 +39,6 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import type { AccountType } from "@/lib/auth/account-type"
-import { hasValidProofSubmission } from "@/lib/proof/proof-media"
-import type { ProofSubmitType } from "@/lib/proof/proof-types"
 import { determineTaskType, TASK_PRIORITIES } from "@/lib/tasks/task-type"
 import type { AssignableProfile, TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
@@ -77,9 +74,6 @@ export function TaskCreateDialog({
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<number[]>([])
   const [dueDate, setDueDate] = useState<string | null>(null)
   const [priority, setPriority] = useState<string>("none")
-  const [proofType, setProofType] = useState<ProofSubmitType>("LINK")
-  const [proofUrl, setProofUrl] = useState("")
-  const [proofNote, setProofNote] = useState("")
   const [assigneePickerOpen, setAssigneePickerOpen] = useState(false)
   const isFullStackPeerTask = currentAccountType === "FULL_STACK_DEVELOPER"
 
@@ -168,11 +162,6 @@ export function TaskCreateDialog({
         toast.error("Priority is required.")
         return
       }
-
-      if (!hasValidProofSubmission(proofType, proofUrl, proofNote)) {
-        toast.error("Proof is required.")
-        return
-      }
     }
 
     startTransition(async () => {
@@ -184,13 +173,6 @@ export function TaskCreateDialog({
           : selectedAssigneeIds,
         dueDate,
         priority: priority === "none" ? null : priority,
-        ...(isSelfSubmission
-          ? {
-              proofType,
-              proofUrl: proofUrl.trim(),
-              proofNote: proofNote.trim(),
-            }
-          : {}),
       })
 
       if (result.success) {
@@ -204,9 +186,6 @@ export function TaskCreateDialog({
         setSelectedAssigneeIds([])
         setDueDate(null)
         setPriority("none")
-        setProofType("LINK")
-        setProofUrl("")
-        setProofNote("")
         router.refresh()
         return
       }
@@ -218,8 +197,6 @@ export function TaskCreateDialog({
   const requiresDueDate = resolvedTaskType === "GRADED" || isSelfSubmission
   const displayTaskType = isSelfSubmission ? "GRADED" : resolvedTaskType
   const requiresPriority = isSelfSubmission
-  const canSubmit =
-    !isSelfSubmission || hasValidProofSubmission(proofType, proofUrl, proofNote)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -229,7 +206,7 @@ export function TaskCreateDialog({
             {personalOnly
               ? "Create Personal Task"
               : selfSubmitOnly
-                ? "Submit Task"
+                ? "Create Task"
               : isFullStackPeerTask
                 ? "Create Full Stack Task"
                 : "Create Task"}
@@ -238,7 +215,7 @@ export function TaskCreateDialog({
             {personalOnly
               ? "Personal tasks are private, assigned only to you, and are hidden from admin review boards."
               : selfSubmitOnly
-                ? "Submit your own completed task with proof for supervisor review. Approved tasks count toward accountability points."
+                ? "Create a graded task assigned to you. Submit proof when the work is ready, then your supervisor can approve or reject it."
               : isFullStackPeerTask
                 ? "Assign non-graded work to yourself or another Full Stack Developer. Only involved Full Stack accounts can see it."
                 : canAssignTeamTasks
@@ -426,18 +403,6 @@ export function TaskCreateDialog({
               {displayTaskType === "GRADED" ? "Graded task" : "Personal task"}
             </Badge>
 
-            {isSelfSubmission ? (
-              <ProofSubmissionFields
-                proofType={proofType}
-                proofUrl={proofUrl}
-                proofNote={proofNote}
-                disabled={isPending}
-                onProofTypeChange={setProofType}
-                onProofUrlChange={setProofUrl}
-                onProofNoteChange={setProofNote}
-                idPrefix="self-task-proof"
-              />
-            ) : null}
           </DialogBody>
 
           <DialogFooter>
@@ -449,12 +414,8 @@ export function TaskCreateDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending || !canSubmit}>
-              {isPending
-                ? "Submitting..."
-                : isSelfSubmission
-                  ? "Submit Task"
-                  : "Create Task"}
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Creating..." : "Create Task"}
             </Button>
           </DialogFooter>
         </form>

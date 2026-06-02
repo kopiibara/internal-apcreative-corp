@@ -29,7 +29,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
+import {
+  formatAbsoluteDateTime,
+  formatRecentOrDateTime,
+} from "@/lib/date-time/relative-timestamp"
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
@@ -43,6 +46,10 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
 
 function formatDate(value: string | null) {
   return value ? formatRecentOrDateTime(value, dateTimeFormatter) : "Not set"
+}
+
+function formatDueDate(value: string | null) {
+  return value ? formatAbsoluteDateTime(value, dateTimeFormatter) : "Not set"
 }
 
 function TaskDetailSection({
@@ -112,7 +119,7 @@ function TaskMetadataPanel({
   return (
     <TaskDetailSection title="Schedule & Task">
       <div className="space-y-4">
-        <DetailField label="Due date">{formatDate(assignment.dueDate)}</DetailField>
+        <DetailField label="Due date">{formatDueDate(assignment.dueDate)}</DetailField>
         <DetailField label="Completed date">
           {formatDate(assignment.completedAt)}
         </DetailField>
