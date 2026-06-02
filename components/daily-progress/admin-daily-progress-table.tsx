@@ -54,62 +54,83 @@ export function AdminDailyProgressTable({
   return (
     <DataTableScrollArea
       fill
-      className={cn("min-h-0 bg-cream", KANBAN_BOARD_MAX_HEIGHT_CLASS)}
+      scrollbars="both"
+      className={cn(
+        "min-h-[320px] bg-card text-card-foreground",
+        KANBAN_BOARD_MAX_HEIGHT_CLASS,
+      )}
+      viewportClassName="max-w-full [&>div]:min-w-max"
     >
-      <Table className="min-w-[880px] border-0">
-        <TableHeader className={cn(DATA_TABLE_HEADER_CLASS, "bg-cream")}>
-          <TableRow>
-            <TableHead className="sticky left-0 z-30 min-w-[200px] bg-cream">
+      <Table className="min-w-[760px] border-0 text-xs sm:min-w-[900px] sm:text-sm">
+        <TableHeader className={DATA_TABLE_HEADER_CLASS}>
+          <TableRow className="bg-card text-card-foreground">
+            <TableHead className="sticky left-0 z-30 min-w-[11rem] bg-card px-3 text-foreground sm:min-w-[14rem] sm:px-4">
               Employee
             </TableHead>
-            <TableHead className="hidden min-w-[140px] lg:table-cell">
+            <TableHead className="hidden min-w-[8rem] px-3 text-foreground lg:table-cell">
               Brand
             </TableHead>
-            <TableHead className="min-w-[6.5rem]">Date</TableHead>
-            <TableHead className="min-w-[6.5rem]">Status</TableHead>
-            <TableHead className="hidden min-w-[6.5rem] md:table-cell">
+            <TableHead className="min-w-[6.75rem] px-3 text-foreground">
+              Date
+            </TableHead>
+            <TableHead className="min-w-[6.5rem] px-3 text-foreground">
+              Status
+            </TableHead>
+            <TableHead className="hidden min-w-[6.5rem] px-3 text-foreground md:table-cell">
               Late Status
             </TableHead>
-            <TableHead className="min-w-[12rem]">Summary</TableHead>
-            <TableHead className="min-w-[5.5rem] text-right">Points</TableHead>
-            <TableHead className="min-w-[11rem]">Review</TableHead>
+            <TableHead className="min-w-[12rem] px-3 text-foreground sm:min-w-[16rem]">
+              Summary
+            </TableHead>
+            <TableHead className="min-w-[5.5rem] px-3 text-right text-foreground">
+              Points
+            </TableHead>
+            <TableHead className="min-w-[10rem] px-3 text-foreground sm:min-w-[14rem]">
+              Review
+            </TableHead>
           </TableRow>
         </TableHeader>
 
-        <TableBody className={cn(DATA_TABLE_BODY_CLASS, "bg-cream")}>
+        <TableBody className={DATA_TABLE_BODY_CLASS}>
           {reports.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={8} className="h-24 text-center">
+            <TableRow className="bg-card text-card-foreground">
+              <TableCell
+                colSpan={8}
+                className="h-32 p-4 text-center text-muted-foreground"
+              >
                 No Daily Progress Reports found.
               </TableCell>
             </TableRow>
           ) : (
             reports.map((report) => (
-              <TableRow key={report.id}>
-                <TableCell className="sticky left-0 z-10 bg-cream">
+              <TableRow
+                key={report.id}
+                className="bg-card text-card-foreground hover:bg-muted/30"
+              >
+                <TableCell className="sticky left-0 z-10 bg-card p-3 sm:p-4">
                   <DailyProgressEmployeeIdentity report={report} />
                 </TableCell>
 
-                <TableCell className="hidden max-w-[10rem] truncate lg:table-cell">
+                <TableCell className="hidden max-w-[9rem] truncate p-3 text-muted-foreground lg:table-cell">
                   {report.brandName ?? "No brand"}
                 </TableCell>
 
-                <TableCell className="font-mono text-xs">
+                <TableCell className="whitespace-nowrap p-3 font-mono text-xs">
                   {report.reportDate}
                 </TableCell>
 
-                <TableCell>
+                <TableCell className="p-3">
                   <DailyProgressStatusBadge
                     label={report.status}
                     tone={getDailyProgressTone(report)}
                   />
                 </TableCell>
 
-                <TableCell className="hidden md:table-cell">
+                <TableCell className="hidden p-3 text-muted-foreground md:table-cell">
                   {report.lateApprovalStatus ?? "-"}
                 </TableCell>
 
-                <TableCell className="max-w-xs">
+                <TableCell className="max-w-[12rem] p-3 sm:max-w-xs">
                   <DailyProgressSummaryPreview
                     value={report.summary}
                     fallback={report.excusedReason}
@@ -130,7 +151,7 @@ export function AdminDailyProgressTable({
                   ) : null}
                 </TableCell>
 
-                <TableCell className="text-right tabular-nums">
+                <TableCell className="p-3 text-right tabular-nums">
                   <p className="font-black">{report.netPoints}</p>
                   {report.deductionApplied > 0 ? (
                     <p className="text-xs text-destructive">
@@ -139,10 +160,10 @@ export function AdminDailyProgressTable({
                   ) : null}
                 </TableCell>
 
-                <TableCell>
+                <TableCell className="p-3">
                   {report.status === "Late" &&
                   report.lateApprovalStatus === "Pending" ? (
-                    <div className="grid min-w-64 gap-2">
+                    <div className="grid min-w-56 gap-2 sm:min-w-64">
                       <p className="text-xs text-muted-foreground">
                         Reason: {report.lateReason}
                       </p>

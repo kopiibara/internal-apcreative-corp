@@ -16,6 +16,7 @@ import type {
 } from "@/lib/tasks/task-type";
 import type { TaskAssignmentStatus } from "@/lib/tasks/task-statuses";
 import type { AccountType, ProfileStatus } from "@/lib/auth/auth-session";
+import { DAILY_PROGRESS_REQUIRED_ACCOUNT_TYPES } from "@/lib/auth/account-type";
 import {
   getEffectiveBrandAccessForProfile,
   profileHasAllBrandsAccess,
@@ -294,8 +295,9 @@ type ActivityLogJsonRow = {
   createdAt: string;
 };
 
-const STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL =
-  "('CLIENT', 'EMPLOYEE', 'SUPERVISOR', 'FULL_STACK_DEVELOPER')";
+const STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL = `(${DAILY_PROGRESS_REQUIRED_ACCOUNT_TYPES.map(
+  (accountType) => `'${accountType}'`,
+).join(", ")})`;
 
 const ASSIGNMENT_SELECT = `
   SELECT
@@ -553,7 +555,6 @@ export async function getAssignableProfilesWithBrands(options?: {
         (
           $2::boolean = true
           AND p.account_type = 'FULL_STACK_DEVELOPER'
-          AND p.id <> $3::int
         )
         OR (
           $2::boolean = false
@@ -577,11 +578,7 @@ export async function getAssignableProfilesWithBrands(options?: {
     GROUP BY p.id, u.image
     ORDER BY p.full_name ASC, p.id ASC
     `,
-    [
-      includeSupervisorFullStack,
-      includeFullStackPeers,
-      options?.viewerProfileId ?? 0,
-    ],
+    [includeSupervisorFullStack, includeFullStackPeers],
   );
 
   return Promise.all(

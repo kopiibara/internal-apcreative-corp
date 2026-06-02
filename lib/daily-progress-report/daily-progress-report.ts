@@ -5,6 +5,7 @@ import "server-only";
 import type { PoolClient } from "pg";
 
 import { query, transaction } from "@/lib/db";
+import { DAILY_PROGRESS_REQUIRED_ACCOUNT_TYPES } from "@/lib/auth/account-type";
 import {
   clampDailyProgressStartDate,
   isBeforeDailyProgressScoringStart,
@@ -331,6 +332,7 @@ export async function getAdminDailyProgressData(
     filters.lateApprovalStatus && filters.lateApprovalStatus !== "all"
       ? filters.lateApprovalStatus
       : null,
+    [...DAILY_PROGRESS_REQUIRED_ACCOUNT_TYPES],
   ];
 
   const [reports, aggregate, requiredEmployees] = await Promise.all([
@@ -352,6 +354,7 @@ export async function getAdminDailyProgressData(
         AND ($4::integer IS NULL OR dpr.profile_id = $4::integer)
         AND ($5::text IS NULL OR dpr.status = $5::text)
         AND ($6::text IS NULL OR dpr.late_approval_status = $6::text)
+        AND p.account_type = ANY($7::text[])
       ORDER BY dpr.report_date DESC, dpr.updated_at DESC, dpr.id DESC
       `,
       params,
@@ -359,15 +362,16 @@ export async function getAdminDailyProgressData(
     query<DailyProgressAggregateRow>(
       `
       SELECT
-        COUNT(*) FILTER (WHERE status = 'Submitted')::int AS submitted_count,
-        COUNT(*) FILTER (WHERE status = 'Late' AND late_approval_status = 'Pending')::int AS late_pending_count,
-        COUNT(*) FILTER (WHERE status = 'Late' AND late_approval_status = 'Approved')::int AS late_approved_count,
-        COUNT(*) FILTER (WHERE late_approval_status = 'Rejected')::int AS late_rejected_count,
-        COUNT(*) FILTER (WHERE status = 'Missed')::int AS missed_count,
-        COUNT(*) FILTER (WHERE status = 'Excused')::int AS excused_count,
-        COALESCE(SUM(points_awarded), 0)::int AS total_points_awarded,
-        COALESCE(SUM(deduction_applied), 0)::int AS total_deductions
+        COUNT(*) FILTER (WHERE dpr.status = 'Submitted')::int AS submitted_count,
+        COUNT(*) FILTER (WHERE dpr.status = 'Late' AND dpr.late_approval_status = 'Pending')::int AS late_pending_count,
+        COUNT(*) FILTER (WHERE dpr.status = 'Late' AND dpr.late_approval_status = 'Approved')::int AS late_approved_count,
+        COUNT(*) FILTER (WHERE dpr.late_approval_status = 'Rejected')::int AS late_rejected_count,
+        COUNT(*) FILTER (WHERE dpr.status = 'Missed')::int AS missed_count,
+        COUNT(*) FILTER (WHERE dpr.status = 'Excused')::int AS excused_count,
+        COALESCE(SUM(dpr.points_awarded), 0)::int AS total_points_awarded,
+        COALESCE(SUM(dpr.deduction_applied), 0)::int AS total_deductions
       FROM daily_progress_report dpr
+      JOIN profile p ON p.id = dpr.profile_id
       WHERE dpr.report_date >= $1::date
         AND dpr.report_date <= $2::date
         AND (
@@ -383,6 +387,7 @@ export async function getAdminDailyProgressData(
         AND ($4::integer IS NULL OR dpr.profile_id = $4::integer)
         AND ($5::text IS NULL OR dpr.status = $5::text)
         AND ($6::text IS NULL OR dpr.late_approval_status = $6::text)
+        AND p.account_type = ANY($7::text[])
       `,
       params,
     ),
@@ -391,17 +396,21 @@ export async function getAdminDailyProgressData(
       SELECT COUNT(DISTINCT p.id)::int AS count
       FROM profile p
       WHERE p.status = 'ACTIVE'
-        AND p.account_type IN ('CLIENT', 'EMPLOYEE', 'SUPERVISOR', 'FULL_STACK_DEVELOPER')
-        AND ($1::integer IS NULL OR EXISTS (
+        AND p.account_type = ANY($1::text[])
+        AND ($2::integer IS NULL OR EXISTS (
           SELECT 1
           FROM user_brand_access uba
           WHERE uba.profile_id = p.id
-            AND uba.brand_id = $1::integer
+            AND uba.brand_id = $2::integer
             AND uba.is_active = true
         ))
-        AND ($2::integer IS NULL OR p.id = $2::integer)
+        AND ($3::integer IS NULL OR p.id = $3::integer)
       `,
-      [filters.brandId ?? null, filters.employeeId ?? null],
+      [
+        [...DAILY_PROGRESS_REQUIRED_ACCOUNT_TYPES],
+        filters.brandId ?? null,
+        filters.employeeId ?? null,
+      ],
     ),
   ]);
 
@@ -450,9 +459,10 @@ export async function upsertMissedDailyProgressForDate({
     SELECT id
     FROM profile
     WHERE status = 'ACTIVE'
-      AND account_type IN ('CLIENT', 'EMPLOYEE', 'SUPERVISOR', 'FULL_STACK_DEVELOPER')
+      AND account_type = ANY($1::text[])
     ORDER BY id ASC
     `,
+    [[...DAILY_PROGRESS_REQUIRED_ACCOUNT_TYPES]],
   );
 
   let createdMissed = 0;
