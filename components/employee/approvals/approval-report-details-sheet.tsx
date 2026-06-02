@@ -5,7 +5,6 @@ import { Pencil } from "lucide-react"
 import {
   ApprovalDetailsGrid,
   ApprovalDiscussionSection,
-  ApprovalDetailSection,
   ApprovalMainDetails,
   ApprovalMetadataPanel,
   ApprovalSheetHeader,
@@ -95,31 +94,29 @@ export function ContentReportDetailsSheet({
               }
             />
 
-            {hasPublishingActions ? (
-              <div className="px-4 pb-4">
-                <ApprovalDetailSection title="Publishing actions">
-                  <ApprovalPublishingActions
-                    report={selectedContentReport}
-                    publishingPermissions={publishingPermissions}
-                  />
-                </ApprovalDetailSection>
-              </div>
-            ) : null}
           </ScrollArea>
         ) : null}
 
-        {canEdit && selectedContentReport ? (
-          <SheetFooter className="sticky bottom-0 z-10 shrink-0 border-t-2 border-border bg-background/95 px-4 py-3 pb-4! backdrop-blur">
-            <Button
-              type="button"
-              variant="neutral"
-              size="sm"
-              className="w-fit"
-              onClick={() => openEditDialog(selectedContentReport)}
-            >
-              <Pencil className="size-4" />
-              Edit Approval
-            </Button>
+        {selectedContentReport && (canEdit || hasPublishingActions) ? (
+          <SheetFooter className="sticky bottom-0 z-10 mt-0 shrink-0 flex-row flex-wrap items-center justify-end gap-2 border-t-2 border-border bg-background/95 px-4 py-3 pb-4! backdrop-blur">
+            {hasPublishingActions && publishingPermissions ? (
+              <ApprovalPublishingActions
+                report={selectedContentReport}
+                publishingPermissions={publishingPermissions}
+              />
+            ) : null}
+            {canEdit ? (
+              <Button
+                type="button"
+                variant="neutral"
+                size="sm"
+                className="w-fit"
+                onClick={() => openEditDialog(selectedContentReport)}
+              >
+                <Pencil className="size-4" />
+                Edit Approval
+              </Button>
+            ) : null}
           </SheetFooter>
         ) : null}
       </SheetContent>

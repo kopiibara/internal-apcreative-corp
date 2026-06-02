@@ -4,10 +4,7 @@ import type { ComponentProps, ReactNode } from "react"
 import {
   CalendarClock,
   CheckCircle2,
-  Clock,
   ExternalLink,
-  Eye,
-  Paperclip,
   PenLine,
   RotateCcw,
   XCircle,
@@ -18,7 +15,6 @@ import { UserAvatar } from "@/components/shared/user-avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { RichTextPreview } from "@/components/ui/rich-text-renderer"
 import {
   Tooltip,
   TooltipContent,
@@ -26,7 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { getApprovalDisplayStatus } from "@/lib/approvals/approval-kanban"
-import { isRichTextEmpty } from "@/lib/rich-text/rich-text"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import {
   getRevisionAreaCount,
   getRevisionSummaryLabel,
@@ -51,6 +47,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 function hasText(value: string | null) {
@@ -58,7 +56,7 @@ function hasText(value: string | null) {
 }
 
 function getScheduledLabel(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Scheduled"
+  return value ? formatRecentOrDateTime(value, dateFormatter) : "Scheduled"
 }
 
 function ReviewIconButton({
@@ -139,17 +137,25 @@ export function ApprovalKanbanCard({
       onClick={onClick}
     >
       <CardContent className="min-w-0 space-y-2.5 px-4 py-2">
-        <p className="truncate text-md font-bold">
-          {report.brandName ?? "No brand"}
-        </p>
+        <div className="w-full flex flex-row justify-between">
+          <h2 className="line-clamp-2 font-bold leading-snug">
+            {report.brandName ?? "No brand"}
+          </h2>
+          <span
+            className="text-sm text-muted-foreground flex flex-row gap-1 items-center"
+            title={dateFormatter.format(new Date(report.dateSubmitted))}
+          >
+            {formatRecentOrDateTime(report.dateSubmitted, dateFormatter)}
+          </span>
+        </div>
 
         <div className="flex flex-row flex-wrap gap-2">
-          <Badge className="bg-gray-200 dark:bg-gray-800">
-            <Clock className="size-3" />
-            {dateFormatter.format(new Date(report.dateSubmitted))}
-          </Badge>
-
-          <Badge>
+          <Button
+            type="button"
+            size="sm"
+            variant="default"
+            asChild
+            className="flex h-fit items-center gap-1.5 py-1 text-xs w-fit">
             {report.assetLink ? (
               <a
                 href={report.assetLink}
@@ -164,15 +170,7 @@ export function ApprovalKanbanCard({
             ) : (
               <span className="text-xs text-muted-foreground">No asset link</span>
             )}
-          </Badge>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          <Badge variant="secondary">
-            <Paperclip className="size-3" />
-            {report.contentType}
-          </Badge>
-          <Badge variant="neutral">{report.platform}</Badge>
+          </Button>
         </div>
 
         <ApprovalStatusBadges

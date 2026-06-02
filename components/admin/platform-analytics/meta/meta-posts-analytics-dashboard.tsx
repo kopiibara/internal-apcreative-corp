@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { MetaPostsPageData } from "@/lib/meta/posts-analytics"
 import type { MetaBusinessPagePostRow } from "@/lib/meta/page-analytics-types"
 import type { MetaPageConfigKey } from "@/lib/meta/pages-config"
@@ -185,8 +186,9 @@ export function MetaPostsAnalyticsDashboard({
               {pageInfo.postPreview.lastPostsSyncAt ? (
                 <span className="block">
                   Last posts sync:{" "}
-                  {dateFormatter.format(
-                    new Date(pageInfo.postPreview.lastPostsSyncAt)
+                  {formatRecentOrDateTime(
+                    pageInfo.postPreview.lastPostsSyncAt,
+                    dateFormatter
                   )}
                 </span>
               ) : null}

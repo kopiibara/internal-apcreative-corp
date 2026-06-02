@@ -184,6 +184,7 @@ function formatTimelineAction(action: string) {
     BLOCKER_RESOLVED: "Blocker resolved",
     REVISION_REQUESTED: "Revision requested",
     TASK_MARKED_DONE: "Task marked done",
+    TASK_REJECTED: "Task rejected",
     TASK_REOPENED: "Task reopened",
     DEADLINE_CHANGED: "Deadline changed",
     supervisor_review_update: "Supervisor review updated",
@@ -355,7 +356,8 @@ export async function getDailyReportData(
           WHEN 'REVISION' THEN 2
           WHEN 'ASSIGNED' THEN 3
           WHEN 'PENDING' THEN 4
-          ELSE 5
+          WHEN 'REJECTED' THEN 5
+          ELSE 6
         END,
         t.due_date ASC NULLS LAST,
         ta.updated_at DESC,
@@ -666,7 +668,7 @@ export async function getDailyReportData(
     } else if (row.status === "BLOCKER") {
       existing.blockerTasks += 1;
       existing.pendingTasks += 1;
-    } else {
+    } else if (row.status !== "REJECTED") {
       existing.pendingTasks += 1;
     }
 
@@ -753,7 +755,7 @@ export async function getDailyReportData(
     } else if (row.status === "REVISION") {
       existing.revisionTasks += 1;
       existing.pendingTasks += 1;
-    } else {
+    } else if (row.status !== "REJECTED") {
       existing.pendingTasks += 1;
     }
 

@@ -66,7 +66,7 @@ export function StaffAccountabilitySummaryCards({
           label="02 / TASK POINTS"
           title="Task Points"
           value={`${teamSummary.totalTaskPoints}`}
-          detail="Priority points earned minus late deductions"
+          detail="15 points per completed task minus late deductions"
           tone="bg-blue text-white"
         />
         <SummaryCard

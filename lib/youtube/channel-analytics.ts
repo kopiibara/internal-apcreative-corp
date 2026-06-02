@@ -6,6 +6,7 @@ import {
   getYouTubeLiveMetricMap,
 } from "@/lib/platform-analytics/youtube-sync";
 import { formatWholeMetric } from "@/lib/platform-analytics/format";
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp";
 import type { PlatformChartConfig } from "@/lib/platform-analytics/types";
 import type { AnalyticsDateRange } from "@/lib/platform-analytics/types";
 import type {
@@ -465,7 +466,13 @@ function buildOverviewKpis(
       label: "Latest uploaded video",
       value: latestVideo?.title ?? "No YouTube videos synced yet.",
       hint: latestVideo?.publishedAt
-        ? new Date(latestVideo.publishedAt).toLocaleDateString("en-PH")
+        ? formatRecentOrDateTime(
+            latestVideo.publishedAt,
+            new Intl.DateTimeFormat("en-PH", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            }),
+          )
         : undefined,
     },
   ];

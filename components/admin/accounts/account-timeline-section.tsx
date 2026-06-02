@@ -12,6 +12,7 @@ import {
   TimelineSeparator,
   TimelineTitle,
 } from "@/components/reui/timeline"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { AccountControlLogItem } from "@/lib/auth/accounts"
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
@@ -27,7 +28,7 @@ function formatDateTime(value: string | null) {
     return "Not recorded"
   }
 
-  return dateTimeFormatter.format(new Date(value))
+  return formatRecentOrDateTime(value, dateTimeFormatter)
 }
 
 function formatAction(action: string) {
@@ -73,9 +74,13 @@ export function AccountTimelineSection({
       <Timeline defaultValue={logs.length} className="w-full min-w-0">
         {logs.map((log, index) => (
           <TimelineItem key={log.id} step={index + 1}>
-            <TimelineHeader>
-              <TimelineDate>{formatDateTime(log.createdAt)}</TimelineDate>
-              <TimelineTitle>{formatAction(log.action)}</TimelineTitle>
+            <TimelineHeader className="flex min-w-0 items-start justify-between gap-3">
+              <TimelineTitle className="min-w-0 break-words">
+                {formatAction(log.action)}
+              </TimelineTitle>
+              <TimelineDate className="mb-0 shrink-0 text-right">
+                {formatDateTime(log.createdAt)}
+              </TimelineDate>
             </TimelineHeader>
             <TimelineIndicator />
             <TimelineSeparator />

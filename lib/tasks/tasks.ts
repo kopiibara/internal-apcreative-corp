@@ -471,13 +471,15 @@ export async function getTaskAssignmentsForViewer({
         WHEN 'BLOCKER' THEN 2
         WHEN 'PENDING' THEN 3
         WHEN 'REVISION' THEN 4
-        WHEN 'DONE' THEN 5
+        WHEN 'REJECTED' THEN 5
+        WHEN 'DONE' THEN 6
       END,
       CASE ta.status
         WHEN 'DONE' THEN COALESCE(ta.completed_at, ta.reviewed_at, ta.updated_at)
         WHEN 'PENDING' THEN COALESCE(ta.submitted_at, ta.updated_at)
         WHEN 'BLOCKER' THEN COALESCE(ta.blocker_reported_at, ta.updated_at)
         WHEN 'REVISION' THEN COALESCE(ta.reviewed_at, ta.updated_at)
+        WHEN 'REJECTED' THEN COALESCE(ta.reviewed_at, ta.updated_at)
         ELSE COALESCE(ta.created_at, ta.updated_at)
       END DESC,
       ta.id DESC
@@ -500,13 +502,15 @@ export async function getTaskAssignmentsForEmployee(profileId: number) {
         WHEN 'BLOCKER' THEN 2
         WHEN 'PENDING' THEN 3
         WHEN 'REVISION' THEN 4
-        WHEN 'DONE' THEN 5
+        WHEN 'REJECTED' THEN 5
+        WHEN 'DONE' THEN 6
       END,
       CASE ta.status
         WHEN 'DONE' THEN COALESCE(ta.completed_at, ta.reviewed_at, ta.updated_at)
         WHEN 'PENDING' THEN COALESCE(ta.submitted_at, ta.updated_at)
         WHEN 'BLOCKER' THEN COALESCE(ta.blocker_reported_at, ta.updated_at)
         WHEN 'REVISION' THEN COALESCE(ta.reviewed_at, ta.updated_at)
+        WHEN 'REJECTED' THEN COALESCE(ta.reviewed_at, ta.updated_at)
         ELSE COALESCE(ta.created_at, ta.updated_at)
       END DESC,
       ta.id DESC

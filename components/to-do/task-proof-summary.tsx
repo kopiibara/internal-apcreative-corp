@@ -1,6 +1,7 @@
 import { ProofDisplay } from "@/components/shared/proof-display"
 import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -39,7 +40,7 @@ export function TaskProofSummary({
                 </p>
                 <div>
                   {assignment.submittedAt
-                    ? dateFormatter.format(new Date(assignment.submittedAt))
+                    ? formatRecentOrDateTime(assignment.submittedAt, dateFormatter)
                     : "Not submitted"}
                 </div>
               </div>

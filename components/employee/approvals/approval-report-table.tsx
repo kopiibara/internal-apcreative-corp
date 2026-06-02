@@ -62,6 +62,7 @@ import {
   canEmployeeEditReport,
   type ContentReport,
 } from "@/types/content-report"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import { richTextToPlainText } from "@/lib/rich-text/rich-text"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 
@@ -73,10 +74,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 function getDateLabel(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Not scheduled"
+  return value ? formatRecentOrDateTime(value, dateFormatter) : "Not scheduled"
 }
 
 export function ContentReportTable({ reports }: ContentReportTableProps) {
@@ -296,7 +299,7 @@ export function ContentReportTable({ reports }: ContentReportTableProps) {
                   return (
                     <TableRow key={report.id}>
                       <TableCell className="whitespace-nowrap">
-                        {dateFormatter.format(new Date(report.dateSubmitted))}
+                        {formatRecentOrDateTime(report.dateSubmitted, dateFormatter)}
                       </TableCell>
                       <TableCell>{report.contentType}</TableCell>
                       <TableCell className="max-w-sm">

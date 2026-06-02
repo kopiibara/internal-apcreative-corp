@@ -21,11 +21,14 @@ export type TaskPerformanceResult = {
   lateSubmissionMinutesTotal: number;
 };
 
+export const TASK_COMPLETION_POINTS = 15;
+
+/** @deprecated Task score is now flat per completed task. Keep this for legacy imports. */
 export const TASK_PRIORITY_POINTS: Record<TaskPriority, number> = {
-  LOW: 2,
-  MEDIUM: 5,
-  HIGH: 10,
-  URGENT: 15,
+  LOW: TASK_COMPLETION_POINTS,
+  MEDIUM: TASK_COMPLETION_POINTS,
+  HIGH: TASK_COMPLETION_POINTS,
+  URGENT: TASK_COMPLETION_POINTS,
 };
 
 export const LATE_TASK_DEDUCTION_MINUTES_PER_BLOCK = 30;
@@ -155,18 +158,17 @@ export function getTaskPointsFromCompletionRate(
   return 20;
 }
 
-export function getPriorityPoints(priority: TaskPriority | null | undefined) {
-  return priority ? (TASK_PRIORITY_POINTS[priority] ?? 0) : 0;
+export function getPriorityPoints(_priority: TaskPriority | null | undefined) {
+  return TASK_COMPLETION_POINTS;
 }
 
 export function calculateTaskPriorityPoints({
   status,
-  priority,
 }: {
   status: string;
   priority: TaskPriority | null | undefined;
 }) {
-  return status === "DONE" ? getPriorityPoints(priority) : 0;
+  return status === "DONE" ? TASK_COMPLETION_POINTS : 0;
 }
 
 export function calculateTaskPerformancePoints(

@@ -25,6 +25,7 @@ type TaskStore = {
     assignments: TaskAssignmentRecord[],
   ) => void;
   updateTaskAssignmentInStore: (assignment: TaskAssignmentRecord) => void;
+  addTaskAssignmentsToStore: (assignments: TaskAssignmentRecord[]) => void;
   clearAssignmentPatch: (assignmentId: number) => void;
   setSelectedStatusFilter: (status: TaskAssignmentStatus | "all") => void;
   setSelectedTypeFilter: (type: TaskType | "all") => void;
@@ -97,6 +98,35 @@ export const useTaskStore = create<TaskStore>((set) => ({
           ? assignment
           : state.selectedAssignment,
     })),
+  addTaskAssignmentsToStore: (assignments) =>
+    set((state) => {
+      if (assignments.length === 0) {
+        return {};
+      }
+
+      const nextById = new Map<number, TaskAssignmentRecord>();
+
+      for (const assignment of state.liveAssignments ?? []) {
+        nextById.set(assignment.assignmentId, assignment);
+      }
+
+      for (const assignment of assignments) {
+        nextById.set(assignment.assignmentId, assignment);
+      }
+
+      return {
+        liveAssignments: [...nextById.values()],
+        assignmentPatches: {
+          ...state.assignmentPatches,
+          ...Object.fromEntries(
+            assignments.map((assignment) => [
+              assignment.assignmentId,
+              assignment,
+            ]),
+          ),
+        },
+      };
+    }),
   clearAssignmentPatch: (assignmentId) =>
     set((state) => {
       const assignmentPatches = { ...state.assignmentPatches };

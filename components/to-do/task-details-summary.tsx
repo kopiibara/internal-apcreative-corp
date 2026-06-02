@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator"
 import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
 import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -16,7 +17,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 })
 
 function formatDate(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Not set"
+  return value ? formatRecentOrDateTime(value, dateFormatter) : "Not set"
 }
 
 function DetailField({

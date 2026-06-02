@@ -56,6 +56,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { AccountListItem, BrandOption, RoleOption } from "@/lib/auth/accounts"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import { useAccountStore } from "@/stores/use-account-store"
 
 type AccountTableProps = {
@@ -68,6 +69,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 export function AccountTable({ accounts, brands, roles }: AccountTableProps) {
@@ -333,7 +336,7 @@ export function AccountTable({ accounts, brands, roles }: AccountTableProps) {
                       </div>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {dateFormatter.format(new Date(account.createdAt))}
+                      {formatRecentOrDateTime(account.createdAt, dateFormatter)}
                     </TableCell>
                     <TableCell className="text-right">
                       <AccountStatusMenu account={account} />

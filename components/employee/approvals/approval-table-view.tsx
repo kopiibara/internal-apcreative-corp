@@ -39,6 +39,7 @@ import {
   canEditPublishingFields,
   type ContentReport,
 } from "@/types/content-report"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import { useContentReportStore } from "@/stores/use-content-report-store"
 
 type EmployeeApprovalTableViewProps = {
@@ -50,10 +51,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 function getDateLabel(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Not scheduled"
+  return value ? formatRecentOrDateTime(value, dateFormatter) : "Not scheduled"
 }
 
 function hasText(value: string | null) {
@@ -105,7 +108,7 @@ function getContentReportColumns({
       ),
       cell: ({ row }) => (
         <span className="whitespace-nowrap">
-          {dateFormatter.format(new Date(row.original.dateSubmitted))}
+          {formatRecentOrDateTime(row.original.dateSubmitted, dateFormatter)}
         </span>
       ),
     },

@@ -24,6 +24,12 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   hasValidProofSubmission,
   inferProofSubmitType,
 } from "@/lib/proof/proof-media"
@@ -133,36 +139,58 @@ export function ApprovalPublishingActions({
     })
   }
 
-  const buttonClass = compact
-    ? "h-8 gap-1 px-2 text-[11px] [&_svg]:size-3"
-    : undefined
   const canSubmitPublish = hasValidProofSubmission(proofType, proofUrl, proofNote)
+
+  const publishButton = canPublishNow ? (
+    <Button
+      type="button"
+      size={compact ? "icon-sm" : "default"}
+      aria-label="Publish now"
+      title="Publish now"
+      onClick={() => setIsPublishOpen(true)}
+    >
+      <Send className={compact ? "size-3.5" : "size-4"} />
+      {compact ? <span className="sr-only">Publish now</span> : "Publish Now"}
+    </Button>
+  ) : null
+
+  const scheduleButton = canSchedulePublish ? (
+    <Button
+      type="button"
+      size={compact ? "icon-sm" : "default"}
+      variant="neutral"
+      aria-label="Schedule publishing"
+      title="Schedule publishing"
+      onClick={() => setIsScheduleOpen(true)}
+    >
+      <CalendarClock className={compact ? "size-3.5" : "size-4"} />
+      {compact ? <span className="sr-only">Schedule publishing</span> : "Schedule"}
+    </Button>
+  ) : null
 
   return (
     <div className={compact ? "contents" : "flex flex-wrap gap-2"}>
-      {canPublishNow ? (
-        <Button
-          type="button"
-          size={compact ? "sm" : "default"}
-          className={buttonClass}
-          onClick={() => setIsPublishOpen(true)}
-        >
-          <Send className={compact ? "size-3" : "size-4"} />
-          Publish Now
-        </Button>
-      ) : null}
-      {canSchedulePublish ? (
-        <Button
-          type="button"
-          size={compact ? "sm" : "default"}
-          variant="neutral"
-          className={buttonClass}
-          onClick={() => setIsScheduleOpen(true)}
-        >
-          <CalendarClock className={compact ? "size-3" : "size-4"} />
-          Schedule
-        </Button>
-      ) : null}
+      {compact ? (
+        <TooltipProvider>
+          {publishButton ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{publishButton}</TooltipTrigger>
+              <TooltipContent>Publish now</TooltipContent>
+            </Tooltip>
+          ) : null}
+          {scheduleButton ? (
+            <Tooltip>
+              <TooltipTrigger asChild>{scheduleButton}</TooltipTrigger>
+              <TooltipContent>Schedule publishing</TooltipContent>
+            </Tooltip>
+          ) : null}
+        </TooltipProvider>
+      ) : (
+        <>
+          {publishButton}
+          {scheduleButton}
+        </>
+      )}
 
       <Dialog open={isPublishOpen} onOpenChange={setIsPublishOpen}>
         <DialogContent className="max-w-lg">

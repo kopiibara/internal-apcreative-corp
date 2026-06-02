@@ -37,6 +37,9 @@ export const createTaskSchema = z
       .min(1, "Select at least one assignee."),
     dueDate: z.string().nullable().optional(),
     priority: z.enum(TASK_PRIORITIES).nullable().optional(),
+    proofType: proofTypeFieldSchema.optional(),
+    proofUrl: proofUrlFieldSchema.optional(),
+    proofNote: proofText(5000).optional(),
   })
   .superRefine((value, context) => {
     const uniqueAssignees = [...new Set(value.assignedToProfileIds)];
@@ -47,6 +50,48 @@ export const createTaskSchema = z
         message: "Duplicate assignees are not allowed.",
         path: ["assignedToProfileIds"],
       });
+    }
+
+    const hasProofFields =
+      value.proofType !== undefined ||
+      value.proofUrl !== undefined ||
+      value.proofNote !== undefined;
+
+    if (!hasProofFields) {
+      return;
+    }
+
+    if (!value.proofType) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Proof type is required.",
+        path: ["proofType"],
+      });
+      return;
+    }
+
+    const proofValue = {
+      proofType: value.proofType,
+      proofUrl: value.proofUrl ?? "",
+      proofNote: value.proofNote ?? "",
+    };
+
+    const proofResult = addProofSubmissionRefinement(
+      z.object({
+        proofType: proofTypeFieldSchema,
+        proofUrl: proofUrlFieldSchema,
+        proofNote: proofText(5000),
+      }),
+    ).safeParse(proofValue);
+
+    if (!proofResult.success) {
+      for (const issue of proofResult.error.issues) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: issue.message,
+          path: issue.path,
+        });
+      }
     }
   });
 
@@ -116,6 +161,15 @@ export const requestTaskRevisionSchema = z.object({
     .string()
     .trim()
     .min(1, "Revision note is required.")
+    .max(2000),
+});
+
+export const rejectTaskSchema = z.object({
+  assignmentId: z.coerce.number().int().positive(),
+  rejectionNote: z
+    .string()
+    .trim()
+    .min(1, "Rejection reason is required.")
     .max(2000),
 });
 

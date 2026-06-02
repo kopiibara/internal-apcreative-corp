@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/card"
 import { RichTextRenderer } from "@/components/ui/rich-text-renderer"
 import { Separator } from "@/components/ui/separator"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { ContentReport } from "@/types/content-report"
 
 type ApprovalDetailsSummaryProps = {
@@ -17,10 +18,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 function getDateLabel(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Not scheduled"
+  return value ? formatRecentOrDateTime(value, dateFormatter) : "Not scheduled"
 }
 
 function DetailField({
@@ -71,7 +74,7 @@ export function ApprovalDetailsSummary({ report }: ApprovalDetailsSummaryProps) 
             </div>
           </DetailField>
           <DetailField label="Date Submitted">
-            {dateFormatter.format(new Date(report.dateSubmitted))}
+            {formatRecentOrDateTime(report.dateSubmitted, dateFormatter)}
           </DetailField>
           <DetailField label="Brand">
             {report.brandName ?? "No brand"}

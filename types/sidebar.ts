@@ -12,6 +12,7 @@ import {
   type LucideIcon,
   CalendarCheck,
   Handshake,
+  File,
 } from "lucide-react";
 
 export type SidebarMode = "admin" | "employee";
@@ -118,6 +119,16 @@ export const adminGroups: SidebarGroupItem[] = [
         title: "Ads Campaigns",
         href: "/admin/ads-campaigns",
         icon: Megaphone,
+      },
+    ],
+  },
+  {
+    label: "Internal",
+    items: [
+      {
+        title: "Forms",
+        href: "/admin/forms",
+        icon: File,
       },
     ],
   },

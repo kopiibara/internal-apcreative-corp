@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card"
 import { RichTextRenderer } from "@/components/ui/rich-text-renderer"
 import { Separator } from "@/components/ui/separator"
+import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
 import type { ContentReport } from "@/types/content-report"
 
 type ContentReportDetailsSummaryProps = {
@@ -20,10 +21,12 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 })
 
 function getDateLabel(value: string | null) {
-  return value ? dateFormatter.format(new Date(value)) : "Not scheduled"
+  return value ? formatRecentOrDateTime(value, dateFormatter) : "Not scheduled"
 }
 
 function DetailField({
@@ -70,7 +73,7 @@ export function ContentReportDetailsSummary({
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary" className="bg-gray-200">
               <Clock className="size-3" />
-              {dateFormatter.format(new Date(report.dateSubmitted))}
+              {formatRecentOrDateTime(report.dateSubmitted, dateFormatter)}
             </Badge>
             <Badge variant="outline">
               {report.assetLink ? (
