@@ -11,6 +11,7 @@ import { canSyncPlatformAnalytics } from "@/lib/platform-analytics/access";
 export const runtime = "nodejs";
 
 const YOUTUBE_OAUTH_STATE_COOKIE = "youtube_oauth_state";
+const YOUTUBE_OAUTH_CHANNEL_COOKIE = "youtube_oauth_channel_key";
 
 function appOrigin(request: NextRequest) {
   const betterAuthUrl = process.env.BETTER_AUTH_URL?.trim();
@@ -67,6 +68,9 @@ export async function GET(request: NextRequest) {
   const stateFromCookie = request.cookies.get(
     YOUTUBE_OAUTH_STATE_COOKIE,
   )?.value;
+  const channelKeyFromCookie = request.cookies.get(
+    YOUTUBE_OAUTH_CHANNEL_COOKIE,
+  )?.value;
   const stateFromQuery = request.nextUrl.searchParams.get("state");
   const code = request.nextUrl.searchParams.get("code");
   const oauthError = request.nextUrl.searchParams.get("error");
@@ -74,13 +78,15 @@ export async function GET(request: NextRequest) {
   if (oauthError) {
     const response = redirectWithStatus(request, "error", oauthError, accountType);
     response.cookies.delete(YOUTUBE_OAUTH_STATE_COOKIE);
+    response.cookies.delete(YOUTUBE_OAUTH_CHANNEL_COOKIE);
     return response;
   }
 
   if (
     !stateFromCookie ||
     !stateFromQuery ||
-    stateFromCookie !== stateFromQuery
+    stateFromCookie !== stateFromQuery ||
+    !channelKeyFromCookie
   ) {
     const response = redirectWithStatus(
       request,
@@ -89,6 +95,7 @@ export async function GET(request: NextRequest) {
       accountType,
     );
     response.cookies.delete(YOUTUBE_OAUTH_STATE_COOKIE);
+    response.cookies.delete(YOUTUBE_OAUTH_CHANNEL_COOKIE);
     return response;
   }
 
@@ -100,6 +107,7 @@ export async function GET(request: NextRequest) {
       accountType,
     );
     response.cookies.delete(YOUTUBE_OAUTH_STATE_COOKIE);
+    response.cookies.delete(YOUTUBE_OAUTH_CHANNEL_COOKIE);
     return response;
   }
 
@@ -111,10 +119,12 @@ export async function GET(request: NextRequest) {
       refreshToken: result.refreshToken,
       scopes: result.scopeSet,
       channel: result.channel,
+      channelKey: channelKeyFromCookie,
     });
 
     const response = redirectWithStatus(request, "success", undefined, accountType);
     response.cookies.delete(YOUTUBE_OAUTH_STATE_COOKIE);
+    response.cookies.delete(YOUTUBE_OAUTH_CHANNEL_COOKIE);
     return response;
   } catch (error) {
     const message =
@@ -122,6 +132,7 @@ export async function GET(request: NextRequest) {
 
     const response = redirectWithStatus(request, "error", message, accountType);
     response.cookies.delete(YOUTUBE_OAUTH_STATE_COOKIE);
+    response.cookies.delete(YOUTUBE_OAUTH_CHANNEL_COOKIE);
     return response;
   }
 }

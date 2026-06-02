@@ -15,7 +15,7 @@ import {
 } from "@/lib/platform-analytics/adapters/tiktok-adapter";
 import {
   loadYouTubePlatformSlice,
-  youtubeAccountIdFromFilter,
+  youtubeChannelKeyFromFilter,
 } from "@/lib/platform-analytics/adapters/youtube-adapter";
 import { buildDemoPlatformSlice } from "@/lib/platform-analytics/demo-data";
 import { getDemoCharts } from "@/lib/platform-analytics/platform-charts";
@@ -52,7 +52,7 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     // otherwise fall back to demo data.
     if (platform === "YOUTUBE") {
       const youtube = await loadYouTubePlatformSlice(
-        youtubeAccountIdFromFilter(accountId),
+        youtubeChannelKeyFromFilter(accountId),
         input?.dateRange,
       );
       const data = {
@@ -61,6 +61,7 @@ export async function getPlatformAnalyticsDashboardData(input?: {
         ...youtube,
         metaBusinessPages: [],
         tiktokBrandAnalytics: [],
+        youtubeChannelAnalytics: youtube.youtubeChannelAnalytics,
       };
 
       return brandScope
@@ -77,6 +78,8 @@ export async function getPlatformAnalyticsDashboardData(input?: {
         platform,
         accountId,
         ...tiktok,
+        metaBusinessPages: [],
+        youtubeChannelAnalytics: [],
       };
 
       return brandScope
@@ -103,6 +106,7 @@ export async function getPlatformAnalyticsDashboardData(input?: {
       metaNeedsBootstrap: false,
       metaBusinessPages: [],
       tiktokBrandAnalytics: [],
+      youtubeChannelAnalytics: [],
     };
 
     return brandScope ? applyBrandScopeToDashboardData(data, brandScope) : data;
@@ -132,6 +136,7 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     metaNeedsBootstrap: meta.metaNeedsBootstrap,
     metaBusinessPages: meta.metaBusinessPages,
     tiktokBrandAnalytics: [],
+    youtubeChannelAnalytics: [],
   };
 
   return brandScope ? applyBrandScopeToDashboardData(data, brandScope) : data;

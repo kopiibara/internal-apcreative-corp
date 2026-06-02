@@ -66,6 +66,7 @@ export type ContentPerformanceRow = {
   id: string | number;
   rank: number | null;
   title: string;
+  channelName?: string | null;
   publishedAt: string | null;
   views: number | null;
   likes: number | null;
@@ -144,6 +145,9 @@ export type MetaBusinessPageDashboard =
 export type TikTokBrandDashboard =
   import("@/lib/tiktok/dashboard-types").TikTokBrandDashboard;
 
+export type YouTubeChannelDashboard =
+  import("@/lib/youtube/channel-analytics-types").YouTubeChannelDashboard;
+
 export type PlatformAnalyticsDashboardData = {
   platform: AnalyticsPlatform;
   accountId: string | null;
@@ -162,4 +166,5 @@ export type PlatformAnalyticsDashboardData = {
   metaNeedsBootstrap: boolean;
   metaBusinessPages: MetaBusinessPageDashboard[];
   tiktokBrandAnalytics: TikTokBrandDashboard[];
+  youtubeChannelAnalytics: YouTubeChannelDashboard[];
 };

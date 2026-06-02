@@ -21,10 +21,12 @@ type UpsertYouTubeIntegrationInput = {
   refreshToken: string | null;
   scopes: string[];
   channel: YouTubeChannelIdentity;
+  channelKey?: string | null;
 };
 
 type YouTubeIntegrationRow = {
   id: number;
+  channel_key: string | null;
   external_account_id: string;
   account_name: string;
   token_reference: string | null;
@@ -303,6 +305,7 @@ export async function upsertYouTubeIntegrationFromOAuth(
       account_name,
       account_type,
       external_account_id,
+      channel_key,
       token_reference,
       scopes,
       status,
@@ -315,14 +318,16 @@ export async function upsertYouTubeIntegrationFromOAuth(
       'youtube_channel',
       $2,
       $3,
-      $4::text[],
+      $4,
+      $5::text[],
       'ACTIVE',
-      $5,
+      $6,
       now()
     )
     ON CONFLICT (platform, external_account_id, account_type)
     DO UPDATE SET
       account_name = EXCLUDED.account_name,
+      channel_key = COALESCE(EXCLUDED.channel_key, platform_integration.channel_key),
       token_reference = COALESCE(EXCLUDED.token_reference, platform_integration.token_reference),
       scopes = EXCLUDED.scopes,
       status = 'ACTIVE',
@@ -331,6 +336,7 @@ export async function upsertYouTubeIntegrationFromOAuth(
     [
       input.channel.channelName,
       input.channel.channelId,
+      input.channelKey ?? null,
       input.refreshToken,
       scopes,
       input.createdByProfileId,
@@ -338,8 +344,13 @@ export async function upsertYouTubeIntegrationFromOAuth(
   );
 }
 
+function channelAnalyticsIds(channelId: string) {
+  return `channel==${channelId}`;
+}
+
 async function fetchAnalyticsTotals(
   auth: ReturnType<typeof createYouTubeOAuthClient>,
+  channelId: string,
   dateRange?: AnalyticsDateRange,
 ) {
   const analytics = google.youtubeAnalytics({ version: "v2", auth });
@@ -347,7 +358,7 @@ async function fetchAnalyticsTotals(
   const days = dateRangeToStartOffset(dateRange);
 
   const response = await analytics.reports.query({
-    ids: "channel==MINE",
+    ids: channelAnalyticsIds(channelId),
     startDate: formatDate(daysAgo(today, days)),
     endDate: formatDate(today),
     metrics:
@@ -371,6 +382,7 @@ async function fetchAnalyticsTotals(
 
 async function fetchDailyAnalytics(
   auth: ReturnType<typeof createYouTubeOAuthClient>,
+  channelId: string,
   dateRange?: AnalyticsDateRange,
 ): Promise<YouTubeDailyMetricRow[]> {
   const analytics = google.youtubeAnalytics({ version: "v2", auth });
@@ -378,7 +390,7 @@ async function fetchDailyAnalytics(
   const days = dateRangeToStartOffset(dateRange);
 
   const response = await analytics.reports.query({
-    ids: "channel==MINE",
+    ids: channelAnalyticsIds(channelId),
     startDate: formatDate(daysAgo(today, days)),
     endDate: formatDate(today),
     dimensions: "day",
@@ -403,6 +415,7 @@ async function fetchDailyAnalytics(
 
 async function fetchTopVideos(
   auth: ReturnType<typeof createYouTubeOAuthClient>,
+  channelId: string,
   dateRange?: AnalyticsDateRange,
 ): Promise<YouTubeTopVideoRow[]> {
   const analytics = google.youtubeAnalytics({ version: "v2", auth });
@@ -410,7 +423,7 @@ async function fetchTopVideos(
   const days = dateRangeToStartOffset(dateRange);
 
   const response = await analytics.reports.query({
-    ids: "channel==MINE",
+    ids: channelAnalyticsIds(channelId),
     startDate: formatDate(daysAgo(today, days)),
     endDate: formatDate(today),
     dimensions: "video",
@@ -673,7 +686,7 @@ async function syncSingleYouTubeIntegration(
     const youtube = google.youtube({ version: "v3", auth: oauth });
     const channelResponse = await youtube.channels.list({
       part: ["snippet", "statistics"],
-      mine: true,
+      id: [integration.external_account_id],
       maxResults: 1,
     });
 
@@ -688,9 +701,9 @@ async function syncSingleYouTubeIntegration(
       asRecord(channel?.statistics).subscriberCount,
     );
 
-    const totals = await fetchAnalyticsTotals(oauth, dateRange);
-    const dailyRows = await fetchDailyAnalytics(oauth, dateRange);
-    const topVideos = await fetchTopVideos(oauth, dateRange);
+    const totals = await fetchAnalyticsTotals(oauth, channelId, dateRange);
+    const dailyRows = await fetchDailyAnalytics(oauth, channelId, dateRange);
+    const topVideos = await fetchTopVideos(oauth, channelId, dateRange);
 
     const historyWithTotals = toSubscriberHistory(subscribersTotal, dailyRows);
     const videoMetadata = await fetchVideoMetadata(
@@ -874,12 +887,14 @@ async function syncSingleYouTubeIntegration(
 
 export async function syncYouTubeAnalytics(input?: {
   accountId?: string | null;
+  channelKey?: string | null;
   dateRange?: AnalyticsDateRange;
 }) {
   const integrations = await query<YouTubeIntegrationRow>(
     `
     SELECT
       id,
+      channel_key,
       external_account_id,
       account_name,
       token_reference,
@@ -888,9 +903,10 @@ export async function syncYouTubeAnalytics(input?: {
     WHERE platform = 'YOUTUBE'
       AND status IN ('ACTIVE', 'ERROR')
       AND ($1::text IS NULL OR external_account_id = $1)
+      AND ($2::text IS NULL OR channel_key = $2)
     ORDER BY updated_at DESC
     `,
-    [input?.accountId ?? null],
+    [input?.accountId ?? null, input?.channelKey ?? null],
   );
 
   if (!integrations.rows.length) {
@@ -969,10 +985,10 @@ export async function getYouTubeLiveMetricMap(
   oauth.setCredentials({ refresh_token: tokenReference });
 
   const [totals, channelResponse] = await Promise.all([
-    fetchAnalyticsTotals(oauth, dateRange),
+    fetchAnalyticsTotals(oauth, accountId, dateRange),
     google.youtube({ version: "v3", auth: oauth }).channels.list({
       part: ["statistics"],
-      mine: true,
+      id: [accountId],
       maxResults: 1,
     }),
   ]);

@@ -10,6 +10,7 @@ import { canSyncPlatformAnalytics } from "@/lib/platform-analytics/access";
 export const runtime = "nodejs";
 
 const YOUTUBE_OAUTH_STATE_COOKIE = "youtube_oauth_state";
+const YOUTUBE_OAUTH_CHANNEL_COOKIE = "youtube_oauth_channel_key";
 
 function getAppOrigin(request: NextRequest) {
   const betterAuthUrl = process.env.BETTER_AUTH_URL?.trim();
@@ -45,11 +46,30 @@ export async function GET(request: NextRequest) {
     return redirectTo(request, unauthorizedPath);
   }
 
+  const channelKey = request.nextUrl.searchParams.get("channelKey")?.trim();
+
+  if (!channelKey) {
+    const basePath = isAdminAccountType(context.profile.account_type)
+      ? "/admin/platform-analytics"
+      : "/employee/platform-analytics";
+    return redirectTo(
+      request,
+      `${basePath}?platform=YOUTUBE&youtube_oauth=error&youtube_message=Select+a+YouTube+channel+before+connecting.`,
+    );
+  }
+
   const state = randomUUID();
   const authUrl = buildYouTubeOAuthUrl(state);
 
   const response = NextResponse.redirect(authUrl);
   response.cookies.set(YOUTUBE_OAUTH_STATE_COOKIE, state, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 10,
+    path: "/",
+  });
+  response.cookies.set(YOUTUBE_OAUTH_CHANNEL_COOKIE, channelKey, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
