@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator"
 import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
 import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
-import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
+import { formatAbsoluteDateTime } from "@/lib/date-time/relative-timestamp"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -16,8 +16,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 })
 
-function formatDate(value: string | null) {
-  return value ? formatRecentOrDateTime(value, dateFormatter) : "Not set"
+function formatDueDate(value: string | null) {
+  return value ? formatAbsoluteDateTime(value, dateFormatter) : "Not set"
 }
 
 function DetailField({
@@ -80,7 +80,7 @@ export function TaskDetailsSummary({
         <div className="grid gap-3 sm:grid-cols-2">
           <DetailField label="Assignee">{assignment.assignedToName}</DetailField>
           <DetailField label="Created by">{assignment.createdByName}</DetailField>
-          <DetailField label="Due date">{formatDate(assignment.dueDate)}</DetailField>
+          <DetailField label="Due date">{formatDueDate(assignment.dueDate)}</DetailField>
           <DetailField label="Proof status">
             {assignment.proofUrl || assignment.proofNote ? "Submitted" : "Not submitted"}
           </DetailField>

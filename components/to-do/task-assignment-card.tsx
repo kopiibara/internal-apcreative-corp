@@ -21,7 +21,10 @@ import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { RichTextPreview } from "@/components/ui/rich-text-renderer"
-import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
+import {
+  formatAbsoluteDateTime,
+  formatRecentOrDateTime,
+} from "@/lib/date-time/relative-timestamp"
 import { canReviewTaskAssignment } from "@/lib/tasks/task-review-guards"
 import { shouldOpenProofInDialog } from "@/lib/proof/proof-media"
 import { getTaskLateSubmissionDisplay } from "@/lib/tasks/task-late-submission"
@@ -199,7 +202,7 @@ export function TaskAssignmentCard({
                 )}
               >
                 {assignment.dueDate
-                  ? formatRecentOrDateTime(assignment.dueDate, dateFormatter)
+                  ? formatAbsoluteDateTime(assignment.dueDate, dateFormatter)
                   : "—"}
               </span>
             </div>

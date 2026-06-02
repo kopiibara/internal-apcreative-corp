@@ -1,6 +1,9 @@
 import { StatusBadge } from "@/components/shared/status-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
+import {
+  formatAbsoluteDateTime,
+  formatRecentOrDateTime,
+} from "@/lib/date-time/relative-timestamp"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -72,7 +75,7 @@ export function TaskBlockerSummary({
             {assignment.dueDate ? (
               <p>
                 <span className="text-muted-foreground">Current due date:</span>{" "}
-                {formatDate(assignment.dueDate)}
+                {formatAbsoluteDateTime(assignment.dueDate, dateFormatter)}
               </p>
             ) : null}
           </div>

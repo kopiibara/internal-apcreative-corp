@@ -1,4 +1,4 @@
-const DEFAULT_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
+export const DEFAULT_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   year: "numeric",
@@ -6,9 +6,24 @@ const DEFAULT_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 })
 
+/** Always formats as a specific date/time (for due dates, deadlines, scheduled times). */
+export function formatAbsoluteDateTime(
+  value: string | Date,
+  formatter: Intl.DateTimeFormat = DEFAULT_DATE_TIME_FORMATTER,
+) {
+  const date = value instanceof Date ? value : new Date(value)
+  const timestamp = date.getTime()
+
+  if (Number.isNaN(timestamp)) {
+    return ""
+  }
+
+  return formatter.format(date)
+}
+
 export function formatRecentOrDateTime(
   value: string | Date,
-  formatter: Intl.DateTimeFormat = DEFAULT_DATE_TIME_FORMATTER
+  formatter: Intl.DateTimeFormat = DEFAULT_DATE_TIME_FORMATTER,
 ) {
   const date = value instanceof Date ? value : new Date(value)
   const timestamp = date.getTime()
