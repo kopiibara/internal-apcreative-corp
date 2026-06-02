@@ -479,7 +479,7 @@ export function DashboardSidebar({
                 )}
             </SidebarHeader>
 
-            <SidebarContent className={isCollapsed ? "px-2" : "px-4 py-1"}>
+            <SidebarContent className={isCollapsed ? "px-2" : "px-4 "}>
                 {groups.map((group) => (
                     <SidebarGroup key={group.label}>
                         {!isCollapsed ? (
@@ -571,7 +571,7 @@ export function DashboardSidebar({
                                                     }
                                                     className={cn(
                                                         isCollapsed
-                                                            ? "mx-auto h-8 w-8 justify-center rounded-xl px-0"
+                                                            ? "mx-auto h-6 w-6 justify-center rounded-xl px-0 py-0"
                                                             : "h-10 rounded-xl px-3",
                                                         sidebarNavHoverClass,
                                                         isActive &&
