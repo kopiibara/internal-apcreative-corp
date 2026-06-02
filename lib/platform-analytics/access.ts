@@ -61,9 +61,10 @@ export async function canManagePlatformAnalytics(authUserId: string) {
 }
 
 /**
- * Meta connect/sync is limited to all-brands access only.
- * - Allowed: All Brand assignment, or org-wide admin account types (supervisor, etc.)
- * - Not allowed: single-brand employees, or multiple specific brands (e.g. Neon Nights + Oculto only)
+ * Manual Platform Analytics sync/connect is restricted to Full Stack Developer only.
+ *
+ * Note: We keep the "all brands" requirement as an additional safety constraint,
+ * since these actions can touch multiple integrations and write cross-brand data.
  */
 export async function canSyncPlatformAnalytics(
   authUserId: string,
@@ -74,19 +75,11 @@ export async function canSyncPlatformAnalytics(
     return false;
   }
 
-  if (!isAdminAccountType(accountType)) {
+  if (!isFullStackDeveloperAccountType(accountType)) {
     return false;
   }
 
-  if (hasAdminPermissionBypass(accountType)) {
-    return true;
-  }
-
-  if (isFullStackDeveloperAccountType(accountType)) {
-    return true;
-  }
-
-  return canManagePlatformAnalytics(authUserId);
+  return true;
 }
 
 /** Sync/connect buttons on admin Platform Analytics only (all-brands users). */

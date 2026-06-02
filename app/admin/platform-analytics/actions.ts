@@ -115,7 +115,8 @@ async function authorizeMetaManage(): Promise<MetaMonitoringActionResult<never> 
   if (!allowed) {
     return {
       success: false,
-      message: "You do not have permission to sync Platform Analytics.",
+      message:
+        "Only Full Stack Developer accounts are allowed to perform Meta connection and sync actions.",
     };
   }
 
