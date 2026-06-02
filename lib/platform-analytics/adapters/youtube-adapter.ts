@@ -58,7 +58,7 @@ export function buildYouTubeDisplaySliceFromChannels(
   return {
     selectedChannel,
     selectedChannelDisplayName: isAllView
-      ? "All YouTube Channels"
+      ? "All enabled channels"
       : (selectedChannel?.displayName ?? channelKey),
     channelStatusMessage: isAllView
       ? sliceSource.statusMessage

@@ -15,7 +15,6 @@ import {
 } from "@/lib/platform-analytics/adapters/tiktok-adapter";
 import {
   loadYouTubePlatformSlice,
-  youtubeChannelKeyFromFilter,
 } from "@/lib/platform-analytics/adapters/youtube-adapter";
 import { buildDemoPlatformSlice } from "@/lib/platform-analytics/demo-data";
 import { getDemoCharts } from "@/lib/platform-analytics/platform-charts";
@@ -52,13 +51,10 @@ export async function getPlatformAnalyticsDashboardData(input?: {
     // otherwise fall back to demo data.
     if (platform === "YOUTUBE") {
       try {
-        const youtube = await loadYouTubePlatformSlice(
-          youtubeChannelKeyFromFilter(accountId),
-          input?.dateRange,
-        );
+        const youtube = await loadYouTubePlatformSlice(null, input?.dateRange);
         const data = {
           platform,
-          accountId,
+          accountId: null,
           ...youtube,
           metaBusinessPages: [],
           tiktokBrandAnalytics: [],

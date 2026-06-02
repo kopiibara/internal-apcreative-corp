@@ -43,7 +43,7 @@ export const PLATFORM_VIEW_COPY: Record<
   YOUTUBE: {
     title: "YouTube Analytics",
     subtitle:
-      "Track connected YouTube channel performance, subscribers, views, watch time, video engagement, and sync history.",
+      "YouTube analytics per enabled channel. Each active channel has its own status, metrics, and video table.",
     liveBadge: "Live Integration",
     demoBadge: "Not Connected",
   },

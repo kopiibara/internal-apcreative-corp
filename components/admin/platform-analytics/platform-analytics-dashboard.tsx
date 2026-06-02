@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   bootstrapMetaMonitoringAction,
+  bootstrapYouTubeMonitoringAction,
   disconnectTikTokAction,
-  disconnectYouTubeAction,
   fetchPlatformAnalyticsAction,
   syncAllMetaMonitoringAction,
   syncMetaPageMonitoringAction,
@@ -17,6 +17,7 @@ import {
 } from "@/app/admin/platform-analytics/actions";
 import { MetaBusinessPageCard } from "@/components/admin/platform-analytics/meta-business-page-card";
 import { TikTokBrandCard } from "@/components/admin/platform-analytics/tiktok-brand-card";
+import { YouTubeChannelCard } from "@/components/admin/platform-analytics/youtube-channel-card";
 import { PlatformAnalyticsCharts } from "@/components/admin/platform-analytics/platform-analytics-charts";
 import { KANBAN_BOARD_PAGE_CLASS } from "@/components/shared/kanban-board-scroll";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -121,11 +122,11 @@ const PLATFORM_TABS: Record<PlatformCode, { value: string; label: string }[]> =
 };
 
 const YOUTUBE_CONTENT_SPEC = {
-  selectedChannelLabel: "Selected channel",
+  syncTargetLabel: "Sync target",
   metricSummary:
-    "Showing subscribers, views, watch time, average view duration, likes, comments, and shares from the selected YouTube date range.",
+    "Each enabled YouTube channel has its own status, metrics, and video table.",
   overviewDescription:
-    "Summary metrics are shown above for the selected YouTube channel and date range. Open Video Performance for synced video rows and source links.",
+    "Channel cards above show per-branch metrics and video tables. Use the tabs below for detailed tables and logs.",
   contentDescription:
     "Synced YouTube video performance for the selected channel. Titles open the source video in a new tab.",
   contentEmptyState:
@@ -145,7 +146,7 @@ export function PlatformAnalyticsDashboard({
     defaultMetaPageKey: "all",
     showAllPagesOption: true,
     defaultYouTubeChannelKey: "all",
-    showAllYouTubeChannelsOption: true,
+    showAllEnabledChannelsOption: true,
     assignedBrandNames: [],
     scopeDescription: "All brands",
   },
@@ -159,10 +160,9 @@ export function PlatformAnalyticsDashboard({
     brandScopeUi.defaultMetaPageKey,
   );
   const [tiktokBrandKey, setTikTokBrandKey] = useState<string>("all");
-  const [accountId, setAccountId] = useState(
-    resolvedInitialPlatform === "YOUTUBE"
-      ? brandScopeUi.defaultYouTubeChannelKey
-      : "all",
+  const [accountId, setAccountId] = useState("all");
+  const [youtubeChannelKey, setYoutubeChannelKey] = useState(
+    brandScopeUi.defaultYouTubeChannelKey,
   );
 
   const youtubeChannels = data.youtubeChannelAnalytics ?? [];
@@ -170,9 +170,59 @@ export function PlatformAnalyticsDashboard({
   const effectiveYouTubeChannelKey =
     platform === "YOUTUBE" &&
       youtubeChannels.length === 1 &&
-      accountId === "all"
+      youtubeChannelKey === "all"
       ? youtubeChannels[0].key
-      : accountId;
+      : youtubeChannelKey;
+
+  const youtubeActiveView = useMemo(() => {
+    if (platform !== "YOUTUBE") {
+      return null;
+    }
+
+    if (effectiveYouTubeChannelKey === "all") {
+      return {
+        overviewKpis: data.overviewKpis,
+        engagementKpis: data.engagementKpis,
+        audienceInsightKpis: data.audienceInsightKpis,
+        growthSnapshots: data.growthSnapshots,
+        contentPerformance: data.contentPerformance,
+        activityLogs: data.activityLogs,
+        syncHistory: data.syncHistory,
+        charts: data.charts,
+        connection: data.connection,
+      };
+    }
+
+    const channel = youtubeChannels.find(
+      (entry) => entry.key === effectiveYouTubeChannelKey,
+    );
+
+    if (!channel) {
+      return {
+        overviewKpis: [],
+        engagementKpis: [],
+        audienceInsightKpis: [],
+        growthSnapshots: [],
+        contentPerformance: [],
+        activityLogs: [],
+        syncHistory: [],
+        charts: [],
+        connection: data.connection,
+      };
+    }
+
+    return {
+      overviewKpis: channel.overviewKpis,
+      engagementKpis: channel.engagementKpis,
+      audienceInsightKpis: channel.audienceInsightKpis,
+      growthSnapshots: channel.growthSnapshots,
+      contentPerformance: channel.contentPerformance,
+      activityLogs: channel.activityLogs,
+      syncHistory: channel.syncHistory,
+      charts: channel.charts,
+      connection: channel.connection,
+    };
+  }, [platform, effectiveYouTubeChannelKey, data, youtubeChannels]);
   const [dateRange, setDateRange] = useState<AnalyticsDateRange>("28d");
   const [customDateFrom, setCustomDateFrom] = useState("");
   const [customDateTo, setCustomDateTo] = useState("");
@@ -240,7 +290,12 @@ export function PlatformAnalyticsDashboard({
       const range = nextDateRange ?? dateRange;
       const result = await fetchPlatformAnalyticsAction({
         platform: p,
-        accountId: selectedAccount === "all" ? null : selectedAccount,
+        accountId:
+          p === "YOUTUBE"
+            ? null
+            : selectedAccount === "all"
+              ? null
+              : selectedAccount,
         metaScope: p === "META" ? (nextScope ?? metaScope) : "combined",
         dateRange: range,
         customDateFrom:
@@ -261,8 +316,8 @@ export function PlatformAnalyticsDashboard({
   function handlePlatformChange(next: AnalyticsPlatform) {
     setPlatform(next);
     if (next === "YOUTUBE") {
-      setAccountId(brandScopeUi.defaultYouTubeChannelKey);
-      reload(next, brandScopeUi.defaultYouTubeChannelKey);
+      setYoutubeChannelKey(brandScopeUi.defaultYouTubeChannelKey);
+      reload(next, "all");
       return;
     }
     setAccountId("all");
@@ -282,6 +337,10 @@ export function PlatformAnalyticsDashboard({
         reload(platform, accountId, metaScope, nextRange);
         return;
       }
+      if (platform === "YOUTUBE") {
+        reload("YOUTUBE", "all", "combined", nextRange);
+        return;
+      }
     } else if (platform === "META") {
       return;
     }
@@ -289,21 +348,6 @@ export function PlatformAnalyticsDashboard({
     if (platform !== "YOUTUBE") {
       return;
     }
-
-    startTransition(async () => {
-      const result = await syncYouTubeAction({
-        channelKey: effectiveYouTubeChannelKey === "all" ? null : effectiveYouTubeChannelKey,
-        dateRange: nextRange,
-      });
-
-      if (!result.success) {
-        toast.error(result.message);
-        return;
-      }
-
-      toast.success(result.message);
-      reload("YOUTUBE", accountId, "combined", nextRange);
-    });
   }
 
   function handleBootstrap() {
@@ -319,24 +363,42 @@ export function PlatformAnalyticsDashboard({
   }
 
   function handleYouTubeConnect() {
-    if (effectiveYouTubeChannelKey === "all") {
-      toast.error("Select a specific YouTube channel before connecting.");
-      return;
-    }
-
     startTransition(async () => {
-      window.location.href = `/api/platform-analytics/youtube/connect?channelKey=${encodeURIComponent(effectiveYouTubeChannelKey)}`;
-    });
-  }
+      const result = await bootstrapYouTubeMonitoringAction({
+        channelKey:
+          effectiveYouTubeChannelKey === "all" ? null : effectiveYouTubeChannelKey,
+        dateRange,
+      });
 
-  function handleYouTubeDisconnect() {
-    startTransition(async () => {
-      if (!window.confirm("Disconnect this YouTube account?")) {
+      if (!result.success && result.data?.needsOAuth) {
+        if (effectiveYouTubeChannelKey === "all") {
+          toast.error("Select a specific channel to authorize via Google OAuth.");
+          return;
+        }
+
+        window.location.href = `/api/platform-analytics/youtube/connect?channelKey=${encodeURIComponent(effectiveYouTubeChannelKey)}`;
         return;
       }
 
-      const result = await disconnectYouTubeAction({
-        channelKey: effectiveYouTubeChannelKey === "all" ? null : effectiveYouTubeChannelKey,
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      toast.success(result.message);
+      reload("YOUTUBE", "all", "combined", dateRange);
+    });
+  }
+
+  function runYouTubeSync(
+    syncMode: "full" | "channel" | "videos" | "analytics" = "full",
+  ) {
+    startTransition(async () => {
+      const result = await syncYouTubeAction({
+        channelKey:
+          effectiveYouTubeChannelKey === "all" ? null : effectiveYouTubeChannelKey,
+        dateRange,
+        syncMode,
       });
 
       if (!result.success) {
@@ -345,9 +407,24 @@ export function PlatformAnalyticsDashboard({
       }
 
       toast.success(result.message);
-      setAccountId(brandScopeUi.defaultYouTubeChannelKey);
-      reload("YOUTUBE", brandScopeUi.defaultYouTubeChannelKey, "combined", dateRange);
+      reload("YOUTUBE", "all", "combined", dateRange);
     });
+  }
+
+  function handleYouTubeSync() {
+    runYouTubeSync("full");
+  }
+
+  function handleYouTubeSyncChannel() {
+    runYouTubeSync("channel");
+  }
+
+  function handleYouTubeSyncVideos() {
+    runYouTubeSync("videos");
+  }
+
+  function handleYouTubeSyncAnalytics() {
+    runYouTubeSync("analytics");
   }
 
   const effectiveTikTokBrandKey =
@@ -389,15 +466,6 @@ export function PlatformAnalyticsDashboard({
       youtubeChannels.some(
         (channel) => channel.connectionStatus === "Connected",
       ));
-
-  const selectedYouTubeChannelLabel =
-    effectiveYouTubeChannelKey === "all"
-      ? "All YouTube Channels"
-      : (selectedYouTubeChannel?.displayName ??
-        youtubeChannels.find(
-          (channel) => channel.key === effectiveYouTubeChannelKey,
-        )?.displayName ??
-        effectiveYouTubeChannelKey);
 
   function handleTikTokConnect() {
     if (selectedTikTokBrandId == null) {
@@ -449,23 +517,6 @@ export function PlatformAnalyticsDashboard({
         "TIKTOK",
         selectedTikTokBrandId != null ? String(selectedTikTokBrandId) : "all",
       );
-    });
-  }
-
-  function handleYouTubeSync() {
-    startTransition(async () => {
-      const result = await syncYouTubeAction({
-        channelKey: effectiveYouTubeChannelKey === "all" ? null : effectiveYouTubeChannelKey,
-        dateRange,
-      });
-
-      if (!result.success) {
-        toast.error(result.message);
-        return;
-      }
-
-      toast.success(result.message);
-      reload("YOUTUBE", accountId, "combined", dateRange);
     });
   }
 
@@ -537,9 +588,7 @@ export function PlatformAnalyticsDashboard({
             onDisconnect={
               platform === "TIKTOK"
                 ? handleTikTokDisconnect
-                : platform === "YOUTUBE"
-                  ? handleYouTubeDisconnect
-                  : undefined
+                : undefined
             }
             onSyncAll={
               platform === "TIKTOK"
@@ -556,20 +605,21 @@ export function PlatformAnalyticsDashboard({
                   ? youtubeIsConnected
                   : data.connection.apiConnected
             }
-            youtubeConnectDisabled={
-              platform === "YOUTUBE" && effectiveYouTubeChannelKey === "all"
-            }
             onSyncPosts={() =>
               platform === "TIKTOK"
                 ? handleTikTokSync()
                 : platform === "YOUTUBE"
-                  ? handleYouTubeSync()
+                  ? handleYouTubeSyncVideos()
                   : handleSync("hourly_posts")
             }
-            onSyncPage={() => handleSync("daily_page")}
+            onSyncPage={() =>
+              platform === "YOUTUBE"
+                ? handleYouTubeSyncChannel()
+                : handleSync("daily_page")
+            }
             onSyncInsights={() =>
               platform === "YOUTUBE"
-                ? handleYouTubeSync()
+                ? handleYouTubeSyncAnalytics()
                 : handleSync("daily_insights")
             }
           />
@@ -620,7 +670,7 @@ export function PlatformAnalyticsDashboard({
                 </div>
                 <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
                   {platform === "YOUTUBE"
-                    ? `${copy.subtitle} ${YOUTUBE_CONTENT_SPEC.selectedChannelLabel}: ${selectedYouTubeChannelLabel}. ${YOUTUBE_CONTENT_SPEC.metricSummary}`
+                    ? `${copy.subtitle} ${YOUTUBE_CONTENT_SPEC.metricSummary}`
                     : copy.subtitle}
                 </p>
               </div>
@@ -715,20 +765,17 @@ export function PlatformAnalyticsDashboard({
             {platform === "YOUTUBE" && youtubeChannels.length > 0 ? (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-muted-foreground">
-                  {YOUTUBE_CONTENT_SPEC.selectedChannelLabel}:
+                  {YOUTUBE_CONTENT_SPEC.syncTargetLabel}:
                 </span>
-                {brandScopeUi.showAllYouTubeChannelsOption ? (
+                {brandScopeUi.showAllEnabledChannelsOption ? (
                   <Button
                     type="button"
                     size="sm"
                     variant={effectiveYouTubeChannelKey === "all" ? "default" : "neutral"}
                     disabled={isPending}
-                    onClick={() => {
-                      setAccountId("all");
-                      reload("YOUTUBE", "all");
-                    }}
+                    onClick={() => setYoutubeChannelKey("all")}
                   >
-                    All YouTube Channels
+                    All enabled channels
                   </Button>
                 ) : null}
                 {youtubeChannels.map((channel) => (
@@ -742,10 +789,7 @@ export function PlatformAnalyticsDashboard({
                         : "neutral"
                     }
                     disabled={isPending}
-                    onClick={() => {
-                      setAccountId(channel.key);
-                      reload("YOUTUBE", channel.key);
-                    }}
+                    onClick={() => setYoutubeChannelKey(channel.key)}
                   >
                     {channel.displayName}
                   </Button>
@@ -753,10 +797,12 @@ export function PlatformAnalyticsDashboard({
               </div>
             ) : null}
 
-            <ConnectionStatusCard
-              connection={data.connection}
-              isDemo={data.isDemo}
-            />
+            {platform !== "YOUTUBE" ? (
+              <ConnectionStatusCard
+                connection={data.connection}
+                isDemo={data.isDemo}
+              />
+            ) : null}
 
             {!data.isDemo &&
               data.metaNeedsBootstrap &&
@@ -826,18 +872,21 @@ export function PlatformAnalyticsDashboard({
                 ).map((brand) => <TikTokBrandCard key={brand.brandId} brand={brand} />)
               )}
             </section>
-          ) : (
+          ) : platform === "YOUTUBE" ? (
             <section className="space-y-6">
-              {platform === "YOUTUBE" && youtubeChannels.length === 0 ? (
+              {isPending ? (
+                <YouTubeAnalyticsLoadingSkeleton />
+              ) : youtubeChannels.length === 0 ? (
                 <Card>
                   <CardContent className="py-10 text-center text-sm text-muted-foreground">
                     {brandScopeUi.hasAllBrandsAccess ? (
                       <>
                         No YouTube channels are enabled. Set{" "}
-                        <code className="text-xs">*_YOUTUBE_ENABLED=true</code> (e.g.{" "}
-                        <code className="text-xs">AP_CREATIVE_YOUTUBE_ENABLED</code>,{" "}
-                        <code className="text-xs">PRO_GROUP_YOUTUBE_ENABLED</code>) for each
-                        brand channel.
+                        <code className="text-xs">*_YOUTUBE_ENABLED=true</code> and{" "}
+                        <code className="text-xs">*_YOUTUBE_CHANNEL_ID</code> (e.g.{" "}
+                        <code className="text-xs">PRO_GROUP_YOUTUBE_ENABLED</code>,{" "}
+                        <code className="text-xs">PRO_GROUP_YOUTUBE_CHANNEL_ID</code>,{" "}
+                        <code className="text-xs">PRO_GROUP_YOUTUBE_REFRESH_TOKEN</code>).
                       </>
                     ) : (
                       <>
@@ -847,34 +896,29 @@ export function PlatformAnalyticsDashboard({
                     )}
                   </CardContent>
                 </Card>
-              ) : null}
-              {platform === "YOUTUBE" &&
-              selectedYouTubeChannel?.statusMessage &&
-              effectiveYouTubeChannelKey !== "all" ? (
-                <Card>
-                  <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                    {selectedYouTubeChannel.statusMessage}
-                  </CardContent>
-                </Card>
-              ) : null}
-              {platform === "YOUTUBE" && isPending ? (
-                <YouTubeAnalyticsLoadingSkeleton />
               ) : (
-                <>
-                  <KpiGrid metrics={data.overviewKpis} />
-                  <PlatformAnalyticsCharts
-                    charts={data.charts}
-                    isDemo={data.isDemo}
-                    emptyMessage={
-                      platform === "YOUTUBE"
-                        ? YOUTUBE_CONTENT_SPEC.chartEmptyState
-                        : data.isDemo
-                          ? undefined
-                          : "No live data yet - run sync after connecting the selected platform."
-                    }
-                  />
-                </>
+                (effectiveYouTubeChannelKey === "all"
+                  ? youtubeChannels
+                  : youtubeChannels.filter(
+                      (channel) => channel.key === effectiveYouTubeChannelKey,
+                    )
+                ).map((channel) => (
+                  <YouTubeChannelCard key={channel.key} channel={channel} />
+                ))
               )}
+            </section>
+          ) : (
+            <section className="space-y-6">
+              <KpiGrid metrics={data.overviewKpis} />
+              <PlatformAnalyticsCharts
+                charts={data.charts}
+                isDemo={data.isDemo}
+                emptyMessage={
+                  data.isDemo
+                    ? undefined
+                    : "No live data yet - run sync after connecting the selected platform."
+                }
+              />
             </section>
           )}
 
@@ -905,17 +949,40 @@ export function PlatformAnalyticsDashboard({
                   ) : (
                     <ContentTable
                       platform={platformCode}
-                      rows={data.contentPerformance}
-                      lastSyncedAt={data.connection.lastSyncAt}
-                      showYouTubeChannelColumn={effectiveYouTubeChannelKey === "all"}
+                      rows={
+                        platform === "YOUTUBE"
+                          ? (youtubeActiveView?.contentPerformance ?? [])
+                          : data.contentPerformance
+                      }
+                      lastSyncedAt={
+                        platform === "YOUTUBE"
+                          ? (youtubeActiveView?.connection ?? data.connection).lastSyncAt
+                          : data.connection.lastSyncAt
+                      }
+                      showYouTubeChannelColumn={
+                        platform === "YOUTUBE" && effectiveYouTubeChannelKey === "all"
+                      }
                     />
                   )}
                 </TabsContent>
 
                 <TabsContent value="audience" className="space-y-4 pt-4">
-                  <KpiGrid metrics={data.audienceInsightKpis} />
+                  <KpiGrid
+                    metrics={
+                      platform === "YOUTUBE"
+                        ? (youtubeActiveView?.audienceInsightKpis ?? [])
+                        : data.audienceInsightKpis
+                    }
+                  />
                   {platform !== "GOOGLE" ? (
-                    <GrowthTable rows={data.growthSnapshots} isDemo={data.isDemo} />
+                    <GrowthTable
+                      rows={
+                        platform === "YOUTUBE"
+                          ? (youtubeActiveView?.growthSnapshots ?? [])
+                          : data.growthSnapshots
+                      }
+                      isDemo={data.isDemo}
+                    />
                   ) : null}
                 </TabsContent>
 
@@ -923,7 +990,13 @@ export function PlatformAnalyticsDashboard({
                   {platform === "GOOGLE" ? (
                     <PlaceholderPanel message="Engagement metrics are not applicable for Google Ads." />
                   ) : (
-                    <KpiGrid metrics={data.engagementKpis} />
+                    <KpiGrid
+                      metrics={
+                        platform === "YOUTUBE"
+                          ? (youtubeActiveView?.engagementKpis ?? [])
+                          : data.engagementKpis
+                      }
+                    />
                   )}
                 </TabsContent>
               </>
@@ -946,11 +1019,23 @@ export function PlatformAnalyticsDashboard({
             </TabsContent>
 
             <TabsContent value="logs" className="pt-4">
-              <ActivityLogs logs={data.activityLogs} />
+              <ActivityLogs
+                logs={
+                  platform === "YOUTUBE"
+                    ? (youtubeActiveView?.activityLogs ?? [])
+                    : data.activityLogs
+                }
+              />
             </TabsContent>
 
             <TabsContent value="sync" className="pt-4">
-              <SyncHistoryTable rows={data.syncHistory} />
+              <SyncHistoryTable
+                rows={
+                  platform === "YOUTUBE"
+                    ? (youtubeActiveView?.syncHistory ?? [])
+                    : data.syncHistory
+                }
+              />
             </TabsContent>
           </Tabs>
         </div>
@@ -968,7 +1053,6 @@ function PlatformActions({
   showAdminSyncActions,
   isPending,
   tiktokConnectDisabled = false,
-  youtubeConnectDisabled = false,
   onConnect,
   onDisconnect,
   onSyncAll,
@@ -981,7 +1065,6 @@ function PlatformActions({
   showAdminSyncActions: boolean;
   isPending: boolean;
   tiktokConnectDisabled?: boolean;
-  youtubeConnectDisabled?: boolean;
   onConnect: () => void;
   onDisconnect?: () => void;
   onSyncAll: () => void;
@@ -1086,26 +1169,16 @@ function PlatformActions({
       <div className={PLATFORM_ACTIONS_ROW_CLASS}>
         <Button
           type="button"
-          variant={isConnected ? "neutral" : "default"}
-          disabled={isPending || isConnected || youtubeConnectDisabled}
+          variant="default"
+          disabled={isPending}
           onClick={onConnect}
         >
-          {isConnected ? "Connected" : "Connect YouTube"}
+          Connect YouTube
         </Button>
-        {isConnected ? (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={isPending || youtubeConnectDisabled}
-            onClick={onDisconnect}
-          >
-            Disconnect YouTube
-          </Button>
-        ) : null}
         <Button
           type="button"
           variant="neutral"
-          disabled={isPending || !isConnected}
+          disabled={isPending}
           onClick={onSyncAll}
         >
           Sync YouTube
@@ -1113,10 +1186,26 @@ function PlatformActions({
         <Button
           type="button"
           variant="neutral"
-          disabled={isPending || !isConnected}
+          disabled={isPending}
+          onClick={onSyncPage}
+        >
+          Sync Channel
+        </Button>
+        <Button
+          type="button"
+          variant="neutral"
+          disabled={isPending}
           onClick={onSyncPosts}
         >
           Sync Videos
+        </Button>
+        <Button
+          type="button"
+          variant="neutral"
+          disabled={isPending}
+          onClick={onSyncInsights}
+        >
+          Sync Analytics
         </Button>
       </div>
     );

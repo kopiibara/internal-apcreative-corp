@@ -112,9 +112,14 @@ function ChartCard({
         ) : null}
       </CardHeader>
       <CardContent>
+        {chart.data.length === 0 ? (
+          <div className="flex h-[220px] w-full min-w-0 items-center justify-center text-sm text-muted-foreground">
+            No chart data yet
+          </div>
+        ) : (
         <ChartContainer
           config={config}
-          className="aspect-video min-h-55 w-full"
+          className="h-[220px] w-full min-w-0"
         >
           {chart.chartType === "bar" ? (
             <BarChart data={chart.data} margin={{ left: 8, right: 8, top: 8 }}>
@@ -215,6 +220,7 @@ function ChartCard({
             </LineChart>
           )}
         </ChartContainer>
+        )}
       </CardContent>
     </Card>
   );
