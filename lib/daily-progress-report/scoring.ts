@@ -3,7 +3,7 @@ import "server-only";
 import { query } from "@/lib/db";
 import {
   formatDateKeyInPhilippines,
-  PHILIPPINE_TIMEZONE,
+  isWeekendDateKeyInPhilippines,
 } from "@/lib/daily-reports/daily-report-filters";
 
 export type DailyProgressStatus = "Submitted" | "Late" | "Missed" | "Excused";
@@ -29,11 +29,6 @@ type HolidayRow = {
   name: string;
 };
 
-const weekdayFormatter = new Intl.DateTimeFormat("en-US", {
-  timeZone: PHILIPPINE_TIMEZONE,
-  weekday: "short",
-});
-
 export function getDailyProgressNetPoints(report: {
   points_awarded?: number;
   deduction_applied?: number;
@@ -47,9 +42,7 @@ export function getDailyProgressNetPoints(report: {
 }
 
 export function isWeekendPH(date: Date) {
-  const weekday = weekdayFormatter.format(date);
-
-  return weekday === "Sat" || weekday === "Sun";
+  return isWeekendDateKeyInPhilippines(formatDateKeyInPhilippines(date));
 }
 
 export async function getActiveHoliday(dateKey: string) {

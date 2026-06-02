@@ -29,6 +29,17 @@ export function formatDateKeyInPhilippines(date: Date) {
   }).format(date)
 }
 
+const weekdayFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: PHILIPPINE_TIMEZONE,
+  weekday: "short",
+})
+
+export function isWeekendDateKeyInPhilippines(dateKey: string) {
+  const weekday = weekdayFormatter.format(new Date(`${dateKey}T12:00:00+08:00`))
+
+  return weekday === "Sat" || weekday === "Sun"
+}
+
 export function getTodayDateKeyInPhilippines() {
   return formatDateKeyInPhilippines(new Date())
 }

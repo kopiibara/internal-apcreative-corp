@@ -22,6 +22,7 @@ import {
   getDailyProgressStatusKey,
   getRecentDailyProgressDateOptions,
 } from "@/lib/admin-daily-progress-utils";
+import { isWeekendDateKeyInPhilippines } from "@/lib/daily-reports/daily-report-filters";
 import { AdminDailyProgressViewControls } from "@/components/daily-progress/admin-daily-progress-view-controls";
 import { DailyProgressReportDetailsSheet } from "@/components/daily-progress/daily-progress-report-details-sheet";
 import { EmployeeDailyProgressDashboard } from "@/components/daily-progress/employee-daily-progress-dashboard";
@@ -88,7 +89,11 @@ export function AdminDailyProgressDashboard({
       ...recentDateOptions,
       ...reports
         .map((report) => report.reportDate)
-        .filter((dateKey) => dateKey >= DAILY_PROGRESS_SCORING_START_DATE_KEY),
+        .filter(
+          (dateKey) =>
+            dateKey >= DAILY_PROGRESS_SCORING_START_DATE_KEY &&
+            !isWeekendDateKeyInPhilippines(dateKey),
+        ),
     ]);
 
     return [...dates].sort((left, right) => right.localeCompare(left));

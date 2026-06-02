@@ -1,5 +1,6 @@
 import type { DailyProgressReportRecord } from "@/lib/daily-progress-report/daily-progress-report";
 import { DAILY_PROGRESS_SCORING_START_DATE_KEY } from "@/lib/daily-progress-report/constants";
+import { isWeekendDateKeyInPhilippines } from "@/lib/daily-reports/daily-report-filters";
 import type {
   DailyProgressKanbanColumnConfig,
   DailyProgressStatusFilter,
@@ -74,7 +75,11 @@ export function getRecentDailyProgressDateOptions(
     return new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Manila",
     }).format(date);
-  }).filter((dateKey) => dateKey >= DAILY_PROGRESS_SCORING_START_DATE_KEY);
+  }).filter(
+    (dateKey) =>
+      dateKey >= DAILY_PROGRESS_SCORING_START_DATE_KEY &&
+      !isWeekendDateKeyInPhilippines(dateKey),
+  );
 }
 
 export function getDailyProgressReportBrandNames(

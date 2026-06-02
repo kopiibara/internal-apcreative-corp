@@ -948,6 +948,7 @@ export async function getStaffAccountabilityData({
       WHERE employee.status = 'ACTIVE'
         AND employee.account_type IN ${STAFF_ACCOUNTABILITY_ACCOUNT_TYPE_SQL}
         AND dpr.report_date >= $5::date
+        AND EXTRACT(ISODOW FROM dpr.report_date)::int NOT IN (6, 7)
         AND (
           $1::timestamptz IS NULL
           OR (
