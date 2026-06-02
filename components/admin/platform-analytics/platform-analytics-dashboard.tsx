@@ -228,6 +228,9 @@ export function PlatformAnalyticsDashboard({
   const [customDateFrom, setCustomDateFrom] = useState("");
   const [customDateTo, setCustomDateTo] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [metaAction, setMetaAction] = useState<
+    null | "connect" | "sync_all" | "sync_page" | "sync_posts" | "sync_insights"
+  >(null);
 
   const platformCode = platform as PlatformCode;
   const copy = PLATFORM_VIEW_COPY[platformCode];
@@ -352,14 +355,19 @@ export function PlatformAnalyticsDashboard({
   }
 
   function handleBootstrap() {
+    setMetaAction("connect");
     startTransition(async () => {
-      const result = await bootstrapMetaMonitoringAction();
-      if (!result.success) {
-        toast.error(result.message);
-        return;
+      try {
+        const result = await bootstrapMetaMonitoringAction();
+        if (!result.success) {
+          toast.error(result.message);
+          return;
+        }
+        toast.success(result.message);
+        reload("META", accountId, metaScope);
+      } finally {
+        setMetaAction(null);
       }
-      toast.success(result.message);
-      reload("META", accountId, metaScope);
     });
   }
 
@@ -522,34 +530,50 @@ export function PlatformAnalyticsDashboard({
   }
 
   function handleSyncAll() {
+    setMetaAction("sync_all");
     startTransition(async () => {
-      const result =
-        platform === "META" && metaPageKey !== "all"
-          ? await syncMetaPageMonitoringAction({ pageKey: metaPageKey })
-          : await syncAllMetaMonitoringAction();
-      if (!result.success) {
-        toast.error(result.message);
-        return;
+      try {
+        const result =
+          platform === "META" && metaPageKey !== "all"
+            ? await syncMetaPageMonitoringAction({ pageKey: metaPageKey })
+            : await syncAllMetaMonitoringAction();
+        if (!result.success) {
+          toast.error(result.message);
+          return;
+        }
+        toast.success(result.message);
+        reload();
+      } finally {
+        setMetaAction(null);
       }
-      toast.success(result.message);
-      reload();
     });
   }
 
   function handleSync(
     syncType: "hourly_posts" | "daily_page" | "daily_insights",
   ) {
+    const actionKey =
+      syncType === "daily_page"
+        ? ("sync_page" as const)
+        : syncType === "hourly_posts"
+          ? ("sync_posts" as const)
+          : ("sync_insights" as const);
+    setMetaAction(actionKey);
     startTransition(async () => {
-      const result =
-        platform === "META" && metaPageKey !== "all"
-          ? await triggerMetaSyncAction(syncType, { pageKey: metaPageKey })
-          : await triggerMetaSyncAction(syncType);
-      if (!result.success) {
-        toast.error(result.message);
-        return;
+      try {
+        const result =
+          platform === "META" && metaPageKey !== "all"
+            ? await triggerMetaSyncAction(syncType, { pageKey: metaPageKey })
+            : await triggerMetaSyncAction(syncType);
+        if (!result.success) {
+          toast.error(result.message);
+          return;
+        }
+        toast.success(result.message);
+        reload();
+      } finally {
+        setMetaAction(null);
       }
-      toast.success(result.message);
-      reload();
     });
   }
 
@@ -579,6 +603,7 @@ export function PlatformAnalyticsDashboard({
               showAdminSyncActions && brandScopeUi.hasAllBrandsAccess
             }
             isPending={isPending}
+            metaAction={metaAction}
             onConnect={
               platform === "TIKTOK"
                 ? handleTikTokConnect
@@ -1053,6 +1078,7 @@ function PlatformActions({
   isConnected,
   showAdminSyncActions,
   isPending,
+  metaAction,
   tiktokConnectDisabled = false,
   onConnect,
   onDisconnect,
@@ -1065,6 +1091,7 @@ function PlatformActions({
   isConnected: boolean;
   showAdminSyncActions: boolean;
   isPending: boolean;
+  metaAction?: null | "connect" | "sync_all" | "sync_page" | "sync_posts" | "sync_insights";
   tiktokConnectDisabled?: boolean;
   onConnect: () => void;
   onDisconnect?: () => void;
@@ -1078,47 +1105,50 @@ function PlatformActions({
   }
 
   if (platform === "META") {
+    const syncAllRunning = metaAction === "sync_all";
+    const disabledByMetaAction =
+      syncAllRunning || metaAction === "connect" || metaAction === "sync_page" || metaAction === "sync_posts" || metaAction === "sync_insights";
     return (
       <div className={PLATFORM_ACTIONS_ROW_CLASS}>
         <Button
           type="button"
           variant="default"
-          disabled={isPending}
+          disabled={isPending || disabledByMetaAction}
           onClick={onConnect}
         >
-          Connect Meta
+          {metaAction === "connect" ? "Connecting..." : "Connect Meta"}
         </Button>
         <Button
           type="button"
           variant="neutral"
-          disabled={isPending}
+          disabled={isPending || disabledByMetaAction}
           onClick={onSyncAll}
         >
-          Sync Meta
+          {syncAllRunning ? "Syncing..." : "Sync Meta"}
         </Button>
         <Button
           type="button"
           variant="neutral"
-          disabled={isPending}
+          disabled={isPending || syncAllRunning || metaAction === "sync_page"}
           onClick={onSyncPage}
         >
-          Sync Page
+          {metaAction === "sync_page" ? "Syncing..." : "Sync Page"}
         </Button>
         <Button
           type="button"
           variant="neutral"
-          disabled={isPending}
+          disabled={isPending || syncAllRunning || metaAction === "sync_posts"}
           onClick={onSyncPosts}
         >
-          Sync Posts
+          {metaAction === "sync_posts" ? "Syncing..." : "Sync Posts"}
         </Button>
         <Button
           type="button"
           variant="neutral"
-          disabled={isPending}
+          disabled={isPending || syncAllRunning || metaAction === "sync_insights"}
           onClick={onSyncInsights}
         >
-          Sync Insights
+          {metaAction === "sync_insights" ? "Syncing..." : "Sync Insights"}
         </Button>
       </div>
     );
