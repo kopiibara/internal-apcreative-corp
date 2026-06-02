@@ -143,13 +143,6 @@ export function DashboardFilterBar({
       <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center">
         {showBrandFilter ? (
           <FilterBadgeGroup label="" className="min-w-0">
-            <FilterBadge
-              active={brandId === "all"}
-              onClick={() => updateFilters({ brandId: "all" })}
-            >
-              All Brands
-            </FilterBadge>
-
             {brands.map((brand) => (
               <FilterBadge
                 key={brand.id}
