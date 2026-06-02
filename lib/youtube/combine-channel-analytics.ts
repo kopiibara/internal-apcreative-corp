@@ -176,6 +176,19 @@ export function combineYouTubeChannelDashboards(
     views > 0 ? weightedDurationSeconds / views : 0;
   const engagementTotal = likes + comments + shares;
 
+  const contentPerformance: ContentPerformanceRow[] = connected
+    .flatMap((channel) => channel.contentPerformance)
+    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+    .slice(0, 50);
+
+  const videoCount = contentPerformance.length;
+  const topVideo = contentPerformance[0] ?? null;
+  const latestVideo = [...contentPerformance].sort((a, b) => {
+    const aTime = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+    const bTime = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+    return bTime - aTime;
+  })[0] ?? null;
+
   const overviewKpis: KpiMetric[] = [
     {
       label: "Subscribers",
@@ -232,6 +245,23 @@ export function combineYouTubeChannelDashboards(
           : "No live data yet",
       hint: dateRangeLabel(dateRange),
     },
+    {
+      label: "Video count",
+      value: formatWholeMetric(videoCount),
+      hint: "Synced videos across connected channels",
+    },
+    {
+      label: "Top performing video",
+      value: topVideo?.title ?? "No YouTube videos synced yet.",
+      hint: topVideo?.views != null ? `${formatWholeMetric(topVideo.views)} views` : undefined,
+    },
+    {
+      label: "Latest uploaded video",
+      value: latestVideo?.title ?? "No YouTube videos synced yet.",
+      hint: latestVideo?.publishedAt
+        ? latestVideo.publishedAt.slice(0, 10)
+        : undefined,
+    },
   ];
 
   const engagementKpis: KpiMetric[] = [
@@ -263,11 +293,6 @@ export function combineYouTubeChannelDashboards(
       hint: dateRangeLabel(dateRange),
     },
   ];
-
-  const contentPerformance: ContentPerformanceRow[] = connected
-    .flatMap((channel) => channel.contentPerformance)
-    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
-    .slice(0, 50);
 
   const growthByDate = new Map<string, { followers: number; views: number }>();
   for (const channel of connected) {
@@ -403,7 +428,7 @@ export function combineYouTubeChannelDashboards(
     topVideoRows,
     growthSnapshots,
     dateRange,
-    "All YouTube Channels",
+    "All enabled channels",
   );
 
   const activityLogs: ActivityLogRow[] = connected

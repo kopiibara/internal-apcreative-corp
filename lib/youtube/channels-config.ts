@@ -9,7 +9,11 @@ export type YouTubeChannelConfig = {
   brandSlug: string;
   enabled: boolean;
   channelId: string;
+  /** Server-only — never sent to the client. */
+  refreshToken: string;
   channelIdEnvKey: string;
+  refreshTokenEnvKey: string;
+  channelNameEnvKey: string;
   enabledEnvKey: string;
 };
 
@@ -40,10 +44,16 @@ function normalizeBrandKey(value: string) {
   return value.trim().toLowerCase().replace(/[_\s]+/g, "-");
 }
 
+function envPrefixFromBrandKey(brandKey: string) {
+  return brandKey.trim().toUpperCase().replace(/[\s-]+/g, "_");
+}
+
 type YouTubeChannelsConfigEntry = {
   brandKey: string;
   brandName: string;
   channelId?: string;
+  refreshToken?: string;
+  channelName?: string;
   enabled?: boolean;
 };
 
@@ -55,21 +65,45 @@ function titleCaseFromEnvPrefix(prefix: string) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/** Discover enabled YouTube channels from env (refresh token optional until OAuth). */
 function discoverYouTubeChannelsFromEnv(): YouTubeChannelsConfigEntry[] {
   const envKeys = Object.keys(process.env);
-  const enabledKeys = envKeys.filter((key) => key.endsWith("_YOUTUBE_ENABLED"));
+  const prefixes = new Set<string>();
+
+  for (const key of envKeys) {
+    if (key.endsWith("_YOUTUBE_ENABLED")) {
+      prefixes.add(key.replace(/_YOUTUBE_ENABLED$/, ""));
+    }
+    if (key.endsWith("_YOUTUBE_CHANNEL_ID")) {
+      prefixes.add(key.replace(/_YOUTUBE_CHANNEL_ID$/, ""));
+    }
+  }
 
   const entries: YouTubeChannelsConfigEntry[] = [];
 
-  for (const enabledEnvKey of enabledKeys) {
-    const prefix = enabledEnvKey.replace(/_YOUTUBE_ENABLED$/, "");
+  for (const prefix of prefixes) {
+    const enabledEnvKey = `${prefix}_YOUTUBE_ENABLED`;
     const channelIdEnvKey = `${prefix}_YOUTUBE_CHANNEL_ID`;
+    const refreshTokenEnvKey = `${prefix}_YOUTUBE_REFRESH_TOKEN`;
+    const channelNameEnvKey = `${prefix}_YOUTUBE_CHANNEL_NAME`;
+
+    if (envKeys.includes(enabledEnvKey) && !isEnvTrue(enabledEnvKey)) {
+      continue;
+    }
+
+    if (!envKeys.includes(channelIdEnvKey)) {
+      continue;
+    }
 
     entries.push({
       brandKey: normalizeBrandKey(prefix),
       brandName: titleCaseFromEnvPrefix(prefix),
-      channelId: envKeys.includes(channelIdEnvKey) ? channelIdEnvKey : undefined,
-      enabled: isEnvTrue(enabledEnvKey),
+      channelId: channelIdEnvKey,
+      refreshToken: envKeys.includes(refreshTokenEnvKey)
+        ? refreshTokenEnvKey
+        : undefined,
+      channelName: channelNameEnvKey,
+      enabled: envKeys.includes(enabledEnvKey) ? isEnvTrue(enabledEnvKey) : true,
     });
   }
 
@@ -103,28 +137,40 @@ function buildChannelFromConfig(
   entry: YouTubeChannelsConfigEntry,
 ): YouTubeChannelConfig | null {
   if (!entry || typeof entry !== "object") return null;
-  if (typeof entry.brandKey !== "string" || typeof entry.brandName !== "string") {
+  if (typeof entry.brandKey !== "string") {
     return null;
   }
 
   const key = normalizeBrandKey(entry.brandKey);
   if (!key) return null;
 
-  const prefix = entry.brandKey.trim().toUpperCase().replace(/[\s-]+/g, "_");
-  const enabledEnvKey = `${prefix}_YOUTUBE_ENABLED`;
+  const prefix = envPrefixFromBrandKey(entry.brandKey);
   const channelIdEnvKey =
     typeof entry.channelId === "string" && entry.channelId.trim()
       ? entry.channelId.trim()
       : `${prefix}_YOUTUBE_CHANNEL_ID`;
+  const refreshTokenEnvKey =
+    typeof entry.refreshToken === "string" && entry.refreshToken.trim()
+      ? entry.refreshToken.trim()
+      : `${prefix}_YOUTUBE_REFRESH_TOKEN`;
+  const channelNameEnvKey = `${prefix}_YOUTUBE_CHANNEL_NAME`;
+  const enabledEnvKey = `${prefix}_YOUTUBE_ENABLED`;
 
   const enabledFromEnv = process.env[enabledEnvKey]
     ? isEnvTrue(enabledEnvKey)
     : null;
 
+  const displayNameFromEnv = readEnv(channelNameEnvKey);
+  const displayName =
+    displayNameFromEnv ||
+    (typeof entry.brandName === "string" ? entry.brandName.trim() : "") ||
+    titleCaseFromEnvPrefix(prefix) ||
+    key;
+
   return {
     key,
-    name: entry.brandName.trim() || key,
-    displayName: entry.brandName.trim() || key,
+    name: displayName,
+    displayName,
     brandSlug: key,
     enabled:
       entry.enabled === false
@@ -133,7 +179,10 @@ function buildChannelFromConfig(
           ? true
           : enabledFromEnv,
     channelId: readEnv(channelIdEnvKey),
+    refreshToken: readEnv(refreshTokenEnvKey),
     channelIdEnvKey,
+    refreshTokenEnvKey,
+    channelNameEnvKey,
     enabledEnvKey,
   };
 }
@@ -142,8 +191,18 @@ export const youtubeChannels: YouTubeChannelConfig[] = readYouTubeChannelsConfig
   .map(buildChannelFromConfig)
   .filter((channel): channel is YouTubeChannelConfig => Boolean(channel));
 
+/** Enabled via env (may be missing credentials). */
 export function getEnabledYouTubeChannels() {
   return youtubeChannels.filter((channel) => channel.enabled);
+}
+
+/** Enabled + channel ID + refresh token in env (ready for sync, like Meta configured pages). */
+export function isYouTubeChannelConfigured(channel: YouTubeChannelConfig) {
+  return Boolean(channel.enabled && channel.channelId && channel.refreshToken);
+}
+
+export function getConfiguredYouTubeChannels() {
+  return youtubeChannels.filter(isYouTubeChannelConfigured);
 }
 
 export function getYouTubeChannelByKey(key: YouTubeChannelConfigKey) {
@@ -157,8 +216,45 @@ export function getYouTubeChannelByChannelId(channelId: string) {
   );
 }
 
-export function isYouTubeChannelConfigured(channel: YouTubeChannelConfig) {
-  return Boolean(channel.enabled && channel.channelId);
+/** Appears in selector when enabled, has channel ID, and env token or DB OAuth exists. */
+export function isYouTubeChannelSelectable(
+  channel: YouTubeChannelConfig,
+  connectedChannelKeys: Set<string>,
+  connectedChannelIds: Set<string>,
+) {
+  if (!channel.enabled || !channel.channelId) {
+    return false;
+  }
+
+  return (
+    Boolean(channel.refreshToken) ||
+    connectedChannelKeys.has(channel.key) ||
+    connectedChannelIds.has(channel.channelId)
+  );
+}
+
+export function getSelectableYouTubeChannels(
+  connectedChannelKeys: Set<string>,
+  connectedChannelIds: Set<string>,
+) {
+  return getEnabledYouTubeChannels().filter((channel) =>
+    isYouTubeChannelSelectable(channel, connectedChannelKeys, connectedChannelIds),
+  );
+}
+
+/** Public channel metadata safe for the client (no tokens). */
+export type YouTubeChannelOption = {
+  key: string;
+  displayName: string;
+};
+
+export function toYouTubeChannelOptions(
+  channels: YouTubeChannelConfig[],
+): YouTubeChannelOption[] {
+  return channels.map((channel) => ({
+    key: channel.key,
+    displayName: channel.displayName,
+  }));
 }
 
 export function getYouTubeChannelsEnvDiagnostics() {
@@ -167,7 +263,11 @@ export function getYouTubeChannelsEnvDiagnostics() {
     displayName: channel.displayName,
     enabled: channel.enabled,
     channelIdEnvKey: channel.channelIdEnvKey,
+    refreshTokenEnvKey: channel.refreshTokenEnvKey,
+    channelNameEnvKey: channel.channelNameEnvKey,
     enabledEnvKey: channel.enabledEnvKey,
     channelIdConfigured: Boolean(channel.channelId),
+    tokenConfigured: Boolean(channel.refreshToken),
+    ready: isYouTubeChannelConfigured(channel),
   }));
 }
