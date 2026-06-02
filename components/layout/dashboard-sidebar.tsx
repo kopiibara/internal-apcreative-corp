@@ -42,6 +42,7 @@ import {
     shouldHideSidebarLeaderboard,
     type AccountType,
 } from "@/lib/auth/account-type"
+import { canAccessFormsPage } from "@/lib/forms/forms-access"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -287,6 +288,10 @@ export function DashboardSidebar({
             ? user?.canAccessDailyProgress !== false
             : user?.canAccessDailyProgress === true
     const canSeePR = user?.canAccessPR === true
+    const canSeeForms =
+        mode === "admin" &&
+        isAccountType(user?.accountType) &&
+        canAccessFormsPage(user.accountType)
     const isFullStackDeveloper = user?.accountType === "FULL_STACK_DEVELOPER"
     const hidePerformanceSummary =
         isAccountType(user?.accountType) &&
@@ -303,7 +308,8 @@ export function DashboardSidebar({
                                     canSeeAccountControl) &&
                                 (item.href !== "/admin/daily-progress" ||
                                     canSeeDailyProgress) &&
-                                (item.href !== "/admin/pr" || canSeePR)
+                                (item.href !== "/admin/pr" || canSeePR) &&
+                                (item.href !== "/admin/forms" || canSeeForms)
                         )
                         .map((item) => {
                             if (item.title !== "To-Do") {
