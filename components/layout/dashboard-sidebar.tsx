@@ -38,6 +38,11 @@ import {
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
 import {
+    accountTypes,
+    shouldHideSidebarLeaderboard,
+    type AccountType,
+} from "@/lib/auth/account-type"
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -98,6 +103,10 @@ const sidebarNavActiveClass =
 
 const sidebarNavHoverClass =
     "border-2 border-transparent hover:border-border hover:bg-sidebar-accent  transition-all duration-200 hover:translate-x-1"
+
+function isAccountType(value: string | undefined): value is AccountType {
+    return accountTypes.includes(value as AccountType)
+}
 
 function SidebarNavCountBadge({
     count,
@@ -279,6 +288,9 @@ export function DashboardSidebar({
             : user?.canAccessDailyProgress === true
     const canSeePR = user?.canAccessPR === true
     const isFullStackDeveloper = user?.accountType === "FULL_STACK_DEVELOPER"
+    const hidePerformanceSummary =
+        isAccountType(user?.accountType) &&
+        shouldHideSidebarLeaderboard(user.accountType)
     const groups =
         mode === "admin"
             ? adminGroups
@@ -702,7 +714,7 @@ export function DashboardSidebar({
             </SidebarContent>
 
             <SidebarFooter className={isCollapsed ? "px-2 py-4" : "p-3"}>
-                {user?.performanceSummary ? (
+                {user?.performanceSummary && !hidePerformanceSummary ? (
                     isCollapsed ? (
                         <SidebarPointsCollapsed summary={user.performanceSummary} />
                     ) : (

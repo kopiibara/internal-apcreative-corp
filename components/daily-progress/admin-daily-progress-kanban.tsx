@@ -30,7 +30,6 @@ import {
   KANBAN_BOARD_FIT_ROW_3_CLASS,
   KANBAN_BOARD_MAX_HEIGHT_CLASS,
   KANBAN_COLUMN_CARD_CLASS,
-  KANBAN_COLUMN_FIT_CLASS,
   KANBAN_COLUMN_ITEM_CLASS,
   KANBAN_OVERLAY_CLASS,
   KanbanColumnScrollArea,
@@ -48,6 +47,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { DailyProgressReportRecord } from "@/lib/daily-progress-report/daily-progress-report";
 import { cn } from "@/lib/utils";
+
+const DAILY_PROGRESS_KANBAN_COLUMN_CLASS =
+  "flex h-full min-h-0 max-h-full w-[calc(100vw-2rem)] min-w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] shrink-0 flex-col overflow-hidden sm:w-[20rem] sm:min-w-[20rem] sm:max-w-[20rem] md:w-[22rem] md:min-w-[22rem] md:max-w-[22rem] xl:w-full xl:min-w-0 xl:max-w-none xl:shrink";
 
 function DailyProgressKanbanCard({
   report,
@@ -84,7 +86,7 @@ function DailyProgressKanbanCard({
       }}
       onKeyDown={handleKeyDown}
       className={cn(
-        "rounded-lg border-2 border-border bg-background py-3 text-left shadow-shadow-hard-sm transition",
+        "w-full min-w-0 overflow-hidden rounded-lg border-2 border-border bg-background p-3 text-left shadow-shadow-hard-sm transition",
         isClickable &&
         "cursor-pointer hover:-translate-y-0.5 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         muted && "opacity-70 grayscale-[0.2]",
@@ -115,7 +117,7 @@ function DailyProgressKanbanCard({
           {getDailyProgressReportBrandNames(report).map((brandName) => (
             <span
               key={brandName}
-              className="rounded-lg border-2 border-border bg-background px-2 py-1 text-xs font-bold"
+              className="max-w-full break-words rounded-lg border-2 border-border bg-background px-2 py-1 text-xs font-bold"
             >
               {brandName}
             </span>
@@ -306,8 +308,13 @@ function DailyProgressKanbanColumn({
   const isEmpty = count === 0;
 
   return (
-    <KanbanColumn value={id} className={KANBAN_COLUMN_FIT_CLASS}>
-      <Card className={cn(KANBAN_COLUMN_CARD_CLASS, "bg-white shadow-none")}>
+    <KanbanColumn value={id} className={DAILY_PROGRESS_KANBAN_COLUMN_CLASS}>
+      <Card
+        className={cn(
+          KANBAN_COLUMN_CARD_CLASS,
+          "bg-card text-card-foreground shadow-none",
+        )}
+      >
         <KanbanColumnHeader
           title={title}
           count={count}
@@ -358,7 +365,7 @@ export function AdminDailyProgressKanbanBoard({
     <KanbanBoardShell
       columnLayout="fit"
       className={cn(
-        "h-[min(56dvh,520px)] min-h-[360px] flex-none lg:h-full lg:min-h-0 lg:flex-1",
+        "h-[min(62dvh,580px)] min-h-[380px] flex-none sm:min-h-[420px] lg:h-full lg:min-h-0 lg:flex-1",
         KANBAN_BOARD_MAX_HEIGHT_CLASS,
       )}
     >
@@ -370,7 +377,12 @@ export function AdminDailyProgressKanbanBoard({
         getItemValue={(report) => String(report.id)}
         onMove={onMove}
       >
-        <KanbanBoard className={cn(KANBAN_BOARD_FIT_ROW_3_CLASS, "min-h-0 flex-1 px-0 pb-1 ")}>
+        <KanbanBoard
+          className={cn(
+            KANBAN_BOARD_FIT_ROW_3_CLASS,
+            "min-h-0 flex-1 px-0 pb-1",
+          )}
+        >
           {DAILY_PROGRESS_STATUS_COLUMNS.map((column) => {
             const columnReports = columns[column.key] ?? [];
 
@@ -391,7 +403,7 @@ export function AdminDailyProgressKanbanBoard({
                   const card = (
                     <DailyProgressKanbanCard
                       report={report}
-                      muted={isDraggable ? isPending : true}
+                      muted={isDraggable && isPending}
                       onClick={() => onOpenReportDetails(report)}
                     >
                       {isDraggable ? (

@@ -9,6 +9,7 @@ export type AdminDailyProgressDashboardProps = {
   summary: DailyProgressSummary;
   /** Report date shown on the kanban board (typically today). */
   boardDate: string;
+  /** Date used as the default anchor for DPR date selectors. */
   targetDate: string;
   ownDailyProgressData?: EmployeeDailyProgressDashboardProps | null;
 };

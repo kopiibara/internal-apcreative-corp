@@ -37,6 +37,32 @@ export const ORGANIZATION_WIDE_BRAND_ACCOUNT_TYPES = [
   "FULL_STACK_DEVELOPER",
 ] as const satisfies readonly AccountType[];
 
+export const DAILY_PROGRESS_REQUIRED_ACCOUNT_TYPES = [
+  "CLIENT",
+  "EMPLOYEE",
+  "PR",
+  "FULL_STACK_DEVELOPER",
+] as const satisfies readonly AccountType[];
+
+export const SIDEBAR_LEADERBOARD_HIDDEN_ACCOUNT_TYPES = [
+  "DIRECTOR",
+  "EXECUTIVE",
+  "MANAGER",
+  "SUPERVISOR",
+] as const satisfies readonly AccountType[];
+
+export function isDailyProgressRequiredAccountType(accountType: AccountType) {
+  return (
+    DAILY_PROGRESS_REQUIRED_ACCOUNT_TYPES as readonly AccountType[]
+  ).includes(accountType);
+}
+
+export function shouldHideSidebarLeaderboard(accountType: AccountType) {
+  return (
+    SIDEBAR_LEADERBOARD_HIDDEN_ACCOUNT_TYPES as readonly AccountType[]
+  ).includes(accountType);
+}
+
 export function hasOrganizationWideBrandAccess(accountType: AccountType) {
   return (ORGANIZATION_WIDE_BRAND_ACCOUNT_TYPES as readonly AccountType[]).includes(
     accountType,
