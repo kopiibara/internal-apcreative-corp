@@ -21,17 +21,19 @@ import type {
   YouTubeSourceSyncStatus,
 } from "@/lib/youtube/channel-analytics-types";
 import type { YouTubeChannelConfig } from "@/lib/youtube/channels-config";
+import { registerConfiguredYouTubeChannels } from "@/lib/youtube/bootstrap";
 import {
   getEnabledYouTubeChannels,
   getYouTubeChannelByKey,
 } from "@/lib/youtube/channels-config";
+import { hasYouTubeChannelCredentials } from "@/lib/youtube/channel-token";
 import {
   listYouTubeIntegrationsMap,
   type YouTubeIntegrationRow,
 } from "@/lib/youtube/integration-db";
 
 type YouTubeTrendRow = {
-  metric_date: string;
+  metric_date: string | Date;
   metric_key: string;
   metric_value: number | string;
 };
@@ -48,7 +50,7 @@ type YouTubeContentRow = {
 };
 
 type GrowthSnapshotQueryRow = {
-  metric_date: string;
+  metric_date: string | Date;
   metric_value: number | string;
 };
 
@@ -103,18 +105,36 @@ const MONTH_LABELS = [
   "Dec",
 ] as const;
 
+/** Normalize DB metric_date values (pg may return Date objects). */
+function toMetricDateKey(value: string | number | Date): string {
+  if (value instanceof Date) {
+    const year = value.getUTCFullYear();
+    const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(value.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  const text = String(value).trim();
+  if (text.includes("T")) {
+    return text.slice(0, 10);
+  }
+
+  return text;
+}
+
 /** Stable label formatting (avoids server/client Intl timezone hydration mismatches). */
-function formatTrendDateLabel(metricDate: string) {
-  const parts = metricDate.split("-");
+function formatTrendDateLabel(metricDate: string | number | Date) {
+  const normalized = toMetricDateKey(metricDate);
+  const parts = normalized.split("-");
   if (parts.length !== 3) {
-    return metricDate;
+    return normalized;
   }
 
   const monthIndex = Number(parts[1]) - 1;
   const day = Number(parts[2]);
 
   if (monthIndex < 0 || monthIndex > 11 || !Number.isFinite(day)) {
-    return metricDate;
+    return normalized;
   }
 
   return `${MONTH_LABELS[monthIndex]} ${day}`;
@@ -242,7 +262,8 @@ export function buildYouTubeCharts(
   >();
 
   for (const row of trendRows) {
-    const entry = trendMap.get(row.metric_date) ?? {
+    const dateKey = toMetricDateKey(row.metric_date);
+    const entry = trendMap.get(dateKey) ?? {
       label: formatTrendDateLabel(row.metric_date),
       views: 0,
       watchTimeMinutes: 0,
@@ -263,7 +284,7 @@ export function buildYouTubeCharts(
       entry.subscribersNet = toNumber(row.metric_value);
     }
 
-    trendMap.set(row.metric_date, entry);
+    trendMap.set(dateKey, entry);
   }
 
   const trend = [...trendMap.entries()]
@@ -354,6 +375,7 @@ export function buildYouTubeCharts(
 function buildOverviewKpis(
   metricMap: Map<string, number>,
   dateRange?: AnalyticsDateRange,
+  contentPerformance: ContentPerformanceRow[] = [],
 ): KpiMetric[] {
   const watchTimeMinutes = metricMap.get("watch_time_minutes");
   const avgSeconds = metricMap.get("avg_view_duration_seconds");
@@ -362,6 +384,13 @@ function buildOverviewKpis(
   const shares = metricMap.get("shares") ?? 0;
   const views = metricMap.get("views") ?? 0;
   const engagementTotal = likes + comments + shares;
+
+  const topVideo = contentPerformance[0];
+  const latestVideo = [...contentPerformance]
+    .filter((row) => row.publishedAt)
+    .sort((a, b) =>
+      String(b.publishedAt ?? "").localeCompare(String(a.publishedAt ?? "")),
+    )[0];
 
   return [
     {
@@ -422,6 +451,23 @@ function buildOverviewKpis(
           : "No live data yet",
       hint: dateRangeLabel(dateRange),
     },
+    {
+      label: "Video count",
+      value: formatWholeMetric(contentPerformance.length),
+      hint: "Synced videos for this channel",
+    },
+    {
+      label: "Top performing video",
+      value: topVideo?.title ?? "No YouTube videos synced yet.",
+      hint: topVideo?.views != null ? `${formatWholeMetric(topVideo.views)} views` : undefined,
+    },
+    {
+      label: "Latest uploaded video",
+      value: latestVideo?.title ?? "No YouTube videos synced yet.",
+      hint: latestVideo?.publishedAt
+        ? new Date(latestVideo.publishedAt).toLocaleDateString("en-PH")
+        : undefined,
+    },
   ];
 }
 
@@ -466,13 +512,28 @@ function buildAudienceKpis(
   ];
 }
 
+function buildUnconfiguredChannelDashboard(
+  config: YouTubeChannelConfig,
+  syncLogs: SyncLogQueryRow[],
+): YouTubeChannelDashboard {
+  const statusMessage = !config.channelId
+    ? "Configure the YouTube channel ID in environment variables for this branch."
+    : "Set the refresh token in environment variables or use Connect YouTube to authorize this channel.";
+
+  return {
+    ...buildUnconnectedChannelDashboard(config, syncLogs),
+    connectionStatus: "Needs configuration",
+    statusMessage,
+  };
+}
+
 function buildUnconnectedChannelDashboard(
   config: YouTubeChannelConfig,
   syncLogs: SyncLogQueryRow[],
 ): YouTubeChannelDashboard {
-  const statusMessage = config.enabled
+  const statusMessage = config.refreshToken
     ? "This YouTube channel is not connected yet."
-    : "Missing YouTube connection for this channel.";
+    : "Google OAuth authorization is required for this channel.";
 
   const emptyConnection: PlatformConnectionStatus = {
     platform: "YOUTUBE",
@@ -624,8 +685,8 @@ async function loadConnectedChannelDashboard(
 
   const growthSnapshots: GrowthSnapshotRow[] = growthRes.rows
     .map((r, idx) => ({
-      id: `yt-${config.key}-${idx}-${r.metric_date}`,
-      date: String(r.metric_date),
+      id: `yt-${config.key}-${idx}-${toMetricDateKey(r.metric_date)}`,
+      date: toMetricDateKey(r.metric_date),
       followers: Number(r.metric_value),
       secondaryLabel: "Views",
       secondaryValue: null,
@@ -635,7 +696,7 @@ async function loadConnectedChannelDashboard(
   const viewsByDate = new Map<string, number>();
   for (const row of trendRes.rows) {
     if (row.metric_key === "views") {
-      viewsByDate.set(row.metric_date, toNumber(row.metric_value));
+      viewsByDate.set(toMetricDateKey(row.metric_date), toNumber(row.metric_value));
     }
   }
 
@@ -789,7 +850,9 @@ async function loadConnectedChannelDashboard(
     videoSyncStatus,
     analyticsSyncStatus,
     statusMessage,
-    overviewKpis: hasMetrics ? buildOverviewKpis(metricMap, dateRange) : [],
+    overviewKpis: hasMetrics
+      ? buildOverviewKpis(metricMap, dateRange, contentPerformance)
+      : [],
     engagementKpis: hasMetrics ? buildEngagementKpis(metricMap) : [],
     audienceInsightKpis: hasMetrics
       ? buildAudienceKpis(metricMap, dateRange)
@@ -843,7 +906,7 @@ export async function getYouTubeChannelsAnalytics(input?: {
 async function loadYouTubeChannelsAnalyticsSafe(input?: {
   dateRange?: AnalyticsDateRange;
 }): Promise<YouTubeChannelDashboard[]> {
-  let enabledChannels = getEnabledYouTubeChannels();
+  await registerConfiguredYouTubeChannels();
 
   const [{ byChannelKey, byExternalId }, syncRes, logsRes] = await Promise.all([
     listYouTubeIntegrationsMap(),
@@ -870,42 +933,67 @@ async function loadYouTubeChannelsAnalyticsSafe(input?: {
     ),
   ]);
 
-  if (enabledChannels.length === 0 && byExternalId.size > 0) {
-    enabledChannels = [...byExternalId.values()].map((integration) => ({
-      key: integration.channel_key ?? integration.external_account_id ?? "default",
-      name: integration.account_name ?? "YouTube Channel",
-      displayName: integration.account_name ?? "YouTube Channel",
-      brandSlug: integration.channel_key ?? "default",
-      enabled: true,
-      channelId: integration.external_account_id ?? "",
-      channelIdEnvKey: "",
-      enabledEnvKey: "",
-    }));
+  let channelsToLoad = getEnabledYouTubeChannels().filter(
+    (channel) => Boolean(channel.channelId),
+  );
+
+  if (channelsToLoad.length === 0 && byExternalId.size > 0) {
+    channelsToLoad = [...byExternalId.values()]
+      .filter((row) => Boolean(row.token_reference && row.external_account_id))
+      .map((integration) => ({
+        key: integration.channel_key ?? integration.external_account_id ?? "default",
+        name: integration.account_name ?? "YouTube Channel",
+        displayName: integration.account_name ?? "YouTube Channel",
+        brandSlug: integration.channel_key ?? "default",
+        enabled: true,
+        channelId: integration.external_account_id ?? "",
+        refreshToken: integration.token_reference ?? "",
+        channelIdEnvKey: "",
+        refreshTokenEnvKey: "",
+        channelNameEnvKey: "",
+        enabledEnvKey: "",
+      }));
   }
 
-  if (enabledChannels.length === 0) {
+  if (channelsToLoad.length === 0) {
     return [];
   }
 
   const results: YouTubeChannelDashboard[] = [];
 
-  for (const config of enabledChannels) {
+  for (const config of channelsToLoad) {
     const integration = resolveIntegrationForConfig(
       config,
       byChannelKey,
       byExternalId,
     );
 
-    if (!integration || !integration.token_reference) {
+    if (!config.channelId) {
+      results.push(buildUnconfiguredChannelDashboard(config, syncRes.rows));
+      continue;
+    }
+
+    if (!hasYouTubeChannelCredentials(config, integration)) {
       results.push(buildUnconnectedChannelDashboard(config, syncRes.rows));
       continue;
     }
+
+    const integrationWithToken: YouTubeIntegrationRow = {
+      id: integration?.id ?? 0,
+      channel_key: config.key,
+      external_account_id: config.channelId || integration?.external_account_id || null,
+      account_name: config.displayName,
+      token_reference:
+        config.refreshToken || integration?.token_reference || null,
+      status: integration?.status ?? "ACTIVE",
+      last_synced_at: integration?.last_synced_at ?? null,
+    };
 
     try {
       results.push(
         await loadConnectedChannelDashboard(
           config,
-          integration,
+          integrationWithToken,
           syncRes.rows,
           logsRes.rows,
           input?.dateRange,

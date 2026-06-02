@@ -12,6 +12,8 @@ import {
 } from "@/lib/platform-analytics/youtube-client";
 import type { AnalyticsDateRange } from "@/lib/platform-analytics/types";
 
+export type YouTubeSyncMode = "full" | "channel" | "videos" | "analytics";
+
 type YouTubeChannelIdentity = {
   channelId: string;
   channelName: string;
@@ -750,6 +752,7 @@ async function upsertContentRow(
 async function syncSingleYouTubeIntegration(
   integration: YouTubeIntegrationRow,
   dateRange?: AnalyticsDateRange,
+  syncMode: YouTubeSyncMode = "full",
 ): Promise<SyncSummary> {
   const syncLogId = await markSyncStarted(integration.external_account_id);
   let recordsSynced = 0;
@@ -780,15 +783,38 @@ async function syncSingleYouTubeIntegration(
       asRecord(channel?.statistics).subscriberCount,
     );
 
-    const totals = await fetchAnalyticsTotals(oauth, channelId, dateRange);
-    const dailyRows = await fetchDailyAnalytics(oauth, channelId, dateRange);
-    const topVideos = await fetchTopVideos(oauth, channelId, dateRange);
+    const syncVideos = syncMode === "full" || syncMode === "videos";
+    const syncAnalytics =
+      syncMode === "full" || syncMode === "analytics" || syncMode === "channel";
 
-    const historyWithTotals = toSubscriberHistory(subscribersTotal, dailyRows);
-    const videoMetadata = await fetchVideoMetadata(
-      oauth,
-      topVideos.map((row) => row.video),
-    );
+    const totals = syncAnalytics
+      ? await fetchAnalyticsTotals(oauth, channelId, dateRange)
+      : {
+          subscribersGained: 0,
+          subscribersLost: 0,
+          views: 0,
+          watchMinutes: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          averageViewDurationSeconds: 0,
+        };
+    const dailyRows = syncAnalytics
+      ? await fetchDailyAnalytics(oauth, channelId, dateRange)
+      : [];
+    const topVideos = syncVideos
+      ? await fetchTopVideos(oauth, channelId, dateRange)
+      : [];
+
+    const historyWithTotals = syncAnalytics
+      ? toSubscriberHistory(subscribersTotal, dailyRows)
+      : [];
+    const videoMetadata = syncVideos
+      ? await fetchVideoMetadata(
+          oauth,
+          topVideos.map((row) => row.video),
+        )
+      : new Map<string, YouTubeVideoMeta>();
 
     await transaction(async (client) => {
       const today = isoToday();
@@ -804,22 +830,24 @@ async function syncSingleYouTubeIntegration(
             )
           : 0;
 
-      const aggregateMetrics: Array<{ key: string; value: number }> = [
-        { key: "subscribers_total", value: subscribersTotal },
-        { key: "subscribers_gained", value: totals.subscribersGained },
-        { key: "subscribers_lost", value: totals.subscribersLost },
-        { key: "subscribers_net", value: subscribersNet },
-        { key: "views", value: totals.views },
-        { key: "watch_time_minutes", value: totals.watchMinutes },
-        {
-          key: "avg_view_duration_seconds",
-          value: totals.averageViewDurationSeconds,
-        },
-        { key: "likes", value: totals.likes },
-        { key: "comments", value: totals.comments },
-        { key: "shares", value: totals.shares },
-        { key: "engagement_rate", value: engagementRate },
-      ];
+      const aggregateMetrics: Array<{ key: string; value: number }> = syncAnalytics
+        ? [
+            { key: "subscribers_total", value: subscribersTotal },
+            { key: "subscribers_gained", value: totals.subscribersGained },
+            { key: "subscribers_lost", value: totals.subscribersLost },
+            { key: "subscribers_net", value: subscribersNet },
+            { key: "views", value: totals.views },
+            { key: "watch_time_minutes", value: totals.watchMinutes },
+            {
+              key: "avg_view_duration_seconds",
+              value: totals.averageViewDurationSeconds,
+            },
+            { key: "likes", value: totals.likes },
+            { key: "comments", value: totals.comments },
+            { key: "shares", value: totals.shares },
+            { key: "engagement_rate", value: engagementRate },
+          ]
+        : [{ key: "subscribers_total", value: subscribersTotal }];
 
       for (const metric of aggregateMetrics) {
         await upsertMetricSnapshot(
@@ -850,43 +878,47 @@ async function syncSingleYouTubeIntegration(
         recordsSynced += 2;
       }
 
-      for (const row of dailyRows) {
-        const net = row.subscribersGained - row.subscribersLost;
-        await upsertMetricSnapshot(
-          client,
-          channelId,
-          row.day,
-          "subscribers_net",
-          net,
-        );
-        await upsertMetricSnapshot(
-          client,
-          channelId,
-          row.day,
-          "watch_time_minutes",
-          row.watchMinutes,
-        );
-        recordsSynced += 1;
+      if (syncAnalytics) {
+        for (const row of dailyRows) {
+          const net = row.subscribersGained - row.subscribersLost;
+          await upsertMetricSnapshot(
+            client,
+            channelId,
+            row.day,
+            "subscribers_net",
+            net,
+          );
+          await upsertMetricSnapshot(
+            client,
+            channelId,
+            row.day,
+            "watch_time_minutes",
+            row.watchMinutes,
+          );
+          recordsSynced += 1;
+        }
       }
 
-      for (const row of topVideos) {
-        const meta = videoMetadata.get(row.video);
+      if (syncVideos) {
+        for (const row of topVideos) {
+          const meta = videoMetadata.get(row.video);
 
-        await upsertContentRow(client, {
-          accountId: channelId,
-          videoId: row.video,
-          title: meta?.title || `Video ${row.video}`,
-          publishedAt: meta?.publishedAt ?? null,
-          thumbnailUrl: meta?.thumbnailUrl ?? null,
-          views: row.views,
-          likes: row.likes,
-          comments: row.comments,
-          shares: row.shares,
-          watchMinutes: row.estimatedMinutesWatched,
-          averageViewDurationSeconds: row.averageViewDuration,
-        });
+          await upsertContentRow(client, {
+            accountId: channelId,
+            videoId: row.video,
+            title: meta?.title || `Video ${row.video}`,
+            publishedAt: meta?.publishedAt ?? null,
+            thumbnailUrl: meta?.thumbnailUrl ?? null,
+            views: row.views,
+            likes: row.likes,
+            comments: row.comments,
+            shares: row.shares,
+            watchMinutes: row.estimatedMinutesWatched,
+            averageViewDurationSeconds: row.averageViewDuration,
+          });
 
-        recordsSynced += 1;
+          recordsSynced += 1;
+        }
       }
 
       await client.query(
@@ -928,7 +960,13 @@ async function syncSingleYouTubeIntegration(
         `,
         [
           channelId,
-          `Synced ${topVideos.length} videos and ${aggregateMetrics.length} aggregate metrics (${dateRangeLabel(dateRange)})`,
+          syncMode === "videos"
+            ? `Synced ${topVideos.length} videos (${dateRangeLabel(dateRange)})`
+            : syncMode === "analytics"
+              ? `Synced analytics metrics (${dateRangeLabel(dateRange)})`
+              : syncMode === "channel"
+                ? `Synced channel profile (${dateRangeLabel(dateRange)})`
+                : `Synced ${topVideos.length} videos and ${aggregateMetrics.length} aggregate metrics (${dateRangeLabel(dateRange)})`,
         ],
       );
     });
@@ -968,6 +1006,7 @@ export async function syncYouTubeAnalytics(input?: {
   accountId?: string | null;
   channelKey?: string | null;
   dateRange?: AnalyticsDateRange;
+  syncMode?: YouTubeSyncMode;
 }) {
   const integrationRows = filterYouTubeIntegrationsForSync(
     await listYouTubeIntegrations(),
@@ -999,6 +1038,7 @@ export async function syncYouTubeAnalytics(input?: {
     const summary = await syncSingleYouTubeIntegration(
       integration,
       input?.dateRange,
+      input?.syncMode ?? "full",
     );
     totalRecords += summary.recordsSynced;
   }

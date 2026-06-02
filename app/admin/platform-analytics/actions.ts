@@ -44,9 +44,10 @@ import {
   runMetaSyncJob,
   runMetaSyncJobForPage,
 } from "@/lib/meta/sync";
-import { syncYouTubeAnalytics } from "@/lib/platform-analytics/youtube-sync";
+import { syncYouTubeAnalytics, type YouTubeSyncMode } from "@/lib/platform-analytics/youtube-sync";
 import { listYouTubeIntegrations } from "@/lib/youtube/integration-db";
-import { getYouTubeChannelByKey } from "@/lib/youtube/channels-config";
+import { getYouTubeChannelByKey, isYouTubeChannelConfigured } from "@/lib/youtube/channels-config";
+import { registerConfiguredYouTubeChannels } from "@/lib/youtube/bootstrap";
 import { disconnectTikTokIntegration } from "@/lib/tiktok/integration-db";
 import { syncTikTokForBrand, syncAllTikTokIntegrations } from "@/lib/tiktok/sync";
 import type { MetaSyncType } from "@/lib/meta/types";
@@ -503,6 +504,7 @@ export async function syncYouTubeAction(input?: {
   accountId?: string | null;
   channelKey?: string | null;
   dateRange?: AnalyticsDateRange;
+  syncMode?: YouTubeSyncMode;
 }) {
   const authError = await authorizeMetaManage();
   if (authError) {
@@ -532,6 +534,7 @@ export async function syncYouTubeAction(input?: {
     const result = await syncYouTubeAnalytics({
       channelKey: channelKey ?? null,
       dateRange: input?.dateRange,
+      syncMode: input?.syncMode ?? "full",
     });
     revalidatePlatformAnalyticsPaths();
 
@@ -544,6 +547,104 @@ export async function syncYouTubeAction(input?: {
     return {
       success: false,
       message: error instanceof Error ? error.message : "YouTube sync failed.",
+    };
+  }
+}
+
+export async function bootstrapYouTubeMonitoringAction(input?: {
+  channelKey?: string | null;
+  dateRange?: AnalyticsDateRange;
+}): Promise<
+  MetaMonitoringActionResult<{
+    registeredCount: number;
+    syncedAccounts: number;
+    recordsSynced: number;
+    warnings: string[];
+    needsOAuth?: boolean;
+  }>
+> {
+  const authError = await authorizeMetaManage();
+  if (authError) {
+    return authError;
+  }
+
+  const viewAuth = await authorizeMetaView();
+  if ("success" in viewAuth) {
+    return viewAuth;
+  }
+
+  const channelKey =
+    input?.channelKey && input.channelKey !== "all" ? input.channelKey : null;
+
+  if (channelKey) {
+    const channelError = await assertYouTubeChannelAccess(
+      viewAuth.profileId,
+      channelKey,
+    );
+    if (channelError) {
+      return channelError;
+    }
+  }
+
+  try {
+    const bootstrap = await registerConfiguredYouTubeChannels(viewAuth.profileId);
+
+    if (channelKey) {
+      const config = getYouTubeChannelByKey(channelKey);
+      const integrations = await listYouTubeIntegrations();
+      const hasIntegration = integrations.some(
+        (row) =>
+          row.channel_key === channelKey &&
+          Boolean(row.token_reference && row.external_account_id),
+      );
+
+      if (config && !isYouTubeChannelConfigured(config) && !hasIntegration) {
+        return {
+          success: false,
+          message:
+            "Google OAuth authorization is required for this channel. Add a refresh token in env or authorize via Connect YouTube.",
+          data: {
+            registeredCount: bootstrap.registeredCount,
+            syncedAccounts: 0,
+            recordsSynced: 0,
+            warnings: bootstrap.errors,
+            needsOAuth: true,
+          },
+        };
+      }
+    }
+
+    const sync = await syncYouTubeAnalytics({
+      channelKey,
+      dateRange: input?.dateRange ?? "28d",
+      syncMode: "full",
+    });
+
+    revalidatePlatformAnalyticsPaths();
+
+    const hasData = sync.recordsSynced > 0;
+
+    return {
+      success: hasData || bootstrap.errors.length === 0,
+      message: hasData
+        ? `Connected ${bootstrap.registeredCount} channel(s) and synced YouTube analytics.`
+        : bootstrap.registeredCount > 0
+          ? "Channels registered from env but sync returned no records yet."
+          : "No configured YouTube channels found in environment variables.",
+      data: {
+        registeredCount: bootstrap.registeredCount,
+        syncedAccounts: sync.syncedAccounts,
+        recordsSynced: sync.recordsSynced,
+        warnings: bootstrap.errors,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to connect YouTube and sync analytics.",
     };
   }
 }

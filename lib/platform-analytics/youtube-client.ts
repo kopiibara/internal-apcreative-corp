@@ -29,16 +29,31 @@ function appBaseUrl() {
 }
 
 export function getYouTubeOAuthRedirectUri() {
-  const explicit = process.env.YOUTUBE_OAUTH_REDIRECT_URI?.trim();
+  const explicit =
+    process.env.YOUTUBE_REDIRECT_URI?.trim() ||
+    process.env.YOUTUBE_OAUTH_REDIRECT_URI?.trim();
   if (explicit) {
     return explicit;
   }
   return `${appBaseUrl()}/api/platform-analytics/youtube/callback`;
 }
 
+function readYouTubeClientId() {
+  return (
+    process.env.NEXT_PUBLIC_YOUTUBE_CLIENT_ID?.trim() ||
+    process.env.YOUTUBE_CLIENT_ID?.trim() ||
+    ""
+  );
+}
+
 export function createYouTubeOAuthClient() {
+  const clientId = readYouTubeClientId();
+  if (!clientId) {
+    throw new Error("YOUTUBE_CLIENT_ID is not configured.");
+  }
+
   return new google.auth.OAuth2(
-    requiredEnv("NEXT_PUBLIC_YOUTUBE_CLIENT_ID"),
+    clientId,
     requiredEnv("YOUTUBE_CLIENT_SECRET"),
     getYouTubeOAuthRedirectUri(),
   );

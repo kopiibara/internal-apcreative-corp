@@ -33,7 +33,7 @@ export type PlatformAnalyticsBrandScopeUi = {
   defaultMetaPageKey: string;
   showAllPagesOption: boolean;
   defaultYouTubeChannelKey: string;
-  showAllYouTubeChannelsOption: boolean;
+  showAllEnabledChannelsOption: boolean;
   assignedBrandNames: string[];
   scopeDescription: string;
 };
@@ -279,7 +279,7 @@ export async function toPlatformAnalyticsBrandScopeUi(
       defaultMetaPageKey: "all",
       showAllPagesOption: true,
       defaultYouTubeChannelKey: "all",
-      showAllYouTubeChannelsOption: allowedYouTubeChannels.length > 1,
+      showAllEnabledChannelsOption: allowedYouTubeChannels.length > 1,
       assignedBrandNames,
       scopeDescription: "All brands",
     };
@@ -305,11 +305,11 @@ export async function toPlatformAnalyticsBrandScopeUi(
     allowedYouTubeChannels.length <= 1
       ? {
           defaultYouTubeChannelKey: allowedYouTubeChannels[0]?.key ?? "all",
-          showAllYouTubeChannelsOption: false,
+          showAllEnabledChannelsOption: false,
         }
       : {
           defaultYouTubeChannelKey: allowedYouTubeChannels[0]?.key ?? "all",
-          showAllYouTubeChannelsOption: false,
+          showAllEnabledChannelsOption: false,
         };
 
   return {
