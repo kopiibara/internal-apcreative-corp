@@ -2,6 +2,7 @@ import type {
   PRCollaborationStatus,
   PRContactStatus,
   PRInfluencerSize,
+  PRRequestStatus,
   PRRequestType,
 } from "@/lib/pr/pr-constants";
 
@@ -37,4 +38,8 @@ export function getPRCollaborationStatusLabel(value: PRCollaborationStatus) {
     default:
       return "Pending";
   }
+}
+
+export function getPRRequestStatusLabel(value: PRRequestStatus) {
+  return value === "DELETED" ? "Deleted" : "Active";
 }

@@ -11,7 +11,7 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
-import { Clock, Copy, Pencil } from "lucide-react";
+import { Clock, Copy, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -20,6 +20,7 @@ import {
 } from "@/app/employee/pr/actions";
 import { PRStatusButtonGroup } from "@/components/pr/pr-status-button-group";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
+import { PRDeleteRequestDialog } from "@/components/pr/pr-delete-request-dialog";
 import {
   PRCollaborationStatusBadge,
   PRContactStatusBadge,
@@ -54,7 +55,7 @@ import {
   type PRCollaborationStatus,
 } from "@/lib/pr/pr-constants";
 import { buildPRUpdatePayload } from "@/lib/pr/pr-request-update";
-import type { PRRequestRecord } from "@/lib/pr/pr-types";
+import { isPRRequestActive, type PRRequestRecord } from "@/lib/pr/pr-types";
 
 type PRRequestDataTableProps = {
   requests: PRRequestRecord[];
@@ -196,17 +197,22 @@ function RowActions({
   canManage,
   canCreate,
   currentProfileId,
-  onOpenDetails,
   onEditRequest,
 }: {
   request: PRRequestRecord;
   canManage: boolean;
   canCreate: boolean;
   currentProfileId: number;
-  onOpenDetails: (request: PRRequestRecord) => void;
   onEditRequest: (request: PRRequestRecord) => void;
 }) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const isActive = isPRRequestActive(request);
+  const canEdit =
+    isActive &&
+    (canManage || (canCreate && request.createdByProfileId === currentProfileId));
+  const canDelete =
+    isActive && canCreate && request.createdByProfileId === currentProfileId;
 
   function handleDuplicate() {
     startTransition(async () => {
@@ -222,31 +228,50 @@ function RowActions({
   }
 
   return (
-    <div className="flex flex-nowrap items-center justify-end gap-1">
-      {canCreate ? (
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="neutral"
-          disabled={isPending}
-          title="Duplicate"
-          onClick={handleDuplicate}
-        >
-          <Copy className="size-3.5" />
-        </Button>
-      ) : null}
-      {canManage || (canCreate && request.createdByProfileId === currentProfileId) ? (
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="neutral"
-          title="Edit"
-          onClick={() => onEditRequest(request)}
-        >
-          <Pencil className="size-3.5" />
-        </Button>
-      ) : null}
-    </div>
+    <>
+      <div className="flex flex-nowrap items-center justify-end gap-1">
+        {canCreate && isActive ? (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="neutral"
+            disabled={isPending}
+            title="Duplicate"
+            onClick={handleDuplicate}
+          >
+            <Copy className="size-3.5" />
+          </Button>
+        ) : null}
+        {canEdit ? (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="neutral"
+            title="Edit"
+            onClick={() => onEditRequest(request)}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
+        ) : null}
+        {canDelete ? (
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="destructive"
+            disabled={isPending}
+            title="Delete"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        ) : null}
+      </div>
+      <PRDeleteRequestDialog
+        request={request}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+      />
+    </>
   );
 }
 
@@ -258,7 +283,7 @@ function getColumns(options: {
   onOpenDetails: (request: PRRequestRecord) => void;
   onEditRequest: (request: PRRequestRecord) => void;
 }): ColumnDef<PRRequestRecord>[] {
-  const disabled = options.readOnlyMode || !options.canManage;
+  const manageDisabled = options.readOnlyMode || !options.canManage;
 
   return [
     {
@@ -317,7 +342,10 @@ function getColumns(options: {
       id: "contactStatus",
       header: "Contact",
       cell: ({ row }) => (
-        <CompactContactCell request={row.original} disabled={disabled} />
+        <CompactContactCell
+          request={row.original}
+          disabled={manageDisabled || !isPRRequestActive(row.original)}
+        />
       ),
       enableSorting: false,
     },
@@ -334,7 +362,10 @@ function getColumns(options: {
       id: "collaborationStatus",
       header: "Collab",
       cell: ({ row }) => (
-        <CompactCollabCell request={row.original} disabled={disabled} />
+        <CompactCollabCell
+          request={row.original}
+          disabled={manageDisabled || !isPRRequestActive(row.original)}
+        />
       ),
       enableSorting: false,
     },
@@ -356,7 +387,6 @@ function getColumns(options: {
           canManage={options.canManage}
           canCreate={options.canCreate}
           currentProfileId={options.currentProfileId}
-          onOpenDetails={options.onOpenDetails}
           onEditRequest={options.onEditRequest}
         />
       ),
