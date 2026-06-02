@@ -29,6 +29,7 @@ import {
 import {
   isBrandIdAllowed,
   isMetaPageKeyAllowed,
+  isYouTubeChannelKeyAllowed,
   getPlatformAnalyticsBrandScope,
 } from "@/lib/platform-analytics/brand-scope";
 import { getPlatformAnalyticsDashboardData } from "@/lib/platform-analytics/get-dashboard-data";
@@ -469,8 +470,25 @@ export async function syncMetaPageMonitoringAction(input: {
   }
 }
 
+async function assertYouTubeChannelAccess(
+  profileId: number,
+  channelKey: string,
+): Promise<MetaMonitoringActionResult<never> | null> {
+  const scope = await getPlatformAnalyticsBrandScope(profileId);
+
+  if (!isYouTubeChannelKeyAllowed(channelKey, scope)) {
+    return {
+      success: false,
+      message: "You do not have access to analytics for this YouTube channel.",
+    };
+  }
+
+  return null;
+}
+
 export async function syncYouTubeAction(input?: {
   accountId?: string | null;
+  channelKey?: string | null;
   dateRange?: AnalyticsDateRange;
 }) {
   const authError = await authorizeMetaManage();
@@ -478,9 +496,28 @@ export async function syncYouTubeAction(input?: {
     return authError;
   }
 
+  const viewAuth = await authorizeMetaView();
+  if ("success" in viewAuth) {
+    return viewAuth;
+  }
+
+  const channelKey =
+    input?.channelKey ??
+    (input?.accountId && input.accountId !== "all" ? input.accountId : null);
+
+  if (channelKey) {
+    const channelError = await assertYouTubeChannelAccess(
+      viewAuth.profileId,
+      channelKey,
+    );
+    if (channelError) {
+      return channelError;
+    }
+  }
+
   try {
     const result = await syncYouTubeAnalytics({
-      accountId: input?.accountId ?? null,
+      channelKey: channelKey ?? null,
       dateRange: input?.dateRange,
     });
     revalidatePlatformAnalyticsPaths();
@@ -594,13 +631,32 @@ export async function disconnectTikTokAction(input: {
 
 export async function disconnectYouTubeAction(input?: {
   accountId?: string | null;
+  channelKey?: string | null;
 }): Promise<MetaMonitoringActionResult> {
   const authError = await authorizeMetaManage();
   if (authError) {
     return authError;
   }
 
+  const viewAuth = await authorizeMetaView();
+  if ("success" in viewAuth) {
+    return viewAuth;
+  }
+
+  const channelKey =
+    input?.channelKey ??
+    (input?.accountId && input.accountId !== "all" ? input.accountId : null);
   const accountId = input?.accountId ?? null;
+
+  if (channelKey) {
+    const channelError = await assertYouTubeChannelAccess(
+      viewAuth.profileId,
+      channelKey,
+    );
+    if (channelError) {
+      return channelError;
+    }
+  }
 
   try {
     await query(
@@ -613,17 +669,18 @@ export async function disconnectYouTubeAction(input?: {
       WHERE platform = 'YOUTUBE'
         AND status IN ('ACTIVE', 'ERROR')
         AND ($1::text IS NULL OR external_account_id = $1)
+        AND ($2::text IS NULL OR channel_key = $2)
       `,
-      [accountId],
+      [accountId, channelKey],
     );
 
     revalidatePlatformAnalyticsPaths();
 
     return {
       success: true,
-      message: accountId
-        ? "YouTube account disconnected."
-        : "All YouTube accounts disconnected.",
+      message: channelKey || accountId
+        ? "YouTube channel disconnected."
+        : "All YouTube channels disconnected.",
     };
   } catch (error) {
     return {
