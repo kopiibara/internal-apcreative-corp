@@ -45,6 +45,8 @@ import {
   runMetaSyncJobForPage,
 } from "@/lib/meta/sync";
 import { syncYouTubeAnalytics } from "@/lib/platform-analytics/youtube-sync";
+import { listYouTubeIntegrations } from "@/lib/youtube/integration-db";
+import { getYouTubeChannelByKey } from "@/lib/youtube/channels-config";
 import { disconnectTikTokIntegration } from "@/lib/tiktok/integration-db";
 import { syncTikTokForBrand, syncAllTikTokIntegrations } from "@/lib/tiktok/sync";
 import type { MetaSyncType } from "@/lib/meta/types";
@@ -160,17 +162,28 @@ export async function fetchPlatformAnalyticsAction(input?: {
     };
   }
 
-  const data = await getPlatformAnalyticsDashboardData({
-    platform: parsed.data.platform,
-    accountId: parsed.data.accountId ?? null,
-    metaScope: parsed.data.metaScope,
-    dateRange: parsed.data.dateRange,
-    customDateFrom: parsed.data.customDateFrom,
-    customDateTo: parsed.data.customDateTo,
-    profileId: authResult.profileId,
-  });
+  try {
+    const data = await getPlatformAnalyticsDashboardData({
+      platform: parsed.data.platform,
+      accountId: parsed.data.accountId ?? null,
+      metaScope: parsed.data.metaScope,
+      dateRange: parsed.data.dateRange,
+      customDateFrom: parsed.data.customDateFrom,
+      customDateTo: parsed.data.customDateTo,
+      profileId: authResult.profileId,
+    });
 
-  return { success: true, message: "Platform analytics loaded.", data };
+    return { success: true, message: "Platform analytics loaded.", data };
+  } catch (error) {
+    console.error("[platform-analytics] fetch failed:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Platform analytics could not be loaded.",
+    };
+  }
 }
 
 export async function fetchMetaMonitoringAction(input?: {
@@ -659,6 +672,37 @@ export async function disconnectYouTubeAction(input?: {
   }
 
   try {
+    const allIntegrations = await listYouTubeIntegrations();
+    const channelConfig = channelKey ? getYouTubeChannelByKey(channelKey) : null;
+    const targets =
+      !channelKey && !accountId
+        ? allIntegrations
+        : allIntegrations.filter((row) => {
+            if (accountId && row.external_account_id === accountId) {
+              return true;
+            }
+            if (channelKey && row.channel_key === channelKey) {
+              return true;
+            }
+            if (
+              channelKey &&
+              !row.channel_key &&
+              channelConfig?.channelId &&
+              row.external_account_id === channelConfig.channelId
+            ) {
+              return true;
+            }
+            return false;
+          });
+
+    if (targets.length === 0) {
+      return {
+        success: false,
+        message: "No matching YouTube channel found to disconnect.",
+      };
+    }
+
+    const ids = targets.map((row) => row.id);
     await query(
       `
       UPDATE platform_integration
@@ -666,12 +710,9 @@ export async function disconnectYouTubeAction(input?: {
         status = 'INACTIVE',
         token_reference = NULL,
         updated_at = now()
-      WHERE platform = 'YOUTUBE'
-        AND status IN ('ACTIVE', 'ERROR')
-        AND ($1::text IS NULL OR external_account_id = $1)
-        AND ($2::text IS NULL OR channel_key = $2)
+      WHERE id = ANY($1::int[])
       `,
-      [accountId, channelKey],
+      [ids],
     );
 
     revalidatePlatformAnalyticsPaths();

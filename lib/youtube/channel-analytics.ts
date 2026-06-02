@@ -25,6 +25,10 @@ import {
   getEnabledYouTubeChannels,
   getYouTubeChannelByKey,
 } from "@/lib/youtube/channels-config";
+import {
+  listYouTubeIntegrationsMap,
+  type YouTubeIntegrationRow,
+} from "@/lib/youtube/integration-db";
 
 type YouTubeTrendRow = {
   metric_date: string;
@@ -41,16 +45,6 @@ type YouTubeContentRow = {
   watchTime: string | null;
   avgViewDuration: string | null;
   publishedAt: string | null;
-};
-
-type PlatformIntegrationRow = {
-  id: number;
-  channel_key: string | null;
-  external_account_id: string | null;
-  account_name: string | null;
-  token_reference: string | null;
-  status: string;
-  last_synced_at: string | null;
 };
 
 type GrowthSnapshotQueryRow = {
@@ -94,17 +88,36 @@ type SyncLogQueryRow = {
   error_message: string | null;
 };
 
-const trendDateFormatter = new Intl.DateTimeFormat("en-PH", {
-  month: "short",
-  day: "numeric",
-});
+const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
 
+/** Stable label formatting (avoids server/client Intl timezone hydration mismatches). */
 function formatTrendDateLabel(metricDate: string) {
-  const parsed = new Date(`${metricDate}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) {
+  const parts = metricDate.split("-");
+  if (parts.length !== 3) {
     return metricDate;
   }
-  return trendDateFormatter.format(parsed);
+
+  const monthIndex = Number(parts[1]) - 1;
+  const day = Number(parts[2]);
+
+  if (monthIndex < 0 || monthIndex > 11 || !Number.isFinite(day)) {
+    return metricDate;
+  }
+
+  return `${MONTH_LABELS[monthIndex]} ${day}`;
 }
 
 function normalizeTrendKey(value: string | number | Date) {
@@ -535,7 +548,7 @@ function buildUnconnectedChannelDashboard(
 
 async function loadConnectedChannelDashboard(
   config: YouTubeChannelConfig,
-  integration: PlatformIntegrationRow,
+  integration: YouTubeIntegrationRow,
   syncLogs: SyncLogQueryRow[],
   activityLogsAll: ActivityLogQueryRow[],
   dateRange?: AnalyticsDateRange,
@@ -796,39 +809,11 @@ async function loadConnectedChannelDashboard(
   };
 }
 
-async function loadIntegrationsMap() {
-  const integrationsRes = await query<PlatformIntegrationRow>(
-    `
-    SELECT id, channel_key, external_account_id, account_name, token_reference,
-           status, last_synced_at
-    FROM platform_integration
-    WHERE platform = 'YOUTUBE'
-      AND status IN ('ACTIVE', 'ERROR')
-    ORDER BY updated_at DESC
-    `,
-    [],
-  );
-
-  const byChannelKey = new Map<string, PlatformIntegrationRow>();
-  const byExternalId = new Map<string, PlatformIntegrationRow>();
-
-  for (const row of integrationsRes.rows) {
-    if (row.channel_key) {
-      byChannelKey.set(row.channel_key, row);
-    }
-    if (row.external_account_id) {
-      byExternalId.set(row.external_account_id, row);
-    }
-  }
-
-  return { byChannelKey, byExternalId };
-}
-
 function resolveIntegrationForConfig(
   config: YouTubeChannelConfig,
-  byChannelKey: Map<string, PlatformIntegrationRow>,
-  byExternalId: Map<string, PlatformIntegrationRow>,
-): PlatformIntegrationRow | null {
+  byChannelKey: Map<string, YouTubeIntegrationRow>,
+  byExternalId: Map<string, YouTubeIntegrationRow>,
+): YouTubeIntegrationRow | null {
   const byKey = byChannelKey.get(config.key);
   if (byKey) {
     return byKey;
@@ -847,10 +832,21 @@ function resolveIntegrationForConfig(
 export async function getYouTubeChannelsAnalytics(input?: {
   dateRange?: AnalyticsDateRange;
 }): Promise<YouTubeChannelDashboard[]> {
+  try {
+    return await loadYouTubeChannelsAnalyticsSafe(input);
+  } catch (error) {
+    console.error("[youtube] Failed to load channel analytics:", error);
+    return [];
+  }
+}
+
+async function loadYouTubeChannelsAnalyticsSafe(input?: {
+  dateRange?: AnalyticsDateRange;
+}): Promise<YouTubeChannelDashboard[]> {
   let enabledChannels = getEnabledYouTubeChannels();
 
   const [{ byChannelKey, byExternalId }, syncRes, logsRes] = await Promise.all([
-    loadIntegrationsMap(),
+    listYouTubeIntegrationsMap(),
     query<SyncLogQueryRow>(
       `
       SELECT id, sync_type, external_account_id, status, started_at,
@@ -905,15 +901,26 @@ export async function getYouTubeChannelsAnalytics(input?: {
       continue;
     }
 
-    results.push(
-      await loadConnectedChannelDashboard(
-        config,
-        integration,
-        syncRes.rows,
-        logsRes.rows,
-        input?.dateRange,
-      ),
-    );
+    try {
+      results.push(
+        await loadConnectedChannelDashboard(
+          config,
+          integration,
+          syncRes.rows,
+          logsRes.rows,
+          input?.dateRange,
+        ),
+      );
+    } catch (error) {
+      console.error(
+        `[youtube] Failed to load analytics for ${config.displayName}:`,
+        error,
+      );
+      results.push({
+        ...buildUnconnectedChannelDashboard(config, syncRes.rows),
+        statusMessage: "YouTube sync failed for this channel.",
+      });
+    }
   }
 
   return results;
@@ -934,10 +941,8 @@ export async function getYouTubeChannelAnalyticsByKey(
 
 export function getYouTubeExternalAccountIdForChannelKey(
   channelKey: string,
-  integrations: Map<string, PlatformIntegrationRow>,
+  integrations: Map<string, YouTubeIntegrationRow>,
 ): string | null {
   const integration = integrations.get(channelKey);
   return integration?.external_account_id ?? null;
 }
-
-export type { PlatformIntegrationRow };

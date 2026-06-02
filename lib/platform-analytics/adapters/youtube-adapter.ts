@@ -75,33 +75,25 @@ export function buildYouTubeDisplaySliceFromChannels(
   };
 }
 
-export async function loadYouTubePlatformSlice(
+function buildEmptyYouTubePlatformSlice(
   channelKey: string | null,
-  dateRange?: AnalyticsDateRange,
+  statusMessage: string,
 ) {
-  const youtubeChannelAnalytics = await getYouTubeChannelsAnalytics({
-    dateRange,
-  });
-
-  const enabledCount = getEnabledYouTubeChannels().length;
   const isAllView = !channelKey || channelKey === "all";
-  const display = buildYouTubeDisplaySliceFromChannels(
-    youtubeChannelAnalytics,
-    channelKey,
-    dateRange,
-  );
-
-  const accounts: PlatformAccount[] =
-    buildYouTubeAccountsFromChannels(youtubeChannelAnalytics);
+  const display = buildYouTubeDisplaySliceFromChannels([], channelKey);
 
   return {
-    accounts,
-    youtubeChannelAnalytics,
-    enabledChannelCount: enabledCount,
+    accounts: [] as PlatformAccount[],
+    youtubeChannelAnalytics: [] as YouTubeChannelDashboard[],
+    enabledChannelCount: getEnabledYouTubeChannels().length,
     selectedChannelKey: isAllView ? "all" : channelKey,
     selectedChannelDisplayName: display.selectedChannelDisplayName,
-    channelStatusMessage: display.channelStatusMessage,
-    connection: display.connection,
+    channelStatusMessage: statusMessage,
+    connection: {
+      ...display.connection,
+      lastSyncError: statusMessage,
+      syncHealth: "Failed" as const,
+    },
     overviewKpis: display.overviewKpis,
     engagementKpis: display.engagementKpis,
     audienceInsightKpis: display.audienceInsightKpis,
@@ -114,6 +106,55 @@ export async function loadYouTubePlatformSlice(
     metaNeedsBootstrap: false,
     isDemo: false,
   };
+}
+
+export async function loadYouTubePlatformSlice(
+  channelKey: string | null,
+  dateRange?: AnalyticsDateRange,
+) {
+  try {
+    const youtubeChannelAnalytics = await getYouTubeChannelsAnalytics({
+      dateRange,
+    });
+
+    const enabledCount = getEnabledYouTubeChannels().length;
+    const isAllView = !channelKey || channelKey === "all";
+    const display = buildYouTubeDisplaySliceFromChannels(
+      youtubeChannelAnalytics,
+      channelKey,
+      dateRange,
+    );
+
+    const accounts: PlatformAccount[] =
+      buildYouTubeAccountsFromChannels(youtubeChannelAnalytics);
+
+    return {
+      accounts,
+      youtubeChannelAnalytics,
+      enabledChannelCount: enabledCount,
+      selectedChannelKey: isAllView ? "all" : channelKey,
+      selectedChannelDisplayName: display.selectedChannelDisplayName,
+      channelStatusMessage: display.channelStatusMessage,
+      connection: display.connection,
+      overviewKpis: display.overviewKpis,
+      engagementKpis: display.engagementKpis,
+      audienceInsightKpis: display.audienceInsightKpis,
+      growthSnapshots: display.growthSnapshots,
+      contentPerformance: display.contentPerformance,
+      campaignPerformance: [],
+      activityLogs: display.activityLogs,
+      syncHistory: display.syncHistory,
+      charts: display.charts,
+      metaNeedsBootstrap: false,
+      isDemo: false,
+    };
+  } catch (error) {
+    console.error("[youtube] Failed to load platform slice:", error);
+    return buildEmptyYouTubePlatformSlice(
+      channelKey,
+      "YouTube analytics could not be loaded. Confirm migration 068 is applied and try again.",
+    );
+  }
 }
 
 export function youtubeChannelKeyFromFilter(accountId: string | null) {

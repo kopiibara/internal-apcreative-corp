@@ -4,6 +4,8 @@ import { google } from "@/lib/platform-analytics/googleapis-runtime";
 import type { PoolClient } from "pg";
 
 import { query, transaction } from "@/lib/db";
+import { listYouTubeIntegrations } from "@/lib/youtube/integration-db";
+import { getYouTubeChannelByKey } from "@/lib/youtube/channels-config";
 import {
   createYouTubeOAuthClient,
   YOUTUBE_ANALYTICS_SCOPE,
@@ -298,50 +300,127 @@ export async function upsertYouTubeIntegrationFromOAuth(
 ) {
   const scopes = input.scopes.length ? input.scopes : [YOUTUBE_ANALYTICS_SCOPE];
 
-  await query(
-    `
-    INSERT INTO platform_integration (
-      platform,
-      account_name,
-      account_type,
-      external_account_id,
-      channel_key,
-      token_reference,
-      scopes,
-      status,
-      created_by,
-      updated_at
-    )
-    VALUES (
-      'YOUTUBE',
-      $1,
-      'youtube_channel',
-      $2,
-      $3,
-      $4,
-      $5::text[],
-      'ACTIVE',
-      $6,
-      now()
-    )
-    ON CONFLICT (platform, external_account_id, account_type)
-    DO UPDATE SET
-      account_name = EXCLUDED.account_name,
-      channel_key = COALESCE(EXCLUDED.channel_key, platform_integration.channel_key),
-      token_reference = COALESCE(EXCLUDED.token_reference, platform_integration.token_reference),
-      scopes = EXCLUDED.scopes,
-      status = 'ACTIVE',
-      updated_at = now()
-    `,
-    [
-      input.channel.channelName,
-      input.channel.channelId,
-      input.channelKey ?? null,
-      input.refreshToken,
-      scopes,
-      input.createdByProfileId,
-    ],
-  );
+  try {
+    await query(
+      `
+      INSERT INTO platform_integration (
+        platform,
+        account_name,
+        account_type,
+        external_account_id,
+        channel_key,
+        token_reference,
+        scopes,
+        status,
+        created_by,
+        updated_at
+      )
+      VALUES (
+        'YOUTUBE',
+        $1,
+        'youtube_channel',
+        $2,
+        $3,
+        $4,
+        $5::text[],
+        'ACTIVE',
+        $6,
+        now()
+      )
+      ON CONFLICT (platform, external_account_id, account_type)
+      DO UPDATE SET
+        account_name = EXCLUDED.account_name,
+        channel_key = COALESCE(EXCLUDED.channel_key, platform_integration.channel_key),
+        token_reference = COALESCE(EXCLUDED.token_reference, platform_integration.token_reference),
+        scopes = EXCLUDED.scopes,
+        status = 'ACTIVE',
+        updated_at = now()
+      `,
+      [
+        input.channel.channelName,
+        input.channel.channelId,
+        input.channelKey ?? null,
+        input.refreshToken,
+        scopes,
+        input.createdByProfileId,
+      ],
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (!message.toLowerCase().includes("channel_key")) {
+      throw error;
+    }
+
+    await query(
+      `
+      INSERT INTO platform_integration (
+        platform,
+        account_name,
+        account_type,
+        external_account_id,
+        token_reference,
+        scopes,
+        status,
+        created_by,
+        updated_at
+      )
+      VALUES (
+        'YOUTUBE',
+        $1,
+        'youtube_channel',
+        $2,
+        $3,
+        $4::text[],
+        'ACTIVE',
+        $5,
+        now()
+      )
+      ON CONFLICT (platform, external_account_id, account_type)
+      DO UPDATE SET
+        account_name = EXCLUDED.account_name,
+        token_reference = COALESCE(EXCLUDED.token_reference, platform_integration.token_reference),
+        scopes = EXCLUDED.scopes,
+        status = 'ACTIVE',
+        updated_at = now()
+      `,
+      [
+        input.channel.channelName,
+        input.channel.channelId,
+        input.refreshToken,
+        scopes,
+        input.createdByProfileId,
+      ],
+    );
+  }
+}
+
+function filterYouTubeIntegrationsForSync(
+  rows: Awaited<ReturnType<typeof listYouTubeIntegrations>>,
+  input?: { accountId?: string | null; channelKey?: string | null },
+) {
+  const channelConfig = input?.channelKey
+    ? getYouTubeChannelByKey(input.channelKey)
+    : null;
+
+  return rows.filter((row) => {
+    if (input?.accountId && row.external_account_id !== input.accountId) {
+      return false;
+    }
+
+    if (!input?.channelKey) {
+      return true;
+    }
+
+    if (row.channel_key === input.channelKey) {
+      return true;
+    }
+
+    if (!row.channel_key && channelConfig?.channelId) {
+      return row.external_account_id === channelConfig.channelId;
+    }
+
+    return false;
+  });
 }
 
 function channelAnalyticsIds(channelId: string) {
@@ -890,24 +969,21 @@ export async function syncYouTubeAnalytics(input?: {
   channelKey?: string | null;
   dateRange?: AnalyticsDateRange;
 }) {
-  const integrations = await query<YouTubeIntegrationRow>(
-    `
-    SELECT
-      id,
-      channel_key,
-      external_account_id,
-      account_name,
-      token_reference,
-      scopes
-    FROM platform_integration
-    WHERE platform = 'YOUTUBE'
-      AND status IN ('ACTIVE', 'ERROR')
-      AND ($1::text IS NULL OR external_account_id = $1)
-      AND ($2::text IS NULL OR channel_key = $2)
-    ORDER BY updated_at DESC
-    `,
-    [input?.accountId ?? null, input?.channelKey ?? null],
+  const integrationRows = filterYouTubeIntegrationsForSync(
+    await listYouTubeIntegrations(),
+    input,
   );
+
+  const integrations = {
+    rows: integrationRows.map((row) => ({
+      id: row.id,
+      channel_key: row.channel_key,
+      external_account_id: row.external_account_id ?? "",
+      account_name: row.account_name ?? "YouTube Channel",
+      token_reference: row.token_reference,
+      scopes: [] as string[],
+    })),
+  };
 
   if (!integrations.rows.length) {
     return {
