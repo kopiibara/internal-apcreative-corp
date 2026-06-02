@@ -7,7 +7,7 @@ import {
   formSubmissionPayloadSchemas,
 } from "@/app/admin/forms/schema";
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
-import type { AccountType } from "@/lib/auth/account-type";
+import { canAccessFormsPage } from "@/lib/forms/forms-access";
 import { query } from "@/lib/db";
 import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
 import {
@@ -16,12 +16,6 @@ import {
 } from "@/lib/security/sanitize-text";
 
 const FORMS_PATH = "/admin/forms";
-const ALLOWED_FORM_ACCOUNT_TYPES = new Set<AccountType>([
-  "EXECUTIVE",
-  "DIRECTOR",
-  "MANAGER",
-  "SUPERVISOR",
-]);
 
 export type ActionResult<T = unknown> = {
   success: boolean;
@@ -77,7 +71,7 @@ async function authorizeFormsAction(): Promise<
     };
   }
 
-  if (!ALLOWED_FORM_ACCOUNT_TYPES.has(context.profile.account_type)) {
+  if (!canAccessFormsPage(context.profile.account_type)) {
     return {
       error: {
         success: false,
