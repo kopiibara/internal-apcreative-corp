@@ -191,7 +191,7 @@ export function TaskCreateDialog({
             {personalOnly
               ? "Personal tasks are private, assigned only to you, and are hidden from admin review boards."
               : isFullStackPeerTask
-                ? "Assign non-graded work to another Full Stack Developer. Only involved Full Stack accounts can see it."
+                ? "Assign non-graded work to yourself or another Full Stack Developer. Only involved Full Stack accounts can see it."
                 : canAssignTeamTasks
                 ? "Assign graded work to Multimedia or Content Creator accounts on your shared brands."
                 : resolvedTaskType === "GRADED"

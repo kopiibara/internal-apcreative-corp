@@ -8,7 +8,6 @@ import { clampDailyProgressStartDate } from "@/lib/daily-progress-report/constan
 import {
   getAdminDailyProgressData,
   getOwnDailyProgressPageData,
-  getYesterdayDateKeyInPhilippines,
 } from "@/lib/daily-progress-report/daily-progress-report";
 import { getTodayDateKeyInPhilippines } from "@/lib/daily-reports/daily-report-filters";
 
@@ -63,9 +62,6 @@ export default async function AdminDailyProgressPage({
   const fallbackStartDate = clampDailyProgressStartDate(
     getRecentStartDateKey(fallbackEndDate, 13),
   );
-  const missedCheckerTargetDate = clampDailyProgressStartDate(
-    getYesterdayDateKeyInPhilippines(),
-  );
   const startDate = clampDailyProgressStartDate(
     parseDateKey(params.startDate, fallbackStartDate),
   );
@@ -98,7 +94,7 @@ export default async function AdminDailyProgressPage({
       reports={data.reports}
       summary={data.summary}
       boardDate={endDate}
-      targetDate={missedCheckerTargetDate}
+      targetDate={endDate}
       ownDailyProgressData={ownDailyProgressData}
     />
   );

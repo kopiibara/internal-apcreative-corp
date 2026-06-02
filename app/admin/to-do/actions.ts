@@ -162,17 +162,9 @@ async function authorizeCreateTaskAction() {
   return authorizeTaskAction(["tasks.create", "tasks.assign"]);
 }
 
-async function assertFullStackPeerTaskAssignees(
-  creatorProfileId: number,
+async function assertFullStackTaskAssignees(
   assigneeProfileIds: number[],
 ) {
-  if (assigneeProfileIds.includes(creatorProfileId)) {
-    return {
-      ok: false as const,
-      message: "Select a fellow Full Stack Developer, not your own account.",
-    };
-  }
-
   const result = await query<{ id: number }>(
     `
     SELECT id
@@ -439,10 +431,7 @@ export async function createTask(input: unknown): Promise<ActionResult> {
     context.profile.account_type === "FULL_STACK_DEVELOPER";
 
   if (canAssignFullStackPeerTasks) {
-    const assigneeCheck = await assertFullStackPeerTaskAssignees(
-      context.profile.id,
-      uniqueAssignees,
-    );
+    const assigneeCheck = await assertFullStackTaskAssignees(uniqueAssignees);
 
     if (!assigneeCheck.ok) {
       return {
