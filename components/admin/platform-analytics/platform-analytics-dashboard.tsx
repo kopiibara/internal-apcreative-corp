@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 
 type PlatformAnalyticsDashboardProps = {
   initialData: PlatformAnalyticsDashboardData;
+  initialPlatform?: AnalyticsPlatform;
   canManage: boolean;
   /** Admin dashboard only — shows Connect / Sync Meta controls. */
   showAdminSyncActions?: boolean;
@@ -135,6 +136,7 @@ const YOUTUBE_CONTENT_SPEC = {
 
 export function PlatformAnalyticsDashboard({
   initialData,
+  initialPlatform,
   canManage,
   showAdminSyncActions = false,
   bootstrapMessage,
@@ -149,22 +151,27 @@ export function PlatformAnalyticsDashboard({
   },
   analyticsBasePath = "/admin/platform-analytics",
 }: PlatformAnalyticsDashboardProps) {
+  const resolvedInitialPlatform = initialPlatform ?? initialData.platform;
   const [data, setData] = useState(initialData);
-  const [platform, setPlatform] = useState<AnalyticsPlatform>(
-    initialData.platform === "META" ? "META" : initialData.platform,
-  );
+  const [platform, setPlatform] = useState<AnalyticsPlatform>(resolvedInitialPlatform);
   const [metaScope, setMetaScope] = useState<MetaScope>("combined");
   const [metaPageKey, setMetaPageKey] = useState<string>(
     brandScopeUi.defaultMetaPageKey,
   );
   const [tiktokBrandKey, setTikTokBrandKey] = useState<string>("all");
-  const [accountId, setAccountId] = useState("all");
+  const [accountId, setAccountId] = useState(
+    resolvedInitialPlatform === "YOUTUBE"
+      ? brandScopeUi.defaultYouTubeChannelKey
+      : "all",
+  );
+
+  const youtubeChannels = data.youtubeChannelAnalytics ?? [];
 
   const effectiveYouTubeChannelKey =
     platform === "YOUTUBE" &&
-      data.youtubeChannelAnalytics.length === 1 &&
+      youtubeChannels.length === 1 &&
       accountId === "all"
-      ? data.youtubeChannelAnalytics[0].key
+      ? youtubeChannels[0].key
       : accountId;
   const [dateRange, setDateRange] = useState<AnalyticsDateRange>("28d");
   const [customDateFrom, setCustomDateFrom] = useState("");
@@ -187,17 +194,6 @@ export function PlatformAnalyticsDashboard({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const platformParam = params.get("platform");
-    if (platformParam === "YOUTUBE" || platformParam === "TIKTOK" || platformParam === "META" || platformParam === "GOOGLE") {
-      setPlatform(platformParam);
-      if (platformParam === "YOUTUBE") {
-        setAccountId(brandScopeUi.defaultYouTubeChannelKey);
-        reload(platformParam, brandScopeUi.defaultYouTubeChannelKey);
-      } else {
-        reload(platformParam, "all");
-      }
-    }
-
     const oauthStatus =
       params.get("youtube_oauth") ?? params.get("tiktok_oauth");
     if (!oauthStatus) {
@@ -382,7 +378,7 @@ export function PlatformAnalyticsDashboard({
     platform === "YOUTUBE"
       ? effectiveYouTubeChannelKey === "all"
         ? null
-        : data.youtubeChannelAnalytics.find(
+        : youtubeChannels.find(
             (channel) => channel.key === effectiveYouTubeChannelKey,
           ) ?? null
       : null;
@@ -390,7 +386,7 @@ export function PlatformAnalyticsDashboard({
   const youtubeIsConnected =
     selectedYouTubeChannel?.connectionStatus === "Connected" ||
     (effectiveYouTubeChannelKey === "all" &&
-      data.youtubeChannelAnalytics.some(
+      youtubeChannels.some(
         (channel) => channel.connectionStatus === "Connected",
       ));
 
@@ -398,7 +394,7 @@ export function PlatformAnalyticsDashboard({
     effectiveYouTubeChannelKey === "all"
       ? "All YouTube Channels"
       : (selectedYouTubeChannel?.displayName ??
-        data.youtubeChannelAnalytics.find(
+        youtubeChannels.find(
           (channel) => channel.key === effectiveYouTubeChannelKey,
         )?.displayName ??
         effectiveYouTubeChannelKey);
@@ -716,7 +712,7 @@ export function PlatformAnalyticsDashboard({
               </div>
             ) : null}
 
-            {platform === "YOUTUBE" && data.youtubeChannelAnalytics.length > 0 ? (
+            {platform === "YOUTUBE" && youtubeChannels.length > 0 ? (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-muted-foreground">
                   {YOUTUBE_CONTENT_SPEC.selectedChannelLabel}:
@@ -735,7 +731,7 @@ export function PlatformAnalyticsDashboard({
                     All YouTube Channels
                   </Button>
                 ) : null}
-                {data.youtubeChannelAnalytics.map((channel) => (
+                {youtubeChannels.map((channel) => (
                   <Button
                     key={channel.key}
                     type="button"
@@ -832,7 +828,7 @@ export function PlatformAnalyticsDashboard({
             </section>
           ) : (
             <section className="space-y-6">
-              {platform === "YOUTUBE" && data.youtubeChannelAnalytics.length === 0 ? (
+              {platform === "YOUTUBE" && youtubeChannels.length === 0 ? (
                 <Card>
                   <CardContent className="py-10 text-center text-sm text-muted-foreground">
                     {brandScopeUi.hasAllBrandsAccess ? (
