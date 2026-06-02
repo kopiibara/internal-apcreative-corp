@@ -21,6 +21,7 @@ import {
 import {
   formatDateKeyInPhilippines,
   getPhilippineDayBounds,
+  isWeekendDateKeyInPhilippines,
 } from "@/lib/daily-reports/daily-report-filters";
 
 export type DailyProgressBrandOption = {
@@ -153,8 +154,12 @@ export function getPreviousDateKeyInPhilippines(
 }
 
 function mapReportRow(row: DailyProgressReportRow): DailyProgressReportRecord {
-  const points_awarded = Number(row.points_awarded ?? 0);
-  const deduction_applied = Number(row.deduction_applied ?? 0);
+  const reportDate = formatDateKeyInPhilippines(row.report_date);
+  const isWeekendReport = isWeekendDateKeyInPhilippines(reportDate);
+  const points_awarded = isWeekendReport ? 0 : Number(row.points_awarded ?? 0);
+  const deduction_applied = isWeekendReport
+    ? 0
+    : Number(row.deduction_applied ?? 0);
   const bridgeBrandIds = Array.isArray(row.brand_ids)
     ? row.brand_ids.map((brandId) => Number(brandId))
     : [];
@@ -181,7 +186,7 @@ function mapReportRow(row: DailyProgressReportRow): DailyProgressReportRecord {
     brandName: brandNames.length > 0 ? brandNames.join(", ") : null,
     brandIds,
     brandNames,
-    reportDate: formatDateKeyInPhilippines(row.report_date),
+    reportDate,
     summary: row.summary,
     blockers: row.blockers,
     proofLink: row.proof_link,
@@ -341,6 +346,7 @@ export async function getAdminDailyProgressData(
       ${REPORT_SELECT}
       WHERE dpr.report_date >= $1::date
         AND dpr.report_date <= $2::date
+        AND EXTRACT(ISODOW FROM dpr.report_date)::int NOT IN (6, 7)
         AND (
           $3::integer IS NULL
           OR dpr.brand_id = $3::integer
@@ -374,6 +380,7 @@ export async function getAdminDailyProgressData(
       JOIN profile p ON p.id = dpr.profile_id
       WHERE dpr.report_date >= $1::date
         AND dpr.report_date <= $2::date
+        AND EXTRACT(ISODOW FROM dpr.report_date)::int NOT IN (6, 7)
         AND (
           $3::integer IS NULL
           OR dpr.brand_id = $3::integer

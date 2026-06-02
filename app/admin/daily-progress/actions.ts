@@ -21,6 +21,7 @@ import {
   isBeforeDailyProgressScoringStart,
 } from "@/lib/daily-progress-report/constants";
 import { calculateDailyProgressPoints } from "@/lib/daily-progress-report/scoring";
+import { isWeekendDateKeyInPhilippines } from "@/lib/daily-reports/daily-report-filters";
 import { rejectIfRateLimited } from "@/lib/security/rate-limit-guards";
 import {
   sanitizeOptionalText,
@@ -130,9 +131,12 @@ export async function reviewLateDailyProgressReport(
   }
 
   const nextStatus = parsed.data.decision === "Approved" ? "Late" : "Missed";
-  const points = calculateDailyProgressPoints(nextStatus, parsed.data.decision);
+  const isWeekendReport = isWeekendDateKeyInPhilippines(report.reportDate);
+  const points = isWeekendReport
+    ? { pointsAwarded: 0, deductionApplied: 0 }
+    : calculateDailyProgressPoints(nextStatus, parsed.data.decision);
   const pointsAwarded =
-    parsed.data.decision === "Approved"
+    parsed.data.decision === "Approved" && !isWeekendReport
       ? (parsed.data.pointsAwarded ?? points.pointsAwarded)
       : points.pointsAwarded;
 
@@ -175,7 +179,9 @@ export async function reviewLateDailyProgressReport(
     message:
       parsed.data.decision === "Approved"
         ? `Late report approved. +${pointsAwarded} points awarded.`
-        : "Late report rejected. Missed deduction applied.",
+        : isWeekendReport
+          ? "Late report rejected. Weekend reports have no deduction."
+          : "Late report rejected. Missed deduction applied.",
   };
 }
 
