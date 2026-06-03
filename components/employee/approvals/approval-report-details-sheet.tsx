@@ -1,6 +1,6 @@
 "use client"
 
-import { Pencil } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 
 import {
   ApprovalDetailsGrid,
@@ -37,6 +37,7 @@ export function ContentReportDetailsSheet({
     isDetailsSheetOpen,
     closeDetailsSheet,
     openEditDialog,
+    openDeleteDialog,
   } = useContentReportStore()
 
   const canEdit =
@@ -106,16 +107,28 @@ export function ContentReportDetailsSheet({
               />
             ) : null}
             {canEdit ? (
-              <Button
-                type="button"
-                variant="neutral"
-                size="sm"
-                className="w-fit"
-                onClick={() => openEditDialog(selectedContentReport)}
-              >
-                <Pencil className="size-4" />
-                Edit Approval
-              </Button>
+              <>
+                <Button
+                  type="button"
+                  variant="neutral"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() => openEditDialog(selectedContentReport)}
+                >
+                  <Pencil className="size-4" />
+                  Edit Approval
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() => openDeleteDialog(selectedContentReport)}
+                >
+                  <Trash2 className="size-4" />
+                  Delete Approval
+                </Button>
+              </>
             ) : null}
           </SheetFooter>
         ) : null}

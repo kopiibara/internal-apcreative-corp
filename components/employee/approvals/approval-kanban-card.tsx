@@ -200,7 +200,7 @@ export function EmployeeApprovalKanbanCard({
                   type="button"
                   size="icon-sm"
                   variant="destructive"
-                  aria-label="Cancel approval report"
+                  aria-label="Delete approval"
                   onClick={() => openDeleteDialog(report)}
                 >
                   <Trash2 className="size-3.5" />

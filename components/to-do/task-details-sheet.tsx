@@ -1,6 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { Trash2 } from "lucide-react"
+import { toast } from "sonner"
+
+import { deleteTask } from "@/app/admin/to-do/actions"
 
 import { ReportBlockerDialog } from "@/components/to-do/report-blocker-dialog"
 import { TaskActivityTimeline } from "@/components/to-do/task-activity-timeline"
@@ -144,6 +149,8 @@ type TaskActionsPanelProps = {
   canResolveBlocker: boolean
   canChangeStatus: boolean
   canEditTask: boolean
+  canDeleteTask: boolean
+  isDeletePending: boolean
   onSubmitProof: () => void
   onReportBlocker: () => void
   onConfirmDone: () => void
@@ -152,6 +159,7 @@ type TaskActionsPanelProps = {
   onResolveBlocker: () => void
   onChangeStatus: () => void
   onEditTask: () => void
+  onDeleteTask: () => void
 }
 
 function TaskActionsFooter({
@@ -164,6 +172,8 @@ function TaskActionsFooter({
   canResolveBlocker,
   canChangeStatus,
   canEditTask,
+  canDeleteTask,
+  isDeletePending,
   onSubmitProof,
   onReportBlocker,
   onConfirmDone,
@@ -172,6 +182,7 @@ function TaskActionsFooter({
   onResolveBlocker,
   onChangeStatus,
   onEditTask,
+  onDeleteTask,
 }: TaskActionsPanelProps) {
   const hasActions =
     canSubmitProof ||
@@ -181,7 +192,8 @@ function TaskActionsFooter({
     canRejectTask ||
     canResolveBlocker ||
     canChangeStatus ||
-    canEditTask
+    canEditTask ||
+    canDeleteTask
 
   if (!hasActions) {
     return null
@@ -244,6 +256,18 @@ function TaskActionsFooter({
           Edit Task Details
         </Button>
       ) : null}
+      {canDeleteTask ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="destructive"
+          disabled={isDeletePending}
+          onClick={onDeleteTask}
+        >
+          <Trash2 className="size-3.5" />
+          Delete Task
+        </Button>
+      ) : null}
     </div>
   )
 }
@@ -265,6 +289,8 @@ export function TaskDetailsSheet({
   currentProfileId,
   onEditTask,
 }: TaskDetailsSheetProps) {
+  const router = useRouter()
+  const [isDeletePending, startDeleteTransition] = useTransition()
   const [proofOpen, setProofOpen] = useState(false)
   const [blockerOpen, setBlockerOpen] = useState(false)
   const [revisionOpen, setRevisionOpen] = useState(false)
@@ -278,6 +304,13 @@ export function TaskDetailsSheet({
     assignment?.status !== "DONE" &&
     permissions.canUpdate &&
     (permissions.canManageAll ||
+      assignment?.createdByProfileId === currentProfileId)
+  const canDeleteTask =
+    Boolean(assignment) &&
+    assignment?.status !== "DONE" &&
+    (permissions.canManageAll ||
+      assignment?.createdByProfileId === currentProfileId) &&
+    (permissions.canDelete ||
       assignment?.createdByProfileId === currentProfileId)
   const canSubmitProof =
     Boolean(assignment) &&
@@ -305,7 +338,27 @@ export function TaskDetailsSheet({
     canRejectTask ||
     canResolveBlocker ||
     canChangeStatus ||
-    canEditTask
+    canEditTask ||
+    canDeleteTask
+
+  function handleDeleteTask() {
+    if (!assignment) {
+      return
+    }
+
+    startDeleteTransition(async () => {
+      const result = await deleteTask({ taskId: assignment.taskId })
+
+      if (result.success) {
+        toast.success(result.message)
+        onOpenChange(false)
+        router.refresh()
+        return
+      }
+
+      toast.error(result.message)
+    })
+  }
 
   function openStatusChange(status: TaskAssignmentStatus | null) {
     setNextStatus(status)
@@ -368,6 +421,8 @@ export function TaskDetailsSheet({
                 canResolveBlocker={canResolveBlocker}
                 canChangeStatus={canChangeStatus}
                 canEditTask={canEditTask}
+                canDeleteTask={canDeleteTask}
+                isDeletePending={isDeletePending}
                 onSubmitProof={() => setProofOpen(true)}
                 onReportBlocker={() => setBlockerOpen(true)}
                 onConfirmDone={() => openStatusChange("DONE")}
@@ -376,6 +431,7 @@ export function TaskDetailsSheet({
                 onResolveBlocker={() => openStatusChange("ASSIGNED")}
                 onChangeStatus={() => openStatusChange(null)}
                 onEditTask={() => onEditTask(assignment)}
+                onDeleteTask={handleDeleteTask}
               />
             </SheetFooter>
           ) : null}

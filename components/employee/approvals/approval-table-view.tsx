@@ -25,6 +25,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui/table"
 import {
   canEditPublishingFields,
+  canEmployeeEditOwnReport,
   type ContentReport,
 } from "@/types/content-report"
 import { formatRecentOrDateTime } from "@/lib/date-time/relative-timestamp"
@@ -248,6 +250,7 @@ function getContentReportColumns({
       header: () => <div className="text-right">Actions</div>,
       cell: ({ row }) => {
         const report = row.original
+        const canEditOwn = canEmployeeEditOwnReport(report, currentProfileId)
 
         return (
           <div className="text-right">
@@ -266,7 +269,22 @@ function getContentReportColumns({
                   <Eye className="size-4" />
                   View Details
                 </DropdownMenuItem>
-
+                {canEditOwn ? (
+                  <>
+                    <DropdownMenuItem onClick={() => openEditDialog(report)}>
+                      <Pencil className="size-4" />
+                      Edit report
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => openDeleteDialog(report)}
+                    >
+                      <XCircle className="size-4" />
+                      Delete approval
+                    </DropdownMenuItem>
+                  </>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

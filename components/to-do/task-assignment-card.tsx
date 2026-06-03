@@ -89,7 +89,10 @@ export function TaskAssignmentCard({
     assignment.status !== "DONE" &&
     (permissions.canManageAll ||
       assignment.createdByProfileId === currentProfileId)
-  const canDeleteTask = canEditTask && permissions.canDelete
+  const canDeleteTask =
+    canEditTask &&
+    (permissions.canDelete ||
+      assignment.createdByProfileId === currentProfileId)
   const canUpdateTask = canEditTask && permissions.canUpdate
   const canReviewTask = canReviewTaskAssignment({
     assignment,

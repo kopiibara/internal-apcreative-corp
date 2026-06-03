@@ -78,7 +78,7 @@ export function TaskProofFileField({
         }}
       />
       <p className="text-xs text-muted-foreground">
-        PNG, JPG, WebP, or GIF up to 8 MB.
+        PNG, JPG, or WebP up to 8 MB. GIF up to 5 MB.
       </p>
       {value ? (
         <div className="flex flex-wrap items-center gap-2">
