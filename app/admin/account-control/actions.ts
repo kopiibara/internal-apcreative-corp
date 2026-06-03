@@ -71,17 +71,6 @@ type RoleRow = {
   name: string;
 };
 
-const accountActionRanks: Record<AccountType, number> = {
-  CLIENT: 10,
-  EMPLOYEE: 20,
-  PR: 30,
-  SUPERVISOR: 70,
-  MANAGER: 80,
-  DIRECTOR: 85,
-  EXECUTIVE: 90,
-  FULL_STACK_DEVELOPER: 100,
-};
-
 type BrandRow = {
   id: number;
   slug: string;
@@ -340,18 +329,6 @@ async function authorizeSensitiveAccountAction(targetProfileId: number) {
       error: {
         success: false,
         message: "This account can no longer be modified.",
-      } satisfies ActionResult,
-    };
-  }
-
-  if (
-    accountActionRanks[context.profile.account_type] <
-    accountActionRanks[target.account_type]
-  ) {
-    return {
-      error: {
-        success: false,
-        message: "You cannot manage a higher-access account.",
       } satisfies ActionResult,
     };
   }
@@ -1240,13 +1217,29 @@ export async function forceChangeAccountPassword(
   }
 
   try {
-    await auth.api.setUserPassword({
-      body: {
-        userId: authorization.target.auth_user_id,
-        newPassword: defaultPassword,
-      },
-      headers: await headers(),
-    });
+    const authContext = await auth.$context;
+    const minPasswordLength = authContext.password.config.minPasswordLength;
+    const maxPasswordLength = authContext.password.config.maxPasswordLength;
+
+    if (defaultPassword.length < minPasswordLength) {
+      return {
+        success: false,
+        message: "Default account password is shorter than the minimum password length.",
+      };
+    }
+
+    if (defaultPassword.length > maxPasswordLength) {
+      return {
+        success: false,
+        message: "Default account password is longer than the maximum password length.",
+      };
+    }
+
+    const hashedPassword = await authContext.password.hash(defaultPassword);
+    await authContext.internalAdapter.updatePassword(
+      authorization.target.auth_user_id,
+      hashedPassword,
+    );
 
     await transaction(async (client) => {
       await client.query(
