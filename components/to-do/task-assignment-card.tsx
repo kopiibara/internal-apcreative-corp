@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useTransition } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { ExternalLink, Pencil, Trash2, XCircle } from "lucide-react"
 import { toast } from "sonner"
@@ -20,7 +20,6 @@ import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { RichTextPreview } from "@/components/ui/rich-text-renderer"
 import {
   formatAbsoluteDateTime,
   formatRecentOrDateTime,
@@ -64,7 +63,7 @@ export function TaskAssignmentCard({
   const [rejectOpen, setRejectOpen] = useState(false)
   const [doneDialogOpen, setDoneDialogOpen] = useState(false)
   const [proofViewOpen, setProofViewOpen] = useState(false)
-  const [nowMs, setNowMs] = useState<number | null>(null)
+  const [nowMs] = useState(() => Date.now())
   const openProofInDialog = shouldOpenProofInDialog(
     assignment.proofType,
     assignment.proofUrl,
@@ -82,6 +81,7 @@ export function TaskAssignmentCard({
         status: assignment.status,
         dueDate: assignment.dueDate,
         submittedAt: assignment.submittedAt,
+        lateDeductionOverride: assignment.lateDeductionOverride,
       })
       : null
   const isAssignee = assignment.assignedToProfileId === currentProfileId
@@ -107,12 +107,7 @@ export function TaskAssignmentCard({
     Boolean(assignment.dueDate) &&
     !assignment.submittedAt &&
     ["ASSIGNED", "REVISION", "BLOCKER"].includes(assignment.status) &&
-    nowMs !== null &&
     new Date(assignment.dueDate as string).getTime() < nowMs
-
-  useEffect(() => {
-    setNowMs(Date.now())
-  }, [])
 
   function handleDelete() {
     startTransition(async () => {

@@ -44,6 +44,7 @@ const ACTION_LABELS: Record<string, string> = {
   TASK_REJECTED: "Task rejected",
   TASK_REOPENED: "Task reopened",
   DEADLINE_CHANGED: "Deadline changed",
+  SCORING_OVERRIDE_UPDATED: "Scoring override updated",
   SELF_TASK_SUBMITTED: "Self-submitted task",
 }
 
@@ -101,6 +102,13 @@ function formatMetadata(metadata: Record<string, unknown> | null) {
       typeof to === "string" ? formatAbsoluteDateTime(to, dateFormatter) : "None"
 
     return `Deadline: ${fromLabel} to ${toLabel}`
+  }
+
+  const pointsAwarded = metadata.points_awarded_override
+  const lateDeduction = metadata.late_deduction_override
+
+  if (typeof pointsAwarded === "number" || typeof lateDeduction === "number") {
+    return `Scoring: ${typeof pointsAwarded === "number" ? pointsAwarded : "unchanged"} pts awarded / -${typeof lateDeduction === "number" ? lateDeduction : "unchanged"} pts late deduction`
   }
 
   return null

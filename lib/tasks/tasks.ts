@@ -161,6 +161,12 @@ export type TaskAssignmentRecord = {
   proofNote: string | null;
   submittedAt: string | null;
   completedAt: string | null;
+  pointsAwardedOverride: number | null;
+  lateDeductionOverride: number | null;
+  scoringOverrideReason: string | null;
+  scoringOverriddenByProfileId: number | null;
+  scoringOverriddenByName: string | null;
+  scoringOverriddenAt: string | null;
   reviewedByProfileId: number | null;
   reviewedByName: string | null;
   reviewedAt: string | null;
@@ -214,6 +220,12 @@ type AssignmentRow = {
   proof_note: string | null;
   submitted_at: Date | null;
   completed_at: Date | null;
+  points_awarded_override: number | null;
+  late_deduction_override: number | null;
+  scoring_override_reason: string | null;
+  scoring_overridden_by_profile_id: number | null;
+  scoring_overridden_by_name: string | null;
+  scoring_overridden_at: Date | null;
   reviewed_by_profile_id: number | null;
   reviewed_by_name: string | null;
   reviewed_at: Date | null;
@@ -247,6 +259,8 @@ type StaffAccountabilityAssignmentRow = {
   due_date: Date | null;
   submitted_at: Date | null;
   completed_at: Date | null;
+  points_awarded_override: number | null;
+  late_deduction_override: number | null;
 };
 
 type StaffAccountabilityBrandRow = {
@@ -339,6 +353,12 @@ const ASSIGNMENT_SELECT = `
     ta.proof_note,
     ta.submitted_at,
     ta.completed_at,
+    ta.points_awarded_override,
+    ta.late_deduction_override,
+    ta.scoring_override_reason,
+    ta.scoring_overridden_by_profile_id,
+    scoring_reviewer.full_name AS scoring_overridden_by_name,
+    ta.scoring_overridden_at,
     ta.reviewed_by_profile_id,
     reviewer.full_name AS reviewed_by_name,
     ta.reviewed_at,
@@ -387,6 +407,7 @@ const ASSIGNMENT_SELECT = `
   JOIN profile assignee ON assignee.id = ta.assigned_to_profile_id
   JOIN "user" assignee_user ON assignee_user.id = assignee.auth_user_id
   LEFT JOIN profile reviewer ON reviewer.id = ta.reviewed_by_profile_id
+  LEFT JOIN profile scoring_reviewer ON scoring_reviewer.id = ta.scoring_overridden_by_profile_id
   LEFT JOIN profile blocker_reporter ON blocker_reporter.id = ta.blocker_reported_by_profile_id
   LEFT JOIN profile blocker_confirmer ON blocker_confirmer.id = ta.blocker_confirmed_by_profile_id
 `;
@@ -413,6 +434,12 @@ function mapAssignment(row: AssignmentRow): TaskAssignmentRecord {
     proofNote: row.proof_note,
     submittedAt: row.submitted_at?.toISOString() ?? null,
     completedAt: row.completed_at?.toISOString() ?? null,
+    pointsAwardedOverride: row.points_awarded_override,
+    lateDeductionOverride: row.late_deduction_override,
+    scoringOverrideReason: row.scoring_override_reason,
+    scoringOverriddenByProfileId: row.scoring_overridden_by_profile_id,
+    scoringOverriddenByName: row.scoring_overridden_by_name,
+    scoringOverriddenAt: row.scoring_overridden_at?.toISOString() ?? null,
     reviewedByProfileId: row.reviewed_by_profile_id,
     reviewedByName: row.reviewed_by_name,
     reviewedAt: row.reviewed_at?.toISOString() ?? null,
@@ -626,6 +653,8 @@ export async function getGradedAssignmentPerformanceCounts(profileId: number) {
     due_date: Date | null;
     submitted_at: Date | null;
     completed_at: Date | null;
+    points_awarded_override: number | null;
+    late_deduction_override: number | null;
   }>(
     `
     SELECT
@@ -633,7 +662,9 @@ export async function getGradedAssignmentPerformanceCounts(profileId: number) {
       t.priority,
       t.due_date,
       ta.submitted_at,
-      ta.completed_at
+      ta.completed_at,
+      ta.points_awarded_override,
+      ta.late_deduction_override
     FROM task_assignment ta
     JOIN task t ON t.id = ta.task_id
     WHERE t.task_type = 'GRADED'
@@ -649,6 +680,8 @@ export async function getGradedAssignmentPerformanceCounts(profileId: number) {
       dueDate: row.due_date?.toISOString() ?? null,
       submittedAt: row.submitted_at?.toISOString() ?? null,
       completedAt: row.completed_at?.toISOString() ?? null,
+      pointsAwardedOverride: row.points_awarded_override,
+      lateDeductionOverride: row.late_deduction_override,
     })),
   );
 
@@ -856,7 +889,9 @@ export async function getStaffAccountabilityData({
         t.priority,
         t.due_date,
         ta.submitted_at,
-        ta.completed_at
+        ta.completed_at,
+        ta.points_awarded_override,
+        ta.late_deduction_override
       FROM task_assignment ta
       JOIN task t ON t.id = ta.task_id
       JOIN profile assignee ON assignee.id = ta.assigned_to_profile_id
@@ -1018,6 +1053,8 @@ export async function getStaffAccountabilityData({
           dueDate: assignment.due_date?.toISOString() ?? null,
           submittedAt: assignment.submitted_at?.toISOString() ?? null,
           completedAt: assignment.completed_at?.toISOString() ?? null,
+          pointsAwardedOverride: assignment.points_awarded_override,
+          lateDeductionOverride: assignment.late_deduction_override,
         })),
       );
       const assignedStatusTasks = employeeAssignments.filter(

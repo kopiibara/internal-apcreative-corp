@@ -6,7 +6,7 @@ import {
   proofUrlFieldSchema,
 } from "@/lib/proof/proof-schema";
 import { richTextToPlainText } from "@/lib/rich-text/rich-text";
-import { TASK_PRIORITIES, TASK_PROOF_SUBMIT_TYPES } from "@/lib/tasks/task-type";
+import { TASK_PRIORITIES } from "@/lib/tasks/task-type";
 import { TASK_STATUSES } from "@/lib/tasks/task-statuses";
 
 const optionalText = z
@@ -148,6 +148,7 @@ export const changeTaskAssignmentStatusSchema = z.object({
   fromStatus: z.enum(TASK_STATUSES),
   toStatus: z.enum(TASK_STATUSES),
   notes: requiredTaskNote,
+  dueDate: z.string().nullable().optional(),
   confirmationAccepted: confirmationAcceptedSchema,
 });
 
@@ -162,6 +163,7 @@ export const requestTaskRevisionSchema = z.object({
     .trim()
     .min(1, "Revision note is required.")
     .max(2000),
+  dueDate: z.string().nullable().optional(),
 });
 
 export const rejectTaskSchema = z.object({
@@ -175,6 +177,25 @@ export const rejectTaskSchema = z.object({
 
 export const deleteAssignmentSchema = z.object({
   assignmentId: z.coerce.number().int().positive(),
+});
+
+export const updateTaskScoringOverrideSchema = z.object({
+  assignmentId: z.coerce.number().int().positive(),
+  pointsAwarded: z.coerce
+    .number()
+    .int("Points awarded must be a whole number.")
+    .min(0, "Points awarded cannot be negative.")
+    .max(500, "Points awarded is too high."),
+  lateDeduction: z.coerce
+    .number()
+    .int("Late deduction must be a whole number.")
+    .min(0, "Late deduction cannot be negative.")
+    .max(500, "Late deduction is too high."),
+  reason: z
+    .string()
+    .trim()
+    .min(1, "Reason is required.")
+    .max(2000),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;

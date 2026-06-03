@@ -64,6 +64,7 @@ export function TaskStatusChangeDialog({
   const [isPending, startTransition] = useTransition()
   const effectiveToStatus = toStatus ?? selectedStatus
   const isBlockerReview = assignment?.status === "BLOCKER"
+  const isRevisionChange = effectiveToStatus === "REVISION"
   const canSubmit =
     Boolean(assignment && effectiveToStatus && notes.trim()) &&
     confirmationAccepted
@@ -106,6 +107,7 @@ export function TaskStatusChangeDialog({
           fromStatus: assignment.status,
           toStatus: effectiveToStatus,
           notes: notes.trim(),
+          dueDate: isRevisionChange ? dueDate ?? assignment.dueDate : undefined,
           confirmationAccepted,
         })
 
@@ -186,6 +188,18 @@ export function TaskStatusChangeDialog({
                 onChange={setDueDate}
                 disabled={isPending}
                 placeholder="Optional deadline update"
+              />
+            </div>
+          ) : null}
+
+          {!isBlockerReview && isRevisionChange ? (
+            <div className="space-y-2">
+              <Label>Rescheduled deadline</Label>
+              <DateTimePicker
+                value={dueDate ?? assignment?.dueDate ?? null}
+                onChange={setDueDate}
+                disabled={isPending}
+                placeholder="Set revised deadline"
               />
             </div>
           ) : null}

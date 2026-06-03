@@ -50,6 +50,7 @@ export type LateSubmissionAssignmentInput = {
   status: string;
   dueDate: string | null;
   submittedAt: string | null;
+  lateDeductionOverride?: number | null;
 };
 
 export function calculateLateMinutes(
@@ -99,8 +100,23 @@ export function getLateSubmissionDeductionForAssignment(
 
   return {
     lateMinutes,
-    deductionPoints: calculateLateTaskDeductionPoints(lateMinutes),
+    deductionPoints:
+      assignment.lateDeductionOverride ?? calculateLateTaskDeductionPoints(lateMinutes),
   };
+}
+
+export function getEffectiveTaskPointsAwarded({
+  status,
+  pointsAwardedOverride,
+}: {
+  status: string;
+  pointsAwardedOverride?: number | null;
+}) {
+  if (status !== "DONE") {
+    return 0;
+  }
+
+  return pointsAwardedOverride ?? getPriorityPoints();
 }
 
 export function formatLateDuration(minutes: number) {
@@ -158,17 +174,22 @@ export function getTaskPointsFromCompletionRate(
   return 20;
 }
 
-export function getPriorityPoints(_priority: TaskPriority | null | undefined) {
+export function getPriorityPoints() {
   return TASK_COMPLETION_POINTS;
 }
 
 export function calculateTaskPriorityPoints({
   status,
+  pointsAwardedOverride,
 }: {
   status: string;
   priority: TaskPriority | null | undefined;
+  pointsAwardedOverride?: number | null;
 }) {
-  return status === "DONE" ? TASK_COMPLETION_POINTS : 0;
+  return getEffectiveTaskPointsAwarded({
+    status,
+    pointsAwardedOverride,
+  });
 }
 
 export function calculateTaskPerformancePoints(
@@ -183,7 +204,7 @@ export function calculateTaskPerformancePoints(
   const grossTaskPoints =
     counts.totalAssignedTasks <= 0 ? 0 : counts.completedTaskPriorityPoints;
   const lateTaskDeductionPoints = counts.lateTaskDeductionPoints;
-  const taskPoints = Math.max(grossTaskPoints - lateTaskDeductionPoints, 0);
+  const taskPoints = grossTaskPoints - lateTaskDeductionPoints;
 
   return {
     adjustedCompletionRate,

@@ -15,6 +15,8 @@ export type GradedAssignmentMetricInput = {
   submittedAt: string | null;
   completedAt: string | null;
   taskType?: string;
+  pointsAwardedOverride?: number | null;
+  lateDeductionOverride?: number | null;
 };
 
 export function computeSimpleCompletionRate(done: number, total: number) {
@@ -65,6 +67,7 @@ export function countGradedAssignmentMetrics(
         status: assignment.status,
         dueDate: assignment.dueDate,
         submittedAt: assignment.submittedAt,
+        lateDeductionOverride: assignment.lateDeductionOverride,
       });
 
       if (lateSubmission.deductionPoints > 0) {

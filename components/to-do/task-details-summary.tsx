@@ -6,6 +6,11 @@ import { TaskAssigneeBrands } from "@/components/to-do/task-assignee-brands"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
 import { TaskTypeBadge } from "@/components/to-do/task-type-badge"
 import { formatAbsoluteDateTime } from "@/lib/date-time/relative-timestamp"
+import {
+  calculateLateTaskDeductionPoints,
+  calculateLateMinutes,
+  getEffectiveTaskPointsAwarded,
+} from "@/lib/performance-scoring"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -42,6 +47,20 @@ export function TaskDetailsSummary({
 }: {
   assignment: TaskAssignmentRecord
 }) {
+  const automaticPoints = getEffectiveTaskPointsAwarded({
+    status: assignment.status,
+    pointsAwardedOverride: null,
+  })
+  const automaticDeduction = calculateLateTaskDeductionPoints(
+    calculateLateMinutes(assignment.submittedAt, assignment.dueDate),
+  )
+  const effectivePoints = assignment.pointsAwardedOverride ?? automaticPoints
+  const effectiveDeduction =
+    assignment.lateDeductionOverride ?? automaticDeduction
+  const hasScoringOverride =
+    assignment.pointsAwardedOverride !== null ||
+    assignment.lateDeductionOverride !== null
+
   return (
     <Card className="gap-0 py-0 shadow-none">
       <CardHeader className="items-center border-b-2 border-border px-4 py-3">
@@ -84,6 +103,13 @@ export function TaskDetailsSummary({
           <DetailField label="Proof status">
             {assignment.proofUrl || assignment.proofNote ? "Submitted" : "Not submitted"}
           </DetailField>
+          {assignment.taskType === "GRADED" ? (
+            <DetailField label="Task scoring">
+              {effectivePoints} pts awarded / -{effectiveDeduction} pts late
+              deduction
+              {hasScoringOverride ? " (overridden)" : ""}
+            </DetailField>
+          ) : null}
 
         </div>
 
@@ -96,6 +122,20 @@ export function TaskDetailsSummary({
             </p>
             <p className="mt-1 whitespace-pre-wrap break-words">
               {assignment.revisionNote}
+            </p>
+          </div>
+        ) : null}
+
+        {hasScoringOverride ? (
+          <div className="rounded-lg border-2 border-border bg-muted/40 p-3 text-sm leading-relaxed">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Scoring override
+            </p>
+            <p className="mt-1 whitespace-pre-wrap break-words">
+              {assignment.scoringOverrideReason ?? "No reason provided."}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Adjusted by {assignment.scoringOverriddenByName ?? "Unknown reviewer"}
             </p>
           </div>
         ) : null}

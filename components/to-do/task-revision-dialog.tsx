@@ -6,6 +6,7 @@ import { toast } from "sonner"
 
 import { requestTaskRevision } from "@/app/admin/to-do/actions"
 import { Button } from "@/components/ui/button"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
 import {
   Dialog,
   DialogBody,
@@ -37,6 +38,7 @@ export function TaskRevisionDialog({
   )
   const [isPending, startTransition] = useTransition()
   const [revisionNote, setRevisionNote] = useState("")
+  const [dueDate, setDueDate] = useState<string | null>(null)
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -49,6 +51,7 @@ export function TaskRevisionDialog({
       const result = await requestTaskRevision({
         assignmentId: assignment.assignmentId,
         revisionNote,
+        dueDate: dueDate ?? assignment.dueDate,
       })
 
       if (result.success) {
@@ -58,6 +61,7 @@ export function TaskRevisionDialog({
         }
         onOpenChange(false)
         setRevisionNote("")
+        setDueDate(null)
         router.refresh()
         return
       }
@@ -67,7 +71,16 @@ export function TaskRevisionDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          setRevisionNote("")
+          setDueDate(null)
+        }
+        onOpenChange(nextOpen)
+      }}
+    >
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Request Revision</DialogTitle>
@@ -90,6 +103,15 @@ export function TaskRevisionDialog({
               className="min-h-28"
               required
               disabled={isPending}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Rescheduled deadline</Label>
+            <DateTimePicker
+              value={dueDate ?? assignment?.dueDate ?? null}
+              onChange={setDueDate}
+              disabled={isPending}
+              placeholder="Set revised deadline"
             />
           </div>
           </DialogBody>

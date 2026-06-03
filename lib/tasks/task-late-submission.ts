@@ -17,17 +17,20 @@ export function getTaskLateSubmissionDisplay({
   status,
   dueDate,
   submittedAt,
+  lateDeductionOverride,
 }: {
   taskType: TaskType;
   status: TaskAssignmentStatus;
   dueDate: string | null;
   submittedAt: string | null;
+  lateDeductionOverride?: number | null;
 }): TaskLateSubmissionDisplay | null {
   const lateSubmission = getLateSubmissionDeductionForAssignment({
     taskType,
     status,
     dueDate,
     submittedAt,
+    lateDeductionOverride,
   });
 
   if (lateSubmission.deductionPoints <= 0) {

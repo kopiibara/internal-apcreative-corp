@@ -14,6 +14,7 @@ import {
   requestTaskRevisionSchema,
   submitTaskProofSchema,
   updateTaskSchema,
+  updateTaskScoringOverrideSchema,
 } from "@/app/admin/to-do/schema";
 import { getCurrentProfileContext } from "@/lib/auth/auth-session";
 import {
@@ -1423,7 +1424,27 @@ export async function changeTaskAssignmentStatus(
   }
 
   try {
+    const nextDueDate =
+      parsed.data.toStatus === "REVISION" && parsed.data.dueDate !== undefined
+        ? parseDueDate(parsed.data.dueDate)
+        : assignment.dueDate;
+    const deadlineChanged =
+      parsed.data.toStatus === "REVISION" &&
+      nextDueDate !== assignment.dueDate;
+
     await transaction(async (client) => {
+      if (deadlineChanged) {
+        await client.query(
+          `
+          UPDATE task
+          SET due_date = $2,
+              updated_at = now()
+          WHERE id = $1
+          `,
+          [assignment.taskId, nextDueDate],
+        );
+      }
+
       await client.query(
         `
         UPDATE task_assignment
@@ -1453,7 +1474,27 @@ export async function changeTaskAssignmentStatus(
         fromStatus: assignment.status,
         toStatus: parsed.data.toStatus,
         notes: parsed.data.notes,
+        metadata: deadlineChanged
+          ? {
+              deadline_changed_from: assignment.dueDate,
+              deadline_changed_to: nextDueDate,
+            }
+          : null,
       });
+
+      if (deadlineChanged) {
+        await insertTaskActivityLog(client, {
+          taskId: assignment.taskId,
+          assignmentId: assignment.assignmentId,
+          actorProfileId: context.profile.id,
+          action: "DEADLINE_CHANGED",
+          notes: parsed.data.notes,
+          metadata: {
+            deadline_changed_from: assignment.dueDate,
+            deadline_changed_to: nextDueDate,
+          },
+        });
+      }
     });
 
     return buildTaskAssignmentUpdateResult(
@@ -1665,7 +1706,25 @@ export async function requestTaskRevision(
   }
 
   try {
+    const nextDueDate =
+      parsed.data.dueDate !== undefined
+        ? parseDueDate(parsed.data.dueDate)
+        : assignment.dueDate;
+    const deadlineChanged = nextDueDate !== assignment.dueDate;
+
     await transaction(async (client) => {
+      if (deadlineChanged) {
+        await client.query(
+          `
+          UPDATE task
+          SET due_date = $2,
+              updated_at = now()
+          WHERE id = $1
+          `,
+          [assignment.taskId, nextDueDate],
+        );
+      }
+
       await client.query(
         `
         UPDATE task_assignment
@@ -1692,7 +1751,27 @@ export async function requestTaskRevision(
         fromStatus: assignment.status,
         toStatus: "REVISION",
         notes: parsed.data.revisionNote,
+        metadata: deadlineChanged
+          ? {
+              deadline_changed_from: assignment.dueDate,
+              deadline_changed_to: nextDueDate,
+            }
+          : null,
       });
+
+      if (deadlineChanged) {
+        await insertTaskActivityLog(client, {
+          taskId: assignment.taskId,
+          assignmentId: assignment.assignmentId,
+          actorProfileId: context.profile.id,
+          action: "DEADLINE_CHANGED",
+          notes: parsed.data.revisionNote,
+          metadata: {
+            deadline_changed_from: assignment.dueDate,
+            deadline_changed_to: nextDueDate,
+          },
+        });
+      }
     });
 
     return buildTaskAssignmentUpdateResult(
@@ -1818,6 +1897,126 @@ export async function rejectTask(
     );
   } catch (error) {
     console.error("rejectTask failed:", error);
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Unexpected server action error.",
+    };
+  }
+}
+
+export async function updateTaskScoringOverride(
+  input: unknown,
+): Promise<ActionResult<TaskAssignmentUpdateData>> {
+  const authorization = await authorizeTaskReviewAction();
+
+  if (authorization.error) {
+    return authorization.error;
+  }
+
+  const rateLimitError = await guardTaskMutationRateLimit("task:scoring-override");
+
+  if (rateLimitError) {
+    return rateLimitError;
+  }
+
+  const parsed = updateTaskScoringOverrideSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      success: false,
+      message: parsed.error.issues[0]?.message ?? "Invalid scoring update.",
+    };
+  }
+
+  const assignment = await getTaskAssignmentById(parsed.data.assignmentId);
+
+  if (!assignment) {
+    return { success: false, message: "Task assignment was not found." };
+  }
+
+  const { context } = authorization;
+  const canManageAll = await can(
+    context.profile.auth_user_id,
+    "tasks.manage_all",
+  );
+
+  if (
+    !canAdminManageAssignment({
+      canManageAll,
+      creatorProfileId: assignment.createdByProfileId,
+      actorProfileId: context.profile.id,
+    })
+  ) {
+    return {
+      success: false,
+      message: "You do not have permission to adjust this task scoring.",
+    };
+  }
+
+  if (assignment.taskType !== "GRADED") {
+    return {
+      success: false,
+      message: "Only graded tasks can have scoring overrides.",
+    };
+  }
+
+  if (assignment.status !== "DONE") {
+    return {
+      success: false,
+      message: "Only completed tasks can have scoring overrides.",
+    };
+  }
+
+  try {
+    const sanitizedReason = sanitizeRequiredText(parsed.data.reason, 2000);
+
+    await transaction(async (client) => {
+      await client.query(
+        `
+        UPDATE task_assignment
+        SET
+          points_awarded_override = $2,
+          late_deduction_override = $3,
+          scoring_override_reason = $4,
+          scoring_overridden_by_profile_id = $5,
+          scoring_overridden_at = now(),
+          updated_at = now()
+        WHERE id = $1
+        `,
+        [
+          parsed.data.assignmentId,
+          parsed.data.pointsAwarded,
+          parsed.data.lateDeduction,
+          sanitizedReason,
+          context.profile.id,
+        ],
+      );
+
+      await insertTaskActivityLog(client, {
+        taskId: assignment.taskId,
+        assignmentId: assignment.assignmentId,
+        actorProfileId: context.profile.id,
+        action: "SCORING_OVERRIDE_UPDATED",
+        notes: sanitizedReason,
+        metadata: {
+          previous_points_awarded_override: assignment.pointsAwardedOverride,
+          previous_late_deduction_override: assignment.lateDeductionOverride,
+          points_awarded_override: parsed.data.pointsAwarded,
+          late_deduction_override: parsed.data.lateDeduction,
+        },
+      });
+    });
+
+    return buildTaskAssignmentUpdateResult(
+      parsed.data.assignmentId,
+      "Task scoring updated.",
+    );
+  } catch (error) {
+    console.error("updateTaskScoringOverride failed:", error);
 
     return {
       success: false,

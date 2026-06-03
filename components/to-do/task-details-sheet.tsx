@@ -15,6 +15,7 @@ import { TaskProofDialog } from "@/components/to-do/task-proof-dialog"
 import { TaskProofSummary } from "@/components/to-do/task-proof-summary"
 import { TaskRejectDialog } from "@/components/to-do/task-reject-dialog"
 import { TaskRevisionDialog } from "@/components/to-do/task-revision-dialog"
+import { TaskScoringOverrideDialog } from "@/components/to-do/task-scoring-override-dialog"
 import { TaskStatusChangeDialog } from "@/components/to-do/task-status-change-dialog"
 import { TaskStatusBadge } from "@/components/to-do/task-status-badge"
 import type { TaskPermissionFlags } from "@/components/to-do/types"
@@ -148,6 +149,7 @@ type TaskActionsPanelProps = {
   canRejectTask: boolean
   canResolveBlocker: boolean
   canChangeStatus: boolean
+  canAdjustScoring: boolean
   canEditTask: boolean
   canDeleteTask: boolean
   isDeletePending: boolean
@@ -158,6 +160,7 @@ type TaskActionsPanelProps = {
   onRejectTask: () => void
   onResolveBlocker: () => void
   onChangeStatus: () => void
+  onAdjustScoring: () => void
   onEditTask: () => void
   onDeleteTask: () => void
 }
@@ -171,6 +174,7 @@ function TaskActionsFooter({
   canRejectTask,
   canResolveBlocker,
   canChangeStatus,
+  canAdjustScoring,
   canEditTask,
   canDeleteTask,
   isDeletePending,
@@ -181,6 +185,7 @@ function TaskActionsFooter({
   onRejectTask,
   onResolveBlocker,
   onChangeStatus,
+  onAdjustScoring,
   onEditTask,
   onDeleteTask,
 }: TaskActionsPanelProps) {
@@ -192,6 +197,7 @@ function TaskActionsFooter({
     canRejectTask ||
     canResolveBlocker ||
     canChangeStatus ||
+    canAdjustScoring ||
     canEditTask ||
     canDeleteTask
 
@@ -246,6 +252,16 @@ function TaskActionsFooter({
           Change Status
         </Button>
       ) : null}
+      {canAdjustScoring ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="neutral"
+          onClick={onAdjustScoring}
+        >
+          Adjust Points
+        </Button>
+      ) : null}
       {canEditTask ? (
         <Button
           type="button"
@@ -295,6 +311,7 @@ export function TaskDetailsSheet({
   const [blockerOpen, setBlockerOpen] = useState(false)
   const [revisionOpen, setRevisionOpen] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
+  const [scoringOpen, setScoringOpen] = useState(false)
   const [statusDialogOpen, setStatusDialogOpen] = useState(false)
   const [nextStatus, setNextStatus] = useState<TaskAssignmentStatus | null>(null)
 
@@ -330,6 +347,12 @@ export function TaskDetailsSheet({
     Boolean(assignment) &&
     (permissions.canReview || permissions.canManageAll) &&
     assignment?.assignedToProfileId !== currentProfileId
+  const canAdjustScoring =
+    Boolean(assignment) &&
+    assignment?.taskType === "GRADED" &&
+    assignment?.status === "DONE" &&
+    (permissions.canReview || permissions.canManageAll) &&
+    assignment?.assignedToProfileId !== currentProfileId
   const hasSheetActions =
     canSubmitProof ||
     canReportBlocker ||
@@ -338,6 +361,7 @@ export function TaskDetailsSheet({
     canRejectTask ||
     canResolveBlocker ||
     canChangeStatus ||
+    canAdjustScoring ||
     canEditTask ||
     canDeleteTask
 
@@ -420,6 +444,7 @@ export function TaskDetailsSheet({
                 canRejectTask={canRejectTask}
                 canResolveBlocker={canResolveBlocker}
                 canChangeStatus={canChangeStatus}
+                canAdjustScoring={canAdjustScoring}
                 canEditTask={canEditTask}
                 canDeleteTask={canDeleteTask}
                 isDeletePending={isDeletePending}
@@ -430,6 +455,7 @@ export function TaskDetailsSheet({
                 onRejectTask={() => setRejectOpen(true)}
                 onResolveBlocker={() => openStatusChange("ASSIGNED")}
                 onChangeStatus={() => openStatusChange(null)}
+                onAdjustScoring={() => setScoringOpen(true)}
                 onEditTask={() => onEditTask(assignment)}
                 onDeleteTask={handleDeleteTask}
               />
@@ -457,6 +483,11 @@ export function TaskDetailsSheet({
         assignment={assignment}
         open={rejectOpen}
         onOpenChange={setRejectOpen}
+      />
+      <TaskScoringOverrideDialog
+        assignment={assignment}
+        open={scoringOpen}
+        onOpenChange={setScoringOpen}
       />
       <TaskStatusChangeDialog
         key={`${assignment?.assignmentId ?? "none"}-${nextStatus ?? "select"}`}

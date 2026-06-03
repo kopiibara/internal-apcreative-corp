@@ -296,9 +296,18 @@ export async function getDailyReportData(
       due_date: Date | null;
       submitted_at: Date | null;
       completed_at: Date | null;
+      points_awarded_override: number | null;
+      late_deduction_override: number | null;
     }>(
       `
-      SELECT ta.status, t.priority, t.due_date, ta.submitted_at, ta.completed_at
+      SELECT
+        ta.status,
+        t.priority,
+        t.due_date,
+        ta.submitted_at,
+        ta.completed_at,
+        ta.points_awarded_override,
+        ta.late_deduction_override
       FROM task_assignment ta
       JOIN task t ON t.id = ta.task_id
       WHERE t.task_type = 'GRADED'
@@ -466,6 +475,8 @@ export async function getDailyReportData(
       due_date: Date | null;
       submitted_at: Date | null;
       completed_at: Date | null;
+      points_awarded_override: number | null;
+      late_deduction_override: number | null;
     }>(
       `
       SELECT
@@ -477,7 +488,9 @@ export async function getDailyReportData(
         t.priority,
         t.due_date,
         ta.submitted_at,
-        ta.completed_at
+        ta.completed_at,
+        ta.points_awarded_override,
+        ta.late_deduction_override
       FROM task_assignment ta
       JOIN task t ON t.id = ta.task_id
       JOIN profile assignee ON assignee.id = ta.assigned_to_profile_id
@@ -630,6 +643,8 @@ export async function getDailyReportData(
       dueDate: row.due_date?.toISOString() ?? null,
       submittedAt: row.submitted_at?.toISOString() ?? null,
       completedAt: row.completed_at?.toISOString() ?? null,
+      pointsAwardedOverride: row.points_awarded_override,
+      lateDeductionOverride: row.late_deduction_override,
     })),
   );
 
@@ -805,6 +820,8 @@ export async function getDailyReportData(
           dueDate: row.due_date?.toISOString() ?? null,
           submittedAt: row.submitted_at?.toISOString() ?? null,
           completedAt: row.completed_at?.toISOString() ?? null,
+          pointsAwardedOverride: row.points_awarded_override,
+          lateDeductionOverride: row.late_deduction_override,
         })),
       );
 
