@@ -30,7 +30,7 @@ type AvatarSettingsProps = {
   imageUrl?: string | null;
 };
 
-const MAX_UPLOAD_BYTES = 1024 * 1024;
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -92,7 +92,7 @@ export function AvatarSettings({
     }
 
     if (file.size > MAX_UPLOAD_BYTES) {
-      toast.error("Avatar upload must be 1 MB or smaller.");
+      toast.error("Avatar upload must be 5 MB or smaller.");
       return;
     }
 
