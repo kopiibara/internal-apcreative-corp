@@ -82,6 +82,7 @@ type DashboardSidebarProps = {
 
 type SidebarPerformanceSummary = {
     rank: number
+    rankLabel: string
     totalPoints: number
     taskPoints: number
     grossTaskPoints: number
@@ -158,7 +159,7 @@ function SidebarPointsSummary({
                     <div className="mt-1 flex items-center gap-2">
                         <Trophy className="size-4 shrink-0 text-blue" />
                         <span className="text-md font-black tabular-nums">
-                            #{summary.rank}
+                            #{summary.rankLabel}
                         </span>
                     </div>
                 </div>
@@ -193,7 +194,7 @@ function SidebarPointsSummary({
                         Points detail
                     </p>
                     <Badge variant="neutral" className="px-1.5 py-0 tabular-nums">
-                        #{summary.rank}
+                        #{summary.rankLabel}
                     </Badge>
                 </div>
 
@@ -243,11 +244,11 @@ function SidebarPointsCollapsed({
     return (
         <div
             className="mb-3 flex flex-col items-center gap-1 rounded-lg border-2 border-border bg-background px-1.5 py-2 text-center shadow-[var(--shadow-hard-sm)] transition-all duration-300 ease-out text-sm"
-            title={`Rank #${summary.rank} · ${summary.totalPoints} total points`}
+            title={`Rank #${summary.rankLabel} · ${summary.totalPoints} total points`}
         >
             <Trophy className="size-4 text-blue" />
             <span className="text-[11px] font-black leading-none tabular-nums">
-                #{summary.rank}
+                #{summary.rankLabel}
             </span>
             <span className="text-[10px] font-bold leading-none tabular-nums text-muted-foreground">
                 {summary.totalPoints}

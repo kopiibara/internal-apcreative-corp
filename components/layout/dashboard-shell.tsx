@@ -113,6 +113,7 @@ type DashboardUser = {
 
 type DashboardPerformanceSummary = {
     rank: number
+    rankLabel: string
     totalPoints: number
     taskPoints: number
     grossTaskPoints: number

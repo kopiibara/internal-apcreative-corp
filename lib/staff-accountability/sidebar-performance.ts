@@ -4,6 +4,7 @@ import { getStaffAccountabilitySummaries } from "@/lib/tasks/tasks"
 
 export type SidebarPerformanceSummary = {
   rank: number
+  rankLabel: string
   totalPoints: number
   taskPoints: number
   grossTaskPoints: number
@@ -24,6 +25,7 @@ export async function getSidebarPerformanceSummary(profileId: number) {
 
     return {
       rank: summary.rank,
+      rankLabel: summary.rankLabel,
       totalPoints: summary.totalPoints,
       taskPoints: summary.taskPoints,
       grossTaskPoints: summary.grossTaskPoints,

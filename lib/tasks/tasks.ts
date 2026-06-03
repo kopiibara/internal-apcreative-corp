@@ -49,6 +49,7 @@ export type StaffAccountabilityFilterInput = {
 
 export type StaffAccountabilitySummary = {
   rank: number;
+  rankLabel: string;
   profileId: number;
   fullName: string;
   email: string;
@@ -782,7 +783,7 @@ function getPerformanceLabel(completionRate: number, totalAssignedTasks: number)
 }
 
 function sortStaffAccountabilitySummaries(
-  summaries: Omit<StaffAccountabilitySummary, "rank">[],
+  summaries: Omit<StaffAccountabilitySummary, "rank" | "rankLabel">[],
 ) {
   return [...summaries].sort((left, right) => {
     if (right.totalPoints !== left.totalPoints) {
@@ -803,6 +804,43 @@ function sortStaffAccountabilitySummaries(
 
     return left.fullName.localeCompare(right.fullName);
   });
+}
+
+function assignStaffAccountabilityRanks(
+  sortedSummaries: Omit<StaffAccountabilitySummary, "rank" | "rankLabel">[],
+): StaffAccountabilitySummary[] {
+  const rankLabels = new Map<number, string>();
+
+  let groupStartIndex = 0;
+
+  while (groupStartIndex < sortedSummaries.length) {
+    const groupTotalPoints = sortedSummaries[groupStartIndex]?.totalPoints;
+    let groupEndIndex = groupStartIndex;
+
+    while (
+      groupEndIndex + 1 < sortedSummaries.length &&
+      sortedSummaries[groupEndIndex + 1]?.totalPoints === groupTotalPoints
+    ) {
+      groupEndIndex += 1;
+    }
+
+    const startRank = groupStartIndex + 1;
+    const endRank = groupEndIndex + 1;
+    const rankLabel =
+      startRank === endRank ? String(startRank) : `${startRank}-${endRank}`;
+
+    for (let index = groupStartIndex; index <= groupEndIndex; index += 1) {
+      rankLabels.set(index, rankLabel);
+    }
+
+    groupStartIndex = groupEndIndex + 1;
+  }
+
+  return sortedSummaries.map((summary, index) => ({
+    ...summary,
+    rank: index + 1,
+    rankLabel: rankLabels.get(index) ?? String(index + 1),
+  }));
 }
 
 const STAFF_ACCOUNTABILITY_DERIVED_BRAND_SQL = `
@@ -1118,10 +1156,7 @@ export async function getStaffAccountabilityData({
     }),
   );
 
-  const summaries = sortedSummaries.map((summary, index) => ({
-    ...summary,
-    rank: index + 1,
-  }));
+  const summaries = assignStaffAccountabilityRanks(sortedSummaries);
 
   const teamSummary = summaries.reduce<StaffAccountabilityTeamSummary>(
     (summary, employee) => ({

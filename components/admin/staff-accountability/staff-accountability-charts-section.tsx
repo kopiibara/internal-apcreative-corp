@@ -133,7 +133,7 @@ export function StaffAccountabilityLeaderboard({
                             getLeaderboardRankClass(employee.rank)
                           )}
                         >
-                          {employee.rank}
+                          {employee.rankLabel}
                         </span>
                       </TableCell>
                       <TableCell>
