@@ -92,7 +92,7 @@ export const KANBAN_COLUMN_LIST_CLASS =
 
 /** Drag overlay while dragging Kanban cards. */
 export const KANBAN_OVERLAY_CLASS =
-  "rounded-sm border-2 border-dashed bg-muted"
+  "rounded-[2rem] border-2 border-dashed bg-muted"
 
 export function kanbanColumnListClass(count: number) {
   return cn(
