@@ -8,10 +8,12 @@ export const PROOF_GIF_MAX_BYTES = 5 * 1024 * 1024;
 export const PROOF_IMAGE_DATA_URL_MAX_LENGTH = 11_500_000;
 export const PROOF_GIF_DATA_URL_MAX_LENGTH =
   "data:image/gif;base64,".length + Math.ceil(PROOF_GIF_MAX_BYTES / 3) * 4;
+export const MAX_PROOF_IMAGES = 3;
 
 const IMAGE_DATA_URL_PATTERN =
   /^data:image\/(png|jpe?g|webp|gif);base64,[a-zA-Z0-9+/=]+$/;
 const GIF_DATA_URL_PATTERN = /^data:image\/gif;base64,/i;
+export const MAX_PROOF_LINKS = 10;
 
 export const PROOF_IMAGE_ACCEPT =
   "image/png,image/jpeg,image/jpg,image/webp,image/gif";
@@ -22,6 +24,102 @@ export function isProofDataUrl(value: string) {
 
 export function isHttpProofUrl(value: string) {
   return /^https?:\/\//i.test(value);
+}
+
+export function getProofLinkList(value: string | null | undefined) {
+  return (value ?? "")
+    .split(/\r?\n/)
+    .map((link) => link.trim())
+    .filter(Boolean);
+}
+
+export function getProofImageList(value: string | null | undefined) {
+  return getProofLinkList(value);
+}
+
+export function formatProofUrlListForStorage(values: string[]) {
+  return values.map((value) => value.trim()).filter(Boolean).join("\n");
+}
+
+export function formatProofLinksForStorage(links: string[]) {
+  return formatProofUrlListForStorage(links);
+}
+
+function validateSingleProofLink(proofUrl: string) {
+  try {
+    const url = new URL(proofUrl);
+
+    if (!["http:", "https:"].includes(url.protocol)) {
+      return "Please add valid http(s) proof links.";
+    }
+  } catch {
+    return "Please add valid proof links.";
+  }
+
+  return null;
+}
+
+export function validateProofLinkList(proofUrl: string) {
+  const links = getProofLinkList(proofUrl);
+
+  if (links.length === 0) {
+    return "Please add at least one valid proof link.";
+  }
+
+  if (links.length > MAX_PROOF_LINKS) {
+    return `Please add ${MAX_PROOF_LINKS} proof links or fewer.`;
+  }
+
+  for (const link of links) {
+    const error = validateSingleProofLink(link);
+
+    if (error) {
+      return error;
+    }
+  }
+
+  return null;
+}
+
+function validateSingleProofImage(proofUrl: string) {
+  if (!IMAGE_DATA_URL_PATTERN.test(proofUrl)) {
+    return "Upload PNG, JPG, WebP, or GIF image proofs.";
+  }
+
+  if (
+    GIF_DATA_URL_PATTERN.test(proofUrl) &&
+    proofUrl.length > PROOF_GIF_DATA_URL_MAX_LENGTH
+  ) {
+    return "Each GIF proof must be 5 MB or smaller.";
+  }
+
+  if (proofUrl.length > PROOF_IMAGE_DATA_URL_MAX_LENGTH) {
+    return "Each image proof must be 8 MB or smaller.";
+  }
+
+  return null;
+}
+
+export function validateProofImageList(proofUrl: string) {
+  const images = getProofImageList(proofUrl);
+
+  if (images.length === 0) {
+    return "Please upload at least one image proof.";
+  }
+
+  if (images.length > MAX_PROOF_IMAGES) {
+    return `Please upload ${MAX_PROOF_IMAGES} image proofs or fewer.`;
+  }
+
+  for (const image of images) {
+    const error = validateSingleProofImage(image);
+
+    if (error) {
+      return error;
+    }
+  }
+
+  return null;
 }
 
 export function inferProofSubmitType(
@@ -67,44 +165,11 @@ export function validateProofUrl(
   proofUrl: string,
 ): string | null {
   if (proofType === "LINK") {
-    if (!proofUrl) {
-      return "Please add a valid proof link.";
-    }
-
-    try {
-      const url = new URL(proofUrl);
-
-      if (!["http:", "https:"].includes(url.protocol)) {
-        return "Please add a valid proof link.";
-      }
-    } catch {
-      return "Please add a valid proof link.";
-    }
-
-    return null;
+    return validateProofLinkList(proofUrl);
   }
 
   if (proofType === "IMAGE") {
-    if (!proofUrl) {
-      return "Please upload an image proof.";
-    }
-
-    if (!IMAGE_DATA_URL_PATTERN.test(proofUrl)) {
-      return "Upload a PNG, JPG, WebP, or GIF image.";
-    }
-
-    if (
-      GIF_DATA_URL_PATTERN.test(proofUrl) &&
-      proofUrl.length > PROOF_GIF_DATA_URL_MAX_LENGTH
-    ) {
-      return "GIF proof must be 5 MB or smaller.";
-    }
-
-    if (proofUrl.length > PROOF_IMAGE_DATA_URL_MAX_LENGTH) {
-      return "Image proof must be 8 MB or smaller.";
-    }
-
-    return null;
+    return validateProofImageList(proofUrl);
   }
 
   return null;

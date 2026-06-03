@@ -193,6 +193,7 @@ export function TaskActivityTimeline({
                           proofUrl={proofActivity.proofUrl}
                           proofNote={proofActivity.proofNote}
                           mediaClassName="max-h-52"
+                          compact
                         />
                       ) : null}
 

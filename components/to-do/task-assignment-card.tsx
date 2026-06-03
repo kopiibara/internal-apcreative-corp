@@ -25,7 +25,10 @@ import {
   formatRecentOrDateTime,
 } from "@/lib/date-time/relative-timestamp"
 import { canReviewTaskAssignment } from "@/lib/tasks/task-review-guards"
-import { shouldOpenProofInDialog } from "@/lib/proof/proof-media"
+import {
+  getProofLinkList,
+  shouldOpenProofInDialog,
+} from "@/lib/proof/proof-media"
 import { getTaskLateSubmissionDisplay } from "@/lib/tasks/task-late-submission"
 import { isAssignmentSubmittedOnTime } from "@/lib/tasks/task-type"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
@@ -64,10 +67,11 @@ export function TaskAssignmentCard({
   const [doneDialogOpen, setDoneDialogOpen] = useState(false)
   const [proofViewOpen, setProofViewOpen] = useState(false)
   const [nowMs] = useState(() => Date.now())
-  const openProofInDialog = shouldOpenProofInDialog(
-    assignment.proofType,
-    assignment.proofUrl,
-  )
+  const proofLinks =
+    assignment.proofType === "LINK" ? getProofLinkList(assignment.proofUrl) : []
+  const openProofInDialog =
+    proofLinks.length > 1 ||
+    shouldOpenProofInDialog(assignment.proofType, assignment.proofUrl)
   const openEditDialog = useTaskStore((state) => state.openEditDialog)
 
   const onTimeStatus = isAssignmentSubmittedOnTime(
@@ -282,6 +286,7 @@ export function TaskAssignmentCard({
                   type="button"
                   size="sm"
                   variant="neutral"
+                  className="w-fit"
                   onClick={(event) => {
                     event.stopPropagation()
                     setProofViewOpen(true)
@@ -291,9 +296,9 @@ export function TaskAssignmentCard({
                   {assignment.proofType === "IMAGE" ? "View image" : "View proof"}
                 </Button>
               ) : (
-                <Button type="button" size="sm" variant="neutral" className="h-fit py-1" asChild>
+                <Button type="button" size="sm" variant="neutral" className="w-fit" asChild>
                   <a
-                    href={assignment.proofUrl}
+                    href={proofLinks[0] ?? assignment.proofUrl}
                     target="_blank"
                     rel="noreferrer"
                     onClick={(event) => event.stopPropagation()}

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  MAX_PROOF_IMAGES,
   PROOF_IMAGE_DATA_URL_MAX_LENGTH,
   validateProofUrl,
 } from "@/lib/proof/proof-media";
@@ -9,7 +10,10 @@ import { richTextToPlainText } from "@/lib/rich-text/rich-text";
 
 export const proofUrlFieldSchema = z.preprocess(
   (value) => (value === null || value === undefined ? "" : value),
-  z.string().trim().max(PROOF_IMAGE_DATA_URL_MAX_LENGTH),
+  z
+    .string()
+    .trim()
+    .max(PROOF_IMAGE_DATA_URL_MAX_LENGTH * MAX_PROOF_IMAGES),
 );
 
 export const proofTypeFieldSchema = z.enum(PROOF_SUBMIT_TYPES);

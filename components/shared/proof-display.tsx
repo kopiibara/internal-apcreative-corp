@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { ExternalLink } from "lucide-react"
+import { Eye, ExternalLink } from "lucide-react"
 
 import { TaskProofDisplay } from "@/components/shared/task-proof-display"
 import { TaskProofViewDialog } from "@/components/shared/task-proof-view-dialog"
 import { Button } from "@/components/ui/button"
 import {
+  getProofImageList,
+  getProofLinkList,
   inferProofSubmitType,
   isHttpProofUrl,
   shouldOpenProofInDialog,
@@ -34,9 +36,12 @@ export function ProofDisplay({
   compact = false,
 }: ProofDisplayProps) {
   const [viewOpen, setViewOpen] = useState(false)
+  const [viewProofUrl, setViewProofUrl] = useState<string | null>(null)
   const proofType =
     proofTypeProp ?? inferProofSubmitType(proofUrl, proofNote)
   const hasProof = Boolean(proofUrl?.trim() || proofNote?.trim())
+  const proofLinks = proofType === "LINK" ? getProofLinkList(proofUrl) : []
+  const proofImages = proofType === "IMAGE" ? getProofImageList(proofUrl) : []
 
   if (!hasProof) {
     return (
@@ -51,6 +56,51 @@ export function ProofDisplay({
     proofUrl &&
     shouldOpenProofInDialog(proofType, proofUrl)
 
+  if (compact && proofType === "IMAGE" && proofImages.length > 0) {
+    return (
+      <>
+        <div className={cn("space-y-2", className)}>
+          {proofImages.map((image, index) => (
+            <div
+              key={`${image.slice(0, 48)}-${index}`}
+              className="flex min-w-0 items-center justify-between gap-2 rounded-lg border-2 border-border bg-background px-3 py-2"
+            >
+              <span className="min-w-0 truncate text-sm font-medium">
+                Image proof {index + 1}
+              </span>
+              <Button
+                type="button"
+                size="icon"
+                variant="neutral"
+                className="size-8 shrink-0"
+                title={`View image proof ${index + 1}`}
+                aria-label={`View image proof ${index + 1}`}
+                onClick={() => {
+                  setViewProofUrl(image)
+                  setViewOpen(true)
+                }}
+              >
+                <Eye className="size-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        <TaskProofViewDialog
+          open={viewOpen}
+          onOpenChange={(open) => {
+            setViewOpen(open)
+            if (!open) {
+              setViewProofUrl(null)
+            }
+          }}
+          proofType="IMAGE"
+          proofUrl={viewProofUrl}
+          proofNote={proofNote}
+        />
+      </>
+    )
+  }
+
   if (compact && openInDialog) {
     return (
       <>
@@ -61,7 +111,34 @@ export function ProofDisplay({
           onClick={() => setViewOpen(true)}
         >
           <ExternalLink className="size-3" />
-          {proofType === "IMAGE" ? "View image" : "View proof"}
+          {proofType === "IMAGE"
+            ? proofImages.length > 1
+              ? "View images"
+              : "View image"
+            : "View proof"}
+        </Button>
+        <TaskProofViewDialog
+          open={viewOpen}
+          onOpenChange={setViewOpen}
+          proofType={proofType}
+          proofUrl={proofUrl}
+          proofNote={proofNote}
+        />
+      </>
+    )
+  }
+
+  if (compact && proofLinks.length > 1) {
+    return (
+      <>
+        <Button
+          type="button"
+          size="sm"
+          variant="neutral"
+          onClick={() => setViewOpen(true)}
+        >
+          <ExternalLink className="size-3" />
+          View proofs
         </Button>
         <TaskProofViewDialog
           open={viewOpen}

@@ -61,6 +61,7 @@ export function TaskProofSummary({
               proofType={assignment.proofType}
               proofUrl={assignment.proofUrl}
               proofNote={assignment.proofNote}
+              compact
             />
           </>
         ) : (

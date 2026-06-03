@@ -16,7 +16,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { hasValidProofSubmission } from "@/lib/proof/proof-media"
+import {
+  formatProofLinksForStorage,
+  formatProofUrlListForStorage,
+  hasValidProofSubmission,
+} from "@/lib/proof/proof-media"
 import type { ProofSubmitType } from "@/lib/proof/proof-types"
 import type { TaskAssignmentRecord } from "@/lib/tasks/tasks"
 import { useTaskStore } from "@/stores/use-task-store"
@@ -59,10 +63,17 @@ export function TaskProofDialog({
     }
 
     startTransition(async () => {
+      const normalizedProofUrl =
+        proofType === "LINK"
+          ? formatProofLinksForStorage(proofUrl.split(/\r?\n/))
+          : proofType === "IMAGE"
+            ? formatProofUrlListForStorage(proofUrl.split(/\r?\n/))
+          : proofUrl.trim()
+
       const result = await submitTaskProof({
         assignmentId: assignment.assignmentId,
         proofType,
-        proofUrl: proofUrl.trim(),
+        proofUrl: normalizedProofUrl,
         proofNote: proofNote.trim(),
       })
 
@@ -107,6 +118,8 @@ export function TaskProofDialog({
             onProofUrlChange={setProofUrl}
             onProofNoteChange={setProofNote}
             idPrefix="task-proof"
+            allowMultipleLinks
+            allowMultipleImages
           />
           </DialogBody>
 
