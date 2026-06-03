@@ -25,19 +25,39 @@ type AvatarAuthorization =
   | { ok: true; context: ProfileContext }
   | { ok: false; message: string };
 
+const AVATAR_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+const AVATAR_DATA_URL_PATTERN =
+  /^data:image\/(png|jpe?g|webp|gif);base64,([a-zA-Z0-9+/=]+)$/;
+
+function getBase64ByteLength(base64: string) {
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+
+  return Math.floor((base64.length * 3) / 4) - padding;
+}
+
 const diceBearAvatarSchema = z.object({
   collectionId: z.enum(DICEBEAR_COLLECTIONS.map((collection) => collection.id)),
 });
 
 const uploadedAvatarSchema = z.object({
-  dataUrl: z
-    .string()
-    .max(1_400_000, "Avatar image must be 1 MB or smaller.")
-    .refine(
-      (value) =>
-        /^data:image\/(png|jpe?g|webp|gif);base64,[a-zA-Z0-9+/=]+$/.test(value),
-      "Upload a PNG, JPG, WebP, or GIF image.",
-    ),
+  dataUrl: z.string().superRefine((value, context) => {
+    const match = value.match(AVATAR_DATA_URL_PATTERN);
+
+    if (!match) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Upload a PNG, JPG, WebP, or GIF image.",
+      });
+      return;
+    }
+
+    if (getBase64ByteLength(match[2]) > AVATAR_UPLOAD_MAX_BYTES) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Avatar upload must be 5 MB or smaller.",
+      });
+    }
+  }),
 });
 
 async function authorizeAvatarUpdate(): Promise<AvatarAuthorization> {
