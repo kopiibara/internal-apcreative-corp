@@ -16,6 +16,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { RequiredLabel } from "@/components/ui/required-label"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   EMPTY_RICH_TEXT_CONTENT,
   normalizeRichTextForStorage,
@@ -410,6 +411,40 @@ export function RichTextEditor({
     onChange(normalizeRichTextForStorage(lastValueRef.current || value))
   }
 
+  const editorSizingStyle = {
+    "--rich-text-min-height": `${minHeight}px`,
+    ...(maxHeight ? { "--rich-text-max-height": `${maxHeight}px` } : {}),
+  } as React.CSSProperties
+
+  const editor = (
+    <div
+      ref={editorRef}
+      id={id}
+      role="textbox"
+      aria-multiline="true"
+      aria-required={required || undefined}
+      aria-invalid={Boolean(error) || undefined}
+      contentEditable={!isDisabled}
+      suppressContentEditableWarning
+      data-placeholder={placeholder}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onInput={emitChange}
+      onKeyUp={updateToolbarState}
+      onMouseUp={updateToolbarState}
+      className={cn(
+        "prose-none min-h-[var(--rich-text-min-height)] w-full max-w-full px-3 py-3 text-sm leading-relaxed break-words outline-none [overflow-wrap:anywhere]",
+        "empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]",
+        "[&_*]:max-w-full [&_*]:break-words [&_*]:[overflow-wrap:anywhere]",
+        "[&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-4",
+        "[&_h1]:text-lg [&_h1]:font-black",
+        "[&_h2]:text-base [&_h2]:font-black",
+        "[&_ol]:list-decimal [&_ol]:pl-5",
+        "[&_ul]:list-disc [&_ul]:pl-5",
+      )}
+    />
+  )
+
   return (
     <div className={cn("min-w-0 max-w-full space-y-2", className)}>
       {label ? (
@@ -517,43 +552,21 @@ export function RichTextEditor({
           </ToolbarButton>
         </div>
 
-        <div className="relative max-w-full min-w-0 overflow-x-hidden overflow-y-visible">
-          <div
-            ref={editorRef}
-            id={id}
-            role="textbox"
-            aria-multiline="true"
-            aria-required={required || undefined}
-            aria-invalid={Boolean(error) || undefined}
-            contentEditable={!isDisabled}
-            suppressContentEditableWarning
-            data-placeholder={placeholder}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            onInput={emitChange}
-            onKeyUp={updateToolbarState}
-            onMouseUp={updateToolbarState}
-            className={cn(
-              "prose-none min-h-[var(--rich-text-min-height)] w-full max-w-full px-3 py-3 text-sm leading-relaxed break-words outline-none [overflow-wrap:anywhere]",
-              maxHeight &&
-                "max-h-[var(--rich-text-max-height)] overflow-y-auto overscroll-contain",
-              "empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]",
-              "[&_*]:max-w-full [&_*]:break-words [&_*]:[overflow-wrap:anywhere]",
-              "[&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-4",
-              "[&_h1]:text-lg [&_h1]:font-black",
-              "[&_h2]:text-base [&_h2]:font-black",
-              "[&_ol]:list-decimal [&_ol]:pl-5",
-              "[&_ul]:list-disc [&_ul]:pl-5",
-            )}
-            style={
-              {
-                "--rich-text-min-height": `${minHeight}px`,
-                ...(maxHeight
-                  ? { "--rich-text-max-height": `${maxHeight}px` }
-                  : {}),
-              } as React.CSSProperties
-            }
-          />
+        <div
+          className="relative max-w-full min-w-0 overflow-x-hidden overflow-y-visible"
+          style={editorSizingStyle}
+        >
+          {maxHeight ? (
+            <ScrollArea
+              className="max-h-[var(--rich-text-max-height)]"
+              viewportClassName="max-h-[var(--rich-text-max-height)]"
+              scrollbars="vertical"
+            >
+              {editor}
+            </ScrollArea>
+          ) : (
+            editor
+          )}
 
           {name ? (
             <input

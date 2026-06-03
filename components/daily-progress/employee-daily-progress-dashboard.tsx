@@ -773,10 +773,11 @@ export function EmployeeDailyProgressDashboard({
               onChange={setSummary}
               disabled={isSelectedPastReportLocked}
               minHeight={180}
+              maxHeight={300}
               placeholder="What did you complete or move forward today?"
             />
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid min-w-0 gap-4 md:grid-cols-2">
               <RichTextEditor
                 id="daily-progress-blockers"
                 label="Blockers"
@@ -784,8 +785,8 @@ export function EmployeeDailyProgressDashboard({
                 onChange={setBlockers}
                 disabled={isSelectedPastReportLocked}
                 minHeight={130}
+                maxHeight={220}
                 placeholder="Optional"
-
               />
 
               <div className="space-y-2">
