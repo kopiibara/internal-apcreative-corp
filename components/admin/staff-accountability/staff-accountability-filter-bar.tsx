@@ -51,7 +51,7 @@ export function StaffAccountabilityFilterBar({
   }
 
   return (
-    <div className="relative z-20 flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="relative z-20 flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:justify-between p-1">
       <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center">
         <Select
           value={filters.month}
