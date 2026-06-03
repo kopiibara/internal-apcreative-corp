@@ -137,9 +137,9 @@ export function TaskAssignmentCard({
               </h1>
               <span
                 className="text-xs text-muted-foreground flex flex-row gap-1 items-center "
-                title={dateFormatter.format(new Date(assignment.createdAt))}
+                title={dateFormatter.format(new Date(assignment.updatedAt))}
               >
-                {formatRecentOrDateTime(assignment.createdAt, dateFormatter)}
+                {formatRecentOrDateTime(assignment.updatedAt, dateFormatter)}
               </span>
             </div>
             <div className="flex flex-row gap-1 items-center ">

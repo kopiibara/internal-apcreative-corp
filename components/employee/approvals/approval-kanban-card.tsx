@@ -72,13 +72,11 @@ export function EmployeeApprovalKanbanCard({
             </h2>
             <span
               className="text-sm text-muted-foreground flex flex-row gap-1 items-center"
-              title={dateFormatter.format(new Date(report.dateSubmitted))}
+              title={dateFormatter.format(new Date(report.updatedAt))}
             >
-              {formatRecentOrDateTime(report.dateSubmitted, dateFormatter)}
+              {formatRecentOrDateTime(report.updatedAt, dateFormatter)}
             </span>
           </div>
-
-
         </div>
         {report.assetLink ? (
           <Button
