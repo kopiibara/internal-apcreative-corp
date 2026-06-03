@@ -45,15 +45,15 @@ const TASK_COLUMN_CLASS =
 function getTaskColumnSortTime(assignment: TaskAssignmentRecord) {
   const value =
     assignment.status === "DONE"
-      ? assignment.completedAt ?? assignment.reviewedAt ?? assignment.updatedAt
+      ? assignment.updatedAt ?? assignment.completedAt ?? assignment.reviewedAt
       : assignment.status === "PENDING"
-        ? assignment.submittedAt ?? assignment.updatedAt
+        ? assignment.updatedAt ?? assignment.submittedAt
         : assignment.status === "BLOCKER"
           ? assignment.blockerReportedAt ?? assignment.updatedAt
           : assignment.status === "REVISION"
-            ? assignment.reviewedAt ?? assignment.updatedAt
+            ? assignment.updatedAt ?? assignment.reviewedAt
             : assignment.status === "REJECTED"
-              ? assignment.reviewedAt ?? assignment.updatedAt
+              ? assignment.updatedAt ?? assignment.reviewedAt
               : assignment.createdAt ?? assignment.updatedAt
 
   return new Date(value).getTime()
