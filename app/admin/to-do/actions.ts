@@ -141,6 +141,78 @@ async function authorizeTaskAction(permissionKeys: string[]) {
   return { context };
 }
 
+async function authorizeDeleteTaskAction(taskId: number) {
+  const context = await getCurrentProfileContext();
+
+  if (!context) {
+    return {
+      error: {
+        success: false,
+        message: "You must be signed in to perform this action.",
+      } satisfies ActionResult,
+    };
+  }
+
+  if (context.profile.status !== "ACTIVE") {
+    return {
+      error: {
+        success: false,
+        message: "Your account is not active.",
+      } satisfies ActionResult,
+    };
+  }
+
+  const parentTask = await query<{ created_by_profile_id: number }>(
+    `SELECT created_by_profile_id FROM task WHERE id = $1`,
+    [taskId],
+  );
+
+  if (!parentTask.rows[0]) {
+    return {
+      error: {
+        success: false,
+        message: "Task was not found.",
+      } satisfies ActionResult,
+    };
+  }
+
+  const isCreator =
+    parentTask.rows[0].created_by_profile_id === context.profile.id;
+  const canManageAll = await can(
+    context.profile.auth_user_id,
+    "tasks.manage_all",
+  );
+
+  if (canManageAll || isCreator) {
+    return { context };
+  }
+
+  if (context.profile.account_type === "FULL_STACK_DEVELOPER") {
+    return {
+      error: {
+        success: false,
+        message: "You do not have permission to delete this task.",
+      } satisfies ActionResult,
+    };
+  }
+
+  const canDeletePermission = await can(
+    context.profile.auth_user_id,
+    "tasks.delete",
+  );
+
+  if (!canDeletePermission) {
+    return {
+      error: {
+        success: false,
+        message: "You do not have permission to delete this task.",
+      } satisfies ActionResult,
+    };
+  }
+
+  return { context };
+}
+
 async function authorizeCreateTaskAction() {
   const context = await getCurrentProfileContext();
 
@@ -832,21 +904,6 @@ export async function updateTask(input: unknown): Promise<ActionResult> {
 }
 
 export async function deleteTask(input: unknown): Promise<ActionResult> {
-  const authorization = await authorizeTaskAction([
-    "tasks.delete",
-    "tasks.manage_all",
-  ]);
-
-  if (authorization.error) {
-    return authorization.error;
-  }
-
-  const rateLimitError = await guardTaskMutationRateLimit("task:delete");
-
-  if (rateLimitError) {
-    return rateLimitError;
-  }
-
   const parsed = deleteTaskSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -857,29 +914,16 @@ export async function deleteTask(input: unknown): Promise<ActionResult> {
     };
   }
 
-  const parentTask = await query<{ created_by_profile_id: number }>(
-    `SELECT created_by_profile_id FROM task WHERE id = $1`,
-    [parsed.data.taskId],
-  );
+  const authorization = await authorizeDeleteTaskAction(parsed.data.taskId);
 
-  if (!parentTask.rows[0]) {
-    return { success: false, message: "Task was not found." };
+  if (authorization.error) {
+    return authorization.error;
   }
 
-  const { context } = authorization;
-  const canManageAll = await can(
-    context.profile.auth_user_id,
-    "tasks.manage_all",
-  );
+  const rateLimitError = await guardTaskMutationRateLimit("task:delete");
 
-  if (
-    !canManageAll &&
-    parentTask.rows[0].created_by_profile_id !== context.profile.id
-  ) {
-    return {
-      success: false,
-      message: "You do not have permission to delete this task.",
-    };
+  if (rateLimitError) {
+    return rateLimitError;
   }
 
   try {

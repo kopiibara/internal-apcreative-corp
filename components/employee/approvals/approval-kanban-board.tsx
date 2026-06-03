@@ -306,10 +306,10 @@ export function EmployeeApprovalKanbanBoard({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel content report?</AlertDialogTitle>
+            <AlertDialogTitle>Delete approval?</AlertDialogTitle>
             <AlertDialogDescription>
-              This keeps the submission history but marks the publishing status
-              as Cancelled.
+              This marks the approval as cancelled. You can only delete approvals
+              you created that have not been fully approved or published.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

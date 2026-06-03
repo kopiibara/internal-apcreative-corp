@@ -646,12 +646,20 @@ export async function updateContentReport(
 export async function cancelContentReport(
   input: unknown,
 ): Promise<ActionResult> {
-  const authorization = await authorizeContentReportAction(
-    "content_reports.update",
-  );
+  const context = await getCurrentProfileContext();
 
-  if (authorization.error) {
-    return authorization.error;
+  if (!context) {
+    return {
+      success: false,
+      message: "You must be signed in to perform this action.",
+    };
+  }
+
+  if (context.profile.status !== "ACTIVE") {
+    return {
+      success: false,
+      message: "Your account is not active.",
+    };
   }
 
   const rateLimit = await enforceRateLimit({
@@ -673,7 +681,7 @@ export async function cancelContentReport(
     };
   }
 
-  const { profile } = authorization.context;
+  const { profile } = context;
 
   try {
     await transaction(async (client) => {
@@ -728,7 +736,7 @@ export async function cancelContentReport(
 
     return {
       success: true,
-      message: "Content report cancelled successfully.",
+      message: "Approval deleted successfully.",
     };
   } catch (error) {
     console.error("cancelContentReport failed:", error);
